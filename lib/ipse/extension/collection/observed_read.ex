@@ -679,6 +679,74 @@ defmodule Ipse.Extension.Collection.ObservedRead do
     _, _ -> @error
   end
 
+  @doc "Bind one authenticated pending proposal for separately authorized shadow assessment."
+  def proposal_dependency(request, managed, pin, recipe, verified_sources, now) do
+    with true <- SemanticConsent.pin?(pin) and ManagedRecipe.valid?(recipe),
+         true <- recipe["kind"] === "proposal" and recipe["key_prefix"] === "pending.",
+         observation when is_map(observation) <- managed["observation"],
+         metadata when is_map(metadata) <- managed["metadata"],
+         record when is_map(record) <- get_in(observation, ["value", "record"]),
+         true <- observation["request_sha256"] === JSON.digest([request]),
+         true <- observation["result_sha256"] === JSON.digest([%{"record" => record}]),
+         {:ok, collection} <- root_identity(observation["witness"], pin["namespace"]),
+         {:ok, identity} <- record_identity(record, request["key"], collection),
+         {:ok, candidate} <-
+           ManagedRecipe.extract(recipe, request["key"], record["value"], verified_sources),
+         true <- candidate["kind"] === "proposal" and candidate["lineage"] === metadata["lineage"],
+         true <-
+           metadata["recipe_sha256"] === JSON.digest([recipe]) and
+             metadata["eligibility"] === "never_current" and
+             metadata["category"] === candidate["category"],
+         true <-
+           JSON.sha256?(metadata["policy_sha256"]) and JSON.safe_uint?(now) and
+             JSON.safe_uint?(metadata["first_admitted_ms"]) and
+             metadata["first_admitted_ms"] <= now and
+             JSON.safe_uint?(metadata["valid_until_ms"]) and now < metadata["valid_until_ms"],
+         [source] <- candidate["sources"],
+         dependency = %{
+           "version" => 7,
+           "project_id" => pin["project_id"],
+           "namespace" => pin["namespace"],
+           "pin_sha256" => JSON.digest([pin]),
+           "policy_generation" => pin["epoch"],
+           "collection" => collection,
+           "subject" => %{
+             "kind" => "pending_proposal_observation",
+             "key" => request["key"],
+             "request_sha256" => observation["request_sha256"],
+             "result_sha256" => observation["result_sha256"],
+             "publication_policy_sha256" => metadata["policy_sha256"],
+             "record" => identity,
+             "assessment_sha256" =>
+               JSON.digest([
+                 %{
+                   "candidate_id" => record["value"]["id"],
+                   "text" => record["value"]["text"],
+                   "assigned_category" => record["value"]["assigned_category"],
+                   "reason" => record["value"]["reason"]
+                 }
+               ]),
+             "validity" => %{
+               "recipe_sha256" => metadata["recipe_sha256"],
+               "lineage" => metadata["lineage"],
+               "source_versions" => [
+                 %{"id" => source["occurrence_id"], "version" => source["version_id"]}
+               ],
+               "valid_until_ms" => metadata["valid_until_ms"],
+               "status" => "never_current",
+               "dependencies" => []
+             }
+           }
+         },
+         true <- ManagedReference.dependency?(dependency) do
+      {:ok, dependency}
+    else
+      _ -> @error
+    end
+  rescue
+    _ -> @error
+  end
+
   @doc "Retain the real Collection owner while exposing one authenticated pending proposal."
   def with_managed_proposal(root, namespace, request, cap, catalog, recipe, fun)
       when is_function(fun, 1),

@@ -1,0 +1,30 @@
+ExUnit.start(autorun: false)
+import ExUnit.Assertions
+{:ok, _} = Application.ensure_all_started(:ipse)
+
+[path] = System.argv()
+fixture = path |> File.read!() |> :erlang.binary_to_term([:safe])
+%{config: old, selected: selected, cwd: cwd, dir: dir, home: home,
+  reader_id: reader_id, source_id: source_id} = fixture
+refute File.exists?(Path.join(dir, source_id <> ".jsonl"))
+assert File.exists?(Path.join(dir, source_id <> ".lock"))
+
+{:ok, history} = Ipse.Journal.load(dir, reader_id)
+assert {:ok, _} = Ipse.Session.Saved.restore(history, reader_id)
+before = Ipse.JSON.sha256(File.read!(Path.join(dir, reader_id <> ".jsonl")))
+
+port = URI.parse(old.base_url).port
+{:ok, listener} = :gen_tcp.listen(port, [:binary, active: false, reuseaddr: true, ip: {127, 0, 0, 1}])
+opts = [cwd: cwd, state_dir: dir, subscriber: self(), id: reader_id]
+
+assert {:error, :extension_admission_refused} = Ipse.Session.start_link([config: old] ++ opts)
+{:ok, entries} = Ipse.Extension.Registry.prepare(selected, home)
+current = %{old | extensions: entries}
+assert :ok = Ipse.Extension.Registry.revalidate(current)
+assert hd(old.extensions).identity["host_sha256"] != hd(entries).identity["host_sha256"]
+assert hd(history)["metadata"]["extensions"] != Ipse.Extension.Registry.manifests(current)
+assert {:error, :invalid_semantic_admission} = Ipse.Session.start_link([config: current] ++ opts)
+assert {:error, :timeout} = :gen_tcp.accept(listener, 1_500)
+:ok = :gen_tcp.close(listener)
+assert Ipse.JSON.sha256(File.read!(Path.join(dir, reader_id <> ".jsonl"))) == before
+IO.puts("LEGACY_RESUME_CONTROL_PASSED old=extension_admission_refused refreshed=invalid_semantic_admission network=none")

@@ -112,14 +112,37 @@ defmodule Ipse.Extension.ManagedRead do
              "result_sha256" => Ipse.JSON.digest([value])
          },
          {:ok, notes} <-
-           if(request["op"] == "index",
-             do: {:ok, []},
-             else: select_notes(observation["value"], recipes)
+           if(i["request"]["purpose"] === "decision_shadow_pending_v1",
+             do: select_proposal(observation["value"], recipes),
+             else:
+               if(request["op"] == "index",
+                 do: {:ok, []},
+                 else: select_notes(observation["value"], recipes)
+               )
            ),
          {:ok, notes} <- acceptance_links(c, i, observation, notes) do
       {:ok, %{observation: observation, notes: notes}}
     end
   end
+
+  defp select_proposal(%{"record" => record}, recipes) when is_map(record) do
+    selected =
+      Enum.filter(recipes, &(&1["kind"] === "proposal" and &1["key_prefix"] === "pending."))
+
+    with [recipe] <- selected,
+         proofs when is_list(proofs) <-
+           Enum.reduce(recipe["evidence_path"], record["value"], fn key, value ->
+             if is_map(value), do: value[key], else: nil
+           end),
+         [proof] <- proofs,
+         {:ok, _} <- ManagedRecipe.source_identity(proof) do
+      {:ok, [%{kind: :proposal, record: record, recipe: recipe, proofs: proofs, link: nil}]}
+    else
+      _ -> @error
+    end
+  end
+
+  defp select_proposal(_, _), do: @error
 
   defp select_notes(value, recipes) do
     records =
@@ -237,6 +260,46 @@ defmodule Ipse.Extension.ManagedRead do
          true <- managed["observation"]["value"]["record"] === note.record,
          {:ok, dependency} <-
            ObservedRead.managed_dependency(
+             request,
+             managed,
+             i["effect_binding"]["pin"],
+             note.recipe,
+             Enum.map(verified, & &1["proof"]),
+             System.system_time(:millisecond)
+           ) do
+      {:ok, dependency}
+    else
+      _ -> @error
+    end
+  end
+
+  defp authenticate_record(c, i, %{kind: :proposal} = note, first, verified, cap, catalog, _) do
+    request = %{"op" => "get_record", "key" => note.record["key"]}
+
+    with true <-
+           Ipse.Extension.CollectionCall.pending_assessment?(
+             c.config[:semantic_admission],
+             c.parent,
+             i["request"]
+           ),
+         :ok <-
+           SemanticConsent.check_sources(
+             c.config[:semantic_admission]["policy"],
+             Enum.map(note.proofs, &%{"category" => &1["origin"], "path" => &1["path"]})
+           ),
+         {:ok, managed} <-
+           ObservedRead.managed_proposal(
+             root(c),
+             i["namespace"],
+             request,
+             cap,
+             catalog,
+             note.recipe
+           ),
+         true <- managed["observation"]["witness"] === first.observation["witness"],
+         true <- managed["observation"]["value"]["record"] === note.record,
+         {:ok, dependency} <-
+           ObservedRead.proposal_dependency(
              request,
              managed,
              i["effect_binding"]["pin"],

@@ -22,11 +22,12 @@ Existing-note reads, permission inspection/revocation and elapsed-policy
 reclamation have their own rules. Full capture readiness remains false; saving
 permission and one successful path do not qualify every source or later use.
 
-As a temporary containment, a managed worker cannot read a stored value unless
-the selected current-literal recipe authenticates it. This includes pending
-proposal values, saved override values and unrelated values in a managed
-collection; a returned scan page containing one is refused as a whole. Metadata-only indexes
-remain available. Pending duplicate detection uses that metadata and does not
+As a temporary containment, a generic managed worker read cannot return a stored
+value unless the selected current-literal recipe authenticates it. This includes
+pending proposals, saved overrides and unrelated values in a managed collection;
+a returned scan page containing one is refused as a whole. The separately
+approved bundled shadow assessment below has a protected single-proposal read.
+Metadata-only indexes remain available. Pending duplicate detection uses that metadata and does not
 renew a proposal. A capture that needs an existing override may now be refused;
 do not remove the override to make it proceed. Inspect the Session journal and
 the existing note or proposal before new work, especially if an earlier effect
@@ -142,8 +143,9 @@ workflow, follow [Memory](memory.md).
 ## Try a local shadow assessment
 
 The development build can ask a separately approved local decision service for
-shadow advice about one previously saved eligible native literal note. Accepted
-decisions are not supported by this assessment. Set up an Ollama main
+shadow advice about one eligible native literal note or one pending proposal
+created under the same grant. Accepted decisions are not supported by this
+assessment. Set up an Ollama main
 route and a System One-compatible decision service first; Ipse does not supply
 either service. For example, adapt this complete private operator configuration
 to the models and numeric loopback ports you actually run:
@@ -197,13 +199,35 @@ then ask the model to assess that key:
 Use the knowledge assess tool on note.<64-hex-character-key>.
 ```
 
+To assess a pending proposal instead, first create it under the shadow grant
+through the main model's capture tool, as in [the pending-capture example](#save-your-own-reviewed-statement),
+and keep the returned `pending.` key. Close its source chat with `/exit`. If you
+need to find a key, list historical metadata in the same project and home:
+
+```sh
+ipse knowledge review --json --config /private/path/ipse-local.json --no-project-config --cwd /path/to/project
+```
+
+Start a new chat with the shadow configuration and ask:
+
+```text
+Use the knowledge assess tool on pending.<64-hex-character-key>.
+```
+
+The metadata list does not establish that a proposal or its source is still
+eligible. Keep the original Session journal and lock files available; the
+assessment rechecks the signed candidate, original source, grant and expiry.
+It refuses when those checks cannot be completed. Only the separately reviewed
+bundled shadow tool can use this protected proposal read.
+
 Replace the placeholder with the actual key. `assess` is a model tool, not a
 slash command; the model must choose to call it. Review and approve each decision
-request separately. A successful tool result reports `assessed`, the note key,
+request separately. A successful tool result reports `assessed`, the selected key,
 and an experimental advice choice. `keep_baseline` recommends retaining the
 ordinary baseline; `defer_candidate` is a deferral option intended for ambiguity,
 conflict or low durability. The result does not identify which concern applies.
-These labels are for comparison only; neither changes the note. A null choice with a
+These labels are for comparison only; neither changes or accepts the selected
+record. A null choice with a
 reason such as `low_probability` or `refusal` means no advice was selected.
 The decision action is recorded in the Session journal. Advice does not authorize
 another effect.
@@ -216,9 +240,9 @@ selection through a fresh review:
 ipse knowledge enable --config /private/path/ipse-local.json --no-project-config --cwd /path/to/project
 ```
 
-The tested assessment starts with a literal note saved under this grant in a
-previous Session. Carrying a note captured under a replaced grant into this
-experiment has not been qualified.
+The tested assessments start with a literal note or main-tool pending proposal
+saved under this grant in a previous Session. Carrying a record captured under a
+replaced grant into this experiment has not been qualified.
 Automatic assessment immediately after a write in the same Session is not yet
 supported. Synthetic local controls establish the flow, not model quality or
 paid-service readiness.

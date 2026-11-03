@@ -17,7 +17,7 @@ defmodule Ipse.Extension.CollectionCall do
     do: if(mutating?(request), do: "host.collection.write", else: "host.collection.read")
 
   def validate(request) do
-    with true <- keys?(Map.delete(request, "proofs"), ~w(op request)) and operation?(request),
+    with true <- request_shape?(request) and operation?(request),
          inner when is_map(inner) <- request["request"],
          true <-
            if(inner["op"] == "index",
@@ -38,6 +38,49 @@ defmodule Ipse.Extension.CollectionCall do
     end
   rescue
     _ -> @error
+  end
+
+  defp request_shape?(%{"purpose" => "decision_shadow_pending_v1", "request" => inner} = request) do
+    keys?(request, ~w(op purpose request)) and
+      match?(%{"op" => "get", "key" => "pending." <> _}, inner)
+  end
+
+  defp request_shape?(request), do: keys?(Map.delete(request, "proofs"), ~w(op request))
+
+  @doc false
+  def pending_assessment?(admission, parent, request) do
+    settings = get_in(admission, ["policy", "settings"])
+    descriptor = parent["descriptor"]
+    outer = JSON.digest([descriptor])
+    effects = if is_map(settings), do: settings["effects"], else: nil
+    session = get_in(parent, ["semantic_binding", "pin", "session_id"])
+
+    request["purpose"] === "decision_shadow_pending_v1" and
+      request_shape?(request) and is_list(effects) and is_map(settings["experiment"]) and
+      descriptor["stage"] === "invoke.tool" and descriptor["id"] === "assess" and
+      get_in(parent, ["semantic_binding", "class"]) === "decision.create" and
+      SemanticAdmission.valid?(admission, session) and
+      parent["semantic_binding"]["pin"] === admission["pin"] and
+      admission["policy"]["artifact_sha256"] === parent["identity"]["artifact_sha256"] and
+      SemanticAdmission.valid_outer_binding?(
+        parent["semantic_binding"],
+        parent["identity"],
+        descriptor,
+        session
+      ) and
+      Enum.count(effects, &(&1["outer_sha256"] === outer)) === 2 and
+      Enum.count(
+        effects,
+        &(&1["outer_sha256"] === outer and &1["class"] === "collection.read" and
+            &1["inner_op"] === "collection.call")
+      ) === 1 and
+      Enum.count(
+        effects,
+        &(&1["outer_sha256"] === outer and &1["operation"] === "notes.assess" and
+            &1["class"] === "decision.create" and &1["inner_op"] === "decision.create")
+      ) === 1
+  rescue
+    _ -> false
   end
 
   defp public_request?(%{"op" => "get", "key" => key}), do: not private_key?(key)
@@ -358,49 +401,59 @@ defmodule Ipse.Extension.CollectionCall do
                  ) == :ok)
           end)
 
-        case matches do
-          [mapping] ->
-            effect =
-              Map.take(mapping, ~w(operation class outer_sha256 inner_op))
-              |> Map.merge(%{
-                "id" => intent["operation_id"],
-                "request_sha256" => intent["request_sha256"],
-                "source_generation" => current["source_generation"],
-                "sources" =>
-                  Enum.map(proofs, &Map.take(&1["proof"], ~w(path)))
-                  |> Enum.zip(Enum.map(proofs, & &1["proof"]["origin"]))
-                  |> Enum.map(fn {row, category} -> Map.put(row, "category", category) end),
-                "reserved" => reserved(intent)
-              })
+        if Map.has_key?(intent["request"], "purpose") and
+             (not pending_assessment?(
+                context.config[:semantic_admission],
+                context.parent,
+                intent["request"]
+              ) or
+                Ipse.Extension.DecisionExperiment.classify(context) != {:ok, :experiment}) do
+          {:error, :collection_policy_refused}
+        else
+          case matches do
+            [mapping] ->
+              effect =
+                Map.take(mapping, ~w(operation class outer_sha256 inner_op))
+                |> Map.merge(%{
+                  "id" => intent["operation_id"],
+                  "request_sha256" => intent["request_sha256"],
+                  "source_generation" => current["source_generation"],
+                  "sources" =>
+                    Enum.map(proofs, &Map.take(&1["proof"], ~w(path)))
+                    |> Enum.zip(Enum.map(proofs, & &1["proof"]["origin"]))
+                    |> Enum.map(fn {row, category} -> Map.put(row, "category", category) end),
+                  "reserved" => reserved(intent)
+                })
 
-            if class == "collection.publish" do
-              with true <- intent["approval"] in ~w(saved_consent approved session_allow),
-                   :ok <-
-                     Ipse.Extension.CollectionPolicy.check(
-                       intent["request"]["request"],
-                       mapping["constraints"],
-                       Enum.map(proofs, & &1["proof"])
-                     ),
-                   {:ok, reservation} <-
-                     SemanticConsent.authorize(pin, snapshot, current, effect, now()) do
-                {:ok,
-                 %{
-                   reservation: reservation,
-                   constraints: mapping["constraints"],
-                   publish_before_ms: snapshot["policy"]["expires_at_ms"]
-                 }}
+              if class == "collection.publish" do
+                with true <- intent["approval"] in ~w(saved_consent approved session_allow),
+                     :ok <-
+                       Ipse.Extension.CollectionPolicy.check(
+                         intent["request"]["request"],
+                         mapping["constraints"],
+                         Enum.map(proofs, & &1["proof"])
+                       ),
+                     {:ok, reservation} <-
+                       SemanticConsent.authorize(pin, snapshot, current, effect, now()) do
+                  {:ok,
+                   %{
+                     reservation: reservation,
+                     constraints: mapping["constraints"],
+                     publish_before_ms: snapshot["policy"]["expires_at_ms"]
+                   }}
+                else
+                  _ -> {:error, :collection_policy_refused}
+                end
               else
-                _ -> {:error, :collection_policy_refused}
+                with :ok <- SemanticConsent.check(pin, snapshot, current, effect, now()),
+                     {:ok, recipes} <- read_recipes(snapshot["policy"]["settings"], mapping) do
+                  {:ok, %{recipes: recipes}}
+                end
               end
-            else
-              with :ok <- SemanticConsent.check(pin, snapshot, current, effect, now()),
-                   {:ok, recipes} <- read_recipes(snapshot["policy"]["settings"], mapping) do
-                {:ok, %{recipes: recipes}}
-              end
-            end
 
-          _ ->
-            {:error, :collection_consent_denied}
+            _ ->
+              {:error, :collection_consent_denied}
+          end
         end
       end
     )

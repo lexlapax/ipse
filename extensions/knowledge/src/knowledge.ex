@@ -66,7 +66,7 @@ defmodule IpseKnowledge.Knowledge do
               do: [
                 entry(
                   "assess",
-                  "Request shadow advice on one previously saved, currently eligible note",
+                  "Request shadow advice on one currently eligible note or pending proposal",
                   object(%{"key" => string(96)})
                 )
               ],
@@ -196,14 +196,31 @@ defmodule IpseKnowledge.Knowledge do
 
   defp invoke(%{"id" => "assess", "arguments" => %{"key" => key} = args}, state)
        when @preset == "decision-shadow" and map_size(args) == 1 do
-    if is_binary(key) and Regex.match?(~r/\Anote\.[0-9a-f]{64}\z/, key),
-      do:
+    cond do
+      is_binary(key) and Regex.match?(~r/\Anote\.[0-9a-f]{64}\z/, key) ->
         collection(%{"op" => "get", "key" => key}, %{
           state
           | phase: :assess_read,
             ctx: %{key: key}
-        }),
-      else: refused(state, :invalid_note_key)
+        })
+
+      is_binary(key) and Regex.match?(~r/\Apending\.[0-9a-f]{64}\z/, key) ->
+        call(
+          %{
+            "op" => "collection.call",
+            "purpose" => "decision_shadow_pending_v1",
+            "request" => %{"op" => "get", "key" => key}
+          },
+          %{
+            state
+            | phase: :assess_pending,
+              ctx: %{key: key}
+          }
+        )
+
+      true ->
+        refused(state, :invalid_note_key)
+    end
   end
 
   defp invoke(
@@ -302,6 +319,39 @@ defmodule IpseKnowledge.Knowledge do
   end
 
   defp advance(:assess_read, _, state), do: refused(state, :assessment_unavailable)
+
+  defp advance(:assess_pending, %{"record" => %{"key" => key, "value" => proposal}}, state)
+       when key == state.ctx.key do
+    with {:ok, projection} <- Records.pending_projection(key, proposal) do
+      input = Map.take(projection, ~w(candidate_id text assigned_category reason))
+
+      facts = %{
+        "version" => 1,
+        "availability" => "available",
+        "budget_available" => true,
+        "candidates" => [
+          %{"id" => "candidate", "input" => IO.iodata_to_binary(JSON.encode!(input))}
+        ],
+        "alternatives" => ~w(keep_baseline defer_candidate)
+      }
+
+      policy =
+        DecisionPolicy.default("notes.assess")
+        |> Map.merge(%{"strategy" => "decision", "profile" => "advice"})
+
+      case DecisionPolicy.plan(policy, facts, :development_experiment) do
+        {:ok, %{request: request} = plan} when is_map(request) ->
+          call(request, %{state | phase: :assess_decision, ctx: Map.put(state.ctx, :plan, plan)})
+
+        _ ->
+          refused(state, :assessment_unavailable)
+      end
+    else
+      _ -> refused(state, :assessment_unavailable)
+    end
+  end
+
+  defp advance(:assess_pending, _, state), do: refused(state, :assessment_unavailable)
 
   defp advance(:assess_decision, value, state) do
     with {:ok, %{"action" => %{"candidates" => [candidate]}}} <-

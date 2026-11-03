@@ -1,0 +1,19 @@
+Running ExUnit with seed: 0, max_cases: 1
+Excluding tags: [:native_sandbox, :macos_sandbox, :macos_filesystem, :memory_scope, :controlled_tty_bridge, :controlled_tty_loss]
+
+
+
+  1) test bounded capture continuations run in an independent VM (IpseKnowledge.KnowledgeCaptureTest)
+     test/extensions/knowledge/knowledge_capture_test.exs:360
+     Assertion with =~ failed
+     code:  assert output =~ "12 passed"
+     left:  "     warning: IpseKnowledge.Knowledge.Contracts.proposal_schema/0 is undefined (module IpseKnowledge.Knowledge.Contracts is not available or is yet to be defined)\n     │\n 156 │              IpseKnowledge.Knowledge.Contracts.proposal_schema(),\n     │                                                ~\n     │\n     └─ extensions/knowledge/src/knowledge/records.ex:156:48: IpseKnowledge.Knowledge.Records.pending_projection/2\n\nRunning ExUnit with seed: 220297, max_cases: 4\n\n.............\nFinished in 0.02 seconds (0.02s async, 0.00s sync)\n\nResult: 13 passed\n"
+     right: "12 passed"
+     stacktrace:
+       test/extensions/knowledge/knowledge_capture_test.exs:368: (test)
+
+
+Finished in 1.7 seconds (0.00s async, 1.7s sync)
+
+Result: 0/1 passed
+Failed: 1 test

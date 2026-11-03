@@ -3313,7 +3313,14 @@ defmodule Ipse.Session do
              s.invocation.parent,
              intent
            ),
-         {:ok, receipt} <- Ipse.Session.ManagedReads.prepare(s.id, intent, value, dependencies),
+         {:ok, receipt} <-
+           Ipse.Session.ManagedReads.prepare(
+             s.id,
+             intent,
+             value,
+             dependencies,
+             s.invocation.parent
+           ),
          true <-
            Ipse.Session.ManagedReads.covered?(
              s.config[:semantic_admission],

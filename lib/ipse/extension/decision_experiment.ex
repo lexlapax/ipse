@@ -85,6 +85,7 @@ defmodule Ipse.Extension.DecisionExperiment do
          true <- pin["identity_sha256"] === JSON.digest([context.identity]),
          true <- intent["approval"] === "approved" and DecisionCall.validate(request) == :ok,
          true <- match?(%{dependencies: [_ | _]}, dispatch[:managed]),
+         true <- pending_input_bound?(dispatch.managed.dependencies, request),
          true <- JSON.safe_uint?(dispatch[:source_generation]),
          true <- runtime[:provider] == :system_one_compatible,
          {:ok, %{route: route}} <-
@@ -167,6 +168,39 @@ defmodule Ipse.Extension.DecisionExperiment do
   rescue
     _ -> @error
   end
+
+  @doc false
+  def pending_input_bound?(dependencies, request) when is_list(dependencies) do
+    case Enum.filter(dependencies, &(&1["version"] === 7)) do
+      [] ->
+        true
+
+      [dependency] ->
+        with true <- Ipse.Session.ManagedReference.dependency?(dependency),
+             {:ok, %{"candidates" => [%{"id" => "candidate", "input" => input} = row]} = outer} <-
+               JSON.decode_unique(request["input"]),
+             true <- Map.keys(outer) === ["candidates"],
+             true <- Enum.sort(Map.keys(row)) === ~w(id input),
+             {:ok, candidate} <- JSON.decode_unique(input),
+             true <-
+               Enum.sort(Map.keys(candidate)) === ~w(assigned_category candidate_id reason text),
+             true <- JSON.digest([candidate]) === dependency["subject"]["assessment_sha256"],
+             [%{"id" => "candidate", "type" => "choice", "choices" => choices}] <-
+               request["questions"],
+             true <- Enum.sort(choices) === ~w(defer_candidate keep_baseline) do
+          true
+        else
+          _ -> false
+        end
+
+      _ ->
+        false
+    end
+  rescue
+    _ -> false
+  end
+
+  def pending_input_bound?(_, _), do: false
 
   def settle(claim, result) do
     outcome = if match?({:ok, _, _}, result), do: {:known, claim.reserved}, else: :unknown

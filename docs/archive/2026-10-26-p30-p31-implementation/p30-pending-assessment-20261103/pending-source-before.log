@@ -1,0 +1,8 @@
+Running ExUnit with seed: 0, max_cases: 1
+Excluding tags: [:test, :native_sandbox, :macos_sandbox, :macos_filesystem, :memory_scope, :controlled_tty_bridge, :controlled_tty_loss]
+Including tags: [shadow_case: "source withdrawn before decision"]
+
+.
+Finished in 10.1 seconds (0.00s async, 10.1s sync)
+
+Result: 1 passed, 8 excluded

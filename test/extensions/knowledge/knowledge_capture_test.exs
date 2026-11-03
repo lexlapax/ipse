@@ -196,12 +196,41 @@ defmodule IpseKnowledge.KnowledgeCaptureTest do
     end
   end
 
-  test "pending proposals do not enter shadow assessment" do
+  test "capturing a pending proposal does not start shadow assessment" do
     state = start("assistant_proposal")
     {_, state} = request(respond(state, %{"record" => nil}))
     {_, state} = request(respond(state, %{"records" => [], "generation" => 7}))
     {%{"status" => "saved", "category" => "pending"}, %{phase: :idle}} =
       value(shadow_respond(state, %{"generation" => 8}))
+  end
+
+  test "shadow assessment explicitly reads one pending proposal and returns advice only" do
+    state = start("assistant_proposal")
+    {_, state} = request(respond(state, %{"record" => nil}))
+    {commit, _} = request(respond(state, %{"records" => [], "generation" => 7}))
+    [change] = commit["request"]["changes"]
+    key = change["key"]
+    proposal = change["value"]
+    assert "pending." <> _ = key
+
+    {:ok, idle} = Shadow.init(options())
+    {read, pending} = request(Shadow.handle("invoke.tool", %{"id" => "assess", "arguments" => %{"key" => key}}, idle))
+    assert read == %{"op" => "collection.call", "purpose" => "decision_shadow_pending_v1",
+      "request" => %{"op" => "get", "key" => key}}
+    {decision, pending} = request(shadow_respond(pending, %{"record" => %{"key" => key, "value" => proposal}}))
+    assert decision["op"] == "decision.create"
+    [candidate] = JSON.decode!(decision["input"])["candidates"]
+    assert JSON.decode!(candidate["input"]) == %{
+      "candidate_id" => proposal["id"], "text" => proposal["text"],
+      "assigned_category" => proposal["assigned_category"], "reason" => proposal["reason"]
+    }
+
+    result = %{"version" => 1, "answers" => [%{"id" => "candidate", "type" => "choice",
+      "choice" => "keep_baseline", "confidence" => 0.9,
+      "probabilities" => [%{"id" => "keep_baseline", "probability" => 0.9},
+        %{"id" => "defer_candidate", "probability" => 0.1}]}]}
+    {%{"status" => "assessed", "key" => ^key, "note_mutation" => "none"}, %{phase: :idle}} =
+      value(shadow_respond(pending, %{"result" => result}))
   end
 
   test "an operator-event fragment queues a proposal instead of a literal note" do
@@ -336,7 +365,7 @@ defmodule IpseKnowledge.KnowledgeCaptureTest do
     args = ["--erl", "+S 2:2"] ++ Enum.flat_map(paths, &["-pa", &1]) ++ ["-e", @suite]
     {output, status} = System.cmd(System.find_executable("elixir"), args, stderr_to_stdout: true)
     assert status == 0, output
-    assert output =~ "12 passed"
+    assert output =~ "13 passed"
     assert Enum.map(modules, &:code.is_loaded/1) == before
   end
 end

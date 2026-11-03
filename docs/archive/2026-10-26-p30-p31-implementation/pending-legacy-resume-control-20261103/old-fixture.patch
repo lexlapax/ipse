@@ -1,0 +1,110 @@
+diff --git a/dev/shm/ipse-pending-replay-control.b7YujlaR/old-fixture-baseline.exs b/dev/shm/ipse-pending-replay-control.b7YujlaR/old/test/ipse/extension/managed_collection_call_session_test.exs
+index 684c592e..8915d8ef 100644
+--- a/dev/shm/ipse-pending-replay-control.b7YujlaR/old-fixture-baseline.exs
++++ b/dev/shm/ipse-pending-replay-control.b7YujlaR/old/test/ipse/extension/managed_collection_call_session_test.exs
+@@ -147,6 +147,8 @@ defmodule Ipse.Extension.ManagedCollectionCallSessionTest do
+         File.write!(state["trace"], "entered\\n", [:append])
+         state = Map.put(state, "mode", payload["arguments"]["mode"])
+         cond do
++        state["mode"] == "legacy_first_pending" ->
++          call(%{"op" => "collection.call", "request" => %{"op" => "index", "prefix" => "pending.", "cursor" => nil, "limit" => 1}}, Map.put(state, "step", "legacy_first_pending"))
+         String.starts_with?(state["mode"], "legacy_get:") ->
+           key = String.replace_prefix(state["mode"], "legacy_get:", "")
+           call(%{"op" => "collection.call", "request" => %{"op" => "get", "key" => key}}, Map.put(state, "step", "done"))
+@@ -192,6 +194,9 @@ defmodule Ipse.Extension.ManagedCollectionCallSessionTest do
+         File.write!(state["trace"], Jason.encode!(outcome) <> "\\n", [:append])
+         advance(state["step"], outcome, Map.put(state, "last_operation", payload["operation_id"]))
+       end
++      defp advance("legacy_first_pending", %{"status" => "ok", "value" => %{"records" => [%{"key" => key}]}}, state) do
++        call(%{"op" => "collection.call", "request" => %{"op" => "get", "key" => key}}, Map.put(state, "step", "done"))
++      end
+       defp advance("helper_read", outcome, state) do
+         call(%{"op" => "model.complete", "version" => 1, "profile" => "extract", "instruction" => "Summarize the supplied observation", "input" => Jason.encode!(outcome), "max_output_bytes" => 1024, "timeout_ms" => 3000}, Map.put(state, "step", "done"))
+       end
+@@ -1470,6 +1475,7 @@ defmodule Ipse.Extension.ManagedCollectionCallSessionTest do
+       cwd: cwd,
+       trace: trace,
+       config: config,
++      selected: selected,
+       provider_server: provider_server,
+       provider_requests: provider_requests,
+       dir: if(literal_seed, do: Path.join(home, "sessions"), else: Path.join(root, "sessions")),
+@@ -3831,6 +3837,78 @@ defmodule Ipse.Extension.ManagedCollectionCallSessionTest do
+     end
+   end
+ 
++  @tag :registered_capture_sequence
++  @tag :pending_historical_resume_control
++  @tag metadata_version: 3, registered_main: true, capture_write: true,
++       registered_capture_modes: ["capture", "legacy_first_pending"], timeout: 120_000
++  test "historical pending model result refuses or withdraws on a current-runtime resume", c do
++    capture = start(c)
++    source_id = Session.info(capture).id
++    assert :ok = Session.prompt(capture, "Synthetic café observation")
++    assert_receive {:ipse, ^capture, {:done, :ok}}, 30_000
++    assert :ok = Session.close_confirmed(capture)
++
++    reader = start(c)
++    reader_id = Session.info(reader).id
++    assert reader_id != source_id
++    assert :ok = Session.prompt(reader, "Read the pending synthetic candidate.")
++    assert_receive {:ipse, ^reader, {:done, :ok}}, 30_000
++    assert {:ok, events} = Journal.load(c.dir, reader_id)
++    assert [get] = Enum.filter(events, fn event ->
++      event["type"] == "extension_action_result" and get_in(event, ["request", "request", "op"]) == "get" and
++        get_in(event, ["outcome", "value", "record", "value", "text"]) == "Synthetic café observation"
++    end)
++    assert [get_read] = Enum.filter(events, fn event ->
++      event["type"] == "managed_read_observed" and event["operation_id"] == get["operation_id"]
++    end)
++    assert [%{"version" => 3}] = get_read["dependencies"]
++    assert get_read["result_sha256"] == JSON.digest([get["outcome"]["value"]])
++    assert Enum.any?(events, fn event ->
++      event["type"] == "message" and get_in(event, ["message", "role"]) == "tool" and
++        String.contains?(get_in(event, ["message", "content"]) || "", "Synthetic café observation")
++    end)
++    assert {:ok, _} = Session.Saved.restore(events, reader_id)
++    assert :ok = Session.close_confirmed(reader)
++    requests = Task.await(c.provider_server, 10_000)
++    assert length(requests) == 4
++    assert Enum.any?(requests, fn {_, body} ->
++      Enum.any?(body["messages"] || [], fn message ->
++        message["role"] == "tool" and String.contains?(message["content"] || "", "Synthetic café observation")
++      end)
++    end)
++
++    fixture = Path.join(c.root, "current-resume.term")
++    File.write!(fixture, :erlang.term_to_binary(%{config: c.config, selected: c.selected,
++      cwd: c.cwd, dir: c.dir, home: c.home, reader_id: reader_id, source_id: source_id}))
++    File.chmod!(fixture, 0o600)
++    source = Path.join(c.dir, source_id <> ".jsonl")
++    lock = Path.join(c.dir, source_id <> ".lock")
++    held = source <> ".legacy-replay-held"
++    before = File.stat!(source)
++    lock_before = File.stat!(lock)
++    digest = JSON.sha256(File.read!(source))
++    refute File.exists?(held)
++    File.rename!(source, held)
++
++    try do
++      current = System.fetch_env!("IPSE_PENDING_REPLAY_CURRENT")
++      paths = Path.wildcard(Path.join(current, "_build/test/lib/*/ebin")) |> Enum.flat_map(&["-pa", &1])
++      {output, status} = System.cmd(System.find_executable("elixir"),
++        ["--erl", "+S 2:2"] ++ paths ++ [Path.join(current, "test/support/pending_legacy_resume.exs"), fixture],
++        stderr_to_stdout: true)
++      File.write!(Path.join(c.root, "current-resume.log"), output)
++      assert status == 0, output
++      assert output =~ "LEGACY_RESUME_CONTROL_PASSED"
++    after
++      if File.exists?(held) and not File.exists?(source), do: File.rename!(held, source)
++      restored = File.stat!(source)
++      lock_after = File.stat!(lock)
++      assert {restored.major_device, restored.inode} == {before.major_device, before.inode}
++      assert {lock_after.major_device, lock_after.inode} == {lock_before.major_device, lock_before.inode}
++      assert JSON.sha256(File.read!(source)) == digest
++    end
++  end
++
+   @tag :registered_capture_sequence
+   @tag metadata_version: 3, registered_main: true, capture_write: true
+   test "a newly reviewed legacy reader cannot expose an existing managed namespace", c do

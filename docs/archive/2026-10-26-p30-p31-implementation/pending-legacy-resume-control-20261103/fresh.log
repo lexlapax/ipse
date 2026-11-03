@@ -1,0 +1,21 @@
+Running ExUnit with seed: 0, max_cases: 1
+Excluding tags: [:test, :native_sandbox, :macos_sandbox, :macos_filesystem, :memory_scope, :controlled_tty_bridge, :controlled_tty_loss]
+Including tags: [:pending_historical_resume_control]
+
+REGISTERED_CAPTURE_ROOT=/dev/shm/ipse-collection-sdk-7509208ffdf50ea0174a0d46dfad05ff
+
+
+  1) test historical pending model result refuses or withdraws on a current-runtime resume (Ipse.Extension.ManagedCollectionCallSessionTest)
+     test/ipse/extension/managed_collection_call_session_test.exs:3844
+     ** (EXIT from #PID<0.95.0>) :invalid_semantic_admission
+
+
+     code: assert status == 0, output
+     stacktrace:
+       test/ipse/extension/managed_collection_call_session_test.exs:3900: (test)
+
+
+Finished in 15.0 seconds (0.00s async, 15.0s sync)
+
+Result: 0/1 passed, 198 excluded
+Failed: 1 test

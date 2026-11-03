@@ -1,0 +1,14 @@
+Running ExUnit with seed: 0, max_cases: 1
+Excluding tags: [:test, :native_sandbox, :macos_sandbox, :macos_filesystem, :memory_scope, :controlled_tty_bridge, :controlled_tty_loss]
+Including tags: [:pending_original_source_boundary]
+
+REGISTERED_CAPTURE_ROOT=/dev/shm/ipse-collection-sdk-29f3c101abe632b2d97e397faa75bddf
+PENDING_ORIGINAL_SOURCE_BOUNDARY {"action_status":"failed","code":"collection_source_refused","dependency_versions":[],"disclosed":false,"session_status":"ok"}
+.REGISTERED_CAPTURE_ROOT=/dev/shm/ipse-collection-sdk-4d71a0c7add7f68ab8096bce1afa253e
+PENDING_ORIGINAL_SOURCE_BOUNDARY {"action_status":"failed","code":"collection_source_refused","dependency_versions":[],"disclosed":false,"session_status":"ok"}
+.REGISTERED_CAPTURE_ROOT=/dev/shm/ipse-collection-sdk-e7027fb6bbda5834ad788117b3f8c3b9
+PENDING_ORIGINAL_SOURCE_BOUNDARY {"action_status":"failed","code":"collection_source_refused","dependency_versions":[],"disclosed":false,"session_status":"ok"}
+.
+Finished in 25.4 seconds (0.00s async, 25.4s sync)
+
+Result: 3 passed, 199 excluded

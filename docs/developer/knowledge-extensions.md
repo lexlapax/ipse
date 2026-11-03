@@ -176,7 +176,9 @@ existing override value has no selected current-literal recipe and its generic
 worker read is refused, so capture paths needing it cannot proceed. Do not
 remove or bypass that override. Generic reads and scans also refuse unrelated or
 pending values without a selected authenticated literal recipe; metadata-only
-indexes and empty gets remain available. Pending capture checks duplicates by an
+indexes and empty gets remain available. The separately approved bundled shadow
+assessment uses the distinct protected single-proposal path described below.
+Pending capture checks duplicates by an
 exact-prefix metadata index, without reading or renewing the proposal. Restoring
 safe unrelated/override value reads requires an independently reviewed,
 same-root host classification and is not complete. When the internal override
@@ -459,9 +461,10 @@ source ownership and [Collection reads](collection-sdk.md#revalidate-reads-and-d
 for the generic host boundary.
 
 Managed export inputs use a separate native delivery admission after read
-commitment. Its version-3–6 adapter transfers every original acceptance journal
-with the original Session sources and consuming Session/Writer controls to the
-same native stdin writer. Complete settlement precedes callback release. Read
+commitment. Its version-3–7 adapter transfers original Session sources and
+consuming Session/Writer controls to the same native stdin writer; accepted
+decisions additionally transfer their original acceptance journals. Complete
+settlement precedes callback release. Read
 validation and a saved acceptance alone do not authorize that input. The
 [input contract](session-sources.md#deliver-a-managed-export-input-under-its-original-owners)
 defines its owner, deadline and uncertainty checks.
@@ -480,9 +483,10 @@ it cannot acquire extra authority from worker-supplied labels.
 protected-read and decision mappings. `Actions` enforces the same restriction
 during live execution and replay: this owner can read a protected collection and
 request `decision.create`, but cannot write the collection, use shell or MCP, or
-invoke unrelated mutations. `ManagedRead` binds the selected literal note to its current
-source and policy. A separate native approval precedes the project Consent ledger
-reservation; the exact shipped shadow digest, route and source union are checked
+invoke unrelated mutations. `ManagedRead` binds the selected literal note or
+pending candidate to its current source and policy. A separate native approval
+precedes the project Consent ledger reservation; the exact shipped shadow digest,
+route and source union are checked
 again before send. Successful work settles one call; an uncertain effect retains
 its liability. An admitted send can finish after expiry, while result release
 checks the reviewed deadline again. None of this establishes a monetary cap or
@@ -495,18 +499,41 @@ the policy selected it. The result is marked experimental and records that it
 does not mutate the note; the separately approved decision call is an effect.
 `ManagedOutput.release` rechecks the invocation's dependency union before
 releasing that result, so a stale note or source is withheld instead of being
-presented as current advice. This saved-note control does not assess a pending
-main-tool candidate or change ordinary capture.
+presented as current advice. The pending assessment does not change ordinary
+capture, accept a proposal or establish the truth of its premise.
+
+For a pending key, the bundled worker requests an explicitly marked single
+`collection.call` get. The host requires the reviewed decision outer and the
+matching `notes.assess` mapping, then checks the actual installed artifact and
+digest-checked sidecar against the current bundled-shadow inventory before it
+returns any candidate bytes. Generic gets and scans retain their containment.
+The signed observation, exact original Session proof and active policy produce a
+version-7 `pending_proposal_observation` with `never_current` status; it is not
+a current note. `ManagedReads` binds that result and the host's historical
+classification receipt to the Session, parent, artifact, descriptor, pin and
+full request/result. Replay checks the recorded relation; it does not substitute
+for current authority or cryptographically authenticate a wholly forged journal.
+
+At decision reservation, `DecisionExperiment` checks that the decoded request
+contains the signed proposal's exact ID, text, assigned category and reason with
+the two allowed choices. The pinned bundle supplies the instruction text.
+`ManagedUse` retains or reacquires the original source and current Consent for
+worker delivery, approval, dispatch and output; it repeats the signed candidate
+and deadline checks before use. Loss or change can withhold a result after the
+decision call has already been charged. Keep the source Session's original
+journal and lock files; a historical key or receipt grants no current use.
 
 Run the focused synthetic controls when changing this boundary:
 
 ```sh
-mix test test/ipse/extension/decision_outer_test.exs test/extensions/knowledge/shadow_experiment_session_test.exs
+mix test test/ipse/extension/decision_outer_test.exs test/extensions/knowledge/shadow_experiment_session_test.exs test/extensions/knowledge/shadow_pending_candidate_session_test.exs
+mix test test/ipse/extension/managed_collection_call_session_test.exs --only pending_original_source_boundary
 ```
 
-The shipped-bundle Session fixtures cover a prior-Session protected read,
-approval, settlement, denial, revocation and expiry interpositions. They use
-loopback fixtures, not a real account or a quality assessment. Same-Session
+The shipped-bundle Session fixtures cover prior-Session protected note and
+proposal reads, approval, settlement, denial, pre-Session revocation and grant
+expiry interpositions. They use loopback fixtures, not a real account or a
+quality assessment. Same-Session
 assessment immediately after a write remains unsupported: historical root
 observations can make the subsequent protected preflight refuse. Do not remove
 those dependencies or automatically retry the failed effect.

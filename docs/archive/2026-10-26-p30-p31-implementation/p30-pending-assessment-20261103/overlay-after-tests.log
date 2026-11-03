@@ -1,0 +1,13 @@
+lib/ipse/extension/collection_call.ex: OK
+lib/ipse/extension/decision_experiment.ex: OK
+lib/ipse/extension/managed_read.ex: OK
+lib/ipse/extension/collection/observed_read.ex: OK
+lib/ipse/session.ex: OK
+lib/ipse/session/managed_reference.ex: OK
+lib/ipse/session/managed_reads.ex: OK
+lib/ipse/session/managed_use.ex: OK
+extensions/knowledge/src/knowledge.ex: OK
+test/extensions/knowledge/knowledge_capture_test.exs: OK
+test/extensions/knowledge/shadow_pending_candidate_session_test.exs: OK
+test/support/shadow_pending_candidate_cli.exs: OK
+test/ipse/extension/managed_collection_call_session_test.exs: OK

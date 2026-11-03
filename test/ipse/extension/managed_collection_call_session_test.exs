@@ -128,7 +128,7 @@ defmodule Ipse.Extension.ManagedCollectionCallSessionTest do
       ])
       |> then(fn exports ->
         Map.update!(exports, "tools", fn [capture] ->
-          [capture, %{capture | "id" => "inspect"}]
+          [capture, %{capture | "id" => "inspect"}, %{capture | "id" => "assess"}]
         end)
       end)
       |> then(fn exports -> Map.put(exports, "commands", exports["tools"]) end)
@@ -147,6 +147,9 @@ defmodule Ipse.Extension.ManagedCollectionCallSessionTest do
         File.write!(state["trace"], "entered\\n", [:append])
         state = Map.put(state, "mode", payload["arguments"]["mode"])
         cond do
+        String.starts_with?(state["mode"], "pending_shadow:") ->
+          key = String.replace_prefix(state["mode"], "pending_shadow:", "")
+          call(%{"op" => "collection.call", "purpose" => "decision_shadow_pending_v1", "request" => %{"op" => "get", "key" => key}}, Map.put(state, "step", "done"))
         String.starts_with?(state["mode"], "legacy_get:") ->
           key = String.replace_prefix(state["mode"], "legacy_get:", "")
           call(%{"op" => "collection.call", "request" => %{"op" => "get", "key" => key}}, Map.put(state, "step", "done"))
@@ -971,23 +974,49 @@ defmodule Ipse.Extension.ManagedCollectionCallSessionTest do
                   %{
                     "function" => %{
                       "name" =>
-                        if(c[:capture_write] || c[:managed_helper],
-                          do: "ext__capture__capture",
-                          else: "ext__capture__inspect"
+                        if(c[:assess_alt],
+                          do: "ext__capture__assess",
+                          else:
+                            if(c[:capture_write] || c[:managed_helper],
+                              do: "ext__capture__capture",
+                              else: "ext__capture__inspect"
+                            )
                         ),
                       "arguments" => %{
                         "mode" =>
                           cond do
-                            c[:managed_pack_wide] -> "decision_pack_wide"
-                            c[:managed_pack_actual] -> "decision_pack_actual"
-                            c[:managed_pack] -> "decision_pack"
-                            c[:managed_decision_literal] -> "decision_literal"
-                            c[:managed_embedding] -> "embedding_helper"
-                            c[:managed_decision] -> "decision_helper"
-                            c[:managed_helper] -> "helper"
-                            c[:capture_write] -> c[:registered_capture_mode] || "capture"
-                            c[:postjournal_expiry] -> "read_hold"
-                            true -> "read"
+                            c[:assess_alt] ->
+                              "pending_shadow:pending." <> String.duplicate("a", 64)
+
+                            c[:managed_pack_wide] ->
+                              "decision_pack_wide"
+
+                            c[:managed_pack_actual] ->
+                              "decision_pack_actual"
+
+                            c[:managed_pack] ->
+                              "decision_pack"
+
+                            c[:managed_decision_literal] ->
+                              "decision_literal"
+
+                            c[:managed_embedding] ->
+                              "embedding_helper"
+
+                            c[:managed_decision] ->
+                              "decision_helper"
+
+                            c[:managed_helper] ->
+                              "helper"
+
+                            c[:capture_write] ->
+                              c[:registered_capture_mode] || "capture"
+
+                            c[:postjournal_expiry] ->
+                              "read_hold"
+
+                            true ->
+                              "read"
                           end
                       }
                     }
@@ -1407,7 +1436,11 @@ defmodule Ipse.Extension.ManagedCollectionCallSessionTest do
 
         decisions =
           for descriptor <- descriptors,
-              descriptor["id"] == if(c[:mixed_outer], do: "inspect", else: "capture") do
+              descriptor["id"] ==
+                if(c[:assess_alt],
+                  do: "assess",
+                  else: if(c[:mixed_outer], do: "inspect", else: "capture")
+                ) do
             %{
               "operation" => "notes.assess",
               "class" => "decision.create",
@@ -3612,6 +3645,48 @@ defmodule Ipse.Extension.ManagedCollectionCallSessionTest do
 
     assert {:error, :decision_experiment_refused} =
              Ipse.Extension.DecisionExperiment.classify(context)
+  end
+
+  @tag registered_main: true,
+       managed_helper: true,
+       managed_decision: true,
+       experiment_decision: true,
+       assess_alt: true
+  test "an admitted alternate artifact cannot read pending bytes using the shadow purpose", c do
+    pid = start(c)
+    id = Session.info(pid).id
+    assert :ok = Session.prompt(pid, "Attempt the marked pending assessment read.")
+    assert_receive {:ipse, ^pid, {:done, _}}, 20_000
+    assert {:ok, events} = Journal.load(c.dir, id)
+    assert [parent] = Enum.filter(events, &(&1["type"] === "extension_invocation_intent"))
+
+    assert [action] =
+             Enum.filter(
+               events,
+               &(&1["type"] === "extension_action_result" and
+                   get_in(&1, ["request", "purpose"]) === "decision_shadow_pending_v1")
+             )
+
+    state = :sys.get_state(pid)
+
+    assert Ipse.Extension.CollectionCall.pending_assessment?(
+             state.config.semantic_admission,
+             parent,
+             action["request"]
+           )
+
+    assert {:error, :decision_experiment_refused} =
+             Ipse.Extension.DecisionExperiment.classify(%{
+               identity: parent["identity"],
+               config: state.config,
+               parent: parent
+             })
+
+    assert action["outcome"]["status"] === "failed"
+    refute Enum.any?(events, &(&1["type"] === "managed_read_observed"))
+    refute Enum.any?(events, &(get_in(&1, ["request", "op"]) === "decision.create"))
+    assert {:ok, _} = Session.Saved.restore(events, id)
+    assert :ok = Session.close_confirmed(pid)
   end
 
   defp native_inference_approval(c, kind, boundary) do

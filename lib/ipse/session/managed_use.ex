@@ -439,8 +439,8 @@ defmodule Ipse.Session.ManagedUse do
            Enum.all?(
              dependencies,
              &(&1["version"] in if(purpose in [:worker, :approval],
-                 do: [3, 4, 5, 6],
-                 else: [3, 4, 5]
+                 do: [3, 4, 5, 6, 7],
+                 else: [3, 4, 5, 7]
                ))
            ),
          true <- bounded?(dependencies) and Enum.all?(dependencies, &bound?(&1, context)) do
@@ -792,7 +792,7 @@ defmodule Ipse.Session.ManagedUse do
   defp bounded?(dependencies) do
     records =
       for %{"version" => version, "subject" => subject} <- dependencies,
-          version in [4, 5, 6],
+          version in [4, 5, 6, 7],
           do: {subject["key"], get_in(subject, ["validity", "recipe_sha256"])}
 
     length(dependencies) <= 2048 and length(Enum.uniq(records)) <= @max_sources
@@ -840,7 +840,7 @@ defmodule Ipse.Session.ManagedUse do
   defp bound?(dependency, c) do
     pin = c.config[:semantic_admission]["pin"]
 
-    dependency["version"] in [3, 4, 5, 6] and
+    dependency["version"] in [3, 4, 5, 6, 7] and
       dependency["namespace"] == pin["namespace"] and
       dependency["project_id"] == pin["project_id"] and
       dependency["policy_generation"] === pin["epoch"] and
@@ -883,7 +883,7 @@ defmodule Ipse.Session.ManagedUse do
     end
 
     result =
-      if Enum.any?(dependencies, &(&1["version"] in [4, 5, 6])) do
+      if Enum.any?(dependencies, &(&1["version"] in [4, 5, 6, 7])) do
         ProjectIdentity.with_existing_domain_auth(
           c.config[:home],
           c.cwd,
@@ -1093,6 +1093,43 @@ defmodule Ipse.Session.ManagedUse do
              catalog
            ) do
       {:ok, current, proofs}
+    end
+  end
+
+  defp observe_dependency(c, root, pin, %{"version" => 7} = dependency, cap, catalog, _) do
+    settings = c.config[:semantic_admission]["policy"]["settings"]
+    recipe_sha = get_in(dependency, ["subject", "validity", "recipe_sha256"])
+    recipe = settings["recipes"][recipe_sha]
+    request = %{"op" => "get_record", "key" => dependency["subject"]["key"]}
+
+    with true <-
+           ManagedRecipe.valid?(recipe) and recipe["kind"] === "proposal" and
+             JSON.digest([recipe]) === recipe_sha,
+         true <- Enum.any?(settings["effects"], &(recipe_sha in Map.get(&1, "managed_read", []))),
+         {:ok, managed} <-
+           ObservedRead.managed_proposal(root, pin["namespace"], request, cap, catalog, recipe),
+         value = managed["observation"]["value"]["record"]["value"],
+         proofs when is_list(proofs) <-
+           Enum.reduce(recipe["evidence_path"], value, fn key, v ->
+             if is_map(v), do: v[key], else: nil
+           end),
+         :ok <-
+           SemanticConsent.check_sources(
+             c.config[:semantic_admission]["policy"],
+             Enum.map(proofs, &%{"category" => &1["origin"], "path" => &1["path"]})
+           ),
+         {:ok, current} <-
+           ObservedRead.proposal_dependency(
+             request,
+             managed,
+             pin,
+             recipe,
+             proofs,
+             System.system_time(:millisecond)
+           ) do
+      {:ok, current, proofs}
+    else
+      _ -> @error
     end
   end
 

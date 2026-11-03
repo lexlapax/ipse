@@ -27,7 +27,7 @@ defmodule Ipse.Session.ManagedReads do
   def marker(_), do: @error
 
   @doc false
-  def prepare(session, intent, value, dependencies) do
+  def prepare(session, intent, value, dependencies, parent \\ nil) do
     with {:ok, dependencies} <- ManagedReference.union([dependencies]),
          true <- length(dependencies) in 1..8,
          event = %{
@@ -41,6 +41,7 @@ defmodule Ipse.Session.ManagedReads do
            "dependencies" => dependencies,
            "dependencies_sha256" => JSON.digest([dependencies])
          },
+         event = classify_read(event, parent, intent),
          true <- valid?(event, session, intent, value) do
       {:ok, event}
     else
@@ -49,6 +50,27 @@ defmodule Ipse.Session.ManagedReads do
   rescue
     _ -> @error
   end
+
+  defp classify_read(
+         event,
+         parent,
+         %{"request" => %{"purpose" => "decision_shadow_pending_v1"}} = intent
+       ) do
+    Map.put(event, "classification", %{
+      "kind" => "bundled_decision_shadow",
+      "version" => 1,
+      "session_id" => event["session_id"],
+      "parent_invocation_id" => event["parent_invocation_id"],
+      "artifact_sha256" => get_in(parent, ["identity", "artifact_sha256"]),
+      "descriptor_sha256" => JSON.digest([parent["descriptor"]]),
+      "pin_sha256" => JSON.digest([intent["effect_binding"]["pin"]]),
+      "request_sha256" => event["request_sha256"],
+      "result_sha256" => event["result_sha256"],
+      "dependencies_sha256" => event["dependencies_sha256"]
+    })
+  end
+
+  defp classify_read(event, _, _), do: event
 
   @doc false
   def valid?(event, session, intent, value) do
@@ -61,7 +83,15 @@ defmodule Ipse.Session.ManagedReads do
   end
 
   def valid_observation?(event, session, intent) do
-    is_map(event) and Enum.sort(Map.keys(event)) == Enum.sort(@keys) and
+    is_map(event) and
+      Enum.sort(Map.keys(event)) ==
+        Enum.sort(
+          @keys ++
+            if(intent["request"]["purpose"] === "decision_shadow_pending_v1",
+              do: ["classification"],
+              else: []
+            )
+        ) and
       CollectionCall.operation?(intent["request"]) and
       intent["request"]["request"]["op"] in ~w(get scan snapshot index) and
       event["type"] == @event_type and event["version"] === 1 and event["session_id"] === session and
@@ -72,9 +102,43 @@ defmodule Ipse.Session.ManagedReads do
       is_list(event["dependencies"]) and length(event["dependencies"]) in 1..8 and
       ManagedReference.union([event["dependencies"]]) == {:ok, event["dependencies"]} and
       event["dependencies_sha256"] == JSON.digest([event["dependencies"]]) and
+      classification_shape?(event, intent) and
       byte_size(Jason.encode!(event)) <= 65_536
   rescue
     _ -> false
+  end
+
+  defp classification_shape?(event, intent) do
+    if intent["request"]["purpose"] === "decision_shadow_pending_v1" do
+      classification = event["classification"]
+
+      is_map(classification) and
+        Enum.sort(Map.keys(classification)) ==
+          ~w(artifact_sha256 dependencies_sha256 descriptor_sha256 kind parent_invocation_id pin_sha256 request_sha256 result_sha256 session_id version) and
+        classification["kind"] === "bundled_decision_shadow" and classification["version"] === 1 and
+        Enum.all?(
+          ~w(artifact_sha256 descriptor_sha256 pin_sha256 request_sha256 result_sha256 dependencies_sha256),
+          &JSON.sha256?(classification[&1])
+        ) and
+        Enum.all?(
+          ~w(session_id parent_invocation_id request_sha256 result_sha256 dependencies_sha256),
+          &(classification[&1] === event[&1])
+        ) and
+        classification["pin_sha256"] === JSON.digest([intent["effect_binding"]["pin"]])
+    else
+      not Map.has_key?(event, "classification")
+    end
+  end
+
+  defp classification_matches?(event, parent, intent) do
+    if intent["request"]["purpose"] === "decision_shadow_pending_v1" do
+      c = event["classification"]
+
+      c["artifact_sha256"] === get_in(parent, ["identity", "artifact_sha256"]) and
+        c["descriptor_sha256"] === JSON.digest([parent["descriptor"]])
+    else
+      true
+    end
   end
 
   defp bound?(dependency, intent, value) do
@@ -94,7 +158,11 @@ defmodule Ipse.Session.ManagedReads do
             subject["result_sha256"] == JSON.digest([value])
 
         version when version in [4, 6] ->
-          record_bound?(subject, value)
+          record_bound?(subject, value, "eligible")
+
+        7 ->
+          intent["request"]["purpose"] === "decision_shadow_pending_v1" and
+            record_bound?(subject, value, "never_current")
 
         _ ->
           false
@@ -172,7 +240,7 @@ defmodule Ipse.Session.ManagedReads do
     _ -> false
   end
 
-  defp record_bound?(subject, value) do
+  defp record_bound?(subject, value, status) do
     records =
       if Map.has_key?(value, "records"), do: value["records"], else: List.wrap(value["record"])
 
@@ -184,7 +252,7 @@ defmodule Ipse.Session.ManagedReads do
           "value_sha256" => record["sha256"]
         } and
           subject["result_sha256"] == JSON.digest([%{"record" => record}]) and
-          is_map(subject["validity"]) and subject["validity"]["status"] == "eligible"
+          is_map(subject["validity"]) and subject["validity"]["status"] == status
 
       _ ->
         false
@@ -202,6 +270,7 @@ defmodule Ipse.Session.ManagedReads do
     case event["outcome"] do
       %{"status" => "ok", "value" => value} when not is_nil(prepared) ->
         with true <- valid?(prepared, session, intent, value),
+             true <- classification_matches?(prepared, parent, intent),
              true <-
                covered?(
                  config[:semantic_admission],
@@ -242,6 +311,62 @@ defmodule Ipse.Session.ManagedReads do
 
   @doc false
   def covered?(admission, parent, intent, value, dependencies) do
+    if intent["request"]["purpose"] === "decision_shadow_pending_v1" do
+      covered_proposal?(admission, parent, intent, value, dependencies)
+    else
+      covered_literals?(admission, parent, intent, value, dependencies)
+    end
+  rescue
+    _ -> false
+  end
+
+  defp covered_proposal?(admission, parent, intent, value, dependencies) do
+    settings = get_in(admission, ["policy", "settings"])
+
+    with true <- CollectionCall.pending_assessment?(admission, parent, intent["request"]),
+         [mapping] <-
+           Enum.filter(
+             settings["effects"],
+             &(&1["class"] === "collection.read" and
+                 &1["inner_op"] === "collection.call" and
+                 &1["outer_sha256"] === JSON.digest([parent["descriptor"]]))
+           ),
+         {:ok, recipes} <- Ipse.Extension.SemanticConsent.managed_recipes(settings, mapping),
+         [recipe] <-
+           Enum.filter(recipes, &(&1["kind"] === "proposal" and &1["key_prefix"] === "pending.")),
+         %{"record" => record} when is_map(record) <- value,
+         [%{"version" => 7} = dependency] <- dependencies,
+         true <- record_bound?(dependency["subject"], value, "never_current"),
+         true <- record["key"] === intent["request"]["request"]["key"],
+         true <-
+           dependency["subject"]["assessment_sha256"] ===
+             JSON.digest([
+               %{
+                 "candidate_id" => record["value"]["id"],
+                 "text" => record["value"]["text"],
+                 "assigned_category" => record["value"]["assigned_category"],
+                 "reason" => record["value"]["reason"]
+               }
+             ]),
+         true <-
+           get_in(dependency, ["subject", "validity", "recipe_sha256"]) === JSON.digest([recipe]),
+         proofs when is_list(proofs) <-
+           Enum.reduce(recipe["evidence_path"], record["value"], fn key, v ->
+             if is_map(v), do: v[key], else: nil
+           end),
+         {:ok, candidate} <-
+           Ipse.Extension.ManagedRecipe.extract(recipe, record["key"], record["value"], proofs),
+         true <- candidate["lineage"] === dependency["subject"]["validity"]["lineage"],
+         true <-
+           dependency["subject"]["validity"]["source_versions"] ===
+             Enum.map(proofs, &%{"id" => &1["occurrence_id"], "version" => &1["version_id"]}) do
+      true
+    else
+      _ -> false
+    end
+  end
+
+  defp covered_literals?(admission, parent, intent, value, dependencies) do
     settings = get_in(admission, ["policy", "settings"])
 
     with [mapping] <-

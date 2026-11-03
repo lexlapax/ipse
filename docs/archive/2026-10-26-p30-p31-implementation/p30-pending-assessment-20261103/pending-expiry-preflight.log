@@ -1,0 +1,8 @@
+Running ExUnit with seed: 0, max_cases: 1
+Excluding tags: [:test, :native_sandbox, :macos_sandbox, :macos_filesystem, :memory_scope, :controlled_tty_bridge, :controlled_tty_loss]
+Including tags: [shadow_case: "expired while preflight is blocked"]
+
+.
+Finished in 36.5 seconds (0.00s async, 36.5s sync)
+
+Result: 1 passed, 8 excluded

@@ -191,6 +191,34 @@ defmodule Ipse.Session.ManagedReference do
     _ -> false
   end
 
+  # A pending proposal is assessment input, never an eligible saved fact.
+  def dependency?(%{"version" => 7} = d) do
+    subject = d["subject"]
+    validity = subject["validity"]
+
+    keys?(d, @dependency_v2_keys) and
+      Enum.all?(~w(project_id namespace pin_sha256), &JSON.sha256?(d[&1])) and
+      uint?(d["policy_generation"]) and collection_v2?(d["collection"], d["namespace"]) and
+      d["collection"]["root_state"] == "present" and
+      keys?(
+        subject,
+        ~w(kind key request_sha256 result_sha256 publication_policy_sha256 record validity assessment_sha256)
+      ) and
+      subject["kind"] == "pending_proposal_observation" and
+      Regex.match?(~r/\Apending\.[0-9a-f]{64}\z/, subject["key"]) and
+      subject["request_sha256"] == digest(%{"op" => "get_record", "key" => subject["key"]}) and
+      JSON.sha256?(subject["result_sha256"]) and
+      JSON.sha256?(subject["publication_policy_sha256"]) and
+      JSON.sha256?(subject["assessment_sha256"]) and
+      record?(subject["record"]) and subject["record"]["key"] === subject["key"] and
+      keys?(validity, @validity_keys) and validity["status"] === "never_current" and
+      validity?(Map.put(validity, "status", "eligible")) and
+      length(validity["source_versions"]) === 1 and validity["dependencies"] === [] and
+      is_integer(validity["valid_until_ms"]) and fits?(d, @dependency_bytes)
+  rescue
+    _ -> false
+  end
+
   def dependency?(_), do: false
 
   defp accepted_retention?(retention, subject) do
@@ -837,7 +865,7 @@ defmodule Ipse.Session.ManagedReference do
   defp verdict_current?(_, %{"current" => nil}, _), do: true
   defp verdict_current?(_, _, _), do: false
 
-  defp compatible_root?(%{"version" => version} = old, current) when version in [4, 5, 6] do
+  defp compatible_root?(%{"version" => version} = old, current) when version in [4, 5, 6, 7] do
     previous = old["collection"]
     next = current["collection"]
 
@@ -847,6 +875,24 @@ defmodule Ipse.Session.ManagedReference do
   end
 
   defp compatible_root?(old, current), do: old["collection"] === current["collection"]
+
+  defp same_subject?(%{"version" => 7, "subject" => old}, %{"subject" => current}, now) do
+    Map.take(
+      old,
+      ~w(kind key request_sha256 result_sha256 publication_policy_sha256 record assessment_sha256)
+    ) ===
+      Map.take(
+        current,
+        ~w(kind key request_sha256 result_sha256 publication_policy_sha256 record assessment_sha256)
+      ) and
+      old["validity"]["status"] === "never_current" and
+      current["validity"]["status"] === "never_current" and
+      same_validity?(
+        Map.put(old["validity"], "status", "eligible"),
+        Map.put(current["validity"], "status", "eligible"),
+        now
+      )
+  end
 
   defp same_subject?(%{"version" => 6, "subject" => old}, %{"subject" => current}, now) do
     Map.take(
