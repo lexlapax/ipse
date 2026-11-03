@@ -53,4 +53,15 @@ defmodule Ipse.Development.NativeNotesSeedTest do
 
     assert Seed.recorded_times([]) == %{"events" => 0, "maxima_ms" => %{}}
   end
+
+  test "the optional synthetic fixture route is explicit and restricted to loopback" do
+    config = Seed.fixture_config(42_123)
+    assert config["roles"]["main"] == "synthetic"
+    assert config["profiles"]["synthetic"]["provider"] == "ollama"
+    assert config["profiles"]["synthetic"]["base_url"] == "http://127.0.0.1:42123"
+    assert config["inference_services"]["local"]["origins"] == ["http://127.0.0.1:42123"]
+
+    for invalid <- [0, 65_536, -1, "42123"],
+        do: assert_raise(FunctionClauseError, fn -> Seed.fixture_config(invalid) end)
+  end
 end

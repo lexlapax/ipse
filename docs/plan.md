@@ -91,7 +91,11 @@ time estimates only after measuring the integrated workload and available capaci
    update/correct/forget changes in addition to normal annual work**. The current
    audited continuation covers three simulated storage-only days, 172 effects and
    82 additional changes; it has executed **zero of 14,600 planned main turns**.
-   It is not annual acceptance.
+   A separate [seven-note integration smoke](archive/2026-10-26-p30-p31-implementation/integrated-final-smoke-20261102.md)
+   completed 40 actual Session turns with four native effects; it does not count
+   toward that annual continuation. Neither is annual acceptance. The next
+   checkpoint is a fresh 2,000-note cohort and one full integrated day after the
+   intake/mix is frozen and its assumptions distinguished from pilot evidence.
    Workload tooling can advance alongside the notes journey; the completed
    integrated workload depends on the Session and recall behavior it exercises.
 3. **Documents and local retrieval — P31C1b/D1/F.** Independently finish document

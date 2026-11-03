@@ -82,14 +82,44 @@ defmodule Ipse.Development.NativeNotesSeed do
 
   defp recorded_times_in(_, maxima), do: maxima
 
-  def main(["--init", root, kind]) when kind in ~w(initial smoke), do: initialize(root, kind)
+  def main(["--init", root, kind]) when kind in ~w(initial smoke), do: initialize(root, kind, nil)
+
+  def main(["--init", root, kind, "--fixture-port", port]) when kind in ~w(initial smoke) do
+    {port, ""} = Integer.parse(port)
+    assert port in 1..65_535
+    initialize(root, kind, port)
+  end
+
   def main(["--run", root, count]), do: run(root, count)
   def main(["--child", root, index]), do: child(root, String.to_integer(index))
   def main(["--audit", root, output]), do: audit(root, output)
   def main(["--audit-child", root, output]), do: audit_child(root, output)
 
   def main(_),
-    do: raise("use --init ROOT initial|smoke, --run ROOT SEGMENTS|all, or --audit ROOT OUTPUT")
+    do:
+      raise(
+        "use --init ROOT initial|smoke [--fixture-port PORT], --run ROOT SEGMENTS|all, or --audit ROOT OUTPUT"
+      )
+
+  @doc "A loopback-only synthetic profile; this does not enable or contact a service."
+  def fixture_config(port) when is_integer(port) and port in 1..65_535 do
+    origin = "http://127.0.0.1:#{port}"
+
+    %{
+      "version" => 1,
+      "profiles" => %{
+        "synthetic" => %{
+          "provider" => "ollama",
+          "model" => "synthetic",
+          "base_url" => origin,
+          "max_output_tokens" => 64,
+          "timeout_ms" => 15_000
+        }
+      },
+      "roles" => %{"main" => "synthetic"},
+      "inference_services" => %{"local" => %{"version" => 1, "origins" => [origin]}}
+    }
+  end
 
   defp audit(root, output) do
     manifest = manifest(root)
@@ -345,7 +375,7 @@ defmodule Ipse.Development.NativeNotesSeed do
     IO.puts("NATIVE_NOTES_AUDIT_CLOSED=#{length(rows)} categories=#{Jason.encode!(categories)}")
   end
 
-  defp initialize(root, kind) do
+  defp initialize(root, kind, fixture_port) do
     assert :os.type() == {:unix, :linux}
     assert String.contains?(to_string(:erlang.system_info(:system_architecture)), "x86_64")
     assert is_nil(System.get_env("IPSE_RUNNER_PATH"))
@@ -438,6 +468,11 @@ defmodule Ipse.Development.NativeNotesSeed do
       "full_6_kib_record_payload_qualification" => false,
       "annual_workload_qualification" => false
     }
+
+    manifest =
+      if fixture_port,
+        do: Map.put(manifest, "fixture_port", fixture_port),
+        else: manifest
 
     save(Path.join(root, "manifest.json"), manifest)
     IO.puts("NATIVE_NOTES_SEED_INITIALIZED=#{root} segments=#{length(manifest["plan"])}")
@@ -553,10 +588,12 @@ defmodule Ipse.Development.NativeNotesSeed do
       File.mkdir!(home)
       File.chmod!(home, 0o700)
 
-      save(config_path, %{
-        "version" => 1,
-        "settings" => %{"provider" => "demo", "model" => "scripted"}
-      })
+      seed_config =
+        if manifest["fixture_port"],
+          do: fixture_config(manifest["fixture_port"]),
+          else: %{"version" => 1, "settings" => %{"provider" => "demo", "model" => "scripted"}}
+
+      save(config_path, seed_config)
 
       assert Ipse.CLI.run([
                "knowledge",
@@ -897,6 +934,7 @@ defmodule Ipse.Development.NativeNotesSeed do
 
     manifest = read(Path.join(root, "manifest.json"))
     assert manifest["root"] == root and manifest["plan"] === plan(manifest["kind"])
+    assert is_nil(manifest["fixture_port"]) or manifest["fixture_port"] in 1..65_535
     manifest
   end
 
