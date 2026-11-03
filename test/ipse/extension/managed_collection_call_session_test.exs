@@ -1644,10 +1644,15 @@ defmodule Ipse.Extension.ManagedCollectionCallSessionTest do
                Ipse.Usage.id()
              )
 
+    owner = self()
+
     assert {:error, _} =
              Ipse.Session.ManagedUse.with_display_dependencies(context, [dependency], fn _, _ ->
-               flunk("stale display preparation entered the adapter")
+               send(owner, :stale_display_reached_adapter)
+               :unexpected
              end)
+
+    refute_receive :stale_display_reached_adapter, 100
 
     assert :ok = Session.close_confirmed(pid)
   end
