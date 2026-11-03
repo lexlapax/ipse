@@ -949,6 +949,11 @@ primary qualification targets, with a smaller EmbeddingGemma 2 text challenger
 and an available Qwen3.5 9B comparison. Model details and contracts live in the
 [design](knowledge-design.md#optional-local-embeddings-and-rag), not this ledger.
 
+A [current direct-client control](archive/2026-10-26-p30-p31-implementation/assistant-proposal-current-20261102.md)
+now saves a synthetic completed assistant reply as signed pending material with
+its original source attribution. Automatic chat capture and in-chat acceptance
+are not established by that control.
+
 | Package | Output and prerequisites |
 | --- | --- |
 | P31A | In progress: amended baseline archived; host ownership/contracts, nonpublishing interaction/pilot probes, storage/parser evaluation and human journeys prepared. The [new candidate-audit pilot](archive/2026-10-26-p30-p31-implementation/pilot-usage-privacy.md) is incomplete: 96 responses and one agent's partial development labels are retained, with conservative call accounting and no quality acceptance. Integrated intake/workload ratification and human/platform evidence remain open. See [record](archive/2026-10-26-p30-p31-implementation/index.md) |

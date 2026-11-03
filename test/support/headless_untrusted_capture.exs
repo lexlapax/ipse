@@ -189,11 +189,14 @@ args = %{
 
 assert :ok = Ipse.Session.invoke_export(session, :command, "ext__knowledge__capture", args)
 
-receive do
-  {:ipse, ^session, {:done, outcome}} -> IO.puts("UNTRUSTED_CAPTURE_DONE " <> inspect(outcome))
-after
-  20_000 -> flunk("capture timed out")
-end
+outcome =
+  receive do
+    {:ipse, ^session, {:done, outcome}} -> outcome
+  after
+    20_000 -> flunk("capture timed out")
+  end
+
+IO.puts("UNTRUSTED_CAPTURE_DONE " <> inspect(outcome))
 
 assert {:ok, events} = Ipse.Journal.load(dir, id)
 assert {:ok, _} = Ipse.Session.Saved.restore(events, id)
@@ -224,6 +227,48 @@ assert {:ok, page} =
 IO.puts("UNTRUSTED_ROOT " <> Jason.encode!(%{"snapshot" => snapshot, "page" => page}))
 refute Enum.any?(page["records"], &String.starts_with?(&1["key"], "note."))
 assert Enum.all?(page["records"], &String.starts_with?(&1["key"], "pending."))
+
+if scenario == "assistant" do
+  assert outcome == :ok
+  assert [record] = page["records"]
+  assert record["value"]["state"] == "pending"
+  assert record["value"]["text"] == "Synthetic fixture done."
+  assert [proof] = record["value"]["evidence"]["sources"]
+  assert proof["origin"] == "assistant_proposal" and proof["kind"] == "answer.original"
+  assert proof["session_id"] == id and proof["quote"] == text
+
+  {:ok, binding} = Ipse.Extension.ProjectIdentity.existing(home, cwd)
+  {:ok, selected} = Ipse.CLI.Knowledge.Management.selection(home)
+
+  assert {:ok, observed} =
+           Ipse.Extension.ProjectIdentity.with_existing_domain_auth(
+             home,
+             cwd,
+             binding,
+             %{namespace: namespace, format: "managed-metadata-v3"},
+             fn cap, catalog ->
+               Ipse.Extension.Collection.ObservedRead.managed_proposal(
+                 collection,
+                 namespace,
+                 %{"op" => "get_record", "key" => record["key"]},
+                 cap,
+                 catalog,
+                 selected.proposal
+               )
+             end
+           )
+
+  assert observed["metadata"]["eligibility"] == "never_current"
+  assert observed["observation"]["value"]["record"]["value"] == record["value"]
+  assert {:ok, saved} = Ipse.Session.Saved.restore(events, id)
+
+  assert {:ok, checked} =
+           Ipse.Session.SourceIndex.revalidate_stored(saved.source_window.index, proof)
+
+  assert checked["proof"] == proof
+  IO.puts("ASSISTANT_PROPOSAL_SIGNED_PENDING_PASSED")
+end
+
 refute File.exists?(Path.join(cwd, "forbidden.txt"))
 refute File.exists?(Path.join(cwd, "forbidden-shell"))
 assert :ok = Ipse.Session.close_confirmed(session)

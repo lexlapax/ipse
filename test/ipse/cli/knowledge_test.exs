@@ -22,6 +22,12 @@ defmodule Ipse.CLI.KnowledgeTest do
     end
   end
 
+  @tag timeout: 90_000, assistant_pending_direct: true
+  test "a completed assistant reply remains attributed and pending under saved consent" do
+    assert scenario("assistant", "--knowledge", "headless_untrusted_capture.exs") =~
+             "ASSISTANT_PROPOSAL_SIGNED_PENDING_PASSED"
+  end
+
   @tag knowledge_readiness: true
   test "saved native permission distinguishes activation matching from unavailable capture" do
     output = scenario("readiness", "--knowledge")
