@@ -197,6 +197,21 @@ Use the experimental standalone review below to inspect pending keys and confirm
 one selected decision. Until acceptance succeeds, a candidate stays out of
 current-note recall. Its stored provenance does not establish source freshness.
 
+You can also ask the main model in a later chat turn to queue one of its earlier
+suggestions, for example:
+
+```text
+Queue your previous suggestion as a pending proposal for my review. Use the
+exact suggestion as its source.
+```
+
+If the model selects an eligible original reply and capture succeeds, the tool
+result identifies the `pending.` key. If it does not, use the metadata list
+below to inspect what was saved; do not assume the suggestion was captured or
+accepted. Close the source conversation before standalone review. A synthetic
+model control covers this path, but it does not establish that every model will
+choose the capture tool or that the suggestion is useful or true.
+
 Existing literal reads still require their signed record and original Session
 source. Keep the original sessions directory and retained lock files. A copy
 cannot substitute for an unavailable original. Historical endorsement establishes
