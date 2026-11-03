@@ -1,0 +1,114 @@
+Running ExUnit with seed: 0, max_cases: 4
+Excluding tags: [:test]
+Including tags: [location: {"test/ipse/session/native_note_recall_test.exs", 44}]
+
+NATIVE_RECALL_FIXTURE_ROOT=/dev/shm/ipse-native-recall-b38750a48584567ac94175868f44de96
+
+
+  1) test a source reappearing before model preflight leaves coverage explicitly partial (Ipse.Session.NativeNoteRecallTest)
+     test/ipse/session/native_note_recall_test.exs:44
+     mission: 1eb0950543b6dbf35bec48303774a54f8a666db9fe5e37c3ce5675610cdec87d
+     This confirms the statement and category; other effects keep their own approvals.
+     Type remember 7092df72e87b4fb175f00b99ffa9ba29 to confirm. Anything else cancels.
+     remember> remember 7092df72e87b4fb175f00b99ffa9ba29
+     IPSE_SUPERSESSION_READ_27> you> /remember ordinary ~N27~
+     Remember this exact statement as your own ordinary note?
+     Statement: "~N27~"
+     Retention: at most 90 days.
+     Workspace: "/dev/shm/ipse-native-recall-b38750a48584567ac94175868f44de96/work"
+     Project: a075daade74ab245725cf6d789d66ca5196893f95456b77bc4d7fa3db58b0844
+     Collection: 26a4713d128b61e4597a6040396260fdea8e897077b7ab4beca82e4f9295d3ad
+     Artifact: bbd19152397ff3d8cdccfaa577fd865f2ab8ed0538bcc6e30424bb2ebfef54f1
+     Permission: 1eb0950543b6dbf35bec48303774a54f8a666db9fe5e37c3ce5675610cdec87d
+     This confirms the statement and category; other effects keep their own approvals.
+     Type remember dd6741c886e618e02024eae14bf19497 to confirm. Anything else cancels.
+     remember> remember dd6741c886e618e02024eae14bf19497
+     IPSE_SUPERSESSION_READ_28> you> /remember ordinary ~N28~
+     Remember this exact statement as your own ordinary note?
+     Statement: "~N28~"
+     Retention: at most 90 days.
+     Workspace: "/dev/shm/ipse-native-recall-b38750a48584567ac94175868f44de96/work"
+     Project: a075daade74ab245725cf6d789d66ca5196893f95456b77bc4d7fa3db58b0844
+     Collection: 26a4713d128b61e4597a6040396260fdea8e897077b7ab4beca82e4f9295d3ad
+     Artifact: bbd19152397ff3d8cdccfaa577fd865f2ab8ed0538bcc6e30424bb2ebfef54f1
+     Permission: 1eb0950543b6dbf35bec48303774a54f8a666db9fe5e37c3ce5675610cdec87d
+     This confirms the statement and category; other effects keep their own approvals.
+     Type remember b258e065abb32ed176b8da414873a3ac to confirm. Anything else cancels.
+     remember> remember b258e065abb32ed176b8da414873a3ac
+     IPSE_SUPERSESSION_READ_29> you> /remember ordinary ~N29~
+     Remember this exact statement as your own ordinary note?
+     Statement: "~N29~"
+     Retention: at most 90 days.
+     Workspace: "/dev/shm/ipse-native-recall-b38750a48584567ac94175868f44de96/work"
+     Project: a075daade74ab245725cf6d789d66ca5196893f95456b77bc4d7fa3db58b0844
+     Collection: 26a4713d128b61e4597a6040396260fdea8e897077b7ab4beca82e4f9295d3ad
+     Artifact: bbd19152397ff3d8cdccfaa577fd865f2ab8ed0538bcc6e30424bb2ebfef54f1
+     Permission: 1eb0950543b6dbf35bec48303774a54f8a666db9fe5e37c3ce5675610cdec87d
+     This confirms the statement and category; other effects keep their own approvals.
+     Type remember c727d6ff59f79e45c5468f9d5db08d6d to confirm. Anything else cancels.
+     remember> remember c727d6ff59f79e45c5468f9d5db08d6d
+     IPSE_SUPERSESSION_READ_30> you> /remember ordinary ~N30~
+     Remember this exact statement as your own ordinary note?
+     Statement: "~N30~"
+     Retention: at most 90 days.
+     Workspace: "/dev/shm/ipse-native-recall-b38750a48584567ac94175868f44de96/work"
+     Project: a075daade74ab245725cf6d789d66ca5196893f95456b77bc4d7fa3db58b0844
+     Collection: 26a4713d128b61e4597a6040396260fdea8e897077b7ab4beca82e4f9295d3ad
+     Artifact: bbd19152397ff3d8cdccfaa577fd865f2ab8ed0538bcc6e30424bb2ebfef54f1
+     Permission: 1eb0950543b6dbf35bec48303774a54f8a666db9fe5e37c3ce5675610cdec87d
+     This confirms the statement and category; other effects keep their own approvals.
+     Type remember 4078920767824a255c3533f980209737 to confirm. Anything else cancels.
+     remember> remember 4078920767824a255c3533f980209737
+     IPSE_SUPERSESSION_READ_31> you> /remember ordinary ~N31~
+     Remember this exact statement as your own ordinary note?
+     Statement: "~N31~"
+     Retention: at most 90 days.
+     Workspace: "/dev/shm/ipse-native-recall-b38750a48584567ac94175868f44de96/work"
+     Project: a075daade74ab245725cf6d789d66ca5196893f95456b77bc4d7fa3db58b0844
+     Collection: 26a4713d128b61e4597a6040396260fdea8e897077b7ab4beca82e4f9295d3ad
+     Artifact: bbd19152397ff3d8cdccfaa577fd865f2ab8ed0538bcc6e30424bb2ebfef54f1
+     Permission: 1eb0950543b6dbf35bec48303774a54f8a666db9fe5e37c3ce5675610cdec87d
+     This confirms the statement and category; other effects keep their own approvals.
+     Type remember a2127cc03de7c68b047d422e114f5dce to confirm. Anything else cancels.
+     remember> remember a2127cc03de7c68b047d422e114f5dce
+     IPSE_SUPERSESSION_READ_32> you> /remember ordinary ~N32~
+     Remember this exact statement as your own ordinary note?
+     Statement: "~N32~"
+     Retention: at most 90 days.
+     Workspace: "/dev/shm/ipse-native-recall-b38750a48584567ac94175868f44de96/work"
+     Project: a075daade74ab245725cf6d789d66ca5196893f95456b77bc4d7fa3db58b0844
+     Collection: 26a4713d128b61e4597a6040396260fdea8e897077b7ab4beca82e4f9295d3ad
+     Artifact: bbd19152397ff3d8cdccfaa577fd865f2ab8ed0538bcc6e30424bb2ebfef54f1
+     Permission: 1eb0950543b6dbf35bec48303774a54f8a666db9fe5e37c3ce5675610cdec87d
+     This confirms the statement and category; other effects keep their own approvals.
+     Type remember 3330b3f258ca1dd90e9f7e2407c4a850 to confirm. Anything else cancels.
+     remember> remember 3330b3f258ca1dd90e9f7e2407c4a850
+     IPSE_SUPERSESSION_READ_33> you> /remember ordinary ~N33~
+     Remember this exact statement as your own ordinary note?
+     Statement: "~N33~"
+     Retention: at most 90 days.
+     Workspace: "/dev/shm/ipse-native-recall-b38750a48584567ac94175868f44de96/work"
+     Project: a075daade74ab245725cf6d789d66ca5196893f95456b77bc4d7fa3db58b0844
+     Collection: 26a4713d128b61e4597a6040396260fdea8e897077b7ab4beca82e4f9295d3ad
+     Artifact: bbd19152397ff3d8cdccfaa577fd865f2ab8ed0538bcc6e30424bb2ebfef54f1
+     Permission: 1eb0950543b6dbf35bec48303774a54f8a666db9fe5e37c3ce5675610cdec87d
+     This confirms the statement and category; other effects keep their own approvals.
+     Type remember 94a21010f7c6141d782c2303ffeab8b5 to confirm. Anything else cancels.
+     remember> remember 94a21010f7c6141d782c2303ffeab8b5
+     ** (ExUnit.AssertionError) 
+     
+     Recall ended :error before dispatch, provider_closed=true, counts=%{"extension_action_intent" => 39, "extension_action_result" => 39, "extension_context_snapshot" => 1, "extension_event_intent" => 1, "extension_event_result" => 1, "extension_invocation_intent" => 1, "extension_invocation_result" => 1, "inference_dispatch_intent" => 1, "input_received" => 1, "lifecycle_epoch_started" => 1, "lifecycle_prompt_committed" => 1, "lifecycle_prompt_received" => 1, "managed_output_release_cleanup" => 1, "managed_output_release_intent" => 1, "managed_output_release_result" => 1, "managed_preflight_intent" => 1, "managed_preflight_result" => 1, "managed_read_observed" => 35, "message" => 1, "reference_admitted" => 1, "reference_envelope" => 1, "request_admitted" => 1, "request_finished" => 1, "request_measured" => 1, "session" => 1, "session_release_owner_started" => 1, "skill_catalog_snapshot" => 1, "source_window_opened" => 1, "turn_finished" => 1, "worker_input_intent" => 37, "worker_input_result" => 37, "workspace_context_snapshot" => 1}, worker_inputs=%{"delivered" => 37}, tail=[%{"status" => "delivered", "type" => "worker_input_result"}, %{"type" => "extension_action_intent"}, %{"type" => "managed_read_observed"}, %{"type" => "extension_action_result"}, %{"type" => "worker_input_intent"}, %{"status" => "delivered", "type" => "worker_input_result"}, %{"type" => "extension_action_intent"}, %{"type" => "extension_action_result"}, %{"type" => "worker_input_intent"}, %{"status" => "delivered", "type" => "worker_input_result"}, %{"type" => "managed_output_release_intent"}, %{"type" => "extension_invocation_result"}, %{"type" => "managed_output_release_result"}, %{"status" => "confirmed", "type" => "managed_output_release_cleanup"}, %{"cleanup_confirmed" => true, "type" => "extension_event_result"}, %{"reason" => "admission", "type" => "reference_admitted"}, %{"type" => "reference_envelope"}, %{"type" => "request_admitted"}, %{"type" => "extension_context_snapshot"}, %{"type" => "managed_preflight_intent"}, %{"type" => "managed_preflight_result"}, %{"type" => "inference_dispatch_intent"}, %{"type" => "request_measured"}, %{"type" => "request_finished"}, %{"status" => "error", "type" => "turn_finished"}]
+     
+         (ex_unit 1.20.4) lib/ex_unit/assertions.ex:1121: ExUnit.Assertions.flunk/1
+         test/support/native_note_recall_many.exs:400: (file)
+
+     code: run("recall-many", sparse: true, reappear: true)
+     stacktrace:
+       test/ipse/session/native_note_recall_test.exs:98: Ipse.Session.NativeNoteRecallTest.run/2
+       test/ipse/session/native_note_recall_test.exs:45: (test)
+
+
+Finished in 124.1 seconds (0.00s async, 124.1s sync)
+
+Result: 0/1 passed, 4 excluded
+Failed: 1 test

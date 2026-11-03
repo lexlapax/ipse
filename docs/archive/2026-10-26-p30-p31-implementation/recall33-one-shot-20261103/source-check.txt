@@ -1,0 +1,2 @@
+Matched 33 original journal device/inode/uid/hash and lock device/inode/uid; no corresponding .held paths were present.
+Read-only comparison, 2026-11-03 Pacific; full root/control inventory not compared.

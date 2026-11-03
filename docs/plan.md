@@ -143,7 +143,11 @@ following limits until the end-to-end paths are qualified:
    recall, and the new uncertain turn is not replayed. A later
    [combined coalescing increment](archive/2026-10-26-p30-p31-implementation/worker-v4-coalescing-bde96-20261103.md)
    passes focused signed-batch, source-owner and P30 compatibility controls;
-   a real 33-note Session and current-runtime populated recall remain open. A
+   a subsequent [real synthetic 33-note Session](archive/2026-10-26-p30-p31-implementation/recall33-one-shot-20261103.md)
+   delivered all 37 Worker inputs and recorded 32 included notes with partial
+   coverage, but failed before the loopback provider received a request. The
+   failure reason is unknown; neither the 33-note journey nor current-runtime
+   populated recall is qualified. A
    [local pilot launcher preflight](archive/2026-10-26-p30-p31-implementation/pilot-local-preflight-20261103.md)
    passed 27 synthetic controls without model calls; live results and independent
    semantic labels are still missing. Its first local launch

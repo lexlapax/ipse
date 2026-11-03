@@ -1,0 +1,50 @@
+{
+  "worker_input_statuses": [
+    {
+      "status": "delivered",
+      "count": 37
+    }
+  ],
+  "get_outcomes": [
+    {
+      "status": "failed",
+      "code": "collection_original_source_missing",
+      "count": 1
+    },
+    {
+      "status": "ok",
+      "code": null,
+      "count": 32
+    }
+  ],
+  "published_coverage": [
+    {
+      "coverage": "partial",
+      "included": 32,
+      "unavailable": 1,
+      "allocation_bytes": 8192
+    }
+  ],
+  "note_groups": [
+    {
+      "format": "note_parts_v1",
+      "records": 15
+    },
+    {
+      "format": "note_parts_v1",
+      "records": 15
+    },
+    {
+      "format": "note_parts_v1",
+      "records": 2
+    }
+  ],
+  "projected_verdicts": [
+    [
+      {
+        "status": "eligible",
+        "count": 35
+      }
+    ]
+  ]
+}
