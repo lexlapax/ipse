@@ -164,7 +164,9 @@ following limits until the end-to-end paths are qualified:
    [architecture reassessment](archive/2026-10-26-p30-p31-implementation/chat-acceptance-reassessment-20261103.md)
    preserves the frozen post-reply requirement and pauses the unproven draft;
    a [reviewed guard design](archive/2026-10-26-p30-p31-implementation/chat-acceptance-session-guard-design-20261103.md)
-   sets out the next owner and recovery checks. Neither is a passing journey.
+   sets out the next owner and recovery checks. An [isolated native primitive](archive/2026-10-26-p30-p31-implementation/session-acceptance-native-primitive-20261103.md)
+   has synthetic owner-loss controls; actual Session binding and the complete
+   same-reply journey remain open.
 5. **Decision engines — P30A–E.** Complete the host protocol and protected
    consumer integration independently of document/graph work. Enforce the explicit
    finite allowance across the whole authorized experiment, using the existing

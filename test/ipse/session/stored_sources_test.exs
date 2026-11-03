@@ -984,6 +984,249 @@ defmodule Ipse.Session.StoredSourcesTest do
     Enum.each(Enum.reverse(caps), fn c -> assert :ok = Ipse.Runner.Transaction.release(c) end)
   end
 
+  @tag :chat_acceptance_guard
+  test "session acceptance guard permits one root decision under all three owners", c do
+    alias Ipse.Runner.Transaction, as: T
+    {caps, cap, directory} = chat_guard_fixture(c)
+    assert :ok = T.begin_session_acceptance(cap)
+    writer = source_test_control(cap, :writer)
+    session = source_test_control(cap, :session)
+
+    assert {:ok, :switched} =
+             StoredSources.with_shareable_verified(c.context, c.proof, fn _, token ->
+               T.with_source_lease(cap, token, fn ->
+                 deadline = System.system_time(:millisecond) + 30_000
+                 assert :ok = T.arm_session_acceptance(cap, deadline)
+                 stage = ".pending-" <> Usage.id()
+                 assert :ok = T.stage(cap, ".", [{stage, "new"}])
+                 assert :ok = T.switch_before(cap, stage, "root.json", deadline)
+                 {:ok, :switched}
+               end)
+             end)
+
+    assert File.read!(Path.join(directory, "root.json")) == "new"
+    deadline = System.monotonic_time(:millisecond) + 5_000
+    assert :ok = GenServer.call(cap.controller, {:session_control_close, cap, deadline})
+    assert :ok = GenServer.call(cap.controller, {:writer_control_close, cap, deadline})
+    assert_receive {^session, {:exit_status, 0}}, 5_000
+    assert_receive {^writer, {:exit_status, 0}}, 5_000
+    Enum.each(Enum.reverse(caps), fn item -> assert :ok = T.release(item) end)
+  end
+
+  @tag :chat_acceptance_guard
+  test "session acceptance guard refuses unarmed root switching", c do
+    alias Ipse.Runner.Transaction, as: T
+    {_caps, cap, directory} = chat_guard_fixture(c)
+    assert :ok = T.begin_session_acceptance(cap)
+
+    assert {:unknown, _} =
+             T.switch_before(
+               cap,
+               ".pending-" <> Usage.id(),
+               "root.json",
+               System.system_time(:millisecond) + 5_000
+             )
+
+    assert File.read!(Path.join(directory, "root.json")) == "old"
+  end
+
+  @tag :chat_acceptance_guard
+  test "session acceptance purpose refuses a previously staged mutation", c do
+    alias Ipse.Runner.Transaction, as: T
+    {_caps, cap, directory} = chat_guard_fixture(c)
+    assert :ok = T.stage(cap, ".", [{".pending-" <> Usage.id(), "new"}])
+    assert {:unknown, _} = T.begin_session_acceptance(cap)
+    assert File.read!(Path.join(directory, "root.json")) == "old"
+  end
+
+  @tag :chat_acceptance_guard
+  test "session acceptance guard refuses missing controls and extra sources", c do
+    alias Ipse.Runner.Transaction, as: T
+
+    for scenario <- [:writer_missing, :session_missing, :source_missing, :extra_source] do
+      {_caps, cap, directory} = chat_guard_fixture(c)
+      assert :ok = T.begin_session_acceptance(cap)
+      writer = if scenario != :writer_missing, do: source_test_control(cap, :writer)
+
+      session =
+        if scenario in [:source_missing, :extra_source], do: source_test_control(cap, :session)
+
+      deadline = System.system_time(:millisecond) + 30_000
+
+      if scenario == :extra_source do
+        result =
+          StoredSources.with_shareable_groups(c.context, [c.proof, c.second_proof], fn _,
+                                                                                       leases ->
+            T.with_source_leases(cap, Enum.map(leases, & &1.token), fn ->
+              assert {:unknown, _} = T.arm_session_acceptance(cap, deadline)
+              {:unknown, :refused}
+            end)
+          end)
+
+        assert match?({:unknown, _}, result) or match?({:error, _}, result)
+      else
+        if scenario in [:writer_missing, :session_missing] do
+          result =
+            StoredSources.with_shareable_verified(c.context, c.proof, fn _, token ->
+              T.with_source_lease(cap, token, fn ->
+                assert {:unknown, _} = T.arm_session_acceptance(cap, deadline)
+                {:unknown, :refused}
+              end)
+            end)
+
+          assert match?({:unknown, _}, result) or match?({:error, _}, result)
+        else
+          assert {:unknown, _} = T.arm_session_acceptance(cap, deadline)
+        end
+      end
+
+      assert File.read!(Path.join(directory, "root.json")) == "old"
+      for port <- [writer, session], is_port(port), Port.info(port), do: Port.close(port)
+    end
+  end
+
+  @tag :chat_acceptance_guard
+  test "session acceptance guard permits no second switch", c do
+    alias Ipse.Runner.Transaction, as: T
+    {_caps, cap, directory} = chat_guard_fixture(c)
+    assert :ok = T.begin_session_acceptance(cap)
+    writer = source_test_control(cap, :writer)
+    session = source_test_control(cap, :session)
+
+    result =
+      StoredSources.with_shareable_verified(c.context, c.proof, fn _, token ->
+        T.with_source_lease(cap, token, fn ->
+          deadline = System.system_time(:millisecond) + 30_000
+          assert :ok = T.arm_session_acceptance(cap, deadline)
+          stage = ".pending-" <> Usage.id()
+          assert :ok = T.stage(cap, ".", [{stage, "new"}])
+          assert :ok = T.switch_before(cap, stage, "root.json", deadline)
+          assert {:unknown, _} = T.switch_before(cap, stage, "root.json", deadline)
+          {:unknown, :second_switch_refused}
+        end)
+      end)
+
+    assert match?({:unknown, _}, result) or match?({:error, _}, result)
+    assert File.read!(Path.join(directory, "root.json")) == "new"
+    for port <- [writer, session], Port.info(port), do: Port.close(port)
+  end
+
+  @tag :chat_acceptance_guard
+  test "session acceptance source import refuses a substituted lock identity", c do
+    alias Ipse.Runner.Transaction, as: T
+    {_caps, cap, directory} = chat_guard_fixture(c)
+    assert :ok = T.begin_session_acceptance(cap)
+    writer = source_test_control(cap, :writer)
+    session = source_test_control(cap, :session)
+
+    result =
+      StoredSources.with_shareable_verified(c.context, c.proof, fn _, token ->
+        {:ok, identity} = StoredSources.share_identity(token)
+        {:ok, %{pid: recipient_pid}} = T.retained_share_identity(cap)
+        operation = :crypto.strong_rand_bytes(16)
+        name = :crypto.strong_rand_bytes(16)
+        secret = :crypto.strong_rand_bytes(32)
+
+        entry =
+          <<identity.pid::32, name::binary, secret::binary, identity.device::64,
+            identity.inode + 1::64>>
+
+        recipient =
+          <<recipient_pid::32, name::binary, secret::binary, identity.device::64,
+            identity.inode::64>>
+
+        deadline = System.monotonic_time(:millisecond) + 5_000
+
+        request =
+          :gen_server.send_request(
+            cap.controller,
+            {:source_import, cap, operation, entry, deadline}
+          )
+
+        exported = StoredSources.share_export(token, operation, recipient, deadline)
+        received = :gen_server.receive_response(request, 5_000)
+        refute exported == :ok and received == {:reply, :ok}
+        {:unknown, :identity_refused}
+      end)
+
+    assert match?({:unknown, _}, result) or match?({:error, _}, result)
+    assert File.read!(Path.join(directory, "root.json")) == "old"
+    for port <- [writer, session], Port.info(port), do: Port.close(port)
+  end
+
+  @tag :chat_acceptance_guard
+  test "session acceptance guard refuses rearming, deadline widening and owner loss", c do
+    alias Ipse.Runner.Transaction, as: T
+
+    for scenario <- [:rearm, :deadline, :writer, :session, :source] do
+      {_caps, cap, directory} = chat_guard_fixture(c)
+      assert :ok = T.begin_session_acceptance(cap)
+      writer = source_test_control(cap, :writer)
+      session = source_test_control(cap, :session)
+
+      result =
+        StoredSources.with_shareable_verified(c.context, c.proof, fn _, token ->
+          {:ok, source} = StoredSources.share_identity(token)
+
+          T.with_source_lease(cap, token, fn ->
+            deadline = System.system_time(:millisecond) + 30_000
+            assert :ok = T.arm_session_acceptance(cap, deadline)
+            stage = ".pending-" <> Usage.id()
+            assert :ok = T.stage(cap, ".", [{stage, "new"}])
+
+            outcome =
+              case scenario do
+                :rearm ->
+                  T.arm_session_acceptance(cap, deadline)
+
+                :deadline ->
+                  T.switch_before(cap, stage, "root.json", deadline + 1)
+
+                :writer ->
+                  Port.close(writer)
+                  T.switch_before(cap, stage, "root.json", deadline)
+
+                :session ->
+                  Port.close(session)
+                  T.switch_before(cap, stage, "root.json", deadline)
+
+                :source ->
+                  assert {_, 0} = System.cmd("kill", ["-KILL", Integer.to_string(source.pid)])
+                  T.switch_before(cap, stage, "root.json", deadline)
+              end
+
+            assert {:unknown, _} = outcome
+            {:unknown, :refused}
+          end)
+        end)
+
+      assert match?({:unknown, _}, result) or match?({:error, _}, result)
+      assert File.read!(Path.join(directory, "root.json")) == "old"
+      for port <- [writer, session], Port.info(port), do: Port.close(port)
+    end
+  end
+
+  defp chat_guard_fixture(c) do
+    alias Ipse.Runner.Transaction, as: T
+    root = Path.join(c.context.history_dir, "chat-guard-" <> Usage.id())
+    File.mkdir!(root)
+    File.chmod!(root, 0o700)
+
+    caps =
+      for n <- 1..3 do
+        directory = Path.join(root, Integer.to_string(n))
+        File.mkdir!(directory)
+        File.chmod!(directory, 0o700)
+        assert {:ok, cap} = T.acquire(Path.join(directory, ".lock"))
+        cap
+      end
+
+    directory = Path.join(root, "3")
+    File.write!(Path.join(directory, "root.json"), "old")
+    File.chmod!(Path.join(directory, "root.json"), 0o600)
+    {caps, List.last(caps), directory}
+  end
+
   defp source_test_control(cap, kind) do
     {:ok, port} = Runner.open_owner_control()
     assert source_control_frame(port, ?R) == "owner-control-v1"
@@ -1500,6 +1743,51 @@ defmodule Ipse.Session.StoredSourcesTest do
   end
 
   if System.get_env("IPSE_TEST_SOURCE_SWITCH") == "1" do
+    @tag :chat_acceptance_guard_hook
+    test "each retained acceptance owner is fenced on both sides of the native decision", c do
+      alias Ipse.Runner.Transaction, as: T
+
+      for {phase, expected} <- [{"before-decision", "old"}, {"after-decision", "new"}],
+          lost <- [:writer, :session, :source] do
+        {_caps, cap, directory} = chat_guard_fixture(c)
+        hook = directory |> Path.dirname() |> Path.join("1")
+        File.write!(Path.join(hook, "source-switch-#{phase}.arm"), "armed")
+        assert :ok = T.begin_session_acceptance(cap)
+        writer = source_test_control(cap, :writer)
+        session = source_test_control(cap, :session)
+        {:os_pid, writer_pid} = Port.info(writer, :os_pid)
+        {:os_pid, session_pid} = Port.info(session, :os_pid)
+
+        result =
+          StoredSources.with_shareable_verified(c.context, c.proof, fn _, token ->
+            {:ok, source} = StoredSources.share_identity(token)
+
+            T.with_source_lease(cap, token, fn ->
+              deadline = System.system_time(:millisecond) + 60_000
+              assert :ok = T.arm_session_acceptance(cap, deadline)
+              stage = ".pending-" <> Usage.id()
+              assert :ok = T.stage(cap, ".", [{stage, "new"}])
+              pid = %{writer: writer_pid, session: session_pid, source: source.pid}[lost]
+
+              watcher =
+                Task.async(fn ->
+                  wait_for_hook(Path.join(hook, "source-switch-#{phase}.ready"), 500)
+                  assert {_, 0} = System.cmd("kill", ["-KILL", Integer.to_string(pid)])
+                  File.write!(Path.join(hook, "source-switch-#{phase}.go"), "go")
+                end)
+
+              assert {:unknown, _} = T.switch_before(cap, stage, "root.json", deadline)
+              Task.await(watcher, 10_000)
+              {:unknown, :owner_lost}
+            end)
+          end)
+
+        assert match?({:unknown, _}, result) or match?({:error, _}, result)
+        assert File.read!(Path.join(directory, "root.json")) == expected
+        for port <- [writer, session], Port.info(port), do: Port.close(port)
+      end
+    end
+
     @tag :source_switch_hook
     test "source loss at the native decision never produces a confirmed switch", c do
       for {phase, expected} <- [{"before-decision", "old"}, {"after-decision", "new"}] do

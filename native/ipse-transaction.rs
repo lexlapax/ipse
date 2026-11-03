@@ -60,6 +60,25 @@ mod unix {
             unsafe { poll(watched.as_mut_ptr(), watched.len(), 0) == 0 }
         }
     }
+    #[cfg(target_os = "linux")]
+    #[derive(Clone, Copy)]
+    enum ChatAcceptance {
+        Pending,
+        Armed { wall: u64, cutoff: Instant },
+        Attempted,
+    }
+
+    #[cfg(target_os = "linux")]
+    fn acceptance_cutoff(wall: u64, now_wall: u64, anchor: Instant) -> Option<Instant> {
+        let remaining = wall.checked_sub(now_wall)?;
+        if remaining == 0 || remaining > 120_000 || wall > 9_007_199_254_740_991 { return None; }
+        anchor.checked_add(Duration::from_millis(remaining))
+    }
+
+    #[cfg(target_os = "linux")]
+    fn acceptance_live(wall: u64, cutoff: Instant, now_wall: u64, now: Instant) -> bool {
+        now_wall < wall && now < cutoff
+    }
     fn same(a: &Metadata, b: &Metadata) -> bool { a.dev() == b.dev() && a.ino() == b.ino() }
     fn private_dir(m: &Metadata, uid: u32) -> bool {
         m.is_dir() && m.uid() == uid && m.mode() & 0o7777 == 0o700
@@ -1104,6 +1123,10 @@ mod unix {
         let mut session_control: Option<WriterControl> = None;
         #[cfg(target_os = "linux")]
         let mut pipe: Option<(super::super::ipse_lease_sink::RetainedSource, u64, Instant, bool)> = None;
+        #[cfg(target_os = "linux")]
+        let mut chat_acceptance: Option<ChatAcceptance> = None;
+        #[cfg(target_os = "linux")]
+        let mut mutated_before_chat = false;
         macro_rules! answer {
             ($kind:expr, $seq:expr, $code:expr) => {{
                 if !stack.iter().all(|held| valid(held, uid)) {
@@ -1150,6 +1173,19 @@ mod unix {
                 reply(b'U', seq, stack.len(), Some(UNSAFE))?; return Ok(());
             }
             #[cfg(target_os = "linux")]
+            if chat_acceptance.is_none() && matches!(kind, b'W' | b'D' | b'N' | b'Q' | b'S' | b'T' | b'J' | b'V') {
+                mutated_before_chat = true;
+            }
+            #[cfg(target_os = "linux")]
+            if let Some(ref state) = chat_acceptance {
+                let allowed = match state {
+                    ChatAcceptance::Pending => matches!(kind, b'P' | b'I' | b'O' | b'c' | b'Z' | b'i' | b'G' | b'H' | b'B' | b'F' | b'M'),
+                    ChatAcceptance::Armed { .. } => matches!(kind, b'P' | b'G' | b'H' | b'B' | b'F' | b'M' | b'W' | b'D' | b'N' | b'T'),
+                    ChatAcceptance::Attempted => matches!(kind, b'P' | b'z' | b'd' | b'o' | b'R'),
+                };
+                if !allowed { reply(b'U', seq, stack.len(), Some(INVALID))?; return Ok(()); }
+            }
+            #[cfg(target_os = "linux")]
             if pipe.is_some() && !matches!(kind, b'P' | b'w' | b'q') {
                 reply(b'U', seq, stack.len(), Some(INVALID))?; return Ok(());
             }
@@ -1186,6 +1222,27 @@ mod unix {
                 reply(b'U', seq, stack.len(), Some(IO))?; return Ok(());
             }
             match kind {
+                #[cfg(target_os = "linux")]
+                b'h' if bytes.len() == 9 && stack.len() == 3 && chat_acceptance.is_none() &&
+                    !mutated_before_chat && writer_control.is_none() && session_control.is_none() &&
+                    source.is_empty() && staging.is_none() && state_intent.is_none() => {
+                    chat_acceptance = Some(ChatAcceptance::Pending); answer!(b'h', seq, None);
+                }
+                #[cfg(target_os = "linux")]
+                b'i' if bytes.len() == 17 && stack.len() == 3 && matches!(chat_acceptance, Some(ChatAcceptance::Pending)) => {
+                    let wall = u64::from_be_bytes(bytes[9..17].try_into().unwrap());
+                    let anchor = Instant::now();
+                    let now = SystemTime::now().duration_since(UNIX_EPOCH).ok().and_then(|x| u64::try_from(x.as_millis()).ok());
+                    let cutoff = now.and_then(|x| acceptance_cutoff(wall, x, anchor));
+                    if source.len() != 1 || !source.iter().all(|held| held.live()) ||
+                        !writer_control.as_ref().is_some_and(|held| held.live()) ||
+                        !session_control.as_ref().is_some_and(|held| held.live()) ||
+                        !cutoff.is_some_and(|at| Instant::now() < at) {
+                        reply(b'U', seq, stack.len(), Some(INVALID))?; return Ok(());
+                    }
+                    chat_acceptance = Some(ChatAcceptance::Armed { wall, cutoff: cutoff.unwrap() });
+                    answer!(b'i', seq, None);
+                }
                 #[cfg(target_os = "linux")]
                 b'p' if (106..=32_877).contains(&bytes.len()) && stack.len() == 3 && writer_control.is_some() &&
                     session_control.is_some() && !source.is_empty() && pipe.is_none() &&
@@ -1435,11 +1492,35 @@ mod unix {
                 }
                 b'T' if !stack.is_empty() => {
                     #[cfg(target_os = "linux")]
+                    let chat_deadline = match chat_acceptance {
+                        Some(ChatAcceptance::Armed { wall, cutoff }) => {
+                            chat_acceptance = Some(ChatAcceptance::Attempted);
+                            if bytes.len() != 67 {
+                                reply(b'U', seq, stack.len(), Some(INVALID))?; return Ok(());
+                            }
+                            let switch_wall = u64::from_be_bytes(bytes[9..17].try_into().unwrap());
+                            let switch_cutoff = wall.checked_sub(switch_wall)
+                                .and_then(|offset| cutoff.checked_sub(Duration::from_millis(offset)))
+                                .map(|uncapped| uncapped.min(deadline));
+                            if switch_cutoff.is_none() {
+                                reply(b'U', seq, stack.len(), Some(INVALID))?; return Ok(());
+                            }
+                            Some((switch_wall, switch_cutoff.unwrap()))
+                        },
+                        None => None,
+                        _ => { reply(b'U', seq, stack.len(), Some(INVALID))?; return Ok(()); },
+                    };
+                    #[cfg(target_os = "linux")]
                     if !source.is_empty() {
                         if source_switch_attempted { reply(b'U', seq, stack.len(), Some(INVALID))?; return Ok(()); }
                         source_switch_attempted = true;
                     }
                     match switch_before(stack.last().unwrap(), &bytes[9..], uid, || {
+                        #[cfg(target_os = "linux")]
+                        if let Some((wall, cutoff)) = chat_deadline {
+                            let now = SystemTime::now().duration_since(UNIX_EPOCH).ok().and_then(|x| u64::try_from(x.as_millis()).ok());
+                            if !now.is_some_and(|n| acceptance_live(wall, cutoff, n, Instant::now())) { return false; }
+                        }
                         #[cfg(target_os = "linux")]
                         if source.iter().any(|held| !held.live()) { return false; }
                         #[cfg(target_os = "linux")]
@@ -1623,6 +1704,27 @@ mod unix {
         fn deadline_payload(deadline: u64, stage: &str, target: &str) -> Vec<u8> {
             let mut bytes = deadline.to_be_bytes().to_vec();
             bytes.extend_from_slice(stage.as_bytes()); bytes.extend_from_slice(target.as_bytes()); bytes
+        }
+        #[cfg(target_os = "linux")]
+        #[test]
+        fn session_acceptance_clock_cutoff_never_extends_after_wall_changes() {
+            let start = Instant::now();
+            let cutoff = acceptance_cutoff(2_000, 1_000, start).unwrap();
+            assert!(acceptance_live(2_000, cutoff, 500, start + Duration::from_millis(999)));
+            assert!(!acceptance_live(2_000, cutoff, 500, start + Duration::from_millis(1000)));
+            assert!(!acceptance_live(2_000, cutoff, 2_000, start + Duration::from_millis(1)));
+            assert!(acceptance_cutoff(1_000, 1_000, start).is_none());
+            assert!(acceptance_cutoff(121_001, 1_000, start).is_none());
+            let earlier = cutoff.checked_sub(Duration::from_millis(200)).unwrap();
+            assert!(!acceptance_live(1_800, earlier, 500, start + Duration::from_millis(800)));
+            // A delayed wall sample still anchors its remaining time before the delay.
+            let delayed = acceptance_cutoff(2_000, 1_500, start).unwrap();
+            assert_eq!(delayed, start + Duration::from_millis(500));
+            // Tighten the uncapped guard first, then apply the transaction cap.
+            let guard = acceptance_cutoff(3_000, 1_000, start).unwrap();
+            let transaction = start + Duration::from_millis(1_000);
+            let tighter = guard.checked_sub(Duration::from_millis(500)).unwrap().min(transaction);
+            assert_eq!(tighter, transaction);
         }
         #[test]
         fn retained_root_deadline_switch_refuses_elapsed_and_malformed_before_rename() {

@@ -68,6 +68,16 @@ defmodule Ipse.Runner.Transaction do
   def acceptance_guard(cap), do: operation(cap, :acceptance_guard)
 
   @doc false
+  def begin_session_acceptance(cap), do: operation(cap, :begin_session_acceptance)
+
+  @doc false
+  def arm_session_acceptance(cap, deadline)
+      when is_integer(deadline) and deadline > 0 and deadline <= 9_007_199_254_740_991,
+      do: operation(cap, {:arm_session_acceptance, deadline})
+
+  def arm_session_acceptance(_, _), do: {:error, :invalid_transaction_request}
+
+  @doc false
   def acceptance_guard(cap, event, intent) do
     with {owner, ^cap, event_sha, intent_sha} <- Process.get(@acceptance_key),
          true <- owner == self(),
@@ -1168,6 +1178,12 @@ defmodule Ipse.Runner.Transaction do
           :acceptance_guard ->
             {?j, <<>>}
 
+          :begin_session_acceptance ->
+            {?h, <<>>}
+
+          {:arm_session_acceptance, deadline} ->
+            {?i, <<deadline::64>>}
+
           {:state_begin, mutating} ->
             {?J, <<if(mutating, do: 1, else: 0)>>}
 
@@ -1485,7 +1501,9 @@ defmodule Ipse.Runner.Transaction do
           ?o,
           ?c,
           ?d,
-          ?j
+          ?j,
+          ?h,
+          ?i
         ] or
             size > maximum ->
           :unknown

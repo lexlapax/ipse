@@ -700,6 +700,8 @@ are exact, with no optional trailing bytes:
 | `w` | One raw frame exactly equal to the frame sealed during import. Consumes the imported pipe attempt; substitution and repeated writes refuse. |
 | `q` | Close the imported stdin description using its 16-byte operation; complete exporter settlement before other operations. |
 | `j` | Empty: check the existing exact two-source acceptance guard. It refuses an additional Session control. |
+| `h` | Empty: enter the Session-acceptance transaction purpose at depth three, before any data mutation or staging attempt and before owner/source imports. Acquiring the required lock files is allowed. |
+| `i` | u64 absolute wall-clock cutoff: arm one Session-acceptance root-switch attempt with exactly one retained source, one live Writer control and one live Session control. The cutoff must be strictly future, no more than 120,000 ms ahead and at most 9,007,199,254,740,991; an already elapsed derived monotonic cutoff refuses. |
 | `G` | u8 directory selector, u8 basename length, basename, u32 offset, u32 maximum total bytes (1..8 MiB). The basename is an allowlisted root target or immutable name. |
 | `H` | Version byte `1`, followed by the exact `G` payload. No other version or trailing bytes are accepted. |
 | `B` | u8 mode (`0` flat, `1` collection), u64 ceiling bytes. |
@@ -716,6 +718,27 @@ The additional Session control is used by the reviewed literal-supersession
 and managed export-input adapters. The trusted host binds it to the actual
 Session, Writer, pending purpose and current source set; transfer alone grants
 no effect authority.
+
+The `h`/`i` protocol is an internal guarded-switch primitive. It is not yet
+connected to a same-reply acceptance journey. The trusted Elixir caller must
+bind each descriptor to the actual Session, Writer and original source and
+separately establish the exact approval, consent and publication authority.
+Native checks the transfers, live owners and lock identities but cannot infer
+those semantic roles from the number of descriptors. An `h` transaction
+refuses a root switch before `i`, any repeated arm, any later switch cutoff,
+any second switch attempt and any owner replacement after arming. In the final
+switch it checks the original wall cutoff and a fixed monotonic cutoff sampled
+before the wall clock, also bounded by the transaction lifetime; a tighter
+switch cutoff is computed from the original uncapped monotonic value before
+applying that lifetime. Ordinary transactions and `j` keep their prior rules.
+Owner loss or an unconfirmed switch remains unknown. The existing `T` check
+is an admission immediately before rename, not a kernel-atomic cancellation
+guarantee.
+
+While the purpose is Pending or Armed, `z`, `d`, `o` and `R` are not admitted;
+an early stop must abort the owner, and unconfirmed cleanup remains unknown.
+After a switch attempt, only `P`, `z`, `d`, `o` and `R` are admitted so the
+existing ordered owner settlement can proceed; no second switch is admitted.
 
 The stdin commands remain internal transport primitives. The Linux
 `Session.WorkerInput` adapter uses them for exact protected export requests,
