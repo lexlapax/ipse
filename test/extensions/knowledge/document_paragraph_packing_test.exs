@@ -30,6 +30,10 @@ defmodule Ipse.KnowledgeDocumentParagraphPackingTest do
     {:ok,legacy_payload}=Documents.source_payload(legacy,65536)
     assert legacy_payload["document"]["extraction_version"]=="ipse-documents-v14"
     assert Evidence.valid_document?(legacy_payload["document"],legacy_payload["text"])
+    legacy15=put_in(document,["extraction_version"],"ipse-documents-v15")
+    {:ok,legacy15_payload}=Documents.source_payload(legacy15,65536)
+    assert legacy15_payload["document"]["extraction_version"]=="ipse-documents-v15"
+    assert Evidence.valid_document?(legacy15_payload["document"],legacy15_payload["text"])
     receipt = Evidence.document_storage_receipt!(payload["document"])
     assert receipt["version"] == 4
     attrs = %{"source_id" => "packing:unicode", "partition" => "notes", "generation" => 1,
@@ -58,21 +62,25 @@ defmodule Ipse.KnowledgeDocumentParagraphPackingTest do
     assert crossing["document"]["version"] == 2
     assert length(crossing["document"]["spans"]) > 1
     assert Evidence.valid_span?(source, crossing)
-    legacy_attrs=attrs |> Map.put("document",legacy_payload["document"])
-      |> put_in(["origin","receipt"],Evidence.document_storage_receipt!(legacy_payload["document"]))
-    {:ok,legacy_source}=Evidence.source(legacy_attrs)
-    {:ok,[legacy_first|_]}=Evidence.chunks(legacy_source)
-    {:ok,legacy_crossing}=Evidence.citation(legacy_source,legacy_first,0,80)
-    assert legacy_crossing["document"]["extraction_version"]=="ipse-documents-v14"
-    assert Evidence.valid_span?(legacy_source,legacy_crossing)
-    refute Evidence.valid_document?(put_in(payload["document"],["extraction_version"],"ipse-documents-v16"),payload["text"])
+    for {version, old_payload} <- [{"ipse-documents-v14",legacy_payload},{"ipse-documents-v15",legacy15_payload}] do
+      legacy_attrs=attrs |> Map.put("document",old_payload["document"])
+        |> put_in(["origin","receipt"],Evidence.document_storage_receipt!(old_payload["document"]))
+      {:ok,legacy_source}=Evidence.source(legacy_attrs)
+      {:ok,[legacy_first|_]}=Evidence.chunks(legacy_source)
+      {:ok,legacy_crossing}=Evidence.citation(legacy_source,legacy_first,0,80)
+      assert legacy_crossing["document"]["extraction_version"]==version
+      assert Enum.all?(legacy_crossing["document"]["spans"], &(length(&1)==5))
+      assert Evidence.valid_span?(legacy_source,legacy_crossing)
+    end
+    refute Evidence.valid_document?(put_in(payload["document"],["extraction_version"],"ipse-documents-v17"),payload["text"])
     refute Evidence.valid_span?(source, put_in(crossing, ["document", "spans", Access.at(0), Access.at(0)], 2))
     {mixed_start, _} = :binary.match(payload["text"], Enum.at(segments, 16)["text"])
     {:ok, mixed} = Evidence.citation(source, first, mixed_start, mixed_start + 80)
-    assert Enum.any?(mixed["document"]["spans"], &(length(&1) == 5))
-    assert Enum.any?(mixed["document"]["spans"], &(length(&1) == 8))
+    assert Enum.all?(mixed["document"]["spans"], &(length(&1) == 9))
+    assert Enum.any?(mixed["document"]["spans"], &(Enum.slice(&1,5,4) == [nil,nil,nil,nil]))
+    assert Enum.any?(mixed["document"]["spans"], &(Enum.at(&1,5) == 1 and Enum.at(&1,8) == nil))
     assert Evidence.valid_span?(source, mixed)
-    refute Evidence.valid_span?(source, update_in(mixed, ["document", "spans"], fn rows -> Enum.map(rows, fn row -> if length(row) == 8, do: List.replace_at(row, 6, 999), else: row end) end))
+    refute Evidence.valid_span?(source, update_in(mixed, ["document", "spans"], fn rows -> Enum.map(rows, fn row -> if Enum.at(row,5) == 1, do: List.replace_at(row, 6, 999), else: row end) end))
     bad = put_in(payload, ["document", "segments", Access.at(0), "locator", "blocks", Access.at(0), Access.at(1)], 1)
     refute Evidence.valid_document?(bad["document"], bad["text"])
     shifted = update_in(payload["document"], ["segments", Access.at(0), "locator", "blocks"], fn [a,b|rest] ->

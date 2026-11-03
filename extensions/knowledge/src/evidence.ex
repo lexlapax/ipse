@@ -13,7 +13,8 @@ defmodule IpseKnowledge.Evidence do
   @safe 9_007_199_254_740_991
   @collection_chunking %{"version" => 2, "max_bytes" => 4096}
   @document_span_fields ~w(paragraph start_byte end_byte quote_start_byte quote_end_byte table row cell)
-  @document_block_recipes ~w(ipse-documents-v14 ipse-documents-v15)
+  @numbered_document_span_fields @document_span_fields ++ ~w(numbering)
+  @document_block_recipes ~w(ipse-documents-v14 ipse-documents-v15 ipse-documents-v16)
 
   def safe_integer_max, do: @safe
   def safe_uint?(value), do: is_integer(value) and value in 0..@safe
@@ -1631,9 +1632,9 @@ defmodule IpseKnowledge.Evidence do
     end) == {:ok, byte_size(text)}
   end
 
-  defp locator?(locator) do
+  defp locator?(locator, recipe) do
     required = ~w(kind part paragraph)
-    optional = ~w(table row cell region annotation_id reference_site reference_range)
+    optional = ~w(table row cell region annotation_id reference_site reference_range numbering)
 
     is_map(locator) and exact?(Map.drop(locator, optional), required) and
       locator["kind"] in ~w(paragraph table_cell) and identifier?(locator["part"], 256) and
@@ -1648,10 +1649,25 @@ defmodule IpseKnowledge.Evidence do
       ) and
       (not Map.has_key?(locator, "region") or locator["region"] in ~w(header footer)) and
       (not Map.has_key?(locator, "annotation_id") or identifier?(locator["annotation_id"], 64)) and
+      (not Map.has_key?(locator, "numbering") or
+         (recipe == "ipse-documents-v16" and numbering?(locator["numbering"]))) and
       (not Map.has_key?(locator, "reference_site") or
-         reference_locator?(locator["reference_site"], ~w(byte_offset))) and
+         reference_locator?(locator["reference_site"], ~w(byte_offset), recipe)) and
       (not Map.has_key?(locator, "reference_range") or
-         reference_locator?(locator["reference_range"], ~w(start_byte end_byte)))
+         reference_locator?(locator["reference_range"], ~w(start_byte end_byte), recipe))
+  end
+
+  defp numbering?(numbering) do
+    exact?(numbering, ~w(version num_id level ordinal template label suffix)) and
+      numbering["version"] === 1 and numbering["level"] === 0 and
+      is_integer(numbering["num_id"]) and numbering["num_id"] in 1..2_147_483_647 and
+      is_integer(numbering["ordinal"]) and numbering["ordinal"] in 1..2_147_483_647 and
+      is_binary(numbering["template"]) and String.valid?(numbering["template"]) and
+      byte_size(numbering["template"]) <= 128 and
+      Regex.match?(~r/\A[^%\x00-\x1f]{0,32}%1[^%\x00-\x1f]{0,32}\z/u, numbering["template"]) and
+      numbering["label"] ===
+        String.replace(numbering["template"], "%1", Integer.to_string(numbering["ordinal"])) and
+      numbering["suffix"] in ~w(tab space nothing)
   end
 
   defp segment_locator?(%{"kind" => "block_group"} = locator, recipe) do
@@ -1661,7 +1677,7 @@ defmodule IpseKnowledge.Evidence do
         [paragraph, bytes | _] = row, prior
         when is_integer(paragraph) and paragraph > prior and
                is_integer(bytes) and bytes in 1..4096 ->
-          if locator?(block_locator(locator["part"], row)),
+          if locator?(block_locator(locator["part"], row), recipe),
             do: {:cont, paragraph},
             else: {:halt, false}
 
@@ -1670,7 +1686,7 @@ defmodule IpseKnowledge.Evidence do
       end) != false
   end
 
-  defp segment_locator?(locator, _), do: locator?(locator)
+  defp segment_locator?(locator, recipe), do: locator?(locator, recipe)
 
   defp block_group_bytes(locator),
     do: Enum.sum(Enum.map(locator["blocks"], &Enum.at(&1, 1))) + length(locator["blocks"]) - 1
@@ -1690,6 +1706,14 @@ defmodule IpseKnowledge.Evidence do
   defp block_locator(part, [paragraph, _]),
     do: %{"kind" => "paragraph", "part" => part, "paragraph" => paragraph}
 
+  defp block_locator(part, [paragraph, _, %{} = numbering]),
+    do: %{
+      "kind" => "paragraph",
+      "part" => part,
+      "paragraph" => paragraph,
+      "numbering" => numbering
+    }
+
   defp block_locator(part, [paragraph, _, table, row, cell]),
     do: %{
       "kind" => "table_cell",
@@ -1700,11 +1724,22 @@ defmodule IpseKnowledge.Evidence do
       "cell" => cell
     }
 
+  defp block_locator(part, [paragraph, _, table, row, cell, %{} = numbering]),
+    do: %{
+      "kind" => "table_cell",
+      "part" => part,
+      "paragraph" => paragraph,
+      "table" => table,
+      "row" => row,
+      "cell" => cell,
+      "numbering" => numbering
+    }
+
   defp block_locator(_, _), do: nil
 
-  defp reference_locator?(locator, offsets) do
+  defp reference_locator?(locator, offsets, recipe) do
     is_map(locator) and Enum.all?(offsets, &safe_uint?(locator[&1])) and
-      locator?(Map.drop(locator, offsets)) and
+      locator?(Map.drop(locator, offsets), recipe) and
       (offsets != ~w(start_byte end_byte) or locator["end_byte"] > locator["start_byte"])
   end
 
@@ -1783,14 +1818,22 @@ defmodule IpseKnowledge.Evidence do
         location,
         ~w(version original_sha256 extraction_version status part spans span_fields)
       ) and
-        location["span_fields"] === @document_span_fields and
+        location["span_fields"] === document_span_fields(location["extraction_version"]) and
         sha256?(location["original_sha256"]) and
         location["extraction_version"] in @document_block_recipes and
         location["status"] in ~w(complete partial) and is_list(location["spans"]) and
         length(location["spans"]) in 1..64 and ordered_group_spans?(location["spans"]) and
         Enum.all?(location["spans"], fn
           [paragraph, start, finish, quote_start, quote_finish | coordinates] ->
-            locator?(block_locator(location["part"], [paragraph, 0 | coordinates])) and
+            locator?(
+              span_locator(
+                location["part"],
+                paragraph,
+                coordinates,
+                location["extraction_version"]
+              ),
+              location["extraction_version"]
+            ) and
               safe_uint?(start) and safe_uint?(quote_start) and safe_positive?(finish) and
               safe_positive?(quote_finish) and finish > start and quote_finish > quote_start and
               finish - start == quote_finish - quote_start
@@ -1806,7 +1849,8 @@ defmodule IpseKnowledge.Evidence do
         location["version"] == 1 and sha256?(location["original_sha256"]) and
         identifier?(location["extraction_version"], 128) and
         location["status"] in ~w(complete partial) and
-        locator?(location["locator"]) and safe_uint?(location["start_byte"]) and
+        locator?(location["locator"], location["extraction_version"]) and
+        safe_uint?(location["start_byte"]) and
         safe_positive?(location["end_byte"]) and location["end_byte"] > location["start_byte"]
     end
   end
@@ -1864,14 +1908,51 @@ defmodule IpseKnowledge.Evidence do
         nil
 
       rows ->
+        rows =
+          if receipt["extraction_version"] == "ipse-documents-v16" do
+            Enum.map(rows, fn [paragraph, left, right, quote_left, quote_right | coordinates] ->
+              [paragraph, left, right, quote_left, quote_right] ++
+                fixed_span_coordinates(coordinates)
+            end)
+          else
+            rows
+          end
+
         Map.merge(common, %{
           "version" => 2,
           "part" => segment["locator"]["part"],
           "spans" => rows,
-          "span_fields" => @document_span_fields
+          "span_fields" => document_span_fields(receipt["extraction_version"])
         })
     end
   end
+
+  defp document_span_fields("ipse-documents-v16"), do: @numbered_document_span_fields
+  defp document_span_fields(_), do: @document_span_fields
+
+  defp fixed_span_coordinates([]), do: [nil, nil, nil, nil]
+  defp fixed_span_coordinates([%{} = numbering]), do: [nil, nil, nil, numbering]
+  defp fixed_span_coordinates([table, row, cell]), do: [table, row, cell, nil]
+
+  defp fixed_span_coordinates([table, row, cell, %{} = numbering]),
+    do: [table, row, cell, numbering]
+
+  defp span_locator(part, paragraph, [nil, nil, nil, nil], "ipse-documents-v16"),
+    do: block_locator(part, [paragraph, 0])
+
+  defp span_locator(part, paragraph, [nil, nil, nil, %{} = numbering], "ipse-documents-v16"),
+    do: block_locator(part, [paragraph, 0, numbering])
+
+  defp span_locator(part, paragraph, [table, row, cell, nil], "ipse-documents-v16"),
+    do: block_locator(part, [paragraph, 0, table, row, cell])
+
+  defp span_locator(part, paragraph, [table, row, cell, %{} = numbering], "ipse-documents-v16"),
+    do: block_locator(part, [paragraph, 0, table, row, cell, numbering])
+
+  defp span_locator(_, _, _, "ipse-documents-v16"), do: nil
+
+  defp span_locator(part, paragraph, coordinates, _),
+    do: block_locator(part, [paragraph, 0 | coordinates])
 
   defp document_citation?(source, citation) do
     case document_location(source, citation["start_byte"], citation["end_byte"]) do

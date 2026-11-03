@@ -213,6 +213,47 @@ defmodule Ipse.KnowledgeDocumentAcquisitionSessionTest do
     {document(text, [{:compress, []}]), text}
   end
 
+  defp numbered_document do
+    word = "http://schemas.openxmlformats.org/wordprocessingml/2006/main"
+    rel = "http://schemas.openxmlformats.org/package/2006/relationships"
+    prefix = "http://schemas.openxmlformats.org/officeDocument/2006/relationships/"
+
+    root =
+      "<Relationships xmlns=\"#{rel}\"><Relationship Id=\"main\" Type=\"#{prefix}officeDocument\" Target=\"word/document.xml\"/></Relationships>"
+
+    links =
+      "<Relationships xmlns=\"#{rel}\"><Relationship Id=\"numbers\" Type=\"#{prefix}numbering\" Target=\"numbering.xml\"/></Relationships>"
+
+    types =
+      "<Types xmlns=\"http://schemas.openxmlformats.org/package/2006/content-types\"><Default Extension=\"rels\" ContentType=\"application/vnd.openxmlformats-package.relationships+xml\"/><Override PartName=\"/word/document.xml\" ContentType=\"application/vnd.openxmlformats-officedocument.wordprocessingml.document.main+xml\"/><Override PartName=\"/word/numbering.xml\" ContentType=\"application/vnd.openxmlformats-officedocument.wordprocessingml.numbering+xml\"/></Types>"
+
+    numbering =
+      "<w:numbering xmlns:w=\"#{word}\"><w:abstractNum w:abstractNumId=\"1\"><w:multiLevelType w:val=\"singleLevel\"/><w:lvl w:ilvl=\"0\"><w:start w:val=\"3\"/><w:numFmt w:val=\"decimal\"/><w:lvlText w:val=\"%1.\"/></w:lvl></w:abstractNum><w:num w:numId=\"7\"><w:abstractNumId w:val=\"1\"/></w:num></w:numbering>"
+
+    body =
+      Enum.map_join(1..40, fn n ->
+        text = "Numbered source #{n}" <> if(n == 40, do: " amberneedle", else: "")
+
+        "<w:p><w:pPr><w:numPr><w:ilvl w:val=\"0\"/><w:numId w:val=\"7\"/></w:numPr></w:pPr><w:r><w:t>#{text}</w:t></w:r></w:p>"
+      end)
+
+    {:ok, {_, bytes}} =
+      :zip.create(
+        ~c"numbered.docx",
+        [
+          {~c"_rels/.rels", root},
+          {~c"[Content_Types].xml", types},
+          {~c"word/_rels/document.xml.rels", links},
+          {~c"word/numbering.xml", numbering},
+          {~c"word/document.xml",
+           "<w:document xmlns:w=\"#{word}\"><w:body>#{body}</w:body></w:document>"}
+        ],
+        [:memory, {:compress, []}]
+      )
+
+    bytes
+  end
+
   defp continue(run, %{"id" => id, "arguments" => arguments}), do: invoke(run, id, arguments)
 
   defp query(run, words) do
@@ -689,7 +730,7 @@ defmodule Ipse.KnowledgeDocumentAcquisitionSessionTest do
     [hit] = result["evidence"]
     citation = hit["citation"]
     assert citation["document"]["original_sha256"] == JSON.sha256(bytes)
-    assert citation["document"]["extraction_version"] == "ipse-documents-v15"
+    assert citation["document"]["extraction_version"] == "ipse-documents-v16"
 
     assert citation["quote"] ==
              binary_part(
@@ -767,11 +808,11 @@ defmodule Ipse.KnowledgeDocumentAcquisitionSessionTest do
       citation = hit["citation"]
       assert citation["quote"] =~ "orbitalneedle"
       assert citation["document"]["original_sha256"] == JSON.sha256(bytes)
-      assert citation["document"]["extraction_version"] == "ipse-documents-v15"
+      assert citation["document"]["extraction_version"] == "ipse-documents-v16"
 
       if citation["document"]["version"] == 2 do
         assert Enum.any?(citation["document"]["spans"], fn
-                 [329, _, _, _, _, 1, 312, 1] -> true
+                 [329, _, _, _, _, 1, 312, 1, nil] -> true
                  _ -> false
                end)
       else
@@ -790,6 +831,75 @@ defmodule Ipse.KnowledgeDocumentAcquisitionSessionTest do
         DynamicSupervisor.start_child(Ipse.Sessions, {Session, Keyword.put(run.opts, :id, id)})
 
       assert query_blocks.(%{run | pid: resumed})["evidence"] == result["evidence"]
+      assert :ok = Session.close_confirmed(resumed)
+    end
+  end
+
+  for preset <- ~w(state-documents collection-documents) do
+    @tag :docx_numbering_session
+    @tag numbering_preset: preset
+    test "numbered Word source retains its source-bound locator after resume (#{preset})", c do
+      run = open(c, c.numbering_preset)
+      bytes = numbered_document()
+      path = Path.join(run.cwd, "source.docx")
+      File.write!(path, bytes)
+      opened = invoke(run, "source", args())
+      stored = if opened["status"] == "draft", do: finish_staging(run, opened), else: opened
+      assert stored["status"] == "ok", inspect(stored)
+
+      find = fn selected ->
+        if c.numbering_preset == "collection-documents" do
+          invoke(selected, "query_selected", %{
+            "store" => "notes",
+            "retrieval" => "words",
+            "query" => "amberneedle",
+            "top_k" => 1,
+            "as_of_ms" => 20,
+            "source_ids" => ["workspace:source"]
+          })
+        else
+          query(selected, "amberneedle")
+        end
+      end
+
+      result = find.(run)
+      assert result["status"] == "partial", inspect(result)
+      assert Enum.any?(result["gaps"], &(&1["code"] == "partial_document"))
+      [hit] = result["evidence"]
+      citation = hit["citation"]
+      assert citation["quote"] =~ "amberneedle"
+      refute citation["quote"] =~ "42."
+      doc = citation["document"]
+      assert doc["original_sha256"] == JSON.sha256(bytes)
+      assert doc["extraction_version"] == "ipse-documents-v16"
+
+      if doc["version"] == 2 do
+        assert Enum.any?(doc["spans"], fn
+                 [40, _, _, _, _, nil, nil, nil, %{"ordinal" => 42, "label" => "42."}] -> true
+                 _ -> false
+               end)
+      else
+        assert doc["locator"]["paragraph"] == 40
+        assert doc["locator"]["numbering"]["ordinal"] == 42
+        assert doc["locator"]["numbering"]["label"] == "42."
+      end
+
+      File.write!(path, document("replacement"))
+      changed = find.(run)
+      assert changed["status"] == "refused"
+      assert changed["evidence"] == []
+      assert Enum.any?(changed["gaps"], &(&1["code"] == "document_source_changed_or_unavailable"))
+      File.write!(path, bytes)
+      id = Session.info(run.pid).id
+      assert {:ok, events} = Journal.load(run.dir, id)
+      refute Enum.any?(events, &(&1["type"] == "request_admitted"))
+      assert {:ok, _} = Session.Saved.restore(events, id)
+      assert :ok = Session.close_confirmed(run.pid)
+
+      {:ok, resumed} =
+        DynamicSupervisor.start_child(Ipse.Sessions, {Session, Keyword.put(run.opts, :id, id)})
+
+      assert find.(%{run | pid: resumed})["evidence"] == result["evidence"]
       assert :ok = Session.close_confirmed(resumed)
     end
   end
@@ -881,7 +991,7 @@ defmodule Ipse.KnowledgeDocumentAcquisitionSessionTest do
           citation = hit["citation"]
           assert citation["quote"] == text
           assert citation["document"]["status"] == "complete"
-          assert citation["document"]["extraction_version"] == "ipse-documents-v15"
+          assert citation["document"]["extraction_version"] == "ipse-documents-v16"
           assert citation["document"]["original_sha256"] == JSON.sha256(bytes)
           locator = citation["document"]["locator"]
           assert locator["part"] == "word/#{part}.xml"
@@ -997,7 +1107,7 @@ defmodule Ipse.KnowledgeDocumentAcquisitionSessionTest do
       citation = hit["citation"]
       assert citation["quote"] == text
       assert citation["document"]["original_sha256"] == JSON.sha256(bytes)
-      assert citation["document"]["extraction_version"] == "ipse-documents-v15"
+      assert citation["document"]["extraction_version"] == "ipse-documents-v16"
 
       assert citation["document"]["locator"] == %{
                "kind" => "table_cell",

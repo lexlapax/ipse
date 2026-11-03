@@ -326,20 +326,36 @@ quotation offsets and table coordinates. The same text, metadata and chunk limit
 still apply, so complex or larger documents may refuse rather than lose locators.
 
 Word tables may use nonhidden named styles. A table style with hidden-text
-properties or an unresolved or ambiguous reference refuses extraction; numbered
-list properties also remain unsupported. A document with both `styles.xml` and
-`stylesWithEffects.xml` is readable only when their checked style graphs agree.
-Different style types, inheritance, defaults or hidden-text settings refuse;
-unsupported effect namespaces also refuse. The current DOCX recipe is
-`ipse-documents-v15`. Reacquire and explicitly replace an older source when you
-need the newer recipe; existing extractions are not silently rebuilt.
+properties or an unresolved or ambiguous reference refuses extraction. A document
+with both `styles.xml` and `stylesWithEffects.xml` is readable only when their
+checked style graphs and WordprocessingML dialects agree. Different style types, inheritance, defaults or
+hidden-text settings refuse; unsupported effect namespaces also refuse.
+
+For a directly numbered body paragraph, the reader supports a narrow list format:
+a single decimal level with an explicit start and an optional start override. It
+tracks separate list instances. Its citation locator includes a `numbering` map
+with the derived ordinal, label and suffix; for example, `3.` is separate from the
+paragraph's quoted words. A multi-block v16 citation has fixed span fields for
+table, row, cell and numbering; absent coordinates or numbering are `null`.
+Inspect the original for layout.
+Numbering parts still leave the document partial. Bullets, nested levels, numbering
+inherited from styles, and other numbering definitions refuse when encountered;
+numbered paragraphs affected by revisions or an ambiguous hidden paragraph marker
+also refuse. A wholly hidden or empty numbered paragraph refuses rather than
+silently changing later numbers. For this numbered-list subset, the body,
+numbering and any styles parts must use the same WordprocessingML dialect; mixed
+parts refuse because their combined interpretation is outside the reader's scope.
+
+The current DOCX recipe is `ipse-documents-v16`. Reacquire and explicitly replace an
+older source when you need the newer recipe; existing extractions are not silently
+rebuilt. Stored v14 and v15 sources and citations retain their original recipes and
+remain readable.
 
 Footnotes, endnotes and comments retain their annotation IDs. A unique visible
 body reference supplies its paragraph/table-cell location and UTF-8 byte offset;
 a supported comment range also retains its exact span. Missing, orphaned or
 ambiguous links keep coverage partial. Unsupported numbering or layout can keep
-that partial status even when a note's reference is located. Existing v14
-packed sources and citations keep their original recipe and remain readable.
+that partial status even when a note's reference is located.
 
 For replacement, inspect the source and use its current revision with the next
 generation. Supply the new file's concrete SHA-256 as `expected_sha256`; only an

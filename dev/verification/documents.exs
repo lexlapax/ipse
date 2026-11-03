@@ -87,7 +87,7 @@ defmodule Ipse.Development.Verification.Documents do
 
     {:ok,
      %{
-       "extraction_version" => "ipse-documents-v15",
+       "extraction_version" => "ipse-documents-v16",
        "status" => "complete",
        "segments" => [%{"text" => "visible inserted"}]
      }} = extract.(styled_document.(styles), "styles.docx")

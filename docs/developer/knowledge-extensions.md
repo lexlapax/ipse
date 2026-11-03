@@ -624,11 +624,12 @@ compact receipt version 4, retaining exact manifest hash/byte count, segment and
 warning counts, origin and one immutable manifest-head reference. Storage paging
 does not change the extraction recipe.
 
-For recipes v14 and v15, an extraction with more than 32 blocks can pack adjacent
+For recipes v14 through v16, an extraction with more than 32 blocks can pack adjacent
 plain paragraphs and table cells from one part into groups. Each group contains at most
 64 original blocks and fits the selected chunk-byte bound. Its `block_group`
 locator stores compact rows `[paragraph, text_bytes]` or
-`[paragraph, text_bytes, table, row, cell]`. Original paragraph numbers may have
+`[paragraph, text_bytes, table, row, cell]`. V16 rows may append a `numbering` map
+after the optional table coordinates. Original paragraph numbers may have
 gaps; they must increase within the group. Other locator fields, such as annotation
 anchors or header regions, prevent grouping. The complete text keeps the same
 newline joins as an unpacked extraction. Evidence checks row widths, coordinates,
@@ -762,8 +763,33 @@ Only table graphs without hidden-text properties are supported. The parser
 rejects hidden conditional table properties, unknown or wrong-type references,
 duplicate references and references after row content. Each table tracks its
 own selection, while its cell locators retain their original table/row/cell
-identity. Numbering properties and ambiguous visibility remain outside the
-supported subset.
+identity. Ambiguous visibility remains outside the supported subset.
+
+For directly numbered body paragraphs, v16 separately derives list locators from
+the internal `numbering.xml` relationship and matching content type. The supported
+graph has explicit `singleLevel`, level zero, decimal format, start and a bounded
+template containing one `%1`; an optional level-zero start override sets the
+instance's initial ordinal. Counters advance in body order per `numId`, including
+table paragraphs. An interleaved list has its own counter. The locator's versioned
+`numbering` map records `num_id`, `level`, `ordinal`, `template`, derived `label`
+and `suffix`. For example, template `%1.` with ordinal 3 produces `3.`, but that
+label is not prepended to the source paragraph or its quote. Compact group rows
+append the map after any table coordinates. V2 multi-block citation spans instead
+use fixed table, row, cell and numbering positions, with `null` for absent fields;
+v16 `span_fields` names each position. Evidence validates its shape and
+the label's derivation, then reconstructs the citation from the authenticated source
+record rather than trusting a submitted map.
+
+The reader refuses style-inherited numbering, nested levels, bullets, other formats,
+unrecognized numbering definitions or overrides, and revision-affected numbered
+paragraphs. A numbered paragraph with an ambiguous hidden paragraph marker or no
+visible text also refuses, so it cannot silently move later counters. Excluded
+deleted paragraphs do not advance the counters. The numbering part still receives
+`part_not_extracted`, leaving coverage partial; these restrictions do not establish
+general Word rendering fidelity. The body, numbering and any parsed styles parts
+must use the same WordprocessingML dialect for numbered paragraphs. Mixed parts
+refuse as an implementation boundary; the reader does not claim the package is
+invalid under the standard.
 
 Referenced headers and footers are extracted once per part and their locators
 identify the region. The result remains partial: it does not resolve section
@@ -801,18 +827,19 @@ readable; inspect the result and original document before using it as evidence.
 
 The reader admits the exact internal `stylesWithEffects` relationship and content
 type only with both style parts present. It parses each through the same bounded
-style parser and requires identical type, inheritance, default and hidden-state
+style parser and requires identical dialect, type, inheritance, default and hidden-state
 graphs before reading body text. Presentation properties omitted by that parser
 may differ. An ambiguous graph, unsupported namespace, missing part or substituted
 relationship still refuses; this does not implement general Word text effects.
 Both parts count toward the aggregate expanded-byte bound.
 
 Recipes are format-specific: `Documents.version("docx")` is
-`ipse-documents-v15`, while text, Markdown and PDF use `ipse-documents-v2`.
+`ipse-documents-v16`, while text, Markdown and PDF use `ipse-documents-v2`.
 The legacy `version/0` returns the v2 value; use `version/1` when binding an
 extraction to a source version. Earlier DOCX results are not automatically
-migrated or equivalent. V14 packed receipts and citations retain their original
-recipe and remain readable; v15 uses the same bounded block-map geometry. A
+migrated or equivalent. V14 and v15 packed receipts and citations retain their
+original recipes and remain readable; v16 extends the bounded block-map geometry
+with the separate numbering map. A
 future recipe cannot inherit that geometry without explicit validation support.
 Future indexing must explicitly rebuild or requalify older extraction results.
 The optional PDF backend requires a separately host-admitted protected parser;
@@ -871,7 +898,7 @@ objects. Use Elixir `JSON.encode!/decode!`, not raw Erlang encoding: binary sizi
 and `nil`→null semantics matter to persisted IDs. Sources allow 64 KiB UTF-8,
 with at most 32 chunks. Legacy sources keep their 2048-byte recipe; explicit
 Collection Source3 uses the versioned 4096-byte recipe. Document chunks remain
-inside their typed segments. V14/v15 groups may contain several original blocks and
+inside their typed segments. V14–v16 groups may contain several original blocks and
 their newline joins; separators between groups need not belong to a chunk.
 Citations bind generation/content/chunk,
 absolute byte range, literal quote/hash, URI, times, and origin. Quote bounds are

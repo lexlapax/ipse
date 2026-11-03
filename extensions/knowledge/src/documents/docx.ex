@@ -5,6 +5,7 @@ defmodule IpseKnowledge.Documents.Docx do
   @strict ~c"http://purl.oclc.org/ooxml/wordprocessingml/main"
   @parts ~w(word/document.xml word/footnotes.xml word/endnotes.xml word/comments.xml)
   @style_parts ~w(word/styles.xml word/stylesWithEffects.xml)
+  @numbering_part "word/numbering.xml"
   @property_containers ~w(pPr rPr tblPr trPr tcPr sectPr tblGrid)
   @structural ~w(document body hdr ftr footnotes endnotes comments footnote endnote comment p pPr r rPr t delText tbl tblPr tblGrid gridCol tr trPr tc tcPr ins moveTo del moveFrom hyperlink bookmarkStart bookmarkEnd commentRangeStart commentRangeEnd commentReference footnoteReference endnoteReference proofErr permStart permEnd sectPr lastRenderedPageBreak pStyle rStyle)
 
@@ -90,16 +91,37 @@ defmodule IpseKnowledge.Documents.Docx do
 
     styles = Map.get(style_graphs, "word/styles.xml", IpseKnowledge.Documents.Docx.Styles.empty())
 
+    {numbering, numbering_bytes} =
+      case Enum.find(entries, &(&1.name == @numbering_part)) do
+        nil ->
+          {nil, 0}
+
+        entry ->
+          xml =
+            Zip.read(
+              bytes,
+              entry,
+              limits.max_expanded_bytes - authority_bytes - style_bytes - relationship_bytes
+            )
+
+          authorized =
+            Map.has_key?(relationships.parts, @numbering_part) and
+              content_types["/" <> @numbering_part] ==
+                "application/vnd.openxmlformats-officedocument.wordprocessingml.numbering+xml"
+
+          {%{xml: xml, authorized: authorized}, byte_size(xml)}
+      end
+
     {segments, warnings, expanded, text, refs, references, ranges, ranges_unsafe, annotations} =
       Enum.reduce(
         selected,
-        {[], [], authority_bytes + style_bytes + relationship_bytes, 0, MapSet.new(), %{}, %{},
-         false, %{}},
+        {[], [], authority_bytes + style_bytes + relationship_bytes + numbering_bytes, 0,
+         MapSet.new(), %{}, %{}, false, %{}},
         fn entry,
            {segments, warnings, expanded, text, refs, references, ranges, ranges_unsafe,
             annotations} ->
           xml = Zip.read(bytes, entry, limits.max_expanded_bytes - expanded)
-          state = parse(xml, entry.name, limits, length(segments), text, styles)
+          state = parse(xml, entry.name, limits, length(segments), text, styles, numbering)
 
           references =
             if entry.name == "word/document.xml", do: state.references, else: references
@@ -151,7 +173,7 @@ defmodule IpseKnowledge.Documents.Docx do
           Enum.find(entries, &(&1.name == part)) || fail(:unsupported_docx_part_relationship)
 
         xml = Zip.read(bytes, entry, limits.max_expanded_bytes - expanded)
-        state = parse(xml, part, limits, length(segments), text, styles, kind)
+        state = parse(xml, part, limits, length(segments), text, styles, numbering, kind)
 
         {segments ++ Enum.reverse(state.segments), warnings ++ state.warnings,
          expanded + byte_size(xml), state.text_bytes}
@@ -251,7 +273,7 @@ defmodule IpseKnowledge.Documents.Docx do
       else: parts
   end
 
-  defp parse(xml, part, limits, count, text, styles, region \\ nil) do
+  defp parse(xml, part, limits, count, text, styles, numbering, region \\ nil) do
     # Refuse DTD syntax before the parser can invoke an entity resolver. DOCX XML
     # is UTF-8 in this version; UTF-16 is explicitly refused instead of bypassing
     # the independent declaration check with interleaved NULs.
@@ -268,6 +290,7 @@ defmodule IpseKnowledge.Documents.Docx do
       depth: 0,
       stack: [],
       root: false,
+      dialect: nil,
       paragraph: 0,
       current: nil,
       table_count: 0,
@@ -282,6 +305,8 @@ defmodule IpseKnowledge.Documents.Docx do
       excluded: 0,
       runs: [],
       styles: styles,
+      numbering: numbering,
+      number_counters: %{},
       segments: [],
       count: count,
       text_bytes: text,
@@ -332,10 +357,16 @@ defmodule IpseKnowledge.Documents.Docx do
           end
 
         if element != expected, do: fail(:invalid_word_namespace)
-        %{state | root: true}
+        %{state | root: true, dialect: uri}
       else
         state
       end
+
+    if (word? and uri != state.dialect) or
+         Enum.any?(attrs, fn {attr_uri, _, _, _} ->
+           attr_uri in [@word, @strict] and attr_uri != state.dialect
+         end),
+       do: fail(:invalid_word_namespace)
 
     state = %{state | depth: state.depth + 1, stack: [element | state.stack]}
 
@@ -343,6 +374,32 @@ defmodule IpseKnowledge.Documents.Docx do
       if not word?,
         do: warning(state, "unsupported_namespace_content"),
         else: state
+
+    if state.excluded == 0 and
+         ((element in ~w(numPr numId ilvl) and not word?) or
+            ("numPr" in state.stack and
+               not match?(["numPr" | _], state.stack) and
+               not (match?([_, "numPr" | _], state.stack) and element in ~w(numId ilvl)))) do
+      fail(:unsupported_docx_numbering)
+    end
+
+    state =
+      if state.current != nil and
+           element in ~w(ins moveTo del moveFrom pPrChange rPrChange numberingChange) do
+        if state.current.numbering_seen, do: fail(:unsupported_docx_numbering)
+        %{state | current: %{state.current | revision_seen: true}}
+      else
+        state
+      end
+
+    state =
+      if state.current != nil and element == "vanish" and
+           not match?(["vanish", "rPr", "r" | _], state.stack) do
+        if state.current.numbering_seen, do: fail(:unsupported_docx_numbering)
+        %{state | current: %{state.current | marker_visibility_ambiguous: true}}
+      else
+        state
+      end
 
     cond do
       element == "tab" and match?(["tab", "tabs", "pPr", "p" | _], state.stack) ->
@@ -446,8 +503,14 @@ defmodule IpseKnowledge.Documents.Docx do
             fail(:unsupported_docx_style_visibility)
         end
 
+      element in ~w(numPr numId ilvl) and state.excluded > 0 ->
+        state
+
       element == "numPr" ->
-        fail(:unsupported_docx_style_visibility)
+        start_numbering(state, attrs)
+
+      element in ~w(numId ilvl) ->
+        numbering_property(state, element, attrs)
 
       element in ~w(tab br cr) ->
         append(state, if(element == "tab", do: "\t", else: "\n"))
@@ -476,6 +539,7 @@ defmodule IpseKnowledge.Documents.Docx do
       cond do
         element in ~w(del moveFrom) -> %{state | excluded: state.excluded - 1}
         element == "p" -> finish_paragraph(state)
+        element == "numPr" and state.excluded == 0 -> finish_numbering(state)
         element == "r" -> %{state | runs: tl(state.runs)}
         element == "tbl" -> %{state | tables: tl(state.tables)}
         element in ~w(footnote endnote comment) -> %{state | note: nil}
@@ -492,9 +556,12 @@ defmodule IpseKnowledge.Documents.Docx do
     do: state
 
   defp event({:characters, characters}, _, state) do
-    if characters |> :unicode.characters_to_binary() |> String.trim() == "",
-      do: state,
-      else: warning(state, "unsupported_text_content")
+    if characters |> :unicode.characters_to_binary() |> String.trim() == "" do
+      state
+    else
+      if "numPr" in state.stack, do: fail(:unsupported_docx_numbering)
+      warning(state, "unsupported_text_content")
+    end
   end
 
   defp event(_, _, state), do: state
@@ -533,15 +600,89 @@ defmodule IpseKnowledge.Documents.Docx do
           style: nil,
           style_seen: false,
           content_started: false,
+          numbering: nil,
+          numbering_seen: false,
+          revision_seen: false,
+          marker_visibility_ambiguous: false,
           locator: locator
         }
     }
+  end
+
+  defp start_numbering(state, attrs) do
+    unless state.part == "word/document.xml" and
+             match?(["numPr", "pPr", "p" | _], state.stack) and attrs == [] and
+             state.current != nil and not state.current.content_started and
+             not state.current.numbering_seen and not state.current.revision_seen and
+             not state.current.marker_visibility_ambiguous and
+             Enum.all?(state.stack, &(&1 not in ~w(ins moveTo del moveFrom pPrChange rPrChange))) do
+      fail(:unsupported_docx_numbering)
+    end
+
+    numbering =
+      case state.numbering do
+        %{authorized: true, parsed: parsed} -> parsed
+        %{authorized: true, xml: xml} -> IpseKnowledge.Documents.Docx.Numbering.parse(xml)
+        _ -> fail(:unsupported_docx_numbering)
+      end
+
+    # The checked subset does not assign numbering semantics across dialects.
+    # This is an extraction boundary, not a judgment about package conformance.
+    if numbering.dialect != state.dialect or
+         (Map.get(state.styles, :dialect) != nil and state.styles.dialect != state.dialect),
+       do: fail(:unsupported_docx_numbering)
+
+    %{
+      state
+      | numbering: Map.put(state.numbering, :parsed, numbering),
+        current: %{state.current | numbering_seen: true, numbering: %{num_id: nil, level: nil}}
+    }
+  end
+
+  defp numbering_property(state, element, attrs) do
+    unless state.current != nil and state.current.numbering_seen and
+             match?([_, "numPr", "pPr", "p" | _], state.stack) and length(attrs) == 1 do
+      fail(:unsupported_docx_numbering)
+    end
+
+    value = attr(attrs, "val")
+
+    unless is_binary(value) and Regex.match?(~r/\A(?:0|[1-9][0-9]{0,9})\z/, value),
+      do: fail(:unsupported_docx_numbering)
+
+    number = String.to_integer(value)
+    key = if element == "numId", do: :num_id, else: :level
+
+    unless is_nil(state.current.numbering[key]) and
+             if(key == :num_id, do: number in 1..2_147_483_647, else: number == 0),
+           do: fail(:unsupported_docx_numbering)
+
+    current = %{state.current | numbering: Map.put(state.current.numbering, key, number)}
+    %{state | current: current}
+  end
+
+  defp finish_numbering(state) do
+    with %{num_id: id, level: 0} when is_integer(id) <- state.current.numbering,
+         {:ok, metadata, counters} <-
+           IpseKnowledge.Documents.Docx.Numbering.next(
+             state.numbering.parsed,
+             id,
+             state.number_counters
+           ) do
+      current = %{state.current | locator: Map.put(state.current.locator, "numbering", metadata)}
+      %{state | current: current, number_counters: counters}
+    else
+      _ -> fail(:unsupported_docx_numbering)
+    end
   end
 
   defp finish_paragraph(%{current: nil} = state), do: state
 
   defp finish_paragraph(state) do
     text = state.current.text |> Enum.reverse() |> IO.iodata_to_binary()
+
+    if text == "" and state.current.numbering_seen,
+      do: fail(:unsupported_docx_numbering)
 
     if text == "" do
       %{state | current: nil}
@@ -845,6 +986,275 @@ defmodule IpseKnowledge.Documents.Docx do
   defp fail(code), do: throw({:document_error, code})
 end
 
+defmodule IpseKnowledge.Documents.Docx.Numbering do
+  @moduledoc false
+  @word ~c"http://schemas.openxmlformats.org/wordprocessingml/2006/main"
+  @strict ~c"http://purl.oclc.org/ooxml/wordprocessingml/main"
+  @maximum 2_147_483_647
+
+  # This subset derives only single-level decimal labels. A different level,
+  # format, override, style binding or number-rendering property is refused.
+  # Labels are returned separately from paragraph text and are never quotes.
+  def parse(xml) do
+    unless String.valid?(xml) and not String.contains?(xml, [<<0>>, "<!DOCTYPE", "<!ENTITY"]),
+      do: fail()
+
+    state = %{
+      stack: [],
+      count: 0,
+      root: false,
+      dialect: nil,
+      abstracts: %{},
+      instances: %{},
+      abstract: nil,
+      level: nil,
+      instance: nil
+    }
+
+    options = [
+      :disallow_entities,
+      {:external_entities, :none},
+      {:fail_undeclared_ref, true},
+      {:event_state, state},
+      {:event_fun, &event/3}
+    ]
+
+    case :xmerl_sax_parser.stream(xml, options) do
+      {:ok, %{stack: [], root: true} = result, rest} when rest in ["", []] ->
+        unless Enum.all?(result.instances, fn {_, entry} ->
+                 Map.has_key?(result.abstracts, entry.abstract)
+               end),
+               do: fail()
+
+        Map.take(result, [:abstracts, :instances, :dialect])
+
+      _ ->
+        fail()
+    end
+  end
+
+  def next(%{abstracts: abstracts, instances: instances}, id, counters) do
+    with %{abstract: abstract_id, override: override} <- instances[id],
+         %{start: start, template: template, suffix: suffix} <- abstracts[abstract_id],
+         first = if(is_nil(override), do: start, else: override),
+         ordinal = Map.get(counters, id, first - 1) + 1,
+         true <- ordinal in 1..@maximum do
+      {:ok,
+       %{
+         "version" => 1,
+         "num_id" => id,
+         "level" => 0,
+         "ordinal" => ordinal,
+         "template" => template,
+         "label" => String.replace(template, "%1", Integer.to_string(ordinal)),
+         "suffix" => suffix
+       }, Map.put(counters, id, ordinal)}
+    else
+      _ -> {:error, :unsupported_docx_numbering}
+    end
+  end
+
+  def next(_, _, _), do: {:error, :unsupported_docx_numbering}
+
+  defp event({:startDTD, _, _, _}, _, _), do: fail()
+  defp event({:processingInstruction, _, _}, _, _), do: fail()
+
+  defp event({:startElement, uri, name, _, attrs}, _, state) do
+    if uri not in [@word, @strict] or length(state.stack) >= 64 or state.count >= 50_000 or
+         length(attrs) > 16 or Enum.any?(attrs, fn {_, _, _, value} -> length(value) > 4096 end),
+       do: fail()
+
+    dialect = state.dialect || uri
+
+    if uri != dialect or Enum.any?(attrs, fn {attr_uri, _, _, _} -> attr_uri != dialect end),
+      do: fail()
+
+    state = %{state | dialect: dialect}
+
+    element = List.to_string(name)
+    stack = [element | state.stack]
+    state = %{state | stack: stack, count: state.count + 1}
+
+    case stack do
+      ["numbering"] ->
+        if state.root or attrs != [], do: fail()
+        %{state | root: true}
+
+      ["abstractNum", "numbering"] ->
+        id = uint!(single!(attrs, "abstractNumId"), true)
+        if state.abstract != nil or Map.has_key?(state.abstracts, id), do: fail()
+        %{state | abstract: %{id: id, mode: nil, level: nil}}
+
+      ["multiLevelType", "abstractNum", "numbering"] ->
+        if state.abstract.mode != nil or single!(attrs, "val") != "singleLevel", do: fail()
+        put_in(state.abstract.mode, "singleLevel")
+
+      [element, "abstractNum", "numbering"] when element in ["nsid", "tmpl"] ->
+        unless Regex.match?(~r/\A[0-9A-Fa-f]{8}\z/, single!(attrs, "val")), do: fail()
+        state
+
+      ["lvl", "abstractNum", "numbering"] ->
+        if single!(attrs, "ilvl") != "0" or state.level != nil or state.abstract.level != nil,
+          do: fail()
+
+        %{
+          state
+          | level: %{start: nil, format: nil, template: nil, suffix: nil, justification: nil}
+        }
+
+      [element, "lvl", "abstractNum", "numbering"]
+      when element in ~w(start numFmt lvlText suff lvlJc) ->
+        level_property(state, element, single!(attrs, "val"))
+
+      ["pPr", "lvl", "abstractNum", "numbering"] ->
+        if attrs != [], do: fail()
+        state
+
+      ["tabs", "pPr", "lvl", "abstractNum", "numbering"] ->
+        if attrs != [], do: fail()
+        state
+
+      ["tab", "tabs", "pPr", "lvl", "abstractNum", "numbering"] ->
+        ignored_attrs!(attrs, ~w(val pos leader))
+        state
+
+      ["ind", "pPr", "lvl", "abstractNum", "numbering"] ->
+        ignored_attrs!(
+          attrs,
+          ~w(left right start end hanging firstLine leftChars rightChars hangingChars firstLineChars)
+        )
+
+        state
+
+      ["num", "numbering"] ->
+        id = uint!(single!(attrs, "numId"), false)
+        if state.instance != nil or Map.has_key?(state.instances, id), do: fail()
+        %{state | instance: %{id: id, abstract: nil, override: nil}}
+
+      ["abstractNumId", "num", "numbering"] ->
+        if state.instance.abstract != nil, do: fail()
+        put_in(state.instance.abstract, uint!(single!(attrs, "val"), true))
+
+      ["lvlOverride", "num", "numbering"] ->
+        if single!(attrs, "ilvl") != "0" or state.instance.override != nil, do: fail()
+        put_in(state.instance.override, :pending)
+
+      ["startOverride", "lvlOverride", "num", "numbering"] ->
+        if state.instance.override != :pending, do: fail()
+        put_in(state.instance.override, uint!(single!(attrs, "val"), false))
+
+      _ ->
+        fail()
+    end
+  end
+
+  defp event({:endElement, _, _, _}, _, %{stack: [element | rest]} = state) do
+    state =
+      case {element, state.stack} do
+        {"lvl", ["lvl", "abstractNum", "numbering"]} ->
+          level = state.level
+          if level.start == nil or level.format != "decimal" or level.template == nil, do: fail()
+
+          state =
+            put_in(state.abstract.level, %{
+              start: level.start,
+              template: level.template,
+              suffix: level.suffix || "tab"
+            })
+
+          %{state | level: nil}
+
+        {"abstractNum", ["abstractNum", "numbering"]} ->
+          abstract = state.abstract
+          if abstract.mode != "singleLevel" or is_nil(abstract.level), do: fail()
+
+          %{
+            state
+            | abstracts: Map.put(state.abstracts, abstract.id, abstract.level),
+              abstract: nil
+          }
+
+        {"lvlOverride", ["lvlOverride", "num", "numbering"]} ->
+          if state.instance.override == :pending, do: fail()
+          state
+
+        {"num", ["num", "numbering"]} ->
+          instance = state.instance
+          if is_nil(instance.abstract) or instance.override == :pending, do: fail()
+
+          %{
+            state
+            | instances: Map.put(state.instances, instance.id, Map.drop(instance, [:id])),
+              instance: nil
+          }
+
+        _ ->
+          state
+      end
+
+    %{state | stack: rest}
+  end
+
+  defp event({:characters, chars}, _, state) do
+    unless chars |> :unicode.characters_to_binary() |> String.trim() == "", do: fail()
+    state
+  end
+
+  defp event(_, _, state), do: state
+
+  defp level_property(state, element, value) do
+    {key, checked} =
+      case element do
+        "start" ->
+          {:start, uint!(value, false)}
+
+        "numFmt" ->
+          if(value == "decimal", do: {:format, value}, else: fail())
+
+        "lvlText" ->
+          if byte_size(value) <= 128 and String.valid?(value) and
+               Regex.match?(~r/\A[^%\x00-\x1f]{0,32}%1[^%\x00-\x1f]{0,32}\z/u, value),
+             do: {:template, value},
+             else: fail()
+
+        "suff" ->
+          if(value in ~w(tab space nothing), do: {:suffix, value}, else: fail())
+
+        "lvlJc" ->
+          if(value in ~w(left right center), do: {:justification, value}, else: fail())
+      end
+
+    if is_nil(state.level) or not is_nil(Map.get(state.level, key)), do: fail()
+    %{state | level: Map.put(state.level, key, checked)}
+  end
+
+  defp single!([{uri, _, local, value}], name) when uri in [@word, @strict] do
+    if List.to_string(local) == name, do: List.to_string(value), else: fail()
+  end
+
+  defp single!(_, _), do: fail()
+
+  defp ignored_attrs!(attrs, allowed) do
+    names =
+      Enum.map(attrs, fn {uri, _, local, _} ->
+        if uri not in [@word, @strict], do: fail()
+        List.to_string(local)
+      end)
+
+    unless Enum.all?(names, &(&1 in allowed)) and length(names) == length(Enum.uniq(names)),
+      do: fail()
+  end
+
+  defp uint!(value, zero?) do
+    unless Regex.match?(~r/\A(?:0|[1-9][0-9]{0,9})\z/, value), do: fail()
+    number = String.to_integer(value)
+    unless number <= @maximum and (zero? or number > 0), do: fail()
+    number
+  end
+
+  defp fail, do: throw({:document_error, :unsupported_docx_numbering})
+end
+
 defmodule IpseKnowledge.Documents.Docx.Styles do
   @moduledoc false
   @word ~c"http://schemas.openxmlformats.org/wordprocessingml/2006/main"
@@ -951,6 +1361,7 @@ defmodule IpseKnowledge.Documents.Docx.Styles do
         stack: [],
         current: nil,
         root: false,
+        dialect: nil,
         seen: MapSet.new(),
         default_types: MapSet.new(),
         default_character: nil
@@ -980,7 +1391,7 @@ defmodule IpseKnowledge.Documents.Docx.Styles do
           if Enum.any?(flags, &(not is_nil(&1))), do: fail(:unsupported_docx_style_visibility)
         end
 
-        Map.take(result, [:styles, :default, :defaults])
+        Map.take(result, [:styles, :default, :defaults, :dialect])
 
       {:document_error, _, code, _, _} when is_atom(code) ->
         fail(code)
@@ -1049,9 +1460,17 @@ defmodule IpseKnowledge.Documents.Docx.Styles do
        do: fail(:xml_structure_limit)
 
     unless uri in [@word, @strict], do: fail(:unsupported_docx_style_visibility)
+    dialect = state.dialect || uri
+
+    if uri != dialect or
+         Enum.any?(attrs, fn {attr_uri, _, _, _} ->
+           attr_uri in [@word, @strict] and attr_uri != dialect
+         end),
+       do: fail(:unsupported_docx_style_visibility)
+
     element = List.to_string(local)
     if state.stack == [] and element != "styles", do: fail(:invalid_word_namespace)
-    state = %{state | stack: [element | state.stack], root: true}
+    state = %{state | stack: [element | state.stack], root: true, dialect: dialect}
 
     cond do
       state.stack == ["style", "styles"] ->
@@ -1269,7 +1688,8 @@ defmodule IpseKnowledge.Documents.Docx.Styles do
                   {:root, "officeDocument"} ->
                     "word/document.xml"
 
-                  {:document, kind} when kind in ~w(styles footnotes endnotes comments) ->
+                  {:document, kind}
+                  when kind in ~w(styles footnotes endnotes comments numbering) ->
                     "word/#{kind}.xml"
 
                   _ ->

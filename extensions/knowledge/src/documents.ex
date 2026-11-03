@@ -28,7 +28,7 @@ defmodule IpseKnowledge.Documents do
   def version, do: "ipse-documents-v2"
 
   @doc "Return the immutable extraction recipe selected for a result format."
-  def version("docx"), do: "ipse-documents-v15"
+  def version("docx"), do: "ipse-documents-v16"
   def version(format) when format in ~w(text markdown pdf), do: version()
 
   @doc "Project an extracted DOCX into the bounded explicit source-put contract."
@@ -44,8 +44,12 @@ defmodule IpseKnowledge.Documents do
 
     segments =
       if length(segments) > 32 and
-           document["extraction_version"] in ["ipse-documents-v14", version("docx")],
-         do: pack_blocks(segments, chunk_bytes),
+           document["extraction_version"] in [
+             "ipse-documents-v14",
+             "ipse-documents-v15",
+             version("docx")
+           ],
+         do: pack_blocks(segments, chunk_bytes, document["extraction_version"]),
          else: segments
 
     if length(segments) > 32 do
@@ -96,24 +100,26 @@ defmodule IpseKnowledge.Documents do
   def source_payload(%{"format" => "docx"}, _, _), do: {:error, :document_source_limit}
   def source_payload(_, _, _), do: {:error, :document_format_unsupported}
 
-  defp pack_blocks(segments, maximum) do
+  defp pack_blocks(segments, maximum, recipe) do
     {groups, pending} =
       Enum.reduce(segments, {[], nil}, fn segment, {groups, pending} ->
         locator = segment["locator"]
+        base = if is_map(locator), do: Map.delete(locator, "numbering"), else: nil
 
         plain =
-          is_map(locator) and
-            ((Enum.sort(Map.keys(locator)) == ~w(kind paragraph part) and
-                locator["kind"] == "paragraph") or
-               (Enum.sort(Map.keys(locator)) == ~w(cell kind paragraph part row table) and
-                  locator["kind"] == "table_cell"))
+          is_map(base) and
+            (not Map.has_key?(locator, "numbering") or recipe == "ipse-documents-v16") and
+            ((Enum.sort(Map.keys(base)) == ~w(kind paragraph part) and
+                base["kind"] == "paragraph") or
+               (Enum.sort(Map.keys(base)) == ~w(cell kind paragraph part row table) and
+                  base["kind"] == "table_cell"))
 
         row =
           [locator["paragraph"], byte_size(segment["text"])] ++
             if(locator["kind"] == "table_cell",
               do: Enum.map(~w(table row cell), &locator[&1]),
               else: []
-            )
+            ) ++ if(Map.has_key?(locator, "numbering"), do: [locator["numbering"]], else: [])
 
         fits =
           plain and pending != nil and pending.part == locator["part"] and

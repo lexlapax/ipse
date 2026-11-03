@@ -29,7 +29,7 @@ defmodule Ipse.KnowledgeDocumentsFidelityTest do
       if "word/document.xml" in names do
         relationships="http://schemas.openxmlformats.org/package/2006/relationships"
         prefix="http://schemas.openxmlformats.org/officeDocument/2006/relationships/"
-        parts=Enum.filter(~w(styles footnotes endnotes comments), &("word/#{&1}.xml" in names))
+        parts=Enum.filter(~w(styles footnotes endnotes comments numbering), &("word/#{&1}.xml" in names))
         entries=if "word/_rels/document.xml.rels" not in names and parts != [], do: entries++[{"word/_rels/document.xml.rels","<Relationships xmlns=\"#{relationships}\">"<>Enum.map_join(parts,fn kind -> "<Relationship Id=\"#{kind}\" Type=\"#{prefix}#{kind}\" Target=\"#{kind}.xml\"/>" end)<>"</Relationships>"}], else: entries
         entries=if "_rels/.rels" not in names, do: entries++[{"_rels/.rels","<Relationships xmlns=\"#{relationships}\"><Relationship Id=\"main\" Type=\"#{prefix}officeDocument\" Target=\"word/document.xml\"/></Relationships>"}], else: entries
         kinds=[{"word/document.xml","document.main"}|Enum.map(parts,&{"word/#{&1}.xml",&1})]
@@ -103,7 +103,7 @@ defmodule Ipse.KnowledgeDocumentsFidelityTest do
       assert result["status"]=="complete" and result["warnings"]==[]
       assert result["revision_policy"]=="insertions_included_deletions_excluded"
       assert result["visibility_policy"]=="bounded_style_and_direct_hidden_excluded"
-      assert result["extraction_version"]=="ipse-documents-v15"
+      assert result["extraction_version"]=="ipse-documents-v16"
     end
     for value <- ["false","0","off"] do
       {:ok,result}=D.extract(doc.("<w:p><w:r><w:rPr><w:vanish w:val=\"#{value}\"/></w:rPr><w:t>visible</w:t></w:r></w:p>"),"a.docx")
@@ -117,7 +117,7 @@ defmodule Ipse.KnowledgeDocumentsFidelityTest do
     strict="http://purl.oclc.org/ooxml/wordprocessingml/main"
     for attrs <- ["w:val=\"false\" s:val=\"true\"", "s:val=\"true\" w:val=\"false\"", "w:val=\"true\" s:val=\"true\""] do
       main="<w:document xmlns:w=\"#{word}\" xmlns:s=\"#{strict}\"><w:body><w:p><w:r><w:rPr><w:vanish #{attrs}/></w:rPr><w:t>ambiguous hidden text</w:t></w:r></w:p></w:body></w:document>"
-      assert {:error,:unsupported_docx_run_properties}=D.extract(zip.([{"word/document.xml",main}]),"ambiguous.docx")
+      assert {:error,:invalid_word_namespace}=D.extract(zip.([{"word/document.xml",main}]),"ambiguous.docx")
       styles="<w:styles xmlns:w=\"#{word}\" xmlns:s=\"#{strict}\"><w:docDefaults><w:rPrDefault><w:rPr><w:vanish #{attrs}/></w:rPr></w:rPrDefault></w:docDefaults></w:styles>"
       assert {:error,:unsupported_docx_style_visibility}=D.extract(zip.([{"word/styles.xml",styles},{"word/document.xml",xml.("<w:p>"<>run.("ambiguous hidden text")<>"</w:p>")}]),"ambiguous.docx")
     end
@@ -225,6 +225,163 @@ defmodule Ipse.KnowledgeDocumentsFidelityTest do
     ''')
   end
 
+  @tag :docx_numbering
+  test "single-level decimal lists retain derived labels separately from cited source text" do
+    pure(~S'''
+    alias IpseKnowledge.Evidence, as: E
+    numbering="<w:numbering xmlns:w=\"#{word}\"><w:abstractNum w:abstractNumId=\"1\"><w:multiLevelType w:val=\"singleLevel\"/><w:lvl w:ilvl=\"0\"><w:start w:val=\"3\"/><w:numFmt w:val=\"decimal\"/><w:lvlText w:val=\"%1.\"/><w:suff w:val=\"space\"/></w:lvl></w:abstractNum><w:num w:numId=\"7\"><w:abstractNumId w:val=\"1\"/></w:num><w:num w:numId=\"8\"><w:abstractNumId w:val=\"1\"/><w:lvlOverride w:ilvl=\"0\"><w:startOverride w:val=\"10\"/></w:lvlOverride></w:num></w:numbering>"
+    list=fn id,text -> "<w:p><w:pPr><w:numPr><w:ilvl w:val=\"0\"/><w:numId w:val=\"#{id}\"/></w:numPr></w:pPr>"<>run.(text)<>"</w:p>" end
+    body=list.(7,"First α")<>"<w:p>"<>run.("interlude")<>"</w:p>"<>list.(7,"Second β")<>list.(8,"Restart γ")<>list.(7,"Third δ")
+    bytes=zip.([{"word/document.xml",xml.(body)},{"word/numbering.xml",numbering}])
+    {:ok,result}=D.extract(bytes,"numbered.docx")
+    assert result["extraction_version"]=="ipse-documents-v16"
+    assert result["status"]=="partial"
+    assert Enum.map(result["segments"],& &1["text"])==["First α","interlude","Second β","Restart γ","Third δ"]
+    [first,plain,second,restart,third]=result["segments"]
+    assert first["locator"]["numbering"]["label"]=="3."
+    assert first["locator"]["numbering"]["suffix"]=="space"
+    assert plain["locator"]["numbering"]==nil
+    assert second["locator"]["numbering"]["ordinal"]==4
+    assert restart["locator"]["numbering"]["ordinal"]==10
+    assert third["locator"]["numbering"]["ordinal"]==5
+    {:ok,payload}=D.source_payload(result,65536)
+    assert payload["text"]=="First α\ninterlude\nSecond β\nRestart γ\nThird δ"
+    assert E.valid_document?(payload["document"],payload["text"])
+    for old <- ["ipse-documents-v14","ipse-documents-v15"] do
+      refute E.valid_document?(Map.put(payload["document"],"extraction_version",old),payload["text"])
+    end
+    receipt=E.document_storage_receipt!(payload["document"])
+    attrs=%{"source_id"=>"numbered:source","partition"=>"notes","generation"=>1,
+      "title"=>"Numbered list","text"=>payload["text"],"uri"=>"provided:numbered.docx",
+      "observed_at_ms"=>10,"event_at_ms"=>nil,"expires_at_ms"=>nil,
+      "origin"=>%{"kind"=>"provided","store_profile"=>"notes","partition_or_scope"=>"notes",
+        "receipt"=>receipt,"historical"=>false}}
+    attrs=if receipt["version"]==4, do: Map.put(attrs,"document",payload["document"]), else: attrs
+    {:ok,source}=E.source(attrs)
+    {:ok,chunks}=E.chunks(source)
+    {start,count}=:binary.match(payload["text"],"Second β")
+    chunk=Enum.find(chunks,&(start>=&1["start_byte"] and start+count<=&1["end_byte"]))
+    {:ok,citation}=E.citation(source,chunk,start,start+count)
+    assert citation["quote"]=="Second β"
+    assert citation["document"]["locator"]["numbering"]["label"]=="4."
+    assert E.valid_span?(source,citation)
+    refute E.valid_span?(source,put_in(citation,["document","locator","numbering","label"],"5."))
+
+    many=Enum.map_join(1..40,&list.(7,"Line #{&1} café"))
+    {:ok,long}=D.extract(zip.([{"word/document.xml",xml.(many)},{"word/numbering.xml",numbering}]),"long-numbered.docx")
+    {:ok,packed}=D.source_payload(long,65536)
+    assert length(packed["document"]["segments"])<40
+    assert E.valid_document?(packed["document"],packed["text"])
+    packed_receipt=E.document_storage_receipt!(packed["document"])
+    packed_attrs=attrs |> Map.put("text",packed["text"]) |> put_in(["origin","receipt"],packed_receipt)
+    packed_attrs=if packed_receipt["version"]==4, do: Map.put(packed_attrs,"document",packed["document"]), else: Map.delete(packed_attrs,"document")
+    {:ok,packed_source}=E.source(packed_attrs)
+    {:ok,packed_chunks}=E.chunks(packed_source)
+    {start,count}=:binary.match(packed["text"],"Line 17 café")
+    chunk=Enum.find(packed_chunks,&(start>=&1["start_byte"] and start+count<=&1["end_byte"]))
+    {:ok,citation}=E.citation(packed_source,chunk,start,start+count)
+    assert citation["quote"]=="Line 17 café"
+    assert citation["document"]["locator"]["numbering"]["ordinal"]==19
+    assert E.valid_span?(packed_source,citation)
+    first=hd(packed_chunks)
+    crossing_text="Line 1 café\nLine 2 café"
+    {:ok,crossing}=E.citation(packed_source,first,0,byte_size(crossing_text))
+    assert crossing["quote"]==crossing_text and crossing["document"]["version"]==2
+    assert List.last(crossing["document"]["span_fields"])=="numbering"
+    assert Enum.map(crossing["document"]["spans"],&(List.last(&1)["ordinal"]))==[3,4]
+    assert E.valid_span?(packed_source,crossing)
+    changed=put_in(crossing,["document","spans",Access.at(0),Access.at(8),"label"],"4.")
+    refute E.valid_span?(packed_source,changed)
+
+    table=fn content -> "<w:tbl><w:tr><w:tc>"<>content<>"</w:tc></w:tr></w:tbl>" end
+    mixed_body="<w:p>"<>run.("Plain")<>"</w:p>"<>list.(7,"Numbered")<>
+      table.("<w:p>"<>run.("Table plain")<>"</w:p>"<>list.(7,"Table numbered"))<>
+      Enum.map_join(1..36,&("<w:p>"<>run.("Filler #{&1}")<>"</w:p>"))
+    {:ok,mixed_document}=D.extract(zip.([{"word/document.xml",xml.(mixed_body)},{"word/numbering.xml",numbering}]),"mixed.docx")
+    {:ok,mixed_payload}=D.source_payload(mixed_document,65536)
+    mixed_receipt=E.document_storage_receipt!(mixed_payload["document"])
+    mixed_attrs=attrs |> Map.put("text",mixed_payload["text"]) |> put_in(["origin","receipt"],mixed_receipt)
+    mixed_attrs=if mixed_receipt["version"]==4, do: Map.put(mixed_attrs,"document",mixed_payload["document"]), else: Map.delete(mixed_attrs,"document")
+    {:ok,mixed_source}=E.source(mixed_attrs)
+    {:ok,[mixed_chunk|_]}=E.chunks(mixed_source)
+    mixed_quote="Plain\nNumbered\nTable plain\nTable numbered"
+    {:ok,mixed_citation}=E.citation(mixed_source,mixed_chunk,0,byte_size(mixed_quote))
+    assert mixed_citation["quote"]==mixed_quote
+    fields=mixed_citation["document"]["span_fields"]
+    rows=mixed_citation["document"]["spans"]
+    assert Enum.all?(rows,&(length(&1)==length(fields)))
+    [plain,numbered,cell,numbered_cell]=Enum.map(rows,&Map.new(Enum.zip(fields,&1)))
+    assert {plain["table"],plain["numbering"]}=={nil,nil}
+    assert numbered["table"]==nil and numbered["numbering"]["label"]=="3."
+    assert {cell["table"],cell["row"],cell["cell"],cell["numbering"]}=={1,1,1,nil}
+    assert {numbered_cell["table"],numbered_cell["row"],numbered_cell["cell"]}=={1,1,1}
+    assert numbered_cell["numbering"]["label"]=="4."
+    assert E.valid_span?(mixed_source,mixed_citation)
+    refute E.valid_span?(mixed_source,update_in(mixed_citation,["document","spans",Access.at(1)],&List.delete_at(&1,5)))
+    ''')
+  end
+
+  @tag :docx_numbering
+  test "numbering refuses mixed WordprocessingML dialects" do
+    pure(~S'''
+    strict="http://purl.oclc.org/ooxml/wordprocessingml/main"
+    number="<w:numbering xmlns:w=\"#{word}\"><w:abstractNum w:abstractNumId=\"1\"><w:multiLevelType w:val=\"singleLevel\"/><w:lvl w:ilvl=\"0\"><w:start w:val=\"1\"/><w:numFmt w:val=\"decimal\"/><w:lvlText w:val=\"%1.\"/></w:lvl></w:abstractNum><w:num w:numId=\"7\"><w:abstractNumId w:val=\"1\"/></w:num></w:numbering>"
+    props="<w:numPr><w:ilvl w:val=\"0\"/><w:numId w:val=\"7\"/></w:numPr>"
+    body=fn p -> "<w:p><w:pPr>"<>p<>"</w:pPr>"<>run.("item")<>"</w:p>" end
+    with_s=fn doc -> String.replace(doc,"xmlns:w=\"#{word}\"","xmlns:w=\"#{word}\" xmlns:s=\"#{strict}\"") end
+    for p <- [String.replace(props,"w:","s:"),String.replace(props,"w:val=\"7\"","s:val=\"7\"")] do
+      assert {:error,:invalid_word_namespace}=D.extract(zip.([{"word/document.xml",with_s.(xml.(body.(p)))},{"word/numbering.xml",number}]),"mixed-body.docx")
+    end
+    for n <- [String.replace(number,"<w:numFmt","<s:numFmt"),String.replace(number,"w:val=\"decimal\"","s:val=\"decimal\"")] do
+      assert {:error,:unsupported_docx_numbering}=D.extract(zip.([{"word/document.xml",xml.(body.(props))},{"word/numbering.xml",with_s.(n)}]),"mixed-numbering.docx")
+    end
+    styles="<w:styles xmlns:w=\"#{word}\" xmlns:s=\"#{strict}\"><w:docDefaults><w:rPrDefault><w:rPr><s:vanish/></w:rPr></w:rPrDefault></w:docDefaults></w:styles>"
+    assert {:error,:unsupported_docx_style_visibility}=D.extract(zip.([{"word/document.xml",xml.(body.(props))},{"word/numbering.xml",number},{"word/styles.xml",styles}]),"mixed-styles.docx")
+    strict_body=String.replace(xml.(body.(props)),word,strict)
+    strict_number=String.replace(number,word,strict)
+    assert {:error,:unsupported_docx_numbering}=D.extract(zip.([{"word/document.xml",xml.(body.(props))},{"word/numbering.xml",strict_number}]),"mixed-parts.docx")
+    assert {:error,:unsupported_docx_numbering}=D.extract(zip.([{"word/document.xml",strict_body},{"word/numbering.xml",number}]),"mixed-parts.docx")
+    strict_styles="<w:styles xmlns:w=\"#{strict}\"/>"
+    assert {:error,:unsupported_docx_numbering}=D.extract(zip.([{"word/document.xml",xml.(body.(props))},{"word/numbering.xml",number},{"word/styles.xml",strict_styles}]),"mixed-styles-part.docx")
+    strict_styles=String.replace(strict_styles,strict,word)
+    assert {:error,:unsupported_docx_numbering}=D.extract(zip.([{"word/document.xml",strict_body},{"word/numbering.xml",strict_number},{"word/styles.xml",strict_styles}]),"mixed-styles-part.docx")
+    assert {:ok,%{"segments"=>[%{"locator"=>%{"numbering"=>%{"label"=>"1."}}}]}}=
+      D.extract(zip.([{"word/document.xml",strict_body},{"word/numbering.xml",strict_number}]),"strict-list.docx")
+    ''')
+  end
+
+  @tag :docx_numbering
+  test "ambiguous, unsupported or revision-affected numbering refuses instead of guessing" do
+    pure(~S'''
+    valid="<w:numbering xmlns:w=\"#{word}\"><w:abstractNum w:abstractNumId=\"1\"><w:multiLevelType w:val=\"singleLevel\"/><w:lvl w:ilvl=\"0\"><w:start w:val=\"1\"/><w:numFmt w:val=\"decimal\"/><w:lvlText w:val=\"%1.\"/></w:lvl></w:abstractNum><w:num w:numId=\"7\"><w:abstractNumId w:val=\"1\"/></w:num></w:numbering>"
+    num="<w:numPr><w:ilvl w:val=\"0\"/><w:numId w:val=\"7\"/></w:numPr>"
+    docx=fn number,body -> zip.([{"word/document.xml",xml.(body)},{"word/numbering.xml",number}]) end
+    item=fn props,text -> "<w:p><w:pPr>#{props}</w:pPr>"<>run.(text)<>"</w:p>" end
+    for number <- [String.replace(valid,"singleLevel","multilevel"),String.replace(valid,"decimal","upperRoman"),
+      String.replace(valid,"%1.","%2."),String.replace(valid,"w:ilvl=\"0\"","w:ilvl=\"1\""),
+      String.replace(valid,"</w:num>","<w:lvlOverride w:ilvl=\"0\"><w:lvl w:ilvl=\"0\"/></w:lvlOverride></w:num>"),
+      String.replace(valid,"<w:num w:numId=\"7\">","<w:num w:numId=\"7\"><w:abstractNumId w:val=\"1\"/></w:num><w:num w:numId=\"7\">")] do
+      assert {:error,:unsupported_docx_numbering}=D.extract(docx.(number,item.(num,"content")),"bad.docx")
+    end
+    for props <- [String.replace(num,"w:val=\"7\"","w:val=\"8\""),String.replace(num,"w:val=\"0\"","w:val=\"1\""),
+      String.replace(num,"</w:numPr>","<w:numId w:val=\"7\"/></w:numPr>"),
+      String.replace(num,"<w:numId w:val=\"7\"/>","<w:numId w:val=\"7\"><w:unexpected/></w:numId>"),
+      String.replace(num,"<w:numId w:val=\"7\"/>","<w:numId w:val=\"7\">unexpected</w:numId>"),
+      "<w:rPr><w:vanish/></w:rPr>"<>num] do
+      assert {:error,:unsupported_docx_numbering}=D.extract(docx.(valid,item.(props,"content")),"bad.docx")
+    end
+    for body <- [item.(num,""),"<w:p><w:pPr>#{num}</w:pPr><w:ins>"<>run.("changed")<>"</w:ins></w:p>",
+      "<w:p><w:pPr>#{num}</w:pPr><w:r><w:rPr><w:vanish/></w:rPr><w:t>hidden</w:t></w:r></w:p>",
+      item.("<w:rPr><w:del/></w:rPr>"<>num,"changed")] do
+      assert {:error,:unsupported_docx_numbering}=D.extract(docx.(valid,body),"bad.docx")
+    end
+    removed="<w:del>"<>item.(num,"removed")<>"</w:del>"
+    {:ok,visible}=D.extract(docx.(valid,item.(num,"first")<>removed<>item.(num,"second")),"deleted.docx")
+    assert Enum.map(visible["segments"],& &1["text"])==["first","second"]
+    assert Enum.map(visible["segments"],& &1["locator"]["numbering"]["ordinal"])==[1,2]
+    ''')
+  end
+
   test "document defaults and paragraph or character inheritance suppress hidden text" do
     pure(~S'''
     extract=fn style_body,body ->
@@ -267,7 +424,7 @@ defmodule Ipse.KnowledgeDocumentsFidelityTest do
     assert Map.take(first["locator"],~w(kind table row cell))==%{"kind"=>"table_cell","table"=>1,"row"=>1,"cell"=>1}
     assert Map.take(second["locator"],~w(kind table row cell))==%{"kind"=>"table_cell","table"=>2,"row"=>1,"cell"=>1}
     assert result["status"]=="complete" and result["warnings"]==[]
-    assert result["extraction_version"]=="ipse-documents-v15"
+    assert result["extraction_version"]=="ipse-documents-v16"
     ''')
   end
 
@@ -323,11 +480,11 @@ defmodule Ipse.KnowledgeDocumentsFidelityTest do
     for body <- [
       "<w:p>"<>run.("already emitted")<>"<w:pPr><w:pStyle w:val=\"a\"/></w:pPr></w:p>",
       "<w:p><w:pPr><w:pStyle w:val=\"a\"/><w:pStyle w:val=\"a\"/></w:pPr>"<>run.("duplicate")<>"</w:p>",
-      "<w:p><w:r><w:t>already emitted</w:t><w:rPr><w:rStyle w:val=\"b\"/></w:rPr></w:r></w:p>",
-      "<w:p><w:pPr><w:numPr/></w:pPr>"<>run.("numbered")<>"</w:p>"
+      "<w:p><w:r><w:t>already emitted</w:t><w:rPr><w:rStyle w:val=\"b\"/></w:rPr></w:r></w:p>"
     ] do
       assert {:error,:unsupported_docx_style_visibility}=extract.(style.("paragraph","a","")<>style.("character","b",""),body)
     end
+    assert {:error,:unsupported_docx_numbering}=extract.(style.("paragraph","a",""),"<w:p><w:pPr><w:numPr/></w:pPr>"<>run.("numbered")<>"</w:p>")
     for styles <- [String.duplicate(style.("paragraph","a",""),513),
       "<w:docDefaults/><w:docDefaults/>",
       "<w:docDefaults><w:rPrDefault><w:rPr><w:vanish w:val=\"bad\"/></w:rPr></w:rPrDefault></w:docDefaults>"] do
@@ -523,7 +680,7 @@ defmodule Ipse.KnowledgeDocumentsFidelityTest do
       {start,count}=:binary.match(payload["text"],quote)
       chunk=Enum.find(chunks,&(start >= &1["start_byte"] and start+count <= &1["end_byte"]))
       {:ok,citation}=E.citation(source,chunk,start,start+count)
-      assert citation["document"]["extraction_version"]=="ipse-documents-v15"
+      assert citation["document"]["extraction_version"]=="ipse-documents-v16"
       assert citation["document"]["locator"]["reference_site"]["byte_offset"]==5
       assert E.valid_span?(source,citation)
       refute E.valid_span?(source,put_in(citation,["document","locator","reference_site","byte_offset"],4))
