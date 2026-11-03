@@ -346,10 +346,15 @@ defmodule Ipse.Session.StoredSourcesTest do
                :inactive
              end)
 
+    owner = self()
+
     assert {:error, :collection_source_refused} =
              StoredSources.with_shareable_union(active, nil, [c.proof, c.proof], fn _, _, _ ->
-               flunk("duplicate proof admitted")
+               send(owner, :duplicate_source_reached_callback)
+               :unexpected
              end)
+
+    refute_receive :duplicate_source_reached_callback, 100
   end
 
   test "losing either grouped source owner withholds the callback result", c do
@@ -568,7 +573,13 @@ defmodule Ipse.Session.StoredSourcesTest do
   end
 
   test "a shared original lease refuses duplicate, cross-session and active-session proofs", c do
-    callback = fn _, _ -> flunk("invalid source set reached the callback") end
+    owner = self()
+
+    callback = fn _, _ ->
+      send(owner, :invalid_source_set_reached_callback)
+      :unexpected
+    end
+
     assert {:error, _} = StoredSources.with_shareable_verified_many(c.context, [], callback)
 
     assert {:error, _} =
@@ -595,6 +606,8 @@ defmodule Ipse.Session.StoredSourcesTest do
 
                :outer
              end)
+
+    refute_receive :invalid_source_set_reached_callback, 100
   end
 
   test "the native retained lock is held through the source callback", c do
@@ -1823,10 +1836,15 @@ defmodule Ipse.Session.StoredSourcesTest do
     assert :one = StoredSources.with_verified(context, %{}, [c.proof], fn [_] -> :one end)
     assert :other = StoredSources.with_verified(context, %{}, [proof], fn [_] -> :other end)
 
+    owner = self()
+
     assert {:error, :collection_source_refused} =
              StoredSources.with_verified(context, %{}, [c.proof, proof], fn _ ->
-               flunk("multiple source scans exceeded their aggregate byte budget")
+               send(owner, :oversized_source_set_reached_callback)
+               :unexpected
              end)
+
+    refute_receive :oversized_source_set_reached_callback, 100
 
     invalid = Map.put(c.proof, "version_id", Usage.id())
     assert {:ok, statuses} = StoredSources.snapshot(context, [c.proof, invalid])
@@ -1841,9 +1859,12 @@ defmodule Ipse.Session.StoredSourcesTest do
                %{},
                [invalid],
                fn _ ->
-                 flunk("strict use accepted partial preflight status")
+                 send(owner, :partial_source_reached_callback)
+                 :unexpected
                end
              )
+
+    refute_receive :partial_source_reached_callback, 100
 
     assert {:ok, lock} = Runner.lock(c.lock_path)
     assert :ok = Runner.unlock(lock)
