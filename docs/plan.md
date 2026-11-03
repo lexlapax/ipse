@@ -46,6 +46,96 @@ Qualified readiness retains its recorded human/live limits.
 | [P32: voice and media](#p32-voice-and-realtime-media) | Deferred; unimplemented; formerly P31 | Select media contracts and device/service validation in a later increment |
 | [Apache-2.0 transition](#license-transition) | Complete at `7bb642b` | Preserve runtime, dependency and extension license boundaries |
 
+### Execution order for P30 and P31
+
+Work in the lanes below can proceed in parallel when their file ownership and
+verification resources do not conflict. A dependency says which implementation
+must exist before an integrated result is possible; an unrun test or review is an
+open evidence gate, not a reason to defer unrelated implementation. Finish a
+lane's observable journey and its stated checks before calling that lane done.
+
+The immediate priority is the notes journey. In parallel, assign one owner to
+document storage and faithful ingestion, and one to the reviewed decision-engine
+setup and consumer. Keep other work queued unless its owner can make a complete,
+independent change without competing for the same files or verification resources.
+Do not continue the annual storage-only calendar as a substitute for the integrated
+workload: first add its missing Session turns and freeze the intake/mix evidence.
+
+For each active lane, name the next end-to-end result, its owner, required inputs
+and observable pass/fail checks. Use focused tests during implementation; preserve
+failures and stop repeating a probe when it does not resolve the user journey.
+Revisit the design when a boundary or workload makes the current approach
+insufficient. Serialize native/Mix/PTY checks until independent build and runtime
+isolation is verified; run the long full suite on a stable integration candidate
+and again after material repairs, rather than after every small edit. Publish a
+checkpoint with completed work, the next gate and remaining uncertainty. Give
+time estimates only after measuring the integrated workload and available capacity.
+
+1. **Notes journey — P31B/C0/D0/E.** Finish protected capture, current recall and
+   their failure/recovery paths, and implement the displayed assistant-proposal
+   card and exact in-chat acceptance. The result must exercise the actual Session,
+   terminal, source ownership, saved consent and provider request, including stale
+   sources, revocation, owner loss and resume without replay. Recall must find
+   fitting eligible notes even when earlier indexed notes are unavailable; merely
+   raising a fixed candidate limit does not establish that coverage. Any paging
+   or discovery design must retain current-source and ownership checks. The notes
+   release checkpoint additionally depends on C1a below; a small fixture alone
+   does not close it.
+2. **Sustainable notes — P31A/C1a.** Complete the pilot evidence within its
+   authorized bounds, record unavailable routes, and freeze intake and retention
+   mix. Then run the integrated 30-, 90- and 365-day
+   workload with actual Session turns and protected lifecycle effects. Include
+   two overlapping OS processes, offline/restart and import scenarios,
+   representative and maximum values, retained history and suppression, and
+   measured resource peaks. The selected requirement is **10,000 mixed
+   update/correct/forget changes in addition to normal annual work**. The current
+   audited continuation covers three simulated storage-only days, 172 effects and
+   82 additional changes; it has executed **zero of 14,600 planned main turns**.
+   It is not annual acceptance.
+   Workload tooling can advance alongside the notes journey; the completed
+   integrated workload depends on the Session and recall behavior it exercises.
+3. **Documents and local retrieval — P31C1b/D1/F.** Independently finish document
+   extraction, source-bound citation and installed acquisition/recovery journeys.
+   In parallel, complete the document store's populated capacity, publication,
+   cleanup and migration work. Final document and local-retrieval qualification
+   depends on the applicable C1b storage and model contracts; Word may qualify
+   separately from PDF. Word list markers need versioned source-faithful locator
+   and storage contracts; generated numbering must not be presented as quoted
+   source text. Check source replacement, interrupted work, exact original locators,
+   installed artifacts and independent quality, not just parser fixtures.
+4. **Planning and prompt assistance — P31I.** Finish and qualify the existing
+   planning and draft operator paths, including crash/resource boundaries and
+   cancelled-draft carryover. Implement deferred accepted plan decisions and an
+   explicit post-exit save with current-source and permission checks; ordinary
+   exit must not publish them. The terminal work can proceed independently, but
+   decision acceptance depends on the relevant P31E path, and retrieve-first
+   clarification depends on the notes and document paths it uses.
+5. **Decision engines — P30A–E.** Complete the host protocol and protected
+   consumer integration independently of document/graph work. Enforce the explicit
+   finite allowance across the whole authorized experiment, using the existing
+   shared budget and one durable run if sufficient; a per-Session budget alone
+   does not prove a cap across separate Sessions. Review the grant and explicit
+   artifact/route setup before enabling calls. After the notes journey supplies the required
+   consumer, run the frozen bounded experiments and compare them with engine-free
+   baselines. Close each with a supported, rejected/no-benefit or explicitly
+   unverified disposition as allowed by P30; live account evidence and paid calls
+   remain subject to their separate bounds.
+6. **Relationships and research — P31G/H.** Once their required note and storage
+   contracts are stable, implement source-bound relationships, conflicts and
+   evidence transfer with attribution and invalidation. Integrated relationship
+   acceptance follows E and uses C1b where graph storage is selected; transfer
+   must qualify each store it actually uses rather than assume an optional backend
+   is available. Do not create placeholder implementations while those contracts
+   are unsettled.
+7. **Final acceptance — P31J and the goal handoff.** On the final integrated
+   source, serialize the required native/Mix/PTY verification, full source suite,
+   demo, package and installed checks; complete the platform, quality, safety,
+   migration and whole-manual checks required below. Conduct the adversarial
+   post-implementation audit, repair its findings, and prepare the reviewer
+   handoff. Report fixture, live-account, human and platform evidence separately,
+   including any scope the existing acceptance rules permit to remain experimental
+   or unverified. Publication remains separately authorized.
+
 Acceptance is bounded by the evidence for each milestone. Internal source review,
 external critique, static scanning, fixture execution, hosted platform checks and
 live accounts establish different claims. P24/P25 acceptance is supervised use in
@@ -65,8 +155,8 @@ Historical media proposals retain their contemporary P24, P28 or P31 numbering;
 the [previous scopes](archive/2026-10-26-p30-p31-plan/prior-milestones.md) are preserved.
 The [current design](knowledge-design.md) and
 [latest audit disposition](archive/2026-10-26-p30-p31-final-handoff/index.md) link source
-research, settled user choices and concrete contracts. P31A is the next implementation
-entry point; P30A/B is independent parallel work.
+research, settled user choices and concrete contracts. P31A retains the open pilot
+and qualification work; P30A/B can proceed independently.
 The [implementation handoff](archive/2026-10-26-p30-p31-final-handoff/implementation.md)
 specifies P31A's bounded first work and required evidence.
 The developer authorized full P30/P31 implementation on 2026-10-26, with full tests,
