@@ -199,7 +199,7 @@ defmodule IpseKnowledge.KnowledgeCaptureTest do
   test "pending proposals do not enter shadow assessment" do
     state = start("assistant_proposal")
     {_, state} = request(respond(state, %{"record" => nil}))
-    {_, state} = request(respond(state, %{"record" => nil, "generation" => 7}))
+    {_, state} = request(respond(state, %{"records" => [], "generation" => 7}))
     {%{"status" => "saved", "category" => "pending"}, %{phase: :idle}} =
       value(shadow_respond(state, %{"generation" => 8}))
   end
@@ -214,7 +214,7 @@ defmodule IpseKnowledge.KnowledgeCaptureTest do
     start = byte_size("The report says: ")
     receipt = %{quote_receipt(page) | "start_byte" => start, "end_byte" => start + byte_size(quote), "quote_sha256" => Ipse.JSON.sha256(quote)}
     {_, state} = request(respond(state, receipt))
-    {%{"request" => %{"key" => "pending." <> _}}, _} = request(respond(state, %{"record" => nil}))
+    {%{"request" => %{"op" => "index", "prefix" => "pending." <> _}}, _} = request(respond(state, %{"record" => nil}))
   end
 
   test "duplicate capture never overwrites or renews an existing record" do
@@ -223,6 +223,25 @@ defmodule IpseKnowledge.KnowledgeCaptureTest do
 
     {%{"status" => "existing", "renewed" => false, "revision" => 3}, _} =
       value(respond(state, %{"record" => %{"revision" => 3}, "generation" => 9}))
+  end
+
+  test "pending duplicate detection uses metadata only and never renews a match" do
+    state = start("assistant_proposal")
+    {%{"request" => %{"op" => "index", "prefix" => key, "cursor" => nil, "limit" => 1}}, state} =
+      request(respond(state, %{"record" => nil}))
+    assert "pending." <> _ = key
+
+    {%{"status" => "existing", "key" => ^key, "revision" => 3, "renewed" => false}, _} =
+      value(respond(state, %{"records" => [%{"key" => key, "revision" => 3}], "generation" => 9}))
+
+    for records <- [[], [%{"key" => key <> ".suffix", "revision" => 4}]] do
+      {commit, _} = request(respond(state, %{"records" => records, "generation" => 9}))
+      assert commit["request"]["expected_generation"] == 9
+      assert [%{"key" => ^key, "expected_revision" => 0}] = commit["request"]["changes"]
+    end
+
+    {%{"status" => "refused", "code" => "invalid_index_progress"}, _} =
+      value(respond(state, %{"records" => [%{"key" => "other", "revision" => 1}], "generation" => 9}))
   end
 
   test "saved session-only suppression stops paraphrases before any commit" do
@@ -251,10 +270,10 @@ defmodule IpseKnowledge.KnowledgeCaptureTest do
   test "assistant claims remain pending and leave queue capacity to the protected host" do
     state = start("assistant_proposal")
 
-    {%{"request" => %{"key" => "pending." <> _}}, state} =
+    {%{"request" => %{"op" => "index", "prefix" => "pending." <> _}}, state} =
       request(respond(state, %{"record" => nil}))
 
-    {commit, _} = request(respond(state, %{"record" => nil, "generation" => 5}))
+    {commit, _} = request(respond(state, %{"records" => [], "generation" => 5}))
     assert commit["op"] == "collection.managed"
     assert commit["request"]["expected_generation"] == 5
     assert {:ok, commit["recipe_sha256"]} ==
@@ -317,7 +336,7 @@ defmodule IpseKnowledge.KnowledgeCaptureTest do
     args = ["--erl", "+S 2:2"] ++ Enum.flat_map(paths, &["-pa", &1]) ++ ["-e", @suite]
     {output, status} = System.cmd(System.find_executable("elixir"), args, stderr_to_stdout: true)
     assert status == 0, output
-    assert output =~ "11 passed"
+    assert output =~ "12 passed"
     assert Enum.map(modules, &:code.is_loaded/1) == before
   end
 end

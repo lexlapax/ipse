@@ -71,7 +71,8 @@ does not create that index. These controls establish source-runtime behavior;
 rendered Word fidelity and full-profile capacity require separate qualification.
 
 For the exact archive from a reviewed checkout, repeat the same fixture using
-the packaged runtime and its three inert bundles:
+the packaged runtime and its four inert bundles: `corpus-collection-documents`,
+`corpus-state-documents`, `knowledge`, and `knowledge-decision-shadow`:
 
 ```sh
 IPSE_DOCUMENT_PROOF_PARENT=$(mktemp -d)
@@ -170,9 +171,18 @@ its own source check. These pure calculations grant no live permission.
 
 `Records.saved_override/2` validates a complete wrapper with separate native
 operator evidence under `evidence.sources`. Bare policies, foreign lineages and
-weak-origin wrappers refuse. When the internal override marker is also a possible
-user reason, `:absent` is only a host assertion requiring a fresh protected absence
-check. The host authenticates the exact prior choice before applying a change.
+weak-origin wrappers refuse. Under the temporary managed-read containment, an
+existing override value has no selected current-literal recipe and its generic
+worker read is refused, so capture paths needing it cannot proceed. Do not
+remove or bypass that override. Generic reads and scans also refuse unrelated or
+pending values without a selected authenticated literal recipe; metadata-only
+indexes and empty gets remain available. Pending capture checks duplicates by an
+exact-prefix metadata index, without reading or renewing the proposal. Restoring
+safe unrelated/override value reads requires an independently reviewed,
+same-root host classification and is not complete. When the internal override
+marker is also a possible user reason, `:absent` is only a host assertion requiring
+a fresh protected absence check. The host authenticates the exact prior choice
+before applying a change.
 Public forgetting and session-only retention use their reducing management route;
 pin/automatic/duration use a separate guarded effect. Interactive literal
 correction and supersession have their own Session-owned source/policy review

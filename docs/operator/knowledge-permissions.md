@@ -22,6 +22,16 @@ Existing-note reads, permission inspection/revocation and elapsed-policy
 reclamation have their own rules. Full capture readiness remains false; saving
 permission and one successful path do not qualify every source or later use.
 
+As a temporary containment, a managed worker cannot read a stored value unless
+the selected current-literal recipe authenticates it. This includes pending
+proposal values, saved override values and unrelated values in a managed
+collection; a returned scan page containing one is refused as a whole. Metadata-only indexes
+remain available. Pending duplicate detection uses that metadata and does not
+renew a proposal. A capture that needs an existing override may now be refused;
+do not remove the override to make it proceed. Inspect the Session journal and
+the existing note or proposal before new work, especially if an earlier effect
+was uncertain. Standalone pending review uses its separate protected path.
+
 First install or build Ipse and [save your provider choice](configuration.md#choose-and-save-a-provider).
 Use a private Ipse home and an existing workspace. These commands use that saved
 provider; provider/model overrides and `--yes` are refused during knowledge setup.

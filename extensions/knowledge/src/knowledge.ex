@@ -463,9 +463,16 @@ defmodule IpseKnowledge.Knowledge do
 
       case Records.capture(args, state.ctx.proof, state.ctx.now, override) do
         {:ok, key, value} ->
-          collection(%{"op" => "get", "key" => key}, %{
+          pending? = String.starts_with?(key, "pending.")
+
+          request =
+            if pending?,
+              do: %{"op" => "index", "prefix" => key, "cursor" => nil, "limit" => 1},
+              else: %{"op" => "get", "key" => key}
+
+          collection(request, %{
             state
-            | phase: :existing,
+            | phase: if(pending?, do: :existing_pending, else: :existing),
               ctx: Map.merge(state.ctx, %{key: key, value: value})
           })
 
@@ -495,6 +502,31 @@ defmodule IpseKnowledge.Knowledge do
 
       true ->
         commit(snapshot["generation"], state)
+    end
+  end
+
+  defp advance(:existing_pending, %{"records" => records, "generation" => generation}, state)
+       when is_list(records) and is_integer(generation) and generation >= 0 do
+    case records do
+      [%{"key" => key, "revision" => revision}]
+      when key == state.ctx.key and is_integer(revision) and revision > 0 ->
+        finish(state, %{
+          "status" => "existing",
+          "key" => key,
+          "revision" => revision,
+          "renewed" => false
+        })
+
+      [] ->
+        commit(generation, state)
+
+      [%{"key" => key}] when is_binary(key) and key > state.ctx.key ->
+        if String.starts_with?(key, state.ctx.key),
+          do: commit(generation, state),
+          else: refused(state, :invalid_index_progress)
+
+      _ ->
+        refused(state, :invalid_index_progress)
     end
   end
 

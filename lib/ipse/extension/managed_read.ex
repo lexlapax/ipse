@@ -143,9 +143,10 @@ defmodule Ipse.Extension.ManagedRead do
 
       case selected do
         [] ->
-          if match?(%{"value" => %{"kind" => "accepted_decision"}}, record),
-            do: {:halt, @error},
-            else: {:cont, {:ok, acc}}
+          # A record without a selected literal recipe has no authenticated
+          # current-use classification. It may be a historical proposal whose
+          # recipe is no longer present, regardless of key or value shape.
+          {:halt, @error}
 
         [recipe] ->
           accepted? = match?(%{"value" => %{"kind" => "accepted_decision"}}, record)

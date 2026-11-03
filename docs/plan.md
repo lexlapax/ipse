@@ -105,7 +105,10 @@ following limits until the end-to-end paths are qualified:
    raising a fixed candidate limit does not establish that coverage. Any paging
    or discovery design must retain current-source and ownership checks. The notes
    release checkpoint additionally depends on C1a below; a small fixture alone
-   does not close it.
+   does not close it. A [pending-read containment](archive/2026-10-26-p30-p31-implementation/pending-source-containment-20261103.md)
+   now refuses unclassified managed values rather than exposing a proposal after
+   loss of its source. It also temporarily refuses generic reads of saved
+   overrides and unrelated managed values; a safe compatible path remains open.
 2. **Sustainable notes — P31A/C1a.** Complete the pilot evidence within its
    authorized bounds, record unavailable routes, and freeze intake and retention
    mix. Then run the integrated 30-, 90- and 365-day

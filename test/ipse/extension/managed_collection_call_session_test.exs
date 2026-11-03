@@ -150,6 +150,10 @@ defmodule Ipse.Extension.ManagedCollectionCallSessionTest do
         String.starts_with?(state["mode"], "legacy_get:") ->
           key = String.replace_prefix(state["mode"], "legacy_get:", "")
           call(%{"op" => "collection.call", "request" => %{"op" => "get", "key" => key}}, Map.put(state, "step", "done"))
+        String.starts_with?(state["mode"], "raw_scan:") ->
+          [number | cursor] = state["mode"] |> String.replace_prefix("raw_scan:", "") |> String.split(":", parts: 2)
+          after_key = case cursor do [] -> nil; [key] -> key end
+          call(%{"op" => "collection.call", "request" => %{"op" => "scan", "generation" => String.to_integer(number), "after" => after_key, "limit" => 4}}, Map.put(state, "step", "done"))
         state["mode"] == "ordinary" ->
           call(%{"op" => "tool.call", "name" => "write", "timeout_ms" => 1000, "arguments" => %{"path" => "forbidden", "content" => "denied"}}, Map.put(state, "step", "done"))
         state["mode"] in ["capture_ab", "capture_ab_publication"] ->
@@ -748,7 +752,7 @@ defmodule Ipse.Extension.ManagedCollectionCallSessionTest do
           "enabled" => true,
           "options" =>
             Map.merge(
-              %{"trace" => trace, "recipe" => JSON.digest([recipe()])},
+              %{"trace" => trace, "recipe" => JSON.digest([recipe(c)])},
               if(c[:metadata_version] == 3, do: %{"metadata_version" => 3}, else: %{})
             ),
           "order" => 0,
@@ -1284,12 +1288,12 @@ defmodule Ipse.Extension.ManagedCollectionCallSessionTest do
     {:ok, catalog} = Catalog.snapshot(config)
     descriptors = catalog["entries"]
 
-    constraints = constraints()
+    constraints = constraints(c)
 
     selection = %{
       "version" => 2,
       "constraints" => %{JSON.digest([constraints]) => constraints},
-      "recipes" => %{JSON.digest([recipe()]) => recipe()},
+      "recipes" => %{JSON.digest([recipe(c)]) => recipe(c)},
       "activation" => nil,
       "domain" => "knowledge",
       "namespace" => namespace,
@@ -1327,7 +1331,7 @@ defmodule Ipse.Extension.ManagedCollectionCallSessionTest do
                   "outer_sha256" => JSON.digest([descriptor]),
                   "inner_op" => "collection.managed",
                   "constraints_sha256" => JSON.digest([constraints]),
-                  "recipe_sha256" => JSON.digest([recipe()])
+                  "recipe_sha256" => JSON.digest([recipe(c)])
                 }
               ],
               else: []
@@ -1339,7 +1343,7 @@ defmodule Ipse.Extension.ManagedCollectionCallSessionTest do
                 "class" => "collection.read",
                 "outer_sha256" => JSON.digest([descriptor]),
                 "inner_op" => "collection.call",
-                "managed_read" => [JSON.digest([recipe()])]
+                "managed_read" => [JSON.digest([recipe(c)])]
               }
             ]
         end),
@@ -1550,6 +1554,19 @@ defmodule Ipse.Extension.ManagedCollectionCallSessionTest do
       "override_prefix" => "override."
     }
   end
+
+  defp recipe(c) do
+    recipe = recipe()
+
+    recipe =
+      if c[:pending_expired_fixture],
+        do: put_in(recipe, ["rules", Access.at(0), "max_age_ms"], 5_000),
+        else: recipe
+
+    recipe
+  end
+
+  defp constraints(_), do: constraints()
 
   defp build_variant(root, name, source, manifest) do
     File.mkdir_p!(Path.join(root, "ebin"))
@@ -3884,6 +3901,379 @@ defmodule Ipse.Extension.ManagedCollectionCallSessionTest do
     refute Jason.encode!(result) =~ "Synthetic café observation"
     refute Enum.any?(events, &(&1["type"] == "managed_read_observed"))
     assert {:ok, _} = Session.restore_context(events)
+  end
+
+  @tag :pending_original_source_boundary
+  @tag :registered_capture_sequence
+  @tag metadata_version: 3, registered_main: true, capture_write: true
+  test "a managed worker cannot read a pending proposal after its original source is missing",
+       c do
+    pending_source_boundary(c)
+  end
+
+  @tag :pending_original_source_boundary
+  @tag :registered_capture_sequence
+  @tag metadata_version: 3,
+       registered_main: true,
+       capture_write: true,
+       pending_expired_fixture: true
+  test "a managed worker cannot read an expired pending proposal", c do
+    pending_source_boundary(c)
+  end
+
+  @tag :pending_original_source_boundary
+  @tag :registered_capture_sequence
+  @tag metadata_version: 3,
+       registered_main: true,
+       capture_write: true,
+       pending_custom_fixture: true
+  test "a removed custom proposal recipe cannot expose its historical record by get or scan", c do
+    pending_source_boundary(c)
+  end
+
+  defp pending_source_boundary(c) do
+    capture = start(c)
+    source_id = Session.info(capture).id
+    assert :ok = Session.prompt(capture, "Synthetic café observation")
+    assert_receive {:ipse, ^capture, {:done, :ok}}, 15_000
+    assert {:ok, source_events} = Journal.load(c.dir, source_id)
+
+    if c[:pending_expired_fixture] do
+      action =
+        Enum.find(
+          source_events,
+          &(get_in(&1, ["request", "op"]) == "collection.managed" and
+              &1["type"] == "extension_action_result")
+        )
+
+      deadline = get_in(action, ["outcome", "value", "normalization", "valid_until_ms"])
+      assert is_integer(deadline)
+      Process.sleep(max(deadline - System.system_time(:millisecond) + 10, 0))
+      assert System.system_time(:millisecond) >= deadline
+    end
+
+    assert :ok = Session.close_confirmed(capture)
+    assert length(Task.await(c.provider_server, 5000)) == 2
+
+    snapshot = collection_read(c, %{"op" => "snapshot"})
+
+    assert {:ok, page} =
+             Ipse.Extension.Collection.scan_visible(
+               SemanticAdmission.collection_root(c.home),
+               c.namespace,
+               %{
+                 "op" => "scan",
+                 "generation" => snapshot["generation"],
+                 "after" => nil,
+                 "limit" => 4
+               },
+               Ipse.Usage.id()
+             )
+
+    assert [record] = page["records"]
+
+    assert "pending." <> _ = record["key"]
+    assert [%{"session_id" => ^source_id}] = get_in(record, ["value", "evidence", "sources"])
+
+    {record, snapshot} =
+      if c[:pending_custom_fixture] do
+        custom_key = String.replace_prefix(record["key"], "pending.", "queue.")
+        custom_constraints = Map.put(constraints(), "key_prefix", "queue.")
+
+        custom_recipe =
+          recipe()
+          |> Map.put("key_prefix", "queue.")
+          |> Map.put("constraints_sha256", JSON.digest([custom_constraints]))
+
+        request = %{
+          "op" => "commit",
+          "expected_generation" => snapshot["generation"],
+          "advance_floor" => true,
+          "changes" => [
+            %{"key" => custom_key, "expected_revision" => 0, "value" => record["value"]}
+          ]
+        }
+
+        options = %{
+          request: request,
+          recipe: custom_recipe,
+          constraints: custom_constraints,
+          verified_sources: record["value"]["evidence"]["sources"],
+          policy_sha256: JSON.sha256("synthetic historical policy"),
+          now_ms: System.system_time(:millisecond)
+        }
+
+        assert {:ok, seeded} =
+                 Ipse.Extension.Collection.execute_managed(
+                   SemanticAdmission.collection_root(c.home),
+                   c.namespace,
+                   request,
+                   Ipse.Usage.id(),
+                   JSON.digest([custom_recipe]),
+                   fn witness, read ->
+                     Ipse.Extension.Collection.Normalizer.normalize(witness, read, options)
+                   end
+                 )
+
+        assert seeded["normalization"]["version"] == 2
+        assert seeded["normalization"]["eligibility"] == "never_current"
+        updated = collection_read(c, %{"op" => "snapshot"})
+        result = collection_read(c, %{"op" => "get", "key" => custom_key})
+        assert result["record"]["key"] == custom_key
+        {result["record"], updated}
+      else
+        {record, snapshot}
+      end
+
+    c = if c[:pending_custom_fixture], do: literal_only_reader(c), else: c
+
+    if c[:pending_custom_fixture] do
+      fake_literal = "note." <> String.duplicate("a", 64)
+      override_key = "override." <> record["value"]["lineage"]
+
+      assert {:ok, _} =
+               Ipse.Extension.Collection.execute(
+                 SemanticAdmission.collection_root(c.home),
+                 c.namespace,
+                 %{
+                   "op" => "commit",
+                   "expected_generation" => snapshot["generation"],
+                   "advance_floor" => false,
+                   "changes" => [
+                     %{
+                       "key" => "alpha.unrelated",
+                       "expected_revision" => 0,
+                       "value" => %{"text" => "Synthetic unrelated value"}
+                     },
+                     %{
+                       "key" => fake_literal,
+                       "expected_revision" => 0,
+                       "value" =>
+                         Map.put(record["value"], "text", "Synthetic unsigned fake literal")
+                     },
+                     %{
+                       "key" => override_key,
+                       "expected_revision" => 0,
+                       "value" => %{
+                         "kind" => "retention_override",
+                         "text" => "Synthetic override marker"
+                       }
+                     }
+                   ]
+                 },
+                 Ipse.Usage.id()
+               )
+
+      after_fixture = collection_read(c, %{"op" => "snapshot"})
+
+      assert {:ok, mixed} =
+               Ipse.Extension.Collection.scan_visible(
+                 SemanticAdmission.collection_root(c.home),
+                 c.namespace,
+                 %{
+                   "op" => "scan",
+                   "generation" => after_fixture["generation"],
+                   "after" => nil,
+                   "limit" => 4
+                 },
+                 Ipse.Usage.id()
+               )
+
+      assert Enum.any?(mixed["records"], &(&1["key"] == "alpha.unrelated"))
+
+      assert Enum.any?(
+               mixed["records"],
+               &(&1["key"] == String.replace_prefix(record["key"], "queue.", "pending."))
+             )
+
+      reader = start(c)
+
+      assert :ok =
+               Session.invoke_export(reader, :command, "ext__capture__inspect", %{
+                 "mode" => "raw_scan:" <> Integer.to_string(after_fixture["generation"])
+               })
+
+      assert_receive {:ipse, ^reader, {:done, :ok}}, 15_000
+      assert {:ok, events} = Journal.load(c.dir, Session.info(reader).id)
+      action = Enum.find(events, &(&1["type"] == "extension_action_result"))
+
+      assert action["outcome"] == %{
+               "status" => "failed",
+               "value" => %{"code" => "collection_source_refused"}
+             }
+
+      assert :ok = Session.close_confirmed(reader)
+
+      target_reader = start(c)
+
+      assert :ok =
+               Session.invoke_export(target_reader, :command, "ext__capture__inspect", %{
+                 "mode" =>
+                   "raw_scan:" <>
+                     Integer.to_string(after_fixture["generation"]) <>
+                     ":" <>
+                     String.replace_prefix(record["key"], "queue.", "pending.")
+               })
+
+      assert_receive {:ipse, ^target_reader, {:done, :ok}}, 15_000
+      assert {:ok, target_events} = Journal.load(c.dir, Session.info(target_reader).id)
+      target_action = Enum.find(target_events, &(&1["type"] == "extension_action_result"))
+
+      assert target_action["outcome"] == %{
+               "status" => "failed",
+               "value" => %{"code" => "collection_source_refused"}
+             }
+
+      refute Jason.encode!(target_action) =~ "Synthetic café observation"
+      assert :ok = Session.close_confirmed(target_reader)
+
+      fake_reader = start(c)
+
+      assert :ok =
+               Session.invoke_export(fake_reader, :command, "ext__capture__inspect", %{
+                 "mode" => "legacy_get:" <> fake_literal
+               })
+
+      assert_receive {:ipse, ^fake_reader, {:done, :ok}}, 15_000
+      assert {:ok, fake_events} = Journal.load(c.dir, Session.info(fake_reader).id)
+      fake_action = Enum.find(fake_events, &(&1["type"] == "extension_action_result"))
+      assert get_in(fake_action, ["outcome", "status"]) == "failed"
+      refute Jason.encode!(fake_action) =~ "Synthetic unsigned fake literal"
+      assert :ok = Session.close_confirmed(fake_reader)
+
+      for {other_key, marker} <- [
+            {"alpha.unrelated", "Synthetic unrelated value"},
+            {override_key, "Synthetic override marker"}
+          ] do
+        other_reader = start(c)
+
+        assert :ok =
+                 Session.invoke_export(other_reader, :command, "ext__capture__inspect", %{
+                   "mode" => "legacy_get:" <> other_key
+                 })
+
+        assert_receive {:ipse, ^other_reader, {:done, :ok}}, 15_000
+        assert {:ok, other_events} = Journal.load(c.dir, Session.info(other_reader).id)
+        other_action = Enum.find(other_events, &(&1["type"] == "extension_action_result"))
+
+        assert other_action["outcome"] == %{
+                 "status" => "failed",
+                 "value" => %{"code" => "collection_source_refused"}
+               }
+
+        refute Jason.encode!(other_action) =~ marker
+        assert :ok = Session.close_confirmed(other_reader)
+      end
+    end
+
+    read = fn ->
+      reader = start(c)
+
+      assert :ok =
+               Session.invoke_export(reader, :command, "ext__capture__inspect", %{
+                 "mode" => "legacy_get:" <> record["key"]
+               })
+
+      assert_receive {:ipse, ^reader, {:done, status}}, 15_000
+      assert {:ok, events} = Journal.load(c.dir, Session.info(reader).id)
+      assert :ok = Session.close_confirmed(reader)
+      action = Enum.find(events, &(&1["type"] == "extension_action_result"))
+
+      dependencies =
+        for %{"type" => "managed_read_observed", "dependencies" => deps} <- events,
+            dependency <- deps,
+            do: dependency["version"]
+
+      {status, action, dependencies}
+    end
+
+    assert {:ok, current, current_dependencies} = read.()
+
+    assert current["outcome"] == %{
+             "status" => "failed",
+             "value" => %{"code" => "collection_source_refused"}
+           }
+
+    assert current_dependencies == []
+
+    source = Path.join(c.dir, source_id <> ".jsonl")
+    held = source <> ".pending-read-held"
+    before = File.stat!(source)
+    hash = JSON.sha256(File.read!(source))
+    refute File.exists?(held)
+    File.rename!(source, held)
+
+    try do
+      {status, missing, dependencies} = read.()
+
+      disclosed =
+        get_in(missing, ["outcome", "value", "record", "value", "text"]) ==
+          "Synthetic café observation"
+
+      IO.puts(
+        "PENDING_ORIGINAL_SOURCE_BOUNDARY " <>
+          Jason.encode!(%{
+            "session_status" => status,
+            "action_status" => get_in(missing, ["outcome", "status"]),
+            "code" => get_in(missing, ["outcome", "value", "code"]),
+            "disclosed" => disclosed,
+            "dependency_versions" => dependencies
+          })
+      )
+
+      refute disclosed,
+             "an admitted worker received pending text after the original journal was absent"
+
+      assert get_in(missing, ["outcome", "status"]) == "failed"
+      assert get_in(missing, ["outcome", "value", "code"]) == "collection_source_refused"
+      assert dependencies == []
+    after
+      if File.exists?(held) and not File.exists?(source), do: File.rename!(held, source)
+      restored = File.stat!(source)
+      assert restored.major_device == before.major_device and restored.inode == before.inode
+      assert JSON.sha256(File.read!(source)) == hash
+    end
+  end
+
+  defp literal_only_reader(c) do
+    assert {:ok, snapshot} = Consent.snapshot(c.control, c.binding["project_id"])
+    policy = snapshot["policy"]
+    constraint = Map.put(constraints(c), "key_prefix", "note.")
+
+    literal =
+      recipe(c)
+      |> Map.put("kind", "literal_source")
+      |> Map.put("key_prefix", "note.")
+      |> Map.put("constraints_sha256", JSON.digest([constraint]))
+
+    digest = JSON.digest([literal])
+
+    selection =
+      policy["settings"]
+      |> Map.drop(~w(instance identity_sha256))
+      |> Map.merge(Map.take(policy, ~w(limits period_ms expires_at_ms headless)))
+      |> Map.put("constraints", %{JSON.digest([constraint]) => constraint})
+      |> Map.put("recipes", %{digest => literal})
+      |> Map.update!("effects", fn effects ->
+        effects
+        |> Enum.filter(&(&1["class"] == "collection.read"))
+        |> Enum.map(&Map.put(&1, "managed_read", [digest]))
+      end)
+
+    [entry] = c.config.extensions
+    assert {:ok, updated} = SemanticConsent.prepare(c.binding, entry.identity, selection)
+
+    assert {:ok, _} =
+             Consent.replace(
+               c.control,
+               c.binding["project_id"],
+               snapshot["epoch"],
+               updated,
+               System.system_time(:millisecond)
+             )
+
+    assert {:ok, selected} = Ipse.Config.Semantics.selection(updated)
+    put_in(c, [:config, :semantic_selections], selected)
   end
 
   test "a live legacy reader rechecks managed namespace conversion at each actual operation", c do

@@ -65,6 +65,7 @@ nor resource/offline qualification. No daemon configuration or existing model wa
 
 ## P31A contracts and evidence
 
+- [Pending proposal generic-read containment](pending-source-containment-20261103.md) records the admitted-worker disclosure, fail-closed repair and deliberate override/custom-value availability limit; compatibility restoration remains open.
 - [Local-pilot pre-reservation refusal](pilot-local-refusal-20261103.md) records the pinned zero-inference inspection, empty attempt files and observed account-directory permission mismatch; the pilot was not retried and no reservation is recorded.
 - [Small worker-handoff diagnostic](worker-handoff-small-20261103.md) records a passing eight-note control and a failing trace-wrapper count guard; neither establishes the cause of the populated-cohort failure.
 - [Explicit sparse-paging fixture timeout](explicit-sparse-paging-timeout-20261103.md) preserves the first 33-note setup's terminal deadline and absence of a paging result.
