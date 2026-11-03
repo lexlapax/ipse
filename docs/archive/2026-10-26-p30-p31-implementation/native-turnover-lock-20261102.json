@@ -1,0 +1,307 @@
+{
+  "annual_qualification": false,
+  "base_commit": "a5aa2ca",
+  "controlled_fault": {
+    "first_inspection_error": "missing required scan operation identifier; read-only failure, source version not separately snapshotted",
+    "inspection": {
+      "control_sequence": 9,
+      "generation": 9,
+      "marker_present": true,
+      "new_record_count": 1,
+      "new_record_sha256": "6526acc533d4f1f526e2e7f348c1143328b73ce81f5811faa75d8e9bfaed36f0",
+      "qualification": false,
+      "root_sha256": "9985abb0059be820210415001cfa61df1ee125611de86a3658c5231cfad157c3",
+      "saved_sessions": 3
+    },
+    "parent_exit_status": 1,
+    "point": "after capture and session close; before report or closure",
+    "post_refusal_sha256": "c9e2f3139ef9a38e505bd173d0927984973e10385af0514ca11388369b54aa7f",
+    "restart_exit_status": 1,
+    "signal": "SIGKILL"
+  },
+  "date": "2026-11-02",
+  "files_sha256": {
+    "/tmp/ipse-native-lock-fault-inspection-20261102.json": "c9e2f3139ef9a38e505bd173d0927984973e10385af0514ca11388369b54aa7f",
+    "/tmp/ipse-native-lock-fault-inspection-20261102.log": "11580bc63157b0220a60118a0d0f2d310c469d8bc433f8d15d4d4f89bf8747f6",
+    "/tmp/ipse-native-lock-fault-inspection-final-20261102.log": "2540a1b297dd81dd652f9481703c90e207e39f65adcc4d3558605a37f6c04df2",
+    "/tmp/ipse-native-lock-fault-pilot-20261102.log": "0e7dbf795666c0e32eca2465a6278dcec515e08b429118563969d01f46440c38",
+    "/tmp/ipse-native-lock-fault-post-refusal-20261102.json": "c9e2f3139ef9a38e505bd173d0927984973e10385af0514ca11388369b54aa7f",
+    "/tmp/ipse-native-lock-fault-post-refusal-20261102.log": "2540a1b297dd81dd652f9481703c90e207e39f65adcc4d3558605a37f6c04df2",
+    "/tmp/ipse-native-lock-fault-restart-refusal-20261102.log": "6a15e15ca3f977a5ba5c79af77fc6dfcb182d9e15e93b955b88609329beee863",
+    "/tmp/ipse-native-lock-pilot-20261102-first.log": "4a70c91158320aa40a2afa48ca487c7579481b62e51c5dfd12e105710d03ebdf",
+    "/tmp/ipse-native-lock-pilot-20261102-refusal.log": "1ef4d0cf1734561d8eed564550db027aba61caaf36bd269765039d734db279b5",
+    "/tmp/ipse-native-lock-pilot-inspect-20261102.json": "02361dcadc3649c224d19d4cb223bdd05254768558772a3d67e22402d2aa5ebe",
+    "/tmp/ipse-native-lock-v2-pilot-20261102.log": "2cb14151911807caf3540a09799898dfeafb5a5838e0a5f7a05401afc4b053d8",
+    "/tmp/ipse-native-lock-v2-pilot-audit-20261102.json": "a1bf798aea8cf9d86f23c87322cf0bb3c62eaba392ad4567e5993558e0a70cfb",
+    "/tmp/ipse-native-lock-v2-pilot-audit-20261102.log": "d32039667074cd8e9bece7165db46fc26b1c5d54d5d98509106963763e039b36",
+    "/tmp/ipse-native-seed-lock-fault-smoke-20261102/turnover-pilot/held-after-effect.json": "25cf94dca2758e3976c4a4e73995a4d27d03026613dc96ce578c847c70e5fd71",
+    "/tmp/ipse-native-seed-lock-fault-smoke-20261102/turnover-pilot/inflight.json": "70fb10b959b92c62ec6f3f41d7765f7d8547e9af2e5e09c65e37b935eb0a842a",
+    "/tmp/ipse-native-seed-lock-fault-smoke-20261102/turnover-pilot/manifest.json": "01226960c38a20614b6ac8c4e8955b3d693467c4c01f523bf8f08d1e5ab384be",
+    "/tmp/ipse-native-seed-lock-fault-smoke-20261102/turnover-pilot/segment-1-90aba2d26eb525c89e6cda6fbc15812c.log": "afcf523e737c651a9d4e55752254f7a1de04d56b2276897c9d63ee8c9cf91fee",
+    "/tmp/ipse-native-seed-lock-smoke-20261102/turnover-pilot/inflight.json": "4f201af672c111f4d3884564713449f973d67fa91be73ed5e6afe03f484c7ee9",
+    "/tmp/ipse-native-seed-lock-smoke-20261102/turnover-pilot/manifest.json": "dd3b4e1b5d7e5038889b7b4c4a859d52a56317825babd355325e1105f2d23329",
+    "/tmp/ipse-native-seed-lock-smoke-20261102/turnover-pilot/segment-3-8722d5df4a97ca910775eef34dc8a702.log": "7b9b07ee209894e3416a82792f14753289fc131a0d557ef566ffac5399cccd66",
+    "/tmp/ipse-native-seed-lock-v2-smoke-20261102/turnover-pilot/manifest.json": "18c5985c152e2677bcd35c237529bac5e95cece9a36aea6471aca0c1b7a90235",
+    "docs/archive/2026-10-26-p30-p31-implementation/native-turnover-lock-fault-20261102.exs": "f2a8e37538680a161d5ac95139eb8c20690fe04aeb1aeda799857d30bf8f94cc",
+    "docs/archive/2026-10-26-p30-p31-implementation/native-turnover-lock-inspect-20261102.exs": "37837e8319ae8e213de556c8b2a78d2aae4b0911dcc9af201272efc5433ef27e",
+    "docs/archive/2026-10-26-p30-p31-implementation/native-turnover-lock-v1-20261102.exs": "f71b7e273eac9dbf081631bd48c4bd17e62918b67a658e88b9ddefbcb9c002b8",
+    "docs/archive/2026-10-26-p30-p31-implementation/native-turnover-lock-v2-20261102.exs": "667244243b2e6f481c1921df5e7b4b468944f31d72ed5db0f1866db3b0f81cc1",
+    "docs/archive/2026-10-26-p30-p31-implementation/native-turnover-pilot-audit-20261102.exs": "08c5d24275a613f685003d2c90b82590e15957c8cd459ddd0deb7e60d9cc6711"
+  },
+  "first_attempt": {
+    "closed_effects": 2,
+    "exit_status": 1,
+    "failed_effect": "forget",
+    "initial_inspection": {
+      "control_matches_last_closed": true,
+      "control_sequence": 10,
+      "generation": 10,
+      "marker_present": true,
+      "replay_attempted": false,
+      "root_matches_last_closed": true,
+      "snapshot_matches_last_closed": true
+    },
+    "outcome": "unknown; retained marker",
+    "restart_exit_status": 1
+  },
+  "model_calls": 0,
+  "separated_worker": {
+    "closed_effects": 7,
+    "closures": [
+      {
+        "closed": {
+          "exit_code": 0,
+          "index": 1,
+          "log": {
+            "bytes": 829,
+            "path": "/tmp/ipse-native-seed-lock-v2-smoke-20261102/turnover-pilot/segment-1-d41aef8197b0b39fc315fd4804089f65.log",
+            "sha256": "76cb138e672112d00f00344c427736a3e5edb7ca548c4886977ae1501e3c72bb"
+          },
+          "report": {
+            "bytes": 1697,
+            "path": "/tmp/ipse-native-seed-lock-v2-smoke-20261102/turnover-pilot/report-1.json",
+            "sha256": "a73a267256047d6cd93cbb5a518fe88f514accd993a11cac1a8ae667dd2cda28"
+          }
+        },
+        "path": "/tmp/ipse-native-seed-lock-v2-smoke-20261102/turnover-pilot/closed-1.json",
+        "sha256": "2e829e23008572f4dc1cbd7bffacf4cb16de6c39787c734b56a3c0cf9a2098f8"
+      },
+      {
+        "closed": {
+          "exit_code": 0,
+          "index": 2,
+          "log": {
+            "bytes": 10764,
+            "path": "/tmp/ipse-native-seed-lock-v2-smoke-20261102/turnover-pilot/segment-2-df680fecbbf786cddd1b0a3d42347708.log",
+            "sha256": "4035d72c78f90f05415d74ebcaca928a44e09bb66c0c3778efa2a932c8660e5a"
+          },
+          "report": {
+            "bytes": 1737,
+            "path": "/tmp/ipse-native-seed-lock-v2-smoke-20261102/turnover-pilot/report-2.json",
+            "sha256": "1dddf7fa35697813eb6e979000cb7ab2a65e1dbee8915aa9d5e0dc96ab76e17e"
+          }
+        },
+        "path": "/tmp/ipse-native-seed-lock-v2-smoke-20261102/turnover-pilot/closed-2.json",
+        "sha256": "dc267b05c1ae157f78629a5ab0dfb2b96e96a6f0b800d7ec07d478f25e4c7f3f"
+      },
+      {
+        "closed": {
+          "exit_code": 0,
+          "index": 3,
+          "log": {
+            "bytes": 7282,
+            "path": "/tmp/ipse-native-seed-lock-v2-smoke-20261102/turnover-pilot/segment-3-a62e7dfd8eed70688eee4e0d9f46cc9c.log",
+            "sha256": "f1aa9d681471fe5694a92c72678ab0079639cf72685837068898c689795cd708"
+          },
+          "report": {
+            "bytes": 461,
+            "path": "/tmp/ipse-native-seed-lock-v2-smoke-20261102/turnover-pilot/report-3.json",
+            "sha256": "641220fb4184cf40e44858fc11d43b0ae1f27fc78bb517eb7c3023cebe1027a6"
+          }
+        },
+        "path": "/tmp/ipse-native-seed-lock-v2-smoke-20261102/turnover-pilot/closed-3.json",
+        "sha256": "3b8e27c77ac571f10601936b7a1fb3b25ba9500d8d52b23ae0adb5494422dc9e"
+      },
+      {
+        "closed": {
+          "exit_code": 0,
+          "index": 4,
+          "log": {
+            "bytes": 10769,
+            "path": "/tmp/ipse-native-seed-lock-v2-smoke-20261102/turnover-pilot/segment-4-289187c3a332027d34cd000dd1327baa.log",
+            "sha256": "c3e4390dc6e5c6b82efbe524877773468f2d1748197a9d7b5cbeea437925bc1f"
+          },
+          "report": {
+            "bytes": 1722,
+            "path": "/tmp/ipse-native-seed-lock-v2-smoke-20261102/turnover-pilot/report-4.json",
+            "sha256": "10b52a45a410874ab131e5b999c4518861084dc344251ea3d59938e4e252d131"
+          }
+        },
+        "path": "/tmp/ipse-native-seed-lock-v2-smoke-20261102/turnover-pilot/closed-4.json",
+        "sha256": "39a5151ce9b5e7543a13f105dd3a64daf1f8cac4e97cbd9f714d855d7c72aa71"
+      },
+      {
+        "closed": {
+          "exit_code": 0,
+          "index": 5,
+          "log": {
+            "bytes": 7425,
+            "path": "/tmp/ipse-native-seed-lock-v2-smoke-20261102/turnover-pilot/segment-5-91dd1101effe72269207743b638bc231.log",
+            "sha256": "04ba7c61dd130075700c552649e7fd5bdeae31454ff25e94439987aab337adfd"
+          },
+          "report": {
+            "bytes": 462,
+            "path": "/tmp/ipse-native-seed-lock-v2-smoke-20261102/turnover-pilot/report-5.json",
+            "sha256": "2eefee811c3d41dd80853f7943edb7a5ae3b1a36af370ca4e1a1fbe943c2fb5f"
+          }
+        },
+        "path": "/tmp/ipse-native-seed-lock-v2-smoke-20261102/turnover-pilot/closed-5.json",
+        "sha256": "a7ad6955d782e5d113cc002edc5c83e6de76817b0b029d5523e293a401d18d05"
+      },
+      {
+        "closed": {
+          "exit_code": 0,
+          "index": 6,
+          "log": {
+            "bytes": 5028,
+            "path": "/tmp/ipse-native-seed-lock-v2-smoke-20261102/turnover-pilot/segment-6-65c98ab5ea55ebb09bfa9e8173986060.log",
+            "sha256": "31959423d7c8ec8b7d060cf19e24561779b5b25b1cc9a7973959ade82f27b2cb"
+          },
+          "report": {
+            "bytes": 469,
+            "path": "/tmp/ipse-native-seed-lock-v2-smoke-20261102/turnover-pilot/report-6.json",
+            "sha256": "25a3ecf53878929ca1b266668838d81949a478dac08ee8862eb4b6d33c9ff2c5"
+          }
+        },
+        "path": "/tmp/ipse-native-seed-lock-v2-smoke-20261102/turnover-pilot/closed-6.json",
+        "sha256": "ff09e091a6d05c8150f8cc12610d776af3e1503022a0f8bf49888bc0061f1d2e"
+      },
+      {
+        "closed": {
+          "exit_code": 0,
+          "index": 7,
+          "log": {
+            "bytes": 7413,
+            "path": "/tmp/ipse-native-seed-lock-v2-smoke-20261102/turnover-pilot/segment-7-aeaa3240d7a9dd653678c4fff292968b.log",
+            "sha256": "bf659db460b20cf8edddb7173d70562e2a7a3266a843417335c156a8ccf3197d"
+          },
+          "report": {
+            "bytes": 463,
+            "path": "/tmp/ipse-native-seed-lock-v2-smoke-20261102/turnover-pilot/report-7.json",
+            "sha256": "cd9f24c1bc4065f0f73b0d36c72997f1be1834417f2108b354d1a8263ca66f2c"
+          }
+        },
+        "path": "/tmp/ipse-native-seed-lock-v2-smoke-20261102/turnover-pilot/closed-7.json",
+        "sha256": "1fb2090727bf60fcf8bd68efa1f9f38ed303edd43499af1bc036b44d2a0f61d0"
+      }
+    ],
+    "exit_status": 0,
+    "final_audit": {
+      "absent_aliases": [
+        "seed/3",
+        "seed/4",
+        "seed/5",
+        "pilot/correct"
+      ],
+      "collection_status": {
+        "accounted_allocated_bytes": 23126016,
+        "accounted_total_bytes": 23092336,
+        "allocated_bytes": 57344,
+        "checkpoint": null,
+        "checkpoint_data_bytes": 0,
+        "checkpoint_records": 0,
+        "data_bytes": 18203,
+        "disk_bytes": 23664,
+        "envelope_data_bytes": 18203,
+        "floor": 15,
+        "floor_anchor": "5fb37e58d282171681be4ac7e3e70a61",
+        "generation": 15,
+        "limits": {
+          "control_reserved_bytes": 23068672,
+          "data_bytes": 25165824,
+          "operations": 32768,
+          "records": 8192,
+          "total_bytes": 67108864,
+          "value_bytes": 6144
+        },
+        "migration": null,
+        "notice": null,
+        "operations": 15,
+        "project": "74ee994534896f0342e40a8b897dc2ad856435a032b4927140dee4af6e10725c",
+        "records": 9,
+        "reserved_operation_slots": 0,
+        "staged_data_bytes": 0,
+        "staged_records": 0,
+        "version": 3
+      },
+      "generation": 15,
+      "measured_components_allocated_bytes": 847872,
+      "physical_allocations": {
+        "control": {
+          "allocated_bytes": 49152,
+          "entries": 5,
+          "logical_bytes": 47323
+        },
+        "identity": {
+          "allocated_bytes": 4096,
+          "entries": 4,
+          "logical_bytes": 1397
+        },
+        "management": {
+          "allocated_bytes": 57344,
+          "entries": 11,
+          "logical_bytes": 40374
+        },
+        "sessions": {
+          "allocated_bytes": 679936,
+          "entries": 16,
+          "logical_bytes": 653861
+        }
+      },
+      "qualification": false,
+      "root_sha256": "c743ff8202a3570f0133fd675e1c7e295303f5c95e05d8ed5607e9ab51a4e2a9",
+      "saved_sessions": 5,
+      "settled_control_sequence": 15,
+      "verified": [
+        {
+          "category": "pin",
+          "expired": false,
+          "id": "seed/1",
+          "value_sha256": "a1db9291696e7cfc7a9364518d59d5d834b94ebe7faf598f961caaeb2694bf00"
+        },
+        {
+          "category": "preference",
+          "expired": false,
+          "id": "seed/2",
+          "value_sha256": "6ff5cabe4b0a3049458b10b301359925e39978d6f5a92e327b9240e2f89af4a8"
+        },
+        {
+          "category": "ordinary",
+          "expired": true,
+          "id": "seed/6",
+          "value_sha256": "63f0674f3ffd7a4c062cb186fb8645efe502c25ab0843f28a36f61d4dafe0a4a"
+        },
+        {
+          "category": "ordinary",
+          "expired": true,
+          "id": "seed/7",
+          "value_sha256": "41d494b66a168d8c198628fc85f0b8e77f26a76999f6f1c2f43fa12bf043f3d0"
+        },
+        {
+          "category": "ordinary",
+          "expired": true,
+          "id": "pilot/capture",
+          "value_sha256": "92139c5f1b9b5fab4a9b23814e23fb4b3566768eb244cafb019a083eac59fb7c"
+        },
+        {
+          "category": "current",
+          "expired": false,
+          "id": "pilot/current",
+          "value_sha256": "ae9dbd4bd97f10509e81a291c7826a1c40a4c49d1ecfb6594e2113f4132e1d90"
+        }
+      ]
+    }
+  },
+  "snapshot_scope": "frozen pilot manifests bind selected runtime and scripts; read-only audits verify source/control/root; no complete machine isolation, active-effect kill, or crash/power-loss durability proof",
+  "version": 1
+}

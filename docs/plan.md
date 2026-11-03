@@ -988,6 +988,10 @@ The separate [seven-effect native turnover pilot](archive/2026-10-26-p30-p31-imp
 continues a seven-note smoke through capture, correction, forgetting, supersession
 and elapsed reclamation, then verifies signed final records and saved Sessions.
 It executes no main turns and does not qualify the annual workload.
+The [locked continuation follow-up](archive/2026-10-26-p30-p31-implementation/native-turnover-lock-20261102.md)
+preserves an initial management-owner conflict and verifies a separate-worker
+repair plus post-effect interruption/refusal on fresh smoke stores. Active-effect
+loss, concurrency, scalable recovery and annual qualification remain open.
 
 P31D1 now has optional [cooperative model checks around registered Ollama jobs](archive/2026-10-26-p30-p31-implementation/ollama-model-pin-jobs-20261031.md).
 Named operator text/embedding profiles bind expected metadata and minimum loaded

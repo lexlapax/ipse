@@ -389,6 +389,10 @@ with closed segments and a final signed-read audit. Its fixed scratch script
 does not implement the calendar or 40-turn days. When building the annual
 continuation, retain its exact target/source checks and stop on an unknown effect;
 then measure the complete workload rather than extrapolating this smoke result.
+A [lock and interruption follow-up](../archive/2026-10-26-p30-p31-implementation/native-turnover-lock-20261102.md)
+illustrates why standalone management needs its own cleanup owner, and checks
+refusal after a completed effect whose driver report was interrupted. It does
+not establish active-effect or concurrent-restart safety for a full driver.
 
 ### Audit the complete retained population
 
