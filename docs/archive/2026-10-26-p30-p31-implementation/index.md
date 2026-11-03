@@ -61,6 +61,8 @@ nor resource/offline qualification. No daemon configuration or existing model wa
 
 ## P31I planning and acceptance
 
+- [Synthetic Session-owner discriminator](session-guard-owner-discriminator-20261103.md) records a successful test-only transfer and failed wrong-recipient diagnostics; production acceptance and recipient refusal remain unproven.
+- [Same-reply proposal and card map](same-reply-proposal-card-map-20261103.md) identifies the missing nomination, answer and display-owner bindings; implementation and end-to-end verification remain open.
 - [Session acceptance native primitive](session-acceptance-native-primitive-20261103.md) records an isolated one-shot guard and owner-loss controls using synthetic helper owners; actual Session binding and the same-reply journey remain open.
 - [Proposed Session-owned acceptance guard](chat-acceptance-session-guard-design-20261103.md) sets out the reviewed same-reply owner, review, replay and interruption requirements; implementation and qualification remain open.
 - [Chat acceptance architectural reassessment](chat-acceptance-reassessment-20261103.md) compares the frozen post-reply contract with the paused Session-owned draft and an unproven separate-owner alternative.
