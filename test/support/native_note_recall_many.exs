@@ -130,7 +130,7 @@ assert {:ok, channel} = Ipse.Session.open_input_channel(source, self())
 
 texts =
   for step <- 1..33 do
-    text = "Synthetic note " <> String.pad_leading(Integer.to_string(step), 2, "0")
+    text = "~N" <> String.pad_leading(Integer.to_string(step), 2, "0") <> "~"
     command = "/remember ordinary " <> text
     File.write!(Path.join(root, "supersession-input-#{step}"), command)
     IO.write("IPSE_SUPERSESSION_READ_#{step}> ")

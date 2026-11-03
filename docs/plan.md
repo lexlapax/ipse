@@ -1057,8 +1057,10 @@ review or effect path. A source-owner adapter now distinguishes inactive leases
 from an active Session that still needs its real Session/Writer share.
 The [33-note native recall diagnostic](archive/2026-10-26-p30-p31-implementation/recall-many-native-20261102.md)
 found an unconfirmed worker-input handoff before provider dispatch on both the
-original 32-note worker and an attempted larger candidate limit. The expansion
-was not retained; fitting-set recall and the host failure remain open.
+original 32-note worker and an attempted larger candidate limit. A later pure
+projection found that its original 33 texts exceeded the context envelope; the
+shorter replacement fixture has not yet passed natively. The expansion was not
+retained, and fitting-set recall remains open.
 [Bounded replay computation](archive/2026-10-26-p30-p31-implementation/recall-replay-capacity-20261102.md)
 reduces repeated pure encoding and hashing without caching source authority.
 An exploratory [batched-read prototype](archive/2026-10-26-p30-p31-implementation/recall-batched-read-20261102.md)
