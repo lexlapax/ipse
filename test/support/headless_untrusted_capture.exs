@@ -29,12 +29,20 @@ owner = self()
 server =
   Task.async(fn ->
     try do
-      for number <- 1..2 do
+      for number <-
+            1..if(scenario in ~w(assistant_model assistant_model_bad_quote), do: 6, else: 2) do
         {:ok, socket} = :gen_tcp.accept(listener, 30_000)
 
         try do
           {_, bytes} = Ipse.Test.ProviderFixture.request(socket, "")
-          _request = Jason.decode!(bytes)
+          request = Jason.decode!(bytes)
+
+          tool_result = fn name ->
+            Enum.find(
+              Enum.reverse(request["messages"]),
+              &(&1["role"] == "tool" and &1["tool_name"] == name)
+            )
+          end
 
           calls =
             case number do
@@ -56,6 +64,51 @@ server =
                 ]
 
               2 ->
+                []
+
+              3 ->
+                [%{"function" => %{"name" => "source_list", "arguments" => %{"limit" => 32}}}]
+
+              4 ->
+                page = tool_result.("source_list")["content"] |> Jason.decode!()
+                row = Enum.find(page["sources"], &(&1["origin"] == "assistant_proposal"))
+                assert is_map(row)
+
+                [
+                  %{
+                    "function" => %{
+                      "name" => "source_read",
+                      "arguments" => %{"handle" => row["read_handle"]}
+                    }
+                  }
+                ]
+
+              5 ->
+                page = tool_result.("source_read")["content"] |> Jason.decode!()
+
+                [
+                  %{
+                    "function" => %{
+                      "name" => "ext__knowledge__capture",
+                      "arguments" => %{
+                        "text" => page["text"],
+                        "category" => "preference",
+                        "reason" => "Synthetic assistant suggestion.",
+                        "event_at_ms" => nil,
+                        "source" => %{
+                          "handle" => page["handle"],
+                          "quote" =>
+                            if(scenario == "assistant_model_bad_quote",
+                              do: "A fabricated quotation.",
+                              else: page["text"]
+                            )
+                        }
+                      }
+                    }
+                  }
+                ]
+
+              6 ->
                 []
             end
 
@@ -161,33 +214,45 @@ end
 assert {:ok, events} = Ipse.Journal.load(dir, id)
 IO.puts("HEADLESS_EVENTS " <> Jason.encode!(events))
 assert {:ok, _} = Ipse.Session.Saved.restore(events, id)
-{:ok, sources} = Ipse.Session.sources(session, "source.list", %{"limit" => 32})
-IO.puts("HEADLESS_SOURCES " <> Jason.encode!(sources))
 
 origin =
   case scenario do
-    "input" -> "unattended_input"
-    "content" -> "attributed_reference"
-    "assistant" -> "assistant_proposal"
+    "input" ->
+      "unattended_input"
+
+    "content" ->
+      "attributed_reference"
+
+    scenario when scenario in ~w(assistant assistant_model assistant_model_bad_quote) ->
+      "assistant_proposal"
   end
 
-row = Enum.find(sources["sources"], &(&1["origin"] == origin))
-assert is_map(row)
+text =
+  if scenario in ~w(assistant_model assistant_model_bad_quote) do
+    assert :ok = Ipse.Session.prompt(session, "Record the suggestion from your previous reply.")
+    "Synthetic fixture done."
+  else
+    {:ok, sources} = Ipse.Session.sources(session, "source.list", %{"limit" => 32})
+    IO.puts("HEADLESS_SOURCES " <> Jason.encode!(sources))
+    row = Enum.find(sources["sources"], &(&1["origin"] == origin))
+    assert is_map(row)
 
-assert {:ok, source_page} =
-         Ipse.Session.sources(session, "source.read", %{"handle" => row["read_handle"]})
+    assert {:ok, source_page} =
+             Ipse.Session.sources(session, "source.read", %{"handle" => row["read_handle"]})
 
-text = source_page["text"]
+    text = source_page["text"]
 
-args = %{
-  "text" => text,
-  "category" => "preference",
-  "reason" => "Synthetic untrusted-source capture control.",
-  "event_at_ms" => nil,
-  "source" => %{"handle" => source_page["handle"], "quote" => text}
-}
+    args = %{
+      "text" => text,
+      "category" => "preference",
+      "reason" => "Synthetic untrusted-source capture control.",
+      "event_at_ms" => nil,
+      "source" => %{"handle" => source_page["handle"], "quote" => text}
+    }
 
-assert :ok = Ipse.Session.invoke_export(session, :command, "ext__knowledge__capture", args)
+    assert :ok = Ipse.Session.invoke_export(session, :command, "ext__knowledge__capture", args)
+    text
+  end
 
 outcome =
   receive do
@@ -228,7 +293,19 @@ IO.puts("UNTRUSTED_ROOT " <> Jason.encode!(%{"snapshot" => snapshot, "page" => p
 refute Enum.any?(page["records"], &String.starts_with?(&1["key"], "note."))
 assert Enum.all?(page["records"], &String.starts_with?(&1["key"], "pending."))
 
-if scenario == "assistant" do
+if scenario == "assistant_model_bad_quote" do
+  assert page["records"] == [] and snapshot["generation"] == 0
+
+  refute Enum.any?(events, fn event ->
+           event["type"] == "extension_action_result" and
+             get_in(event, ["request", "op"]) == "collection.managed" and
+             get_in(event, ["outcome", "status"]) == "ok"
+         end)
+
+  IO.puts("ASSISTANT_PROPOSAL_BAD_QUOTE_REFUSED")
+end
+
+if scenario in ~w(assistant assistant_model) do
   assert outcome == :ok
   assert [record] = page["records"]
   assert record["value"]["state"] == "pending"
@@ -266,6 +343,40 @@ if scenario == "assistant" do
            Ipse.Session.SourceIndex.revalidate_stored(saved.source_window.index, proof)
 
   assert checked["proof"] == proof
+
+  if scenario == "assistant_model" do
+    calls =
+      for event <- events,
+          event["type"] == "message",
+          get_in(event, ["message", "role"]) == "assistant",
+          call <- event["message"]["tool_calls"] || [],
+          do: get_in(call, ["function", "name"])
+
+    assert Enum.count(calls, &(&1 == "source_list")) == 1
+    assert Enum.count(calls, &(&1 == "source_read")) == 1
+    assert Enum.count(calls, &(&1 == "ext__knowledge__capture")) == 1
+
+    [publication] =
+      Enum.filter(events, fn event ->
+        event["type"] == "extension_action_result" and
+          get_in(event, ["request", "op"]) == "collection.managed" and
+          get_in(event, ["outcome", "status"]) == "ok"
+      end)
+
+    assert publication["approval"] == "saved_consent"
+
+    assert get_in(publication, ["outcome", "value", "normalization", "eligibility"]) ==
+             "never_current"
+
+    assert Enum.all?(1..6, fn number ->
+             receive do
+               {:fixture_request, ^number} -> true
+             after
+               1000 -> false
+             end
+           end)
+  end
+
   IO.puts("ASSISTANT_PROPOSAL_SIGNED_PENDING_PASSED")
 end
 

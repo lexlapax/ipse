@@ -28,6 +28,18 @@ defmodule Ipse.CLI.KnowledgeTest do
              "ASSISTANT_PROPOSAL_SIGNED_PENDING_PASSED"
   end
 
+  @tag timeout: 90_000, assistant_pending_model: true
+  test "the main model can select its previous reply as a pending proposal" do
+    assert scenario("assistant_model", "--knowledge", "headless_untrusted_capture.exs") =~
+             "ASSISTANT_PROPOSAL_SIGNED_PENDING_PASSED"
+  end
+
+  @tag timeout: 90_000, assistant_pending_model: true
+  test "the main model cannot capture an invented quote from its previous reply" do
+    assert scenario("assistant_model_bad_quote", "--knowledge", "headless_untrusted_capture.exs") =~
+             "ASSISTANT_PROPOSAL_BAD_QUOTE_REFUSED"
+  end
+
   @tag knowledge_readiness: true
   test "saved native permission distinguishes activation matching from unavailable capture" do
     output = scenario("readiness", "--knowledge")
