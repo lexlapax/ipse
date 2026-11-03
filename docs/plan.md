@@ -1027,8 +1027,10 @@ controls. Neither executes main turns or qualifies the annual calendar; active
 effect loss, concurrent restart and power loss remain unverified.
 The [first large-seed calendar day](archive/2026-10-26-p30-p31-implementation/native-calendar-first-day-20261102.md)
 closed and independently checked 57 effects. A [second day](archive/2026-10-26-p30-p31-implementation/native-calendar-two-day-20261102.md)
-brings the checked total to 114 effects, including 54 of the additional 10,000
-changes. The other 363 days and all main-model turns remain open.
+brings the checked total to 114 effects. A separately audited
+[third day](archive/2026-10-26-p30-p31-implementation/native-calendar-third-day-20261102.md)
+brings it to 172 effects, including 82 of the additional 10,000 changes. The
+other 362 days and all main-model turns remain open.
 
 P31D1 now has optional [cooperative model checks around registered Ollama jobs](archive/2026-10-26-p30-p31-implementation/ollama-model-pin-jobs-20261031.md).
 Named operator text/embedding profiles bind expected metadata and minimum loaded

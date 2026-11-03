@@ -78,6 +78,7 @@ nor resource/offline qualification. No daemon configuration or existing model wa
 - [Native calendar clock anchors](native-calendar-clock-anchor-20261102.md) compensate for elapsed real time and check fresh BEAM/Rust fixture offsets; durable driver integration and long-running behavior remain open.
 - [Quota-aligned clock correction](native-calendar-quota-clock-20261102.md) ends each simulated workday at the UTC consent reset, with a protected quota boundary control; annual execution remains open.
 - [Two large-seed calendar days](native-calendar-two-day-20261102.md) records 114 native effects and a read-only signed-record audit; annual execution and model turns remain open.
+- [Third large-seed calendar day](native-calendar-third-day-20261102.md) extends the audited continuation to 172 native effects; annual execution and model turns remain open.
 - [Multi-page native recall diagnostic](recall-many-native-20261102.md) preserves a 33-note reproducer and the pre-dispatch worker-input failure on both the original worker and an abandoned larger limit.
 - [Bounded replay computation](recall-replay-capacity-20261102.md) records scoped size/hash reuse, an exact synthetic reconstruction comparison and the still-failing native control.
 - [Batched-read probe](recall-batched-read-20261102.md) records a passing synthetic worker suite and a native pre-dispatch failure; the runtime prototype was not retained.

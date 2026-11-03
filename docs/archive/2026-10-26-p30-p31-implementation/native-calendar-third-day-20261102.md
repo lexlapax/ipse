@@ -1,0 +1,9 @@
+# Third large-seed calendar day, 2026-11-02
+
+This historical development receipt continues the [two-day native run](native-calendar-two-day-20261102.md) using its retained synthetic seed, frozen runtime and continuation driver. It does not qualify the annual workload; the [plan](../../plan.md#p31-usable-knowledge-and-prompt-assistance) records the remaining gates.
+
+Segments 31–45 closed on simulated process day 23 with 58 effects: 20 captures, 13 corrections, 11 forgets and 14 temporal updates. Across three days the continuation has 172 effects, including 82 of the 10,000 additional mixed changes and leaving 9,918. No main-model turns or model calls were made. The workload mix has not been ratified as quality evidence.
+
+The separate [read-only audit](native-calendar-third-day-20261102.exs) checked the input, report and log fingerprints for all 45 closures; all 139 surviving new signed values; absence of the 33 forgotten targets; frozen source fingerprints; settled active and compacted consent operations; and unchanged Collection root and control during the audit. The [synthetic result](native-calendar-third-day-20261102.json) records generation and control sequence 2,272, 2,267 Collection records and 7,088,424 logical data bytes. Accounted allocated bytes were 33,394,688 at that point; this is not a peak or capacity projection.
+
+The audit used the recorded private stdio-clock runtime, the day-23 offset and a private temporary directory; the clock coherence check passed. A second invocation produced identical result bytes. The retained store is under `/tmp/ipse-native-seed-initial-20261102-first` and is not durable evidence. The other 362 simulated days, all 14,600 main turns, concurrent-owner and offline/restart workload, maximum payloads, quality and complete resource peaks remain unverified. An in-flight marker still requires investigation and is never automatically replayed.
