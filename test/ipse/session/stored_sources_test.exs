@@ -1575,7 +1575,14 @@ defmodule Ipse.Session.StoredSourcesTest do
 
   test "pending acceptance retains and verifies its original source under the matching project",
        c do
-    pin = c.context.config.semantic_admission["pin"]
+    context =
+      put_in(
+        c.context,
+        [:config, :semantic_admission, "pin", "session_id"],
+        c.context.session_id
+      )
+
+    pin = context.config.semantic_admission["pin"]
     proof = c.proof
     text = "A synthetic accepted decision"
     {:ok, lineage} = Ipse.Extension.ManagedRecipe.source_identity(proof)
@@ -1616,15 +1623,15 @@ defmodule Ipse.Session.StoredSourcesTest do
     assert Ipse.Session.PendingAcceptance.valid_facts?(facts)
 
     assert :verified =
-             Ipse.Session.PendingAcceptance.with_verified_source(c.context, facts, fn source ->
+             Ipse.Session.PendingAcceptance.with_verified_source(context, facts, fn source ->
                assert source["proof"] === proof
                assert {:error, _} = Runner.lock(c.lock_path)
                :verified
              end)
 
     assert :shareable =
-             Ipse.Session.PendingAcceptance.with_shareable_source(c.context, facts, fn source,
-                                                                                       lease ->
+             Ipse.Session.PendingAcceptance.with_shareable_source(context, facts, fn source,
+                                                                                     lease ->
                assert source["proof"] === proof
                assert {:ok, _} = StoredSources.share_identity(lease)
                assert {:error, _} = Runner.lock(c.lock_path)
@@ -1632,11 +1639,40 @@ defmodule Ipse.Session.StoredSourcesTest do
              end)
 
     assert {:error, :pending_acceptance_refused} =
+             Ipse.Session.PendingAcceptance.with_verified_source(c.context, facts, fn _ ->
+               send(self(), :mismatched_admission_reached_source)
+               :accepted
+             end)
+
+    refute_receive :mismatched_admission_reached_source, 100
+
+    assert {:error, :pending_acceptance_refused} =
+             Ipse.Session.PendingAcceptance.with_shareable_source(c.context, facts, fn _, _ ->
+               send(self(), :mismatched_admission_reached_share)
+               :accepted
+             end)
+
+    refute_receive :mismatched_admission_reached_share, 100
+
+    standalone = Map.put(facts, "session_id", nil)
+
+    assert :standalone =
+             Ipse.Session.PendingAcceptance.with_verified_source(context, standalone, fn source ->
+               assert source["proof"] === proof
+               :standalone
+             end)
+
+    assert {:error, :pending_acceptance_refused} =
              Ipse.Session.PendingAcceptance.with_verified_source(
-               c.context,
+               context,
                Map.put(facts, "policy_sha256", JSON.sha256("other policy")),
-               fn _ -> flunk("different policy reached source") end
+               fn _ ->
+                 send(self(), :wrong_policy_reached_source)
+                 :accepted
+               end
              )
+
+    refute_receive :wrong_policy_reached_source, 100
 
     altered = Map.put(proof, "occurrence_id", Usage.id())
     {:ok, altered_lineage} = Ipse.Extension.ManagedRecipe.source_identity(altered)
@@ -1653,14 +1689,17 @@ defmodule Ipse.Session.StoredSourcesTest do
     assert Ipse.Session.PendingAcceptance.valid_facts?(missing)
 
     assert {:error, :collection_source_refused} =
-             Ipse.Session.PendingAcceptance.with_verified_source(c.context, missing, fn _ ->
-               flunk("missing original source reached callback")
+             Ipse.Session.PendingAcceptance.with_verified_source(context, missing, fn _ ->
+               send(self(), :missing_source_reached_callback)
+               :accepted
              end)
+
+    refute_receive :missing_source_reached_callback, 100
 
     before = File.read!(c.journal_path)
 
     assert {:error, :collection_source_refused} =
-             Ipse.Session.PendingAcceptance.with_verified_source(c.context, facts, fn _ ->
+             Ipse.Session.PendingAcceptance.with_verified_source(context, facts, fn _ ->
                [port] =
                  Port.list() |> Enum.filter(&(Port.info(&1, :connected) == {:connected, self()}))
 

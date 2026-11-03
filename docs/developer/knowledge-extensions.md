@@ -206,7 +206,9 @@ also binds the proposed category retention rule and policy expiry derived from
 the held installed selection. Target owners release before waiting for input.
 Standalone facts have no conversation Session ID. If a future chat caller supplies
 one, the card validator requires it to equal the journal ID; the ID by itself
-does not establish a live Session, terminal or publication authority.
+does not establish a live Session, terminal or publication authority. Source
+revalidation also requires the current admission to be pinned to the consuming
+Session or management journal, rather than another Session in the same project.
 
 After exact native `accept CODE`, publication acquires and verifies the original
 source, reacquires current target owners and reproduces the same facts before

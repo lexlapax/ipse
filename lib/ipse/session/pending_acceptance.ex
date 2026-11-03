@@ -267,7 +267,8 @@ defmodule Ipse.Session.PendingAcceptance do
     admission = get_in(context, [:config, :semantic_admission])
     pin = if is_map(admission), do: admission["pin"]
 
-    facts?(facts) and Ipse.Extension.SemanticAdmission.valid?(admission, nil) and
+    facts?(facts) and
+      Ipse.Extension.SemanticAdmission.valid?(admission, context[:session_id]) and
       is_map(pin) and admission["status"] === "active" and
       pin["project_id"] === facts["project_id"] and pin["namespace"] === facts["namespace"] and
       pin["binding_sha256"] === facts["binding_sha256"] and
