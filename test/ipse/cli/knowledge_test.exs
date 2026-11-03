@@ -56,6 +56,12 @@ defmodule Ipse.CLI.KnowledgeTest do
              "ASSISTANT_PROPOSAL_PUBLIC_REVIEW_PASSED"
   end
 
+  @tag timeout: 120_000, assistant_pending_resume: true
+  test "resuming the original Session refuses stale history before model dispatch" do
+    assert scenario("assistant_model_resume", "--knowledge", "headless_untrusted_capture.exs") =~
+             "ASSISTANT_PROPOSAL_PUBLIC_REVIEW_PASSED"
+  end
+
   @tag knowledge_readiness: true
   test "saved native permission distinguishes activation matching from unavailable capture" do
     output = scenario("readiness", "--knowledge")
