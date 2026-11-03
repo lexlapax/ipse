@@ -7,6 +7,27 @@ defmodule Ipse.Session.PendingBatchTest do
   alias Ipse.Session.{PendingAcceptance, PendingBatch}
   alias Ipse.Test.ManagedPolicy, as: F
 
+  test "a chat card is bound to the same Session and journal" do
+    f = fixture(1)
+    chat = Map.put(f.context, "session_id", f.context["journal_id"])
+    assert {:ok, card} = PendingAcceptance.prepare(chat, f.managed, [f.proof], 2000)
+    assert PendingAcceptance.valid_facts?(card)
+
+    other_session = Usage.id()
+    refute other_session == chat["journal_id"]
+
+    assert {:error, :pending_acceptance_refused} =
+             PendingAcceptance.prepare(
+               Map.put(chat, "session_id", other_session),
+               f.managed,
+               [f.proof],
+               2000
+             )
+
+    refute PendingAcceptance.valid_facts?(Map.put(card, "session_id", other_session))
+    refute PendingAcceptance.valid_facts?(Map.put(card, "journal_id", other_session))
+  end
+
   # Pure consistency and byte-bound fixtures, never source/native authority.
   test "eight distinct exact candidates share one immutable manifest and per-item membership" do
     fixtures = Enum.map(1..8, &fixture/1)

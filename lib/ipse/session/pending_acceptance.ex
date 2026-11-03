@@ -1764,7 +1764,7 @@ defmodule Ipse.Session.PendingAcceptance do
 
   defp context?(c) do
     batch_shape?(c, @context) and Enum.all?(~w(operation_id journal_id client_id), &id?(c[&1])) and
-      (is_nil(c["session_id"]) or id?(c["session_id"])) and
+      session_matches_journal?(c) and
       Enum.all?(~w(project_id namespace binding_sha256 policy_sha256), &JSON.sha256?(c[&1])) and
       positive?(c["capture_epoch"]) and positive?(c["render_revision"]) and
       ManagedRecipe.valid?(c["recipe"]) and c["recipe"]["kind"] === "proposal"
@@ -1784,7 +1784,7 @@ defmodule Ipse.Session.PendingAcceptance do
          Ipse.Session.PendingBatch.member?(facts["batch"], facts)) and
       facts["version"] === 1 and facts["kind"] === "pending_proposal_card" and
       Enum.all?(~w(operation_id journal_id client_id), &id?(facts[&1])) and
-      (is_nil(facts["session_id"]) or id?(facts["session_id"])) and
+      session_matches_journal?(facts) and
       Enum.all?(
         ~w(project_id namespace binding_sha256 policy_sha256 candidate_id record_sha256 lineage text_sha256 recipe_sha256 publication_policy_sha256 root_sha256),
         &JSON.sha256?(facts[&1])
@@ -1834,6 +1834,12 @@ defmodule Ipse.Session.PendingAcceptance do
       ])
 
   defp positive?(v), do: JSON.safe_uint?(v) and v > 0
+
+  defp session_matches_journal?(value),
+    do:
+      is_nil(value["session_id"]) or
+        (id?(value["session_id"]) and value["session_id"] === value["journal_id"])
+
   defp id?(v), do: is_binary(v) and Regex.match?(~r/\A[0-9a-f]{32}\z/, v)
   defp exact?(v, keys), do: is_map(v) and Enum.sort(Map.keys(v)) == Enum.sort(keys)
 end
