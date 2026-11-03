@@ -957,7 +957,9 @@ separate native review preserves that attribution on acceptance. A fresh-session
 synthetic recall includes the accepted decision and withholds it when the original
 source is missing. The original Session can refuse stale protected history before
 dispatch after that separate acceptance; the tested recovery starts a fresh Session.
-Automatic same-reply capture and in-chat acceptance remain open.
+An explicit assistant-proposal operation with a post-reply chat card and in-chat
+acceptance remains open. The baseline does not require blanket extraction from
+final replies.
 The [chat-card consistency check](archive/2026-10-26-p30-p31-implementation/pending-chat-journal-binding-20261102.md)
 now refuses different Session and journal IDs before review and rejects a source
 check using another Session's pinned admission; it does not create an in-chat
