@@ -65,6 +65,8 @@ nor resource/offline qualification. No daemon configuration or existing model wa
 
 ## P31A contracts and evidence
 
+- [Native recapture controls after containment](native-recapture-after-containment-20261103.md) verifies signed forget and rejection at the native publication boundary with trusted synthetic sources; bundled-worker and legacy override behavior remain separate.
+- [Eight-owner handoff attempt](worker-handoff-eight-owner-20261103.md) seeded eight separate source owners but stopped on a disposable tracer syntax error before measuring a handoff; no scaling conclusion follows.
 - [Pending proposal generic-read containment](pending-source-containment-20261103.md) records the admitted-worker disclosure, fail-closed repair and deliberate override/custom-value availability limit; compatibility restoration remains open.
 - [Local-pilot pre-reservation refusal](pilot-local-refusal-20261103.md) records the pinned zero-inference inspection, empty attempt files and observed account-directory permission mismatch; the pilot was not retried and no reservation is recorded.
 - [Small worker-handoff diagnostic](worker-handoff-small-20261103.md) records a passing eight-note control and a failing trace-wrapper count guard; neither establishes the cause of the populated-cohort failure.

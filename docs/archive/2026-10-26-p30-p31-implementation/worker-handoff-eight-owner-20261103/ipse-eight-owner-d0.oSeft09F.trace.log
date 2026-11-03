@@ -1,0 +1,17 @@
+** (SyntaxError) invalid syntax found on test/support/worker_handoff_trace.exs:114:14:
+     error: unexpected expression after keyword list. Keyword lists must always come as the last argument. Therefore, this is not allowed:
+
+         function_call(1, some: :option, 2)
+
+     Instead, wrap the keyword in brackets:
+
+         function_call(1, [some: :option], 2)
+
+     Syntax error after: ','
+     │
+ 114 │             },
+     │              ^
+     │
+     └─ test/support/worker_handoff_trace.exs:114:14
+    (elixir 1.20.4) lib/code.ex:1639: Code.require_file/2
+    dev/verification/worker_handoff_trace.exs:1: (file)
