@@ -160,8 +160,10 @@ following limits until the end-to-end paths are qualified:
    clarification depends on the notes and document paths it uses. An
    [in-chat acceptance protocol plan](archive/2026-10-26-p30-p31-implementation/chat-acceptance-host-protocol-plan-20261103.md)
    records why the existing standalone management review cannot be reused as
-   a Session-owned decision without new owner-bound handoffs; it is not an
-   implementation or passing journey.
+   a Session-owned decision without new owner-bound handoffs. A later
+   [architecture reassessment](archive/2026-10-26-p30-p31-implementation/chat-acceptance-reassessment-20261103.md)
+   preserves the frozen post-reply requirement and pauses the unproven draft;
+   it is not an implementation or passing journey.
 5. **Decision engines — P30A–E.** Complete the host protocol and protected
    consumer integration independently of document/graph work. Enforce the explicit
    finite allowance across the whole authorized experiment, using the existing

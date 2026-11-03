@@ -61,10 +61,12 @@ nor resource/offline qualification. No daemon configuration or existing model wa
 
 ## P31I planning and acceptance
 
+- [Chat acceptance architectural reassessment](chat-acceptance-reassessment-20261103.md) compares the frozen post-reply contract with the paused Session-owned draft and an unproven separate-owner alternative.
 - [Chat acceptance host-protocol plan](chat-acceptance-host-protocol-plan-20261103.md) records the ownership and later-use gaps for a proposed single-card journey; no implementation or test is claimed.
 
 ## P31A contracts and evidence
 
+- [Same-source recapture preflight refusal](same-source-recapture-refusal-20261103.md) records a post-rejection turn stopped before inference; its exact failed predicate and recapture outcome remain unknown.
 - [Native recapture controls after containment](native-recapture-after-containment-20261103.md) verifies signed forget and rejection at the native publication boundary with trusted synthetic sources; bundled-worker and legacy override behavior remain separate.
 - [Eight-owner handoff attempt](worker-handoff-eight-owner-20261103.md) seeded eight separate source owners but stopped on a disposable tracer syntax error before measuring a handoff; no scaling conclusion follows.
 - [Pending proposal generic-read containment](pending-source-containment-20261103.md) records the admitted-worker disclosure, fail-closed repair and deliberate override/custom-value availability limit; compatibility restoration remains open.
