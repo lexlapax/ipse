@@ -344,9 +344,10 @@ fn main() {
                     if let Some(finished) = tail.rfind("Finished.").or_else(|| tail.rfind("Finished with an error.")).or_else(|| tail.rfind("Cancelled.")) {
                         let root = std::path::Path::new(&args[args.len() - 2]);
                         let prompt_ready = if scenario == "save_managed_approval_cancel" { tail[finished..].contains("you> ") } else { tail.contains("you> ") };
-                        if scenario != "save_managed_approval_exit" && finished > 0 && prompt_ready && root.join("managed-approval-exit-ready").is_file() && !answered.iter().any(|s| s == "managed-exit") {
+                        let exit_key = if scenario.starts_with("save_managed_approval_cross_session") { format!("managed-exit-{}", text.matches("IPSE_MANAGED_APPROVAL_CLI_READY").count()) } else { "managed-exit".to_owned() };
+                        if scenario != "save_managed_approval_exit" && finished > 0 && prompt_ready && root.join("managed-approval-exit-ready").is_file() && !answered.contains(&exit_key) {
                             master.write_all(b"/exit\n").unwrap();
-                            answered.push("managed-exit".to_owned());
+                            answered.push(exit_key);
                         }
                     }
                 }

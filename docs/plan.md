@@ -1002,6 +1002,10 @@ now returns bounded experimental advice or an abstention reason. Synthetic
 Session controls cover separate approval, settled accounting, unchanged notes,
 source withdrawal at output release and idle reopen without a new request.
 This does not assess a pending main-tool candidate or qualify a strategy.
+The [cross-Session experiment controls](archive/2026-10-26-p30-p31-implementation/p30-cross-session-allowance-20261103.md)
+observe two settled one-call reservations and no third dispatch, plus a new
+Session quarantined after an unknown call. The settled case's third failure is
+generic and does not itself prove exhaustion caused the refusal.
 The later [exact Linux package proof](archive/2026-10-26-p30-p31-implementation/package-idle-resume-20261031.md#passing-final-package)
 passes generic installed checks and the independent synthetic decision/document
 artifacts; full-source, consumer-quality and installed knowledge qualification
