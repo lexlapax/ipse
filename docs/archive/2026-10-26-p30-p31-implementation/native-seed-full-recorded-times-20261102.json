@@ -1,0 +1,42 @@
+{
+  "version": 1,
+  "date": "2026-11-02",
+  "base_commit": "b0dc5b2",
+  "publisher_commit": "5331e60b9772c44131c054978c8f0d4428cbc2d6",
+  "audit_source_commit": "4e43b81",
+  "files_sha256": {
+    "/tmp/ipse-native-seed-audit-initial-20261102-first.json.rows.json": "880505ad085c92d39c50f7df3b7f9d803e46884aa329597ef736d427899447cc",
+    "/tmp/ipse-native-seed-audit-initial-recorded-times-20261102.json": "8d0d5d1c82483a34390642fca72004737bbf89aafd9ece4dc0880e0c1a03a39f",
+    "/tmp/ipse-native-seed-audit-initial-recorded-times-20261102.json.driver.ex": "1c830f6abf37b5902e137f481c65dd9fb35c0092bf16a00a8eab64c5bd494126",
+    "/tmp/ipse-native-seed-audit-initial-recorded-times-20261102.json.log": "90a2f6c74885e5b5e48ab30b8be26d49080a7a38a39d94f664967668a8de2ac8",
+    "/tmp/ipse-native-seed-audit-initial-recorded-times-20261102.json.rows.json": "880505ad085c92d39c50f7df3b7f9d803e46884aa329597ef736d427899447cc",
+    "/tmp/ipse-native-seed-audit-initial-recorded-times-20261102.log": "90a2f6c74885e5b5e48ab30b8be26d49080a7a38a39d94f664967668a8de2ac8",
+    "dev/knowledge/native_notes_seed.ex": "1c830f6abf37b5902e137f481c65dd9fb35c0092bf16a00a8eab64c5bd494126"
+  },
+  "parent_exit_status": 0,
+  "verified_records": 2000,
+  "verified_categories": {
+    "current": 50,
+    "ordinary": 1800,
+    "pin": 100,
+    "preference": 50
+  },
+  "unchanged_sources": 373,
+  "unchanged_root": true,
+  "unchanged_control": true,
+  "root_sha256": "9d6401255c1f7d15835af6427277da9dbb7f70fa01252f0c5e58a32814f6b2a7",
+  "recorded_event_times": {
+    "events": 53938,
+    "maxima_ms": {
+      "checked_at_ms": 1795389015486,
+      "created_at_ms": 1795389011687,
+      "observed_at_ms": 1795389011687
+    }
+  },
+  "recorded_time_scope": "Selected event-field maxima in retained source journals; not an upper bound on physical completion or proof of clock monotonicity",
+  "rows_match_previous_audit": true,
+  "measured_components_allocated_bytes": 134131712,
+  "actual_native_publications": 0,
+  "model_calls": 0,
+  "annual_qualification": false
+}

@@ -1396,7 +1396,9 @@ overflowed day. Its [quota-aligned correction](archive/2026-10-26-p30-p31-implem
 ends the workday at the actual UTC quota reset and has a protected-consent
 boundary control. Persistence and actual long-running clock behavior remain open.
 The [seed recorded-time audit](archive/2026-10-26-p30-p31-implementation/native-seed-recorded-times-20261102.md)
-adds selected journal-field maxima to the signed audit; its smoke control passes.
+adds selected journal-field maxima to the signed audit; its smoke and subsequent
+[2,000-note audit](archive/2026-10-26-p30-p31-implementation/native-seed-full-recorded-times-20261102.md)
+pass with unchanged source, root and control.
 Those fields alone are not a physical-completion or clock-monotonicity bound.
 The [native consent-renewal control](archive/2026-10-26-p30-p31-implementation/native-consent-renewal-20261102.md)
 checks expired-policy refusal and a later native capture after fresh review,

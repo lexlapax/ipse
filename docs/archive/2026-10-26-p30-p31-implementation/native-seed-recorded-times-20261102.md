@@ -26,6 +26,8 @@ start. That scan used the selected field names recursively and did not re-run
 signed Collection reads; it is not a physical-completion bound. A new full
 signed audit using the updated caller was running when this record was made;
 its result is separate and not claimed here.
+That later [full signed audit](native-seed-full-recorded-times-20261102.md)
+subsequently passed and reported the same selected timestamp maximum.
 
 The future driver still needs a defensible initial time bound, a persisted day
 anchor, actual child-clock checks, scalable checkpoints, and active-effect
