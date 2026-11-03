@@ -1060,11 +1060,12 @@ found an unconfirmed worker-input handoff before provider dispatch on both the
 original 32-note worker and an attempted larger candidate limit. The expansion
 was not retained; fitting-set recall and the host failure remain open.
 [Bounded replay computation](archive/2026-10-26-p30-p31-implementation/recall-replay-capacity-20261102.md)
-reduces repeated pure encoding and hashing without caching source authority;
-the native 32-note control still ends before provider dispatch, so it does not
-resolve the recall gate.
+reduces repeated pure encoding and hashing without caching source authority.
 An exploratory [batched-read prototype](archive/2026-10-26-p30-p31-implementation/recall-batched-read-20261102.md)
-also failed the native control and was not retained; the protected handoff remains open.
+also failed the native control and was not retained. A later [task-scoped source
+replay](archive/2026-10-26-p30-p31-implementation/task-source-replay-20261102.md)
+passes the existing 32-note native control with a 15-second synthetic provider
+timeout; the 5-second provider case and fitting-set coverage remain open.
 
 | Package | Output and prerequisites |
 | --- | --- |

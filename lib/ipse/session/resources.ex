@@ -12,6 +12,17 @@ defmodule Ipse.Session.Resources do
   def current, do: Process.get(@key)
 
   @doc false
+  def source_replay_cache do
+    case current() do
+      nil -> :none
+      scope when is_pid(scope) -> GenServer.call(scope, :source_replay_cache, 5_000)
+      _ -> {:error, :cleanup_scope_closed}
+    end
+  catch
+    :exit, _ -> {:error, :cleanup_scope_closed}
+  end
+
+  @doc false
   def active?(timeout \\ 5_000)
 
   def active?(timeout) when is_integer(timeout) and timeout in 1..5_000 do
@@ -163,6 +174,7 @@ defmodule Ipse.Session.Resources do
          effects: %{},
          lock_guard: guard,
          resources: %{},
+         source_replay_cache: nil,
          failed: false,
          closed: false,
          child_tokens: %{},
@@ -187,6 +199,7 @@ defmodule Ipse.Session.Resources do
        effects: %{},
        lock_guard: Ipse.Session.Lock.for_owner(owner),
        resources: %{},
+       source_replay_cache: nil,
        failed: false,
        closed: false,
        child_tokens: %{},
@@ -389,6 +402,26 @@ defmodule Ipse.Session.Resources do
 
   def handle_call(:active, _, state), do: {:reply, false, state}
 
+  def handle_call(:source_replay_cache, {caller, _}, %{closed: false} = state) do
+    admitted =
+      (caller in [state.owner, state.worker] or Map.has_key?(state.tasks, caller) or
+         Map.has_key?(state.effects, caller)) and Process.alive?(state.owner)
+
+    if admitted do
+      case state.source_replay_cache do
+        %{pid: pid} = cache when is_pid(pid) ->
+          if Process.alive?(pid),
+            do: {:reply, {:ok, cache}, state},
+            else: start_source_replay_cache(state)
+
+        nil ->
+          start_source_replay_cache(state)
+      end
+    else
+      {:reply, {:error, :cleanup_scope_closed}, state}
+    end
+  end
+
   def handle_call(action, {caller, _}, state) when action in [:close, :finish] do
     state =
       if state.child_report != nil and
@@ -407,6 +440,13 @@ defmodule Ipse.Session.Resources do
   end
 
   def handle_call(_, _, state), do: {:reply, {:error, :cleanup_scope_closed}, state}
+
+  defp start_source_replay_cache(state) do
+    case Ipse.Session.SourceReplayCache.start(self()) do
+      {:ok, cache} -> {:reply, {:ok, cache}, %{state | source_replay_cache: cache}}
+      _ -> {:reply, {:error, :cleanup_scope_closed}, state}
+    end
+  end
 
   @impl true
   def handle_info({:resource_closed, id, pid, result}, state) do
@@ -485,6 +525,8 @@ defmodule Ipse.Session.Resources do
   defp close_resources(state) do
     deadline = System.monotonic_time(:millisecond) + 4_000
 
+    state = close_source_replay_cache(state, deadline)
+
     state =
       Enum.reduce(state.resources, state, fn {id, resource}, state ->
         result = close_resource(id, resource, deadline)
@@ -519,6 +561,23 @@ defmodule Ipse.Session.Resources do
 
     %{state | tasks: %{}, effects: %{}, failed: failed}
   end
+
+  defp close_source_replay_cache(%{source_replay_cache: %{pid: pid}} = state, deadline)
+       when is_pid(pid) do
+    monitor = Process.monitor(pid)
+    Process.exit(pid, :kill)
+
+    confirmed =
+      receive do
+        {:DOWN, ^monitor, :process, ^pid, _} -> true
+      after
+        max(deadline - System.monotonic_time(:millisecond), 0) -> false
+      end
+
+    %{state | source_replay_cache: nil, failed: state.failed or not confirmed}
+  end
+
+  defp close_source_replay_cache(state, _), do: state
 
   defp close_resource(id, resource, deadline) do
     case receipt(id, resource.pid, 0) do

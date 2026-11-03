@@ -5,6 +5,11 @@ Code.require_file(Path.expand("provider_fixture.ex", __DIR__))
 
 [root, "recall-many"] = System.argv()
 baseline = System.get_env("IPSE_RECALL_BASELINE_CONTROL") == "1"
+
+provider_timeout =
+  System.get_env("IPSE_TEST_RECALL_PROVIDER_TIMEOUT_MS", "5000") |> String.to_integer()
+
+assert provider_timeout in 1..100_000
 home = Path.join(root, "home")
 cwd = Path.join(root, "work")
 
@@ -28,24 +33,37 @@ server =
       {:ok, socket} = :gen_tcp.accept(listener, 180_000)
 
       try do
-        {_, bytes} = Ipse.Test.ProviderFixture.request(socket, "")
-        send(owner, {:recall_many_request, Jason.decode!(bytes)})
+        request =
+          case :gen_tcp.recv(socket, 0, provider_timeout + 1_000) do
+            {:ok, first} -> {:ok, Ipse.Test.ProviderFixture.request(socket, first)}
+            {:error, :closed} -> :closed
+            other -> flunk("Synthetic provider initial read failed: #{inspect(other)}")
+          end
 
-        body =
-          Jason.encode!(%{
-            "model" => "synthetic",
-            "message" => %{"role" => "assistant", "content" => "Synthetic answer."},
-            "done" => true,
-            "prompt_eval_count" => 1,
-            "eval_count" => 1
-          }) <> "\n"
+        case request do
+          {:ok, {_, bytes}} ->
+            send(owner, {:recall_many_request, Jason.decode!(bytes)})
 
-        :ok =
-          :gen_tcp.send(
-            socket,
-            "HTTP/1.1 200 Fixture\r\ncontent-type: application/x-ndjson\r\ncontent-length: #{byte_size(body)}\r\nconnection: close\r\n\r\n" <>
-              body
-          )
+            body =
+              Jason.encode!(%{
+                "model" => "synthetic",
+                "message" => %{"role" => "assistant", "content" => "Synthetic answer."},
+                "done" => true,
+                "prompt_eval_count" => 1,
+                "eval_count" => 1
+              }) <> "\n"
+
+            :ok =
+              :gen_tcp.send(
+                socket,
+                "HTTP/1.1 200 Fixture\r\ncontent-type: application/x-ndjson\r\ncontent-length: #{byte_size(body)}\r\nconnection: close\r\n\r\n" <>
+                  body
+              )
+
+          :closed ->
+            send(owner, :recall_provider_closed_without_request)
+            :closed
+        end
       after
         :gen_tcp.close(socket)
       end
@@ -66,7 +84,7 @@ File.write!(
         "model" => "synthetic",
         "base_url" => base,
         "max_output_tokens" => 64,
-        "timeout_ms" => 5000
+        "timeout_ms" => provider_timeout
       }
     },
     "roles" => %{"main" => "recall"},
@@ -181,15 +199,34 @@ request =
 
     {:ipse, ^session, {:done, status}} ->
       {:ok, events} = Ipse.Journal.load(dir, session_id)
-      trace = Enum.map(events, &Map.take(&1, ~w(type status reason closure cleanup_confirmed)))
-      flunk("Recall ended #{inspect(status)} before dispatch: #{inspect(trace)}")
+      counts = Enum.frequencies_by(events, & &1["type"])
+
+      inputs =
+        events
+        |> Enum.filter(&(&1["type"] == "worker_input_result"))
+        |> Enum.frequencies_by(& &1["status"])
+
+      tail =
+        events
+        |> Enum.take(-25)
+        |> Enum.map(&Map.take(&1, ~w(type status reason closure cleanup_confirmed)))
+
+      closed =
+        receive do
+          :recall_provider_closed_without_request -> true
+        after
+          0 -> false
+        end
+
+      flunk(
+        "Recall ended #{inspect(status)} before dispatch, provider_closed=#{closed}, counts=#{inspect(counts)}, worker_inputs=#{inspect(inputs)}, tail=#{inspect(tail, limit: :infinity)}"
+      )
   after
     120_000 -> flunk("Recall did not dispatch or finish within the fixture bound")
   end
 
 wire = Jason.encode!(request["messages"])
 included = Enum.count(texts, &String.contains?(wire, &1))
-assert included == if(baseline, do: 32, else: 33)
 assert_receive {:ipse, ^session, {:done, :ok}}, 30_000
 assert :ok = Task.await(server, 5_000)
 
@@ -204,8 +241,6 @@ reads =
       get_in(event, ["outcome", "status"]) == "ok"
   end)
 
-assert length(reads) == if(baseline, do: 32, else: 33)
-
 coverage =
   events
   |> Enum.flat_map(fn event ->
@@ -218,6 +253,19 @@ coverage =
   |> Map.fetch!("text")
   |> Jason.decode!()
 
+IO.puts(
+  "NATIVE_NOTE_RECALL_OBSERVED " <>
+    Jason.encode!(%{
+      "included" => included,
+      "reads" => length(reads),
+      "coverage" => coverage["coverage"],
+      "coverage_included" => coverage["included"],
+      "allocation_bytes" => coverage["allocation_bytes"]
+    })
+)
+
+assert included == if(baseline, do: 32, else: 33)
+assert length(reads) == if(baseline, do: 32, else: 33)
 assert coverage["coverage"] == if(baseline, do: "partial", else: "complete")
 assert coverage["included"] == included
 assert :ok = Ipse.Session.close_confirmed(session)

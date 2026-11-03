@@ -187,6 +187,58 @@ defmodule Ipse.Session.StoredSourcesTest do
              StoredSources.with_verified(context, nil, [c.proof], fn [_] -> :published end)
   end
 
+  test "scoped replay cache still refuses a changed original journal", c do
+    alias Ipse.Session.Resources
+
+    assert {:ok, scope} = Resources.start(self())
+    Resources.bind(scope)
+
+    try do
+      assert :ok =
+               StoredSources.with_verified(c.context, nil, [c.proof], fn [_] -> :ok end)
+
+      assert {:ok, cache} = Resources.source_replay_cache()
+      assert map_size(:sys.get_state(cache.pid).entries) == 1
+      original = File.read!(c.journal_path)
+      changed = String.replace(original, "Synthetic source retained", "Different source retained")
+      assert changed != original and byte_size(changed) == byte_size(original)
+      File.write!(c.journal_path, changed)
+
+      assert {:error, :collection_source_refused} =
+               StoredSources.with_verified(c.context, nil, [c.proof], fn _ ->
+                 send(self(), :changed_source_reached_callback)
+                 :unexpected
+               end)
+
+      refute_received :changed_source_reached_callback
+      File.write!(c.journal_path, original)
+
+      assert :ok =
+               StoredSources.with_verified(c.context, nil, [c.proof], fn [_] -> :ok end)
+
+      backup = c.journal_path <> ".original"
+      File.rename!(c.journal_path, backup)
+      File.write!(c.journal_path, original)
+      File.chmod!(c.journal_path, 0o600)
+
+      assert {:error, :collection_source_refused} =
+               StoredSources.with_verified(c.context, nil, [c.proof], fn _ ->
+                 send(self(), :copied_source_reached_callback)
+                 :unexpected
+               end)
+
+      refute_received :copied_source_reached_callback
+      File.rm!(c.journal_path)
+      File.rename!(backup, c.journal_path)
+
+      assert :ok =
+               StoredSources.with_verified(c.context, nil, [c.proof], fn [_] -> :ok end)
+    after
+      Resources.close(scope)
+      Process.delete({Resources, :scope})
+    end
+  end
+
   test "active result postcheck refuses policy fences, redaction, window replacement and rollback",
        c do
     assert {:ok, fenced} = SourceIndex.revalidate(c.index, c.index.policy_generation + 1)

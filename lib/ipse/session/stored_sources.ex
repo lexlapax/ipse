@@ -321,10 +321,10 @@ defmodule Ipse.Session.StoredSources do
                    {:ok, origin} when is_map(origin) <- SourceOrigin.recorded(metadata, id),
                    :ok <- SourceOrigin.check(file, path, id, metadata),
                    true <- project?(metadata, c),
-                   {:ok, saved} <- Saved.restore(stats.events, id),
+                   {:ok, index} <- source_index(stats.events, id),
                    :ok <- SourceWindow.validate_sources(c.history_dir, id, stats.events),
                    {:ok, current} <-
-                     resolve(saved.source_window.index, proofs, c[:stored_source_resolution]),
+                     resolve(index, proofs, c[:stored_source_resolution]),
                    true <- lock_live?(lock, monitor) do
                 result = with_sessions(rest, budgeted, i, current ++ verified, fun)
 
@@ -474,6 +474,19 @@ defmodule Ipse.Session.StoredSources do
   end
 
   defp unavailable(proof), do: %{"proof" => proof, "unavailable" => true}
+
+  defp source_index(events, id) do
+    case Ipse.Session.Resources.source_replay_cache() do
+      :none ->
+        with {:ok, saved} <- Saved.restore(events, id), do: {:ok, saved.source_window.index}
+
+      {:ok, cache} ->
+        Ipse.Session.SourceReplayCache.restore(cache, events, id)
+
+      _ ->
+        @error
+    end
+  end
 
   defp resolve(index, proofs, :partial) do
     {:ok,

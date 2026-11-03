@@ -33,6 +33,18 @@ same serialized byte and entry limits still apply. These caches neither retain
 source leases nor attest current permission: `StoredSources` must still check
 the original journal and current owners for each protected use.
 
+For an inactive original journal, a task can also reuse a reconstructed source
+index after `Saved.restore/2` has validated the complete decoded event list. The
+task-owned cache computes its own digest of the exact events and Session ID; it
+never accepts a caller-supplied index. It retains at most 128 indexes and 8 MiB
+of their encoded representations, with retained binaries detached from journal
+read buffers. Inputs over 8 MiB and simultaneous cache requests use the ordinary
+uncached reconstruction path. This is an encoded-size bound, not a bound on total
+BEAM heap or transient copies. Each use still opens and locks the original source,
+checks its origin and project, validates source pages, resolves the requested
+proofs and rechecks the owners. The cache dies with its cleanup scope; a cache hit
+does not retain a lease or authorize a later display, write or provider request.
+
 Session remains the conversation and permission owner. Only that owner can install
 or query the writer cache. Native model reads additionally require the exact active
 task PID, job reference, phase, selected source tool and original arguments. Public
