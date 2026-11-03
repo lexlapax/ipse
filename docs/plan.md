@@ -71,6 +71,31 @@ and again after material repairs, rather than after every small edit. Publish a
 checkpoint with completed work, the next gate and remaining uncertainty. Give
 time estimates only after measuring the integrated workload and available capacity.
 
+The previous approach produced many useful safeguards but too few completed
+user journeys. Repeated large probes and storage-only progress did not establish
+that populated recall works or that the annual workload is practical. Apply the
+following limits until the end-to-end paths are qualified:
+
+- Keep one owner on the notes journey, one on the bounded pilot/workload, and
+  at most one on an independent end-to-end slice. The integration owner closes
+  and reviews each result before starting replacement work. Separate source
+  ownership does not make native-helper, Mix or terminal tests independent.
+- Investigate the populated recall failure with a small disposable fixture and
+  phase evidence first. Preserve the unknown outcome and existing source,
+  deadline and no-replay checks. Stop repeating a failing probe without a new
+  hypothesis; repair and retest the identified boundary before another full day.
+- Freeze the pilot-derived or explicitly provisional intake, then measure one
+  complete populated day, including turns and effects. Use its real elapsed time
+  and resource peaks to assess whether the 30-, 90- and 365-day runs are feasible
+  before launching them. If not, redesign the workload execution while preserving
+  the specified coverage and real safety boundaries; do not count simulation or
+  storage-only segments as completed Session turns.
+- A checkpoint is complete only when its actual user journey, failure and recovery
+  cases, focused checks, documentation and independent review are complete.
+  Keep remaining milestone gates visible rather than treating a passing fixture,
+  preflight or source audit as acceptance. No delivery date is established until
+  the integrated day has been measured.
+
 1. **Notes journey — P31B/C0/D0/E.** Finish protected capture, current recall and
    their failure/recovery paths, and implement the displayed assistant-proposal
    card and exact in-chat acceptance. The result must exercise the actual Session,
