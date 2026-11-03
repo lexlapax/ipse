@@ -57,6 +57,46 @@ defmodule Ipse.Development.ManagedClockLifecycleTest do
     refute File.exists?(Path.join(root, "unexpected-model"))
   end
 
+  @tag clock_consent_renewal: true
+  test "renewed native permission permits a later capture while preserving original evidence" do
+    root =
+      clocked_phases(
+        "ipse-native-clock-renewal-",
+        [
+          {0, "managed_clock_late_seed.exs", "current", "NATIVE_CLOCK_LATE_SEED_PASSED"},
+          {364, "managed_clock_renewal_day.exs", "364", "NATIVE_CLOCK_RENEWAL_PASSED=364"},
+          {386, "managed_clock_renewal_day.exs", "386", "NATIVE_CLOCK_RENEWAL_PASSED=386"}
+        ],
+        stdio_clock: true
+      )
+
+    renewal = root |> Path.join("clock-renewal-364.json") |> File.read!() |> Jason.decode!()
+    later = root |> Path.join("clock-renewal-386.json") |> File.read!() |> Jason.decode!()
+    assert renewal["new_epoch"] == renewal["old_epoch"] + 1
+    assert renewal["new_expiry_ms"] > renewal["old_expiry_ms"]
+    assert later["at_ms"] > renewal["old_expiry_ms"]
+    assert later["at_ms"] < renewal["new_expiry_ms"]
+    assert later["source_sha256"] == renewal["source_sha256"]
+    assert later["capture_settled"] == true
+    assert later["annual_workload_qualification"] == false
+    refute File.exists?(Path.join(root, "unexpected-model"))
+  end
+
+  @tag clock_consent_renewal: true
+  test "expired native permission refuses its old policy without renewal" do
+    root =
+      clocked_phases(
+        "ipse-native-clock-expired-",
+        [
+          {0, "managed_clock_late_seed.exs", "current", "NATIVE_CLOCK_LATE_SEED_PASSED"},
+          {386, "managed_clock_renewal_day.exs", "expired", "NATIVE_CLOCK_RENEWAL_PASSED=386"}
+        ],
+        stdio_clock: true
+      )
+
+    refute File.exists?(Path.join(root, "unexpected-model"))
+  end
+
   defp clocked_phases(prefix, phases, options \\ []) do
     assert is_nil(System.get_env("IPSE_RUNNER_PATH"))
     root = Path.join(System.tmp_dir!(), prefix <> Ipse.Usage.id())

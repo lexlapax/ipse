@@ -250,6 +250,13 @@ resource peaks and independent quality remain unplanned. Use the calendar's
 explicit actions when implementing the native driver, then extend those missing
 journeys and authenticate every actual target/source/deadline at execution.
 
+Plan a fresh native permission review before the saved grant expires. The seed
+starts before the 365 annual dates, so a one-year grant from seed creation does
+not cover the last annual days. A scoped [clocked control](../archive/2026-10-26-p30-p31-implementation/native-consent-renewal-20261102.md)
+checks expiry refusal and a new native capture after review, while preserving the
+original saved source and signed stored note. It does not establish old-note
+delivery to a model or complete annual continuity.
+
 Resolve an impossible budget through an explicitly reviewed storage design;
 do not reset identities, discard liabilities, raise a limit to hide failure or
 count primitive churn as native lifecycle coverage. The

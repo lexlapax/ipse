@@ -1,0 +1,68 @@
+{
+  "annual_qualification": false,
+  "base_commit": "0af40814cbccf5de7e3c75befb606c8bfeeedbae",
+  "date": "2026-11-02",
+  "documentation_check": {
+    "path": "/tmp/ipse-native-clock-renewal-20261102-docs.log",
+    "errors": 0,
+    "sha256": "2326d8ced50783cc5508ec660845cfed3f18074e3da731701d659d39dd5db2ee",
+    "markdown_files": 1059,
+    "local_links": 8751
+  },
+  "earlier_positive_seeds": [
+    791848,
+    791849
+  ],
+  "files_sha256": {
+    "/tmp/ipse-full-p30-p31-current-20261102.log": "b479df12d5f2a03af24a791f39d4fcbff32335711810aa9d100572eef9f39589",
+    "/tmp/ipse-native-clock-renewal-20261102-controls.log": "c1151c98be747ba53561b42eea6941e6a1641d1b0d30058c89cd2ecd50722554",
+    "/tmp/ipse-native-clock-renewal-20261102-final.log": "31b9678fd9c635de4a27747de8e1d0b486865016ee40732c7bc86ac0331373d6",
+    "/tmp/ipse-native-clock-renewal-20261102-first.log": "5d068dca426d8a2c8e16cbd55d8979001a694d44ad1406e020fb6267134a227e",
+    "dev/fixtures/process_clock.rs": "07828b7e1fe9e878d46e4df4ef3a1a4d5d5d65cc7c84c1fdd2acbeb3d9be421c",
+    "priv/ipse-runner": "5487c57a84b99be7b5b4381d097b637d3c45350b92b492d1786712f2bfbf8c7a",
+    "test/dev/knowledge/managed_clock_lifecycle_test.exs": "0389cba221d9d1bf627cf31097f529b8237f2c9110a0999b9ba121be70c32d39",
+    "test/support/managed_clock_lifecycle.exs": "71ee6667f1389f6315fca305a6d4af819f26f8f8db0da7ff61552ca39723e104",
+    "test/support/managed_clock_renewal_day.exs": "cad4177d1b8efe7e4669a089243df55440b7cbcd867cfc7c887941da07f0cc61",
+    "test/support/managed_supersession_session.exs": "e2962e8b7afd100e8cda74c498dc41cdd0543588028d35c930dd84d8b9eda474",
+    "test/support/operator_pty.rs": "bcf2ce303c72ab32d74d6959883ecef4b17a63613c7f4047057fdc18eef6d92c"
+  },
+  "final_controls": {
+    "excluded": 2,
+    "exit_status": 0,
+    "negative_scope": "expired consent callback refusal, not a full attempted capture",
+    "passed": 2,
+    "seed": 791850
+  },
+  "full_clock_file": {
+    "exit_status": 0,
+    "path": "/tmp/ipse-native-clock-renewal-20261102-regression.log",
+    "failed": 0,
+    "seed": 791851,
+    "sha256": "be0d792bf66d7b75e9d213154db215147620e8cd98dc3385359c0c3925ad8766",
+    "passed": 4
+  },
+  "full_suite_interrupted": {
+    "complete_parent_summary": false,
+    "observed_exit_status": 0,
+    "result": "incomplete",
+    "seed": 791845,
+    "signal": "SIGTERM",
+    "source_commit": "3b140489ff928abe9e3a88a79b721a54706ed266"
+  },
+  "later": {
+    "annual_workload_qualification": false,
+    "at_ms": 1827014418675,
+    "capture_settled": true,
+    "source_sha256": "87e9e89fd5bc8f788406af178c1d342bc9b18b26ee8682fa207d12c7766ac3f2"
+  },
+  "model_calls": 0,
+  "renewal": {
+    "new_epoch": 2,
+    "new_expiry_ms": 1856649617415,
+    "old_epoch": 1,
+    "old_expiry_ms": 1825200011552,
+    "source_sha256": "87e9e89fd5bc8f788406af178c1d342bc9b18b26ee8682fa207d12c7766ac3f2"
+  },
+  "snapshot_scope": "selected source and helper hashes collected after execution, not a complete or pre/post runtime inventory",
+  "version": 1
+}

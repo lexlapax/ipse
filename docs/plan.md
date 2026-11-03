@@ -1375,6 +1375,10 @@ The prior calendar's contrary record-count conclusion and associated same-shape
 data-overflow claim are withdrawn. This pure fixture is unratified and executes
 zero turns/effects. Actual page packing, remaining effect overhead and pilot-derived
 mix/intake remain open.
+The [native consent-renewal control](archive/2026-10-26-p30-p31-implementation/native-consent-renewal-20261102.md)
+checks expired-policy refusal and a later native capture after fresh review,
+preserving the original signed stored note and saved source. Old-note delivery
+after renewal and full annual continuity remain open.
 The [retained-receipt geometry probe](archive/2026-10-26-p30-p31-implementation/native-receipt-geometry-20261102.md)
 also measures 8,639,325 canonical packed bytes for 42,980 managed receipts and
 2,000 public record descriptors, above the unchanged 8-MiB ceiling before domain
