@@ -994,7 +994,10 @@ repair plus post-effect interruption/refusal on fresh smoke stores. Active-effec
 loss, concurrency, scalable recovery and annual qualification remain open.
 The [batched smoke continuation](archive/2026-10-26-p30-p31-implementation/native-turnover-batch-20261102.md)
 checks grouped effects, clean restart and reuse of a compensated same-day clock
-anchor on separate small stores. It does not execute the annual calendar.
+anchor on separate small stores. A [calendar-runner smoke](archive/2026-10-26-p30-p31-implementation/native-calendar-runner-20261102.md)
+adds frozen-source validation, UTC-aligned windows, native renewal and refusal
+controls. Neither executes main turns or qualifies the annual calendar; active
+effect loss, concurrent restart and power loss remain unverified.
 
 P31D1 now has optional [cooperative model checks around registered Ollama jobs](archive/2026-10-26-p30-p31-implementation/ollama-model-pin-jobs-20261031.md).
 Named operator text/embedding profiles bind expected metadata and minimum loaded
