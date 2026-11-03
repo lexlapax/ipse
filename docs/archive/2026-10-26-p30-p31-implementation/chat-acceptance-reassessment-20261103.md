@@ -117,3 +117,7 @@ fresh interactive code and client/Session binding, publication and later use,
 plus stale source/code, cancellation, owner loss, interrupted or unknown
 outcomes and no automatic replay. Until these are demonstrated, neither the
 draft nor the standalone review closes the frozen post-reply requirement.
+
+The subsequent [Session-owned guard design](chat-acceptance-session-guard-design-20261103.md)
+records a reviewed candidate protocol and its tests. It remains unimplemented
+and does not change this historical assessment or the frozen requirement.

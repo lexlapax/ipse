@@ -61,6 +61,7 @@ nor resource/offline qualification. No daemon configuration or existing model wa
 
 ## P31I planning and acceptance
 
+- [Proposed Session-owned acceptance guard](chat-acceptance-session-guard-design-20261103.md) sets out the reviewed same-reply owner, review, replay and interruption requirements; implementation and qualification remain open.
 - [Chat acceptance architectural reassessment](chat-acceptance-reassessment-20261103.md) compares the frozen post-reply contract with the paused Session-owned draft and an unproven separate-owner alternative.
 - [Chat acceptance host-protocol plan](chat-acceptance-host-protocol-plan-20261103.md) records the ownership and later-use gaps for a proposed single-card journey; no implementation or test is claimed.
 

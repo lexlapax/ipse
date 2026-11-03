@@ -163,7 +163,8 @@ following limits until the end-to-end paths are qualified:
    a Session-owned decision without new owner-bound handoffs. A later
    [architecture reassessment](archive/2026-10-26-p30-p31-implementation/chat-acceptance-reassessment-20261103.md)
    preserves the frozen post-reply requirement and pauses the unproven draft;
-   it is not an implementation or passing journey.
+   a [reviewed guard design](archive/2026-10-26-p30-p31-implementation/chat-acceptance-session-guard-design-20261103.md)
+   sets out the next owner and recovery checks. Neither is a passing journey.
 5. **Decision engines — P30A–E.** Complete the host protocol and protected
    consumer integration independently of document/graph work. Enforce the explicit
    finite allowance across the whole authorized experiment, using the existing
