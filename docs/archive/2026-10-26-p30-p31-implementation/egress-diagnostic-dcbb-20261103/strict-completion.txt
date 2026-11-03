@@ -1,0 +1,5 @@
+test_exit=1
+filter_exit=0
+analysis_exit=2
+sources_exit=0
+postcheck_exit=0

@@ -1,0 +1,5 @@
+Built corpus/collection-documents. Import, trust and enable it explicitly.
+Built corpus/state-documents. Import, trust and enable it explicitly.
+Built knowledge/native. Import, trust and enable it explicitly.
+Built knowledge/decision-shadow. Import, trust and enable it explicitly.
+Built inert extension bundle catalog; artifacts remain disabled until operator setup.

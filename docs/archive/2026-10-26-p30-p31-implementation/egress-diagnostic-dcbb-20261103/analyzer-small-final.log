@@ -1,0 +1,10 @@
+classification=local_send_returned_and_listener_received_body
+gate_elapsed_us=255192
+current_elapsed_us=484401
+connect_elapsed_us=5777
+send_elapsed_us=484403
+listener_terminal=request_body
+listener_terminal_bytes=19790
+admit_result_class=ok
+current_result_class=ok
+instrumented_timings_only=true

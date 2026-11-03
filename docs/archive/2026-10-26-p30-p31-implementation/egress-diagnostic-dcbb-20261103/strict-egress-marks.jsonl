@@ -1,0 +1,12 @@
+{"at":-576460702240803458,"class":null,"job":null,"kind":"mark","owner_pid":"<0.3896.0>","pid":"<0.95.0>","stage":"subject"}
+{"at":-576460635649217871,"class":null,"job":"#Ref<0.2963172696.4069523457.184408>","kind":"mark","owner_pid":"<0.3896.0>","pid":"<0.4657.0>","stage":"gate_enter"}
+{"at":-576460632852622746,"class":"ok","job":"#Ref<0.2963172696.4069523457.184408>","kind":"mark","owner_pid":"<0.3896.0>","pid":"<0.4657.0>","stage":"gate_result"}
+{"at":-576460632852621856,"kind":"producer_barrier","pid":"<0.4657.0>","stage":"gate"}
+{"at":-576460632844647037,"class":null,"job":null,"kind":"mark","owner_pid":null,"pid":"<0.4937.0>","stage":"transport_connect"}
+{"at":-576460632840525673,"bytes":0,"event":"accepted","kind":"listener","pid":"<0.3942.0>"}
+{"at":-576460632840507188,"class":null,"job":null,"kind":"mark","owner_pid":null,"pid":"<0.4937.0>","stage":"transport_connected"}
+{"at":-576460632840503634,"class":null,"job":null,"kind":"mark","owner_pid":null,"pid":"<0.4937.0>","stage":"transport_admit"}
+{"at":-576460632840455999,"class":null,"job":"#Ref<0.2963172696.4069523457.184408>","kind":"mark","owner_pid":"<0.3896.0>","pid":"<0.4937.0>","stage":"send_enter"}
+{"at":-576460632840455541,"class":null,"job":"#Ref<0.2963172696.4069523457.184408>","kind":"mark","owner_pid":"<0.3896.0>","pid":"<0.4937.0>","stage":"current_enter"}
+{"at":-576460627848598162,"bytes":0,"event":"closed","kind":"listener","pid":"<0.3942.0>"}
+{"closure":"finish_received","dropped":0,"events":11,"kind":"summary"}

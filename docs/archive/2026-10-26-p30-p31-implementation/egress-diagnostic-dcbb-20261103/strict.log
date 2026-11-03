@@ -1,0 +1,3 @@
+NATIVE_RECALL_FIXTURE_ROOT=/dev/shm/ipse-native-recall-fa547f3ae898e4bd50df06a2afe015dd
+SYNTHETIC_FIXTURE_FAILURE=1
+Result: 0/1 passed, 4 excluded

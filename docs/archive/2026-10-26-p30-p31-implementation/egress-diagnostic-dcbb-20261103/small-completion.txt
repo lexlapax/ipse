@@ -1,0 +1,4 @@
+test_exit=0
+filter_exit=0
+validation_exit=0
+postcheck_exit=0
