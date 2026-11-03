@@ -365,6 +365,13 @@ daily intake, corrections/forgetting/supersession, reclamation, concurrency,
 offline imports, compaction or the additional 10,000 mixed changes. Full maximum
 record, mixed-lifecycle and final persistent-metadata qualification remain open.
 
+A [small turnover pilot](../archive/2026-10-26-p30-p31-implementation/native-turnover-pilot-20261102.md)
+continues a separately audited smoke seed through seven real lifecycle effects,
+with closed segments and a final signed-read audit. Its fixed scratch script
+does not implement the calendar or 40-turn days. When building the annual
+continuation, retain its exact target/source checks and stop on an unknown effect;
+then measure the complete workload rather than extrapolating this smoke result.
+
 ### Audit the complete retained population
 
 Run `--audit ROOT OUTPUT` only after all segments have their closed markers.

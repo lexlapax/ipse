@@ -1,0 +1,275 @@
+{
+  "annual_qualification": false,
+  "base_commit": "abcde0e",
+  "closures": [
+    {
+      "closed": {
+        "exit_code": 0,
+        "index": 1,
+        "log": {
+          "bytes": 1056,
+          "path": "/tmp/ipse-native-seed-turnover-smoke-20261102/turnover-pilot/segment-1.log",
+          "sha256": "e9cb8625059bcaa1deaeaa9cf5a526bce846d31f0e30ada5f6a9ef6cb516b372"
+        },
+        "report": {
+          "bytes": 1697,
+          "path": "/tmp/ipse-native-seed-turnover-smoke-20261102/turnover-pilot/report-1.json",
+          "sha256": "1b099f17edd78c8bef552a550dc4c0ce4b636ca36531edfab65dc1b051c37a35"
+        }
+      },
+      "path": "/tmp/ipse-native-seed-turnover-smoke-20261102/turnover-pilot/closed-1.json",
+      "sha256": "ee3c58271afceb9b2067c2d281a53e669a3a54bbb52c044f35f7ba60ebfaa742"
+    },
+    {
+      "closed": {
+        "exit_code": 0,
+        "index": 2,
+        "log": {
+          "bytes": 10991,
+          "path": "/tmp/ipse-native-seed-turnover-smoke-20261102/turnover-pilot/segment-2.log",
+          "sha256": "c81e46b771ae9d18b020f3d16885bdc756e64085b69f209fb97d139620f02df8"
+        },
+        "report": {
+          "bytes": 1737,
+          "path": "/tmp/ipse-native-seed-turnover-smoke-20261102/turnover-pilot/report-2.json",
+          "sha256": "f964f15d704458e474838fb8049530c1f9e09ddd30f4648aa8454587f7729410"
+        }
+      },
+      "path": "/tmp/ipse-native-seed-turnover-smoke-20261102/turnover-pilot/closed-2.json",
+      "sha256": "1fff7e52034727668567c81bda75accafd7c2e7ed71c31fd9320afc97c890eb6"
+    },
+    {
+      "closed": {
+        "exit_code": 0,
+        "index": 3,
+        "log": {
+          "bytes": 7508,
+          "path": "/tmp/ipse-native-seed-turnover-smoke-20261102/turnover-pilot/segment-3.log",
+          "sha256": "63d49c96cb9e224baf392af3c1c15b20aa4e9842ef7a02eabbd5940d77582f7f"
+        },
+        "report": {
+          "bytes": 461,
+          "path": "/tmp/ipse-native-seed-turnover-smoke-20261102/turnover-pilot/report-3.json",
+          "sha256": "85845858536b2e8095c57f393d4cbec290145313f355b131f5d92fedf0e1ab82"
+        }
+      },
+      "path": "/tmp/ipse-native-seed-turnover-smoke-20261102/turnover-pilot/closed-3.json",
+      "sha256": "71bfd46586c98ed3b6aa76a84cdf09771121c7d6d69601d0e93e072af7710c3f"
+    },
+    {
+      "closed": {
+        "exit_code": 0,
+        "index": 4,
+        "log": {
+          "bytes": 10996,
+          "path": "/tmp/ipse-native-seed-turnover-smoke-20261102/turnover-pilot/segment-4.log",
+          "sha256": "d6633f4a78a5a592563dc1385c61c3192fce01f133235dc57737a9f4d765ceed"
+        },
+        "report": {
+          "bytes": 1722,
+          "path": "/tmp/ipse-native-seed-turnover-smoke-20261102/turnover-pilot/report-4.json",
+          "sha256": "37a7c38b69b89735d1c84ed1634a7f481846a48e38e3d4bc229dd606fc21cb04"
+        }
+      },
+      "path": "/tmp/ipse-native-seed-turnover-smoke-20261102/turnover-pilot/closed-4.json",
+      "sha256": "249b4f58fafced7216e0f5f51e8a1b47007661c5efe4042a3dc41328a668a48a"
+    },
+    {
+      "closed": {
+        "exit_code": 0,
+        "index": 5,
+        "log": {
+          "bytes": 7651,
+          "path": "/tmp/ipse-native-seed-turnover-smoke-20261102/turnover-pilot/segment-5.log",
+          "sha256": "be78101ea853c7d85e7c1a50cade2f52a63bc56e478634290192d811a0c499fe"
+        },
+        "report": {
+          "bytes": 462,
+          "path": "/tmp/ipse-native-seed-turnover-smoke-20261102/turnover-pilot/report-5.json",
+          "sha256": "e6bc28f7e323c9ee4d59f1334d4977ee1547d1385fe2704512926e6791b06545"
+        }
+      },
+      "path": "/tmp/ipse-native-seed-turnover-smoke-20261102/turnover-pilot/closed-5.json",
+      "sha256": "efeff4c643eac94ceff66e3ee568e42d6ccb0a74d6a7aed76af16d0c1315da9c"
+    },
+    {
+      "closed": {
+        "exit_code": 0,
+        "index": 6,
+        "log": {
+          "bytes": 5254,
+          "path": "/tmp/ipse-native-seed-turnover-smoke-20261102/turnover-pilot/segment-6.log",
+          "sha256": "44e4a3dc29a88158b98d555d929a0e84cb61ef9e51aa82d2652ad443c52e7367"
+        },
+        "report": {
+          "bytes": 469,
+          "path": "/tmp/ipse-native-seed-turnover-smoke-20261102/turnover-pilot/report-6.json",
+          "sha256": "b4574262ac6d1c2f5623aac9f99e748b6fdcd9a8322dd5cc48ba3076fa75d548"
+        }
+      },
+      "path": "/tmp/ipse-native-seed-turnover-smoke-20261102/turnover-pilot/closed-6.json",
+      "sha256": "c8e9ee1811e6c1a91009a531f882cf5b3f250471884abe9eaec2e6353d5bf546"
+    },
+    {
+      "closed": {
+        "exit_code": 0,
+        "index": 7,
+        "log": {
+          "bytes": 7639,
+          "path": "/tmp/ipse-native-seed-turnover-smoke-20261102/turnover-pilot/segment-7.log",
+          "sha256": "4f4c5485f4175ea4bdd701551dc75e6d9c8eeaabac456509c7a9f0431ec08557"
+        },
+        "report": {
+          "bytes": 463,
+          "path": "/tmp/ipse-native-seed-turnover-smoke-20261102/turnover-pilot/report-7.json",
+          "sha256": "56ff4f6d146193d8ef7488f3ef68d018acc86f2c9d96710f25a479587572c617"
+        }
+      },
+      "path": "/tmp/ipse-native-seed-turnover-smoke-20261102/turnover-pilot/closed-7.json",
+      "sha256": "4e4a3555f97dc6dd9e11c4f7e29347a268a691de2b22d6d15384cd955f68cb89"
+    }
+  ],
+  "completed_replay_attempt_exit_status": 1,
+  "date": "2026-11-02",
+  "files_sha256": {
+    "/tmp/ipse-native-seed-audit-turnover-smoke-20261102.json": "5830859171f7fa1637dcd163bf7c3f5715d54f1d84b77af752a8b2c42311c0ff",
+    "/tmp/ipse-native-seed-turnover-smoke-20261102/manifest.json": "fcf05ca91537a0dc6222a26d01024803e9be0e1f1482dcdc1d1c44932df6ec35",
+    "/tmp/ipse-native-seed-turnover-smoke-20261102/turnover-pilot/manifest.json": "42ec56629abaae076eda10f6ffd6541de95d823605250dc95fccf3e7b6560d6f",
+    "/tmp/ipse-native-turnover-pilot-20261102-first.log": "229f5b1ba82ebf4c1b7a6f0b31567bafb24a38bb0bdf51b6b5435a4c38314697",
+    "/tmp/ipse-native-turnover-pilot-audit-final-20261102.json": "e533bd423eadc04bd6f2a05bdcc44393f1da2e64c956438bc97305eeb86b183c",
+    "/tmp/ipse-native-turnover-pilot-audit-final-20261102.log": "d32039667074cd8e9bece7165db46fc26b1c5d54d5d98509106963763e039b36",
+    "/tmp/ipse-native-turnover-pilot-completed-refusal-20261102.log": "a3c123f008f05e960579df24b6d1d4dc5a0d8c721f1fff999d891a591429e56a",
+    "/tmp/ipse-native-turnover-pilot-init-20261102.log": "5b18d490ec3ffca341d6a709e4493c96d39a54b26d588de7cdacb33bc81c0149",
+    "/tmp/ipse-native-turnover-pilot-init-retry-20261102.log": "8700c0db4b78e0dd0db5a21c9f4495f03685ccdd55a148f253b6be608a101b37",
+    "/tmp/ipse-native-turnover-pilot-post-refusal-20261102.json": "e533bd423eadc04bd6f2a05bdcc44393f1da2e64c956438bc97305eeb86b183c",
+    "/tmp/ipse-native-turnover-pilot-post-refusal-20261102.log": "d32039667074cd8e9bece7165db46fc26b1c5d54d5d98509106963763e039b36",
+    "/tmp/ipse-native-turnover-smoke-audit-20261102.log": "b9c43d0649d21bfe3021ad2a6704d720bafd3c975f0ee4f2ee724018491b956f",
+    "/tmp/ipse-native-turnover-smoke-audit-retry-20261102.log": "53d1159cb8b664cfa36a58ead90bb9bbe693ca6b2e5fb4758a43d4bd9a38ccb4",
+    "/tmp/ipse-native-turnover-smoke-init-20261102.log": "b702453131510353f61858d8fbc2476f1221380d6761f67dffd10882689bb0d4",
+    "/tmp/ipse-native-turnover-smoke-populate-20261102.log": "a68b1a26fea88695642bf041dd3f39a103c46f52c71daf03a32f67357230a2fe",
+    "docs/archive/2026-10-26-p30-p31-implementation/native-turnover-pilot-20261102.exs": "7cc38c6516850035670c86be529cda6bb951576a4f5e82433e2c681b3e2ce5ea",
+    "docs/archive/2026-10-26-p30-p31-implementation/native-turnover-pilot-audit-20261102.exs": "08c5d24275a613f685003d2c90b82590e15957c8cd459ddd0deb7e60d9cc6711"
+  },
+  "final_audit": {
+    "absent_aliases": [
+      "seed/3",
+      "seed/4",
+      "seed/5",
+      "pilot/correct"
+    ],
+    "collection_status": {
+      "accounted_allocated_bytes": 23126016,
+      "accounted_total_bytes": 23092336,
+      "allocated_bytes": 57344,
+      "checkpoint": null,
+      "checkpoint_data_bytes": 0,
+      "checkpoint_records": 0,
+      "data_bytes": 18203,
+      "disk_bytes": 23664,
+      "envelope_data_bytes": 18203,
+      "floor": 15,
+      "floor_anchor": "6d8aa8b30d93355fe14b78441cea1f04",
+      "generation": 15,
+      "limits": {
+        "control_reserved_bytes": 23068672,
+        "data_bytes": 25165824,
+        "operations": 32768,
+        "records": 8192,
+        "total_bytes": 67108864,
+        "value_bytes": 6144
+      },
+      "migration": null,
+      "notice": null,
+      "operations": 15,
+      "project": "04ba0514d67be5d9678de32881f66e104c40d71b06cb651d185e450e579a739a",
+      "records": 9,
+      "reserved_operation_slots": 0,
+      "staged_data_bytes": 0,
+      "staged_records": 0,
+      "version": 3
+    },
+    "generation": 15,
+    "measured_components_allocated_bytes": 847872,
+    "physical_allocations": {
+      "control": {
+        "allocated_bytes": 49152,
+        "entries": 5,
+        "logical_bytes": 47323
+      },
+      "identity": {
+        "allocated_bytes": 4096,
+        "entries": 4,
+        "logical_bytes": 1399
+      },
+      "management": {
+        "allocated_bytes": 57344,
+        "entries": 11,
+        "logical_bytes": 40384
+      },
+      "sessions": {
+        "allocated_bytes": 679936,
+        "entries": 16,
+        "logical_bytes": 653961
+      }
+    },
+    "qualification": false,
+    "root_sha256": "33f1ecbb30771434dd350aa585b1d9136761866f4bf898998f8375568aba8522",
+    "saved_sessions": 5,
+    "settled_control_sequence": 15,
+    "verified": [
+      {
+        "category": "pin",
+        "expired": false,
+        "id": "seed/1",
+        "value_sha256": "cc5e5d7c8b01e4f543ebedc4011fc0a7852b02b9704c4e462ec87f5cd2e4697b"
+      },
+      {
+        "category": "preference",
+        "expired": false,
+        "id": "seed/2",
+        "value_sha256": "5282654016907718b6eeb889946fc1c98c60090566db7b47eb4f99805db68e03"
+      },
+      {
+        "category": "ordinary",
+        "expired": true,
+        "id": "seed/6",
+        "value_sha256": "edc30773a18d840a3010c9322fad7510df0aad7562d3a14bf62dfb02c2b4f6e6"
+      },
+      {
+        "category": "ordinary",
+        "expired": true,
+        "id": "seed/7",
+        "value_sha256": "42c1f37bcb0380f568bc57548c0e264cbbc0bb6375e2bc0521fdafc11aa41e62"
+      },
+      {
+        "category": "ordinary",
+        "expired": true,
+        "id": "pilot/capture",
+        "value_sha256": "92d42186cd270fdbeae1a76840124f8de5f6b7528c317067b0312ed77bb58d79"
+      },
+      {
+        "category": "current",
+        "expired": false,
+        "id": "pilot/current",
+        "value_sha256": "5b3092a3d3885953bcf0ff619e4504f7c6eb1244f21fd064e0fe1e3f9f5c5769"
+      }
+    ]
+  },
+  "initial_audit_refusal": {
+    "exit_status": 1,
+    "reason": "output filename lacked required prefix; refused before audit output or record checks"
+  },
+  "initial_pilot_init_refusal": {
+    "exit_status": 1,
+    "failed_source_separately_snapshotted": false,
+    "reason": "incorrect digest comparison; refused before pilot directory or effect"
+  },
+  "model_calls": 0,
+  "parent_exit_status": 0,
+  "post_refusal_audit_sha256": "e533bd423eadc04bd6f2a05bdcc44393f1da2e64c956438bc97305eeb86b183c",
+  "replay_refusal_before_effect": true,
+  "root": "/tmp/ipse-native-seed-turnover-smoke-20261102",
+  "simulated_main_turns": 0,
+  "snapshot_scope": "pilot manifest binds seed runtime files; audits verify manifest/source and root/control before and after; no complete machine/runtime, memory or disk-peak inventory",
+  "version": 1
+}
