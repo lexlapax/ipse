@@ -140,7 +140,10 @@ following limits until the end-to-end paths are qualified:
    [fresh 2,000-record candidate run](archive/2026-10-26-p30-p31-implementation/populated-recall-d739-20261103.md)
    completed its seed and audit but ended with another unknown Worker input
    before inference. The batching candidate therefore has not fixed populated
-   recall, and the new uncertain turn is not replayed. A
+   recall, and the new uncertain turn is not replayed. A later
+   [combined coalescing increment](archive/2026-10-26-p30-p31-implementation/worker-v4-coalescing-bde96-20261103.md)
+   passes focused signed-batch, source-owner and P30 compatibility controls;
+   a real 33-note Session and current-runtime populated recall remain open. A
    [local pilot launcher preflight](archive/2026-10-26-p30-p31-implementation/pilot-local-preflight-20261103.md)
    passed 27 synthetic controls without model calls; live results and independent
    semantic labels are still missing. Its first local launch

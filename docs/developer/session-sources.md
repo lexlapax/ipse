@@ -483,6 +483,25 @@ to the Writer snapshot. Even a metadata-only request retains the consuming
 Session owner. No synthetic terminal or approval is involved in this typed
 input purpose. Ordinary effect approval remains separate.
 
+Within each of its two independent protected observations, the Worker-input
+path groups version-4 literal dependencies in their original relative order,
+including those separated by other versions. It reads at most 32 per Collection
+view, closes each view before observing other versions, and reconstructs the
+complete result and proof union in the original dependency order. Every selected
+read still checks the exact current native root and each record's signed metadata,
+recipe and source policy. The second observation reacquires current authority
+and must reproduce the first; the final retained Collection owner must match
+every observed root before the input can be delivered. Other managed-use paths
+retain their per-dependency observations.
+
+Grouping changes internal read and failure order, not the authority or resource
+limits. Each view retains its 512-read and 512-observation-unit ceilings. The
+DomainAuth capability remains shared across all records and versions in a
+protected pass, with its existing 128-verification, 1-MiB input and five-second
+limits. The separate 128-source-owner bound does not imply that 128 signed
+records fit within those limits. Owner loss or unconfirmed cleanup still
+withholds the input; no batch or cached view grants a later use.
+
 After pipe settlement, every source/control scope must close and Writer must
 thaw before Session commits `worker_input_result: delivered` and the publisher
 awaits the buffered callback response. Computation runs outside those locks,
@@ -514,7 +533,9 @@ publication can therefore leave the capture settled while its next input remains
 unknown. Mixed metadata roots, scans and unclassified metadata cannot acquire
 the transition.
 
-This adapter supports dependency versions 3–6. For accepted decisions,
+The Worker-input path supports dependency versions 3–7. Version 7 identifies a pending
+proposal only for the separately admitted shadow-assessment path; it does not
+make that proposal a current note. For accepted decisions,
 `PendingAcceptance` authenticates the immutable acceptance links and retains
 each original committed management journal outside the policy owners. Its
 same-process tokens are bound to those exact links. The sink imports all of

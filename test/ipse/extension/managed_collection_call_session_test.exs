@@ -8725,6 +8725,154 @@ defmodule Ipse.Extension.ManagedCollectionCallSessionTest do
 
     assert MapSet.subset?(MapSet.new(seed["keys"]), MapSet.new(observed))
 
+    # The retained source fixture supplies authenticated v4 dependencies. Make
+    # root dependencies from different actual observations so the canonical
+    # digest order interleaves versions, then compare worker and approval paths.
+    # Approval retains the original single-observation behavior.
+    alias Ipse.Extension.Collection.ObservedRead
+    alias Ipse.Session.{ManagedReference, ManagedUse}
+    state = :sys.get_state(pid)
+    context = %{config: state.config, cwd: c.cwd, session_id: state.id, history_dir: c.dir}
+    pin = state.config.semantic_admission["pin"]
+    root = SemanticAdmission.collection_root(c.home)
+
+    literals =
+      for event <- events,
+          event["type"] == "managed_read_observed",
+          dependency <- event["dependencies"],
+          dependency["version"] == 4,
+          do: dependency
+
+    literals = Enum.uniq_by(literals, & &1["subject"]["key"])
+    assert MapSet.new(Enum.map(literals, & &1["subject"]["key"])) == MapSet.new(seed["keys"])
+
+    roots =
+      for request <- [
+            %{"op" => "snapshot"} | Enum.map(seed["keys"], &%{"op" => "get_record", "key" => &1})
+          ] do
+        assert {:ok, observation} = ObservedRead.read(root, c.namespace, request)
+        assert {:ok, dependency} = ObservedRead.root_dependency(request, observation, pin)
+        dependency
+      end
+
+    assert {:ok, dependencies} = ManagedReference.union([literals, roots])
+    runs = Enum.chunk_by(dependencies, &(&1["version"] == 4))
+    assert Enum.count(runs, &(hd(&1)["version"] == 4)) > 1
+    assert Enum.count(dependencies, &(&1["version"] == 4)) == 8
+    assert Enum.count(dependencies, &(&1["version"] == 3)) > 1
+
+    capture = fn current, held ->
+      {:ok, %{current: current, proofs: held.source_proofs}}
+    end
+
+    assert {:ok, expected} = ManagedUse.with_approval_dependencies(context, dependencies, capture)
+
+    # Count the exported batch entry only in descendants of this synthetic test.
+    # The arity-only assertion counts batch calls without note arguments.
+    counter =
+      spawn(fn ->
+        collect = fn collect, count ->
+          receive do
+            {:trace, _, :call, {ObservedRead, :managed_records, _}} ->
+              collect.(collect, count + 1)
+
+            {:count, caller} ->
+              send(caller, {:managed_batch_calls, count})
+              collect.(collect, count)
+
+            :stop ->
+              :ok
+
+            _ ->
+              collect.(collect, count)
+          end
+        end
+
+        collect.(collect, 0)
+      end)
+
+    try do
+      assert 1 == :erlang.trace_pattern({ObservedRead, :managed_records, 5}, true, [])
+      assert 1 == :erlang.trace(self(), true, [:call, :arity, :set_on_spawn, {:tracer, counter}])
+
+      assert {:ok, ^expected} =
+               ManagedUse.with_worker_dependencies(context, dependencies, capture)
+
+      assert 1 == :erlang.trace(self(), false, [:call, :arity, :set_on_spawn])
+      delivered = :erlang.trace_delivered(:all)
+      assert_receive {:trace_delivered, :all, ^delivered}, 5_000
+      send(counter, {:count, self()})
+      assert_receive {:managed_batch_calls, 2}, 5_000
+    after
+      :erlang.trace(self(), false, [:call, :arity, :set_on_spawn])
+      :erlang.trace_pattern({ObservedRead, :managed_records, 5}, false, [])
+      send(counter, :stop)
+    end
+
+    assert Enum.map(expected.current, & &1["version"]) == Enum.map(dependencies, & &1["version"])
+    assert length(expected.proofs) == length(seed["source_journals"])
+
+    # Two different dependency digests with the same v4 observation key must
+    # each be checked against the current value; caching must not launder one.
+    original = hd(literals)
+
+    changed =
+      put_in(original, ["subject", "publication_policy_sha256"], JSON.sha256("different policy"))
+
+    assert ManagedReference.dependency?(changed)
+    assert {:ok, duplicate_key_dependencies} = ManagedReference.union([dependencies, [changed]])
+    assert length(duplicate_key_dependencies) == length(dependencies) + 1
+    owner = self()
+
+    refused = fn _, _ ->
+      send(owner, :coalesced_input_delivered)
+      {:ok, :unexpected}
+    end
+
+    refute match?(
+             {:ok, _},
+             ManagedUse.with_worker_dependencies(context, duplicate_key_dependencies, refused)
+           )
+
+    refute_received :coalesced_input_delivered
+
+    # An unavailable original source must withhold the entire input, and its
+    # synthetic fixture is restored even when an assertion fails.
+    original_source = hd(seed["source_journals"])
+    source_path = original_source["path"]
+    held_path = source_path <> ".coalesced-test-held"
+    before_source = File.stat!(source_path)
+    assert JSON.sha256(File.read!(source_path)) == original_source["sha256"]
+    refute File.exists?(held_path)
+    File.rename!(source_path, held_path)
+
+    try do
+      refute match?({:ok, _}, ManagedUse.with_worker_dependencies(context, dependencies, refused))
+      refute_received :coalesced_input_delivered
+    after
+      refute File.exists?(source_path), "original source path was unexpectedly recreated"
+      File.rename!(held_path, source_path)
+    end
+
+    assert File.stat!(source_path).inode == before_source.inode
+    assert JSON.sha256(File.read!(source_path)) == original_source["sha256"]
+
+    expired = put_in(original, ["subject", "validity", "valid_until_ms"], 0)
+    assert ManagedReference.dependency?(expired)
+    assert {:ok, expired_dependencies} = ManagedReference.union([dependencies, [expired]])
+
+    refute match?(
+             {:ok, _},
+             ManagedUse.with_worker_dependencies(context, expired_dependencies, refused)
+           )
+
+    refute_received :coalesced_input_delivered
+
+    assert {:ok, policy} = Consent.snapshot(c.control, c.binding["project_id"])
+    assert {:ok, _} = Consent.revoke(c.control, c.binding["project_id"], policy["epoch"])
+    refute match?({:ok, _}, ManagedUse.with_worker_dependencies(context, dependencies, refused))
+    refute_received :coalesced_input_delivered
+
     assert Enum.any?(
              events,
              &(&1["type"] == "inference_dispatch_intent" and &1["phase"] == "decision.create")

@@ -1,0 +1,1106 @@
+--- a/lib/ipse/session/managed_use.ex
++++ b/lib/ipse/session/managed_use.ex
+@@ -448,7 +448,7 @@
+         with_input_journals(context, dependencies, purpose, fn journals, journal_leases ->
+           with {:ok, first} <-
+                  protected(context, dependencies, fn cap, catalog, _ ->
+-                   observe(context, dependencies, cap, catalog, journals)
++                   observe(context, dependencies, cap, catalog, journals, purpose == :worker)
+                  end),
+                true <- length(first.proofs) <= @max_sources do
+             use = fn _sources, leases, active ->
+@@ -467,7 +467,8 @@
+                   active,
+                   journals,
+                   journal_leases,
+-                  fun
++                  fun,
++                  purpose == :worker
+                 )
+               else
+                 @error
+@@ -499,10 +500,11 @@
+          active,
+          journals,
+          journal_leases,
+-         fun
++         fun,
++         batch_v4
+        ) do
+     protected(context, dependencies, fn cap, catalog, policy ->
+-      with {:ok, ^first} <- observe(context, dependencies, cap, catalog, journals),
++      with {:ok, ^first} <- observe(context, dependencies, cap, catalog, journals, batch_v4),
+            policy = use_deadline(policy, first.current),
+            deadline = min(policy["expires_at_ms"], System.system_time(:millisecond) + 5_000),
+            true <- System.system_time(:millisecond) < deadline,
+@@ -984,8 +986,13 @@
+     end
+   end
+ 
+-  defp observe(c, dependencies, cap, catalog, journals) do
+-    with {:ok, results} <- observe_all(c, dependencies, cap, catalog, journals) do
++  defp observe(c, dependencies, cap, catalog, journals, batch_v4 \\ false) do
++    observed =
++      if batch_v4,
++        do: observe_all_worker(c, dependencies, cap, catalog, journals),
++        else: observe_all(c, dependencies, cap, catalog, journals)
++
++    with {:ok, results} <- observed do
+       Enum.reduce_while(dependencies, {:ok, %{current: [], proofs: []}}, fn dependency,
+                                                                             {:ok, acc} ->
+         case results[JSON.digest([dependency])] do
+@@ -1000,41 +1007,137 @@
+     end
+   end
+ 
+-  defp observe_all(c, dependencies, cap, catalog, journals \\ %{}) do
++  # Worker input is all-or-nothing. Only this path coalesces v4 records across
++  # other dependency versions; other consumers retain per-dependency verdicts.
++  # This changes internal observation and failure order: v4 reads run before
++  # v3/v5/v6/v7 reads. Each view closes before those other observations and no
++  # authority or results are shared between the two independent passes.
++  defp observe_all_worker(c, dependencies, cap, catalog, journals) do
+     pin = c.config[:semantic_admission]["pin"]
+     root = SemanticAdmission.collection_root(c.config[:home])
+ 
+-    {results, _} =
+-      Enum.reduce(dependencies, {%{}, %{}}, fn dependency, {results, cache} ->
+-        key =
+-          if dependency["version"] == 3,
+-            do: :root,
+-            else:
+-              {dependency["version"], dependency["subject"]["key"],
+-               get_in(dependency, ["subject", "validity", "recipe_sha256"])}
+-
+-        result =
+-          Map.get_lazy(cache, key, fn ->
+-            if key == :root,
+-              do: observe_root(root, pin),
+-              else: observe_dependency(c, root, pin, dependency, cap, catalog, journals)
+-          end)
+-
+-        checked =
+-          if key == :root do
+-            with {:ok, actual} <- result,
+-                 true <- actual === dependency["collection"],
+-                 do: {:ok, dependency, []}
++    batched =
++      dependencies
++      |> Enum.filter(&(&1["version"] == 4))
++      |> Enum.chunk_every(32)
++      |> Enum.reduce_while({:ok, %{}}, fn chunk, {:ok, cache} ->
++        case observe_v4_chunk(c, root, pin, chunk, cap, catalog, cache) do
++          {:ok, cache} -> {:cont, {:ok, cache}}
++          _ -> {:halt, @error}
++        end
++      end)
++
++    with {:ok, cache} <- batched do
++      {results, _cache} =
++        Enum.reduce(dependencies, {%{}, cache}, fn dependency, {results, cache} ->
++          if dependency["version"] == 4 do
++            result = Map.fetch!(cache, observation_key(dependency))
++            {Map.put(results, JSON.digest([dependency]), result), cache}
+           else
+-            result
++            observe_one(c, root, pin, dependency, cap, catalog, journals, {results, cache})
++          end
++        end)
++
++      {:ok, results}
++    end
++  end
++
++  defp observe_v4_chunk(c, root, pin, dependencies, cap, catalog, cache) do
++    pending =
++      dependencies
++      |> Enum.reject(&Map.has_key?(cache, observation_key(&1)))
++      |> Enum.uniq_by(&observation_key/1)
++
++    if pending == [] do
++      {:ok, cache}
++    else
++      with {:ok, specs} <- v4_specs(c, pending),
++           {:ok, records} <-
++             ObservedRead.managed_records(
++               root,
++               pin["namespace"],
++               Enum.map(specs, fn {_dependency, request, recipe} -> {request, recipe} end),
++               cap,
++               catalog
++             ),
++           true <- length(records) == length(specs) do
++        Enum.zip(specs, records)
++        |> Enum.reduce_while({:ok, cache}, fn {{dependency, request, recipe}, record},
++                                              {:ok, acc} ->
++          case finish_v4_observation(c, pin, request, recipe, record) do
++            {:ok, _, _} = result ->
++              {:cont, {:ok, Map.put(acc, observation_key(dependency), result)}}
++
++            _ ->
++              {:halt, @error}
+           end
++        end)
++      else
++        _ -> @error
++      end
++    end
++  end
+ 
+-        {Map.put(results, JSON.digest([dependency]), checked), Map.put(cache, key, result)}
++  defp v4_specs(c, dependencies) do
++    settings = c.config[:semantic_admission]["policy"]["settings"]
++
++    Enum.reduce_while(dependencies, {:ok, []}, fn dependency, {:ok, acc} ->
++      recipe_sha = get_in(dependency, ["subject", "validity", "recipe_sha256"])
++      recipe = settings["recipes"][recipe_sha]
++      request = %{"op" => "get_record", "key" => dependency["subject"]["key"]}
++
++      if ManagedRecipe.valid?(recipe) and JSON.digest([recipe]) == recipe_sha and
++           Enum.any?(settings["effects"], &(recipe_sha in Map.get(&1, "managed_read", []))),
++         do: {:cont, {:ok, [{dependency, request, recipe} | acc]}},
++         else: {:halt, @error}
++    end)
++    |> case do
++      {:ok, specs} -> {:ok, Enum.reverse(specs)}
++      error -> error
++    end
++  end
++
++  defp observe_all(c, dependencies, cap, catalog, journals \\ %{}) do
++    pin = c.config[:semantic_admission]["pin"]
++    root = SemanticAdmission.collection_root(c.config[:home])
++
++    {results, _} =
++      Enum.reduce(dependencies, {%{}, %{}}, fn dependency, acc ->
++        observe_one(c, root, pin, dependency, cap, catalog, journals, acc)
+       end)
+ 
+     {:ok, results}
+   end
+ 
++  defp observation_key(%{"version" => 3}), do: :root
++
++  defp observation_key(dependency),
++    do:
++      {dependency["version"], dependency["subject"]["key"],
++       get_in(dependency, ["subject", "validity", "recipe_sha256"])}
++
++  defp observe_one(c, root, pin, dependency, cap, catalog, journals, {results, cache}) do
++    key = observation_key(dependency)
++
++    result =
++      Map.get_lazy(cache, key, fn ->
++        if key == :root,
++          do: observe_root(root, pin),
++          else: observe_dependency(c, root, pin, dependency, cap, catalog, journals)
++      end)
++
++    checked =
++      if key == :root do
++        with {:ok, actual} <- result,
++             true <- actual === dependency["collection"],
++             do: {:ok, dependency, []}
++      else
++        result
++      end
++
++    {Map.put(results, JSON.digest([dependency]), checked), Map.put(cache, key, result)}
++  end
++
+   defp observe_root(root, pin) do
+     request = %{"op" => "snapshot"}
+ 
+@@ -1055,27 +1158,8 @@
+     with true <- ManagedRecipe.valid?(recipe) and JSON.digest([recipe]) == recipe_sha,
+          true <- Enum.any?(settings["effects"], &(recipe_sha in Map.get(&1, "managed_read", []))),
+          {:ok, managed} <-
+-           ObservedRead.managed_record(root, pin["namespace"], request, cap, catalog, recipe),
+-         value = managed["observation"]["value"]["record"]["value"],
+-         proofs when is_list(proofs) <-
+-           Enum.reduce(recipe["evidence_path"], value, fn key, value ->
+-             if is_map(value), do: value[key], else: nil
+-           end),
+-         :ok <-
+-           SemanticConsent.check_sources(
+-             c.config[:semantic_admission]["policy"],
+-             Enum.map(proofs, &%{"category" => &1["origin"], "path" => &1["path"]})
+-           ),
+-         {:ok, current} <-
+-           ObservedRead.managed_dependency(
+-             request,
+-             managed,
+-             pin,
+-             recipe,
+-             proofs,
+-             System.system_time(:millisecond)
+-           ) do
+-      {:ok, current, proofs}
++           ObservedRead.managed_record(root, pin["namespace"], request, cap, catalog, recipe) do
++      finish_v4_observation(c, pin, request, recipe, managed)
+     else
+       _ -> @error
+     end
+@@ -1178,6 +1262,33 @@
+            ) do
+       {:ok, current, proofs}
+     else
++      _ -> @error
++    end
++  end
++
++  defp finish_v4_observation(c, pin, request, recipe, managed) do
++    value = managed["observation"]["value"]["record"]["value"]
++
++    with proofs when is_list(proofs) <-
++           Enum.reduce(recipe["evidence_path"], value, fn key, value ->
++             if is_map(value), do: value[key], else: nil
++           end),
++         :ok <-
++           SemanticConsent.check_sources(
++             c.config[:semantic_admission]["policy"],
++             Enum.map(proofs, &%{"category" => &1["origin"], "path" => &1["path"]})
++           ),
++         {:ok, current} <-
++           ObservedRead.managed_dependency(
++             request,
++             managed,
++             pin,
++             recipe,
++             proofs,
++             System.system_time(:millisecond)
++           ) do
++      {:ok, current, proofs}
++    else
+       _ -> @error
+     end
+   end
+--- a/lib/ipse/extension/collection/observed_read.ex
++++ b/lib/ipse/extension/collection/observed_read.ex
+@@ -397,14 +397,7 @@
+   of the original automatic baseline; they grant no source truth or use permission.
+   """
+   def managed_record(root, namespace, request, cap, catalog, recipe) do
+-    with {:ok, _, :get_record} <- select(request),
+-         "note." <> lineage <- request["key"],
+-         true <- JSON.sha256?(lineage),
+-         true <- ManagedRecipe.valid?(recipe) and recipe["kind"] == "literal_source",
+-         true <- request["key"] === recipe["key_prefix"] <> lineage,
+-         true <-
+-           is_map(catalog) and catalog["namespace"] === namespace and
+-             catalog["format"] == "managed-metadata-v3" and catalog["state"] == "active",
++    with {:ok, lineage} <- managed_record_spec(namespace, request, catalog, recipe),
+          {:ok, view} <- Collection.open_view(root, namespace) do
+       result =
+         try do
+@@ -425,6 +418,74 @@
+     _, _ -> @error
+   end
+ 
++  @doc false
++  # At most 32 literals consume 416 of a ReadView's 512 observation units:
++  # each uses three selected keys, two four-unit neighbor checks and two keys.
++  # The caller must still obtain source and policy authority separately.
++  def managed_records(root, namespace, requests, cap, catalog)
++      when is_list(requests) and length(requests) in 1..32 do
++    with {:ok, entries} <- managed_record_specs(namespace, requests, catalog),
++         {:ok, view} <- Collection.open_view(root, namespace) do
++      result =
++        try do
++          Enum.reduce_while(entries, {:ok, []}, fn {request, recipe, lineage}, {:ok, acc} ->
++            case managed_record_view(view, request, cap, lineage, recipe) do
++              {:ok, record} -> {:cont, {:ok, [record | acc]}}
++              _ -> {:halt, @error}
++            end
++          end)
++          |> case do
++            {:ok, records} -> {:ok, Enum.reverse(records)}
++            error -> error
++          end
++        rescue
++          _ -> @error
++        catch
++          _, _ -> @error
++        end
++
++      if Collection.close_view(view) == :ok, do: result, else: @error
++    else
++      _ -> @error
++    end
++  rescue
++    _ -> @error
++  catch
++    _, _ -> @error
++  end
++
++  def managed_records(_, _, _, _, _), do: @error
++
++  defp managed_record_specs(namespace, requests, catalog) do
++    Enum.reduce_while(requests, {:ok, []}, fn
++      {request, recipe}, {:ok, entries} ->
++        case managed_record_spec(namespace, request, catalog, recipe) do
++          {:ok, lineage} -> {:cont, {:ok, [{request, recipe, lineage} | entries]}}
++          _ -> {:halt, @error}
++        end
++
++      _, _ ->
++        {:halt, @error}
++    end)
++    |> case do
++      {:ok, entries} -> {:ok, Enum.reverse(entries)}
++      error -> error
++    end
++  end
++
++  defp managed_record_spec(namespace, request, catalog, recipe) do
++    with {:ok, _, :get_record} <- select(request),
++         "note." <> lineage <- request["key"],
++         true <- JSON.sha256?(lineage),
++         true <- ManagedRecipe.valid?(recipe) and recipe["kind"] == "literal_source",
++         true <- request["key"] === recipe["key_prefix"] <> lineage,
++         true <-
++           is_map(catalog) and catalog["namespace"] === namespace and
++             catalog["format"] == "managed-metadata-v3" and catalog["state"] == "active",
++         do: {:ok, lineage},
++         else: (_ -> @error)
++  end
++
+   @doc """
+   Authenticate one stored literal while retaining its Collection owner.
+ 
+--- a/test/ipse/extension/managed_collection_call_session_test.exs
++++ b/test/ipse/extension/managed_collection_call_session_test.exs
+@@ -8725,6 +8725,154 @@
+ 
+     assert MapSet.subset?(MapSet.new(seed["keys"]), MapSet.new(observed))
+ 
++    # The retained source fixture supplies authenticated v4 dependencies. Make
++    # root dependencies from different actual observations so the canonical
++    # digest order interleaves versions, then compare worker and approval paths.
++    # Approval retains the original single-observation behavior.
++    alias Ipse.Extension.Collection.ObservedRead
++    alias Ipse.Session.{ManagedReference, ManagedUse}
++    state = :sys.get_state(pid)
++    context = %{config: state.config, cwd: c.cwd, session_id: state.id, history_dir: c.dir}
++    pin = state.config.semantic_admission["pin"]
++    root = SemanticAdmission.collection_root(c.home)
++
++    literals =
++      for event <- events,
++          event["type"] == "managed_read_observed",
++          dependency <- event["dependencies"],
++          dependency["version"] == 4,
++          do: dependency
++
++    literals = Enum.uniq_by(literals, & &1["subject"]["key"])
++    assert MapSet.new(Enum.map(literals, & &1["subject"]["key"])) == MapSet.new(seed["keys"])
++
++    roots =
++      for request <- [
++            %{"op" => "snapshot"} | Enum.map(seed["keys"], &%{"op" => "get_record", "key" => &1})
++          ] do
++        assert {:ok, observation} = ObservedRead.read(root, c.namespace, request)
++        assert {:ok, dependency} = ObservedRead.root_dependency(request, observation, pin)
++        dependency
++      end
++
++    assert {:ok, dependencies} = ManagedReference.union([literals, roots])
++    runs = Enum.chunk_by(dependencies, &(&1["version"] == 4))
++    assert Enum.count(runs, &(hd(&1)["version"] == 4)) > 1
++    assert Enum.count(dependencies, &(&1["version"] == 4)) == 8
++    assert Enum.count(dependencies, &(&1["version"] == 3)) > 1
++
++    capture = fn current, held ->
++      {:ok, %{current: current, proofs: held.source_proofs}}
++    end
++
++    assert {:ok, expected} = ManagedUse.with_approval_dependencies(context, dependencies, capture)
++
++    # Count the exported batch entry only in descendants of this synthetic test.
++    # The arity-only assertion counts batch calls without note arguments.
++    counter =
++      spawn(fn ->
++        collect = fn collect, count ->
++          receive do
++            {:trace, _, :call, {ObservedRead, :managed_records, _}} ->
++              collect.(collect, count + 1)
++
++            {:count, caller} ->
++              send(caller, {:managed_batch_calls, count})
++              collect.(collect, count)
++
++            :stop ->
++              :ok
++
++            _ ->
++              collect.(collect, count)
++          end
++        end
++
++        collect.(collect, 0)
++      end)
++
++    try do
++      assert 1 == :erlang.trace_pattern({ObservedRead, :managed_records, 5}, true, [])
++      assert 1 == :erlang.trace(self(), true, [:call, :arity, :set_on_spawn, {:tracer, counter}])
++
++      assert {:ok, ^expected} =
++               ManagedUse.with_worker_dependencies(context, dependencies, capture)
++
++      assert 1 == :erlang.trace(self(), false, [:call, :arity, :set_on_spawn])
++      delivered = :erlang.trace_delivered(:all)
++      assert_receive {:trace_delivered, :all, ^delivered}, 5_000
++      send(counter, {:count, self()})
++      assert_receive {:managed_batch_calls, 2}, 5_000
++    after
++      :erlang.trace(self(), false, [:call, :arity, :set_on_spawn])
++      :erlang.trace_pattern({ObservedRead, :managed_records, 5}, false, [])
++      send(counter, :stop)
++    end
++
++    assert Enum.map(expected.current, & &1["version"]) == Enum.map(dependencies, & &1["version"])
++    assert length(expected.proofs) == length(seed["source_journals"])
++
++    # Two different dependency digests with the same v4 observation key must
++    # each be checked against the current value; caching must not launder one.
++    original = hd(literals)
++
++    changed =
++      put_in(original, ["subject", "publication_policy_sha256"], JSON.sha256("different policy"))
++
++    assert ManagedReference.dependency?(changed)
++    assert {:ok, duplicate_key_dependencies} = ManagedReference.union([dependencies, [changed]])
++    assert length(duplicate_key_dependencies) == length(dependencies) + 1
++    owner = self()
++
++    refused = fn _, _ ->
++      send(owner, :coalesced_input_delivered)
++      {:ok, :unexpected}
++    end
++
++    refute match?(
++             {:ok, _},
++             ManagedUse.with_worker_dependencies(context, duplicate_key_dependencies, refused)
++           )
++
++    refute_received :coalesced_input_delivered
++
++    # An unavailable original source must withhold the entire input, and its
++    # synthetic fixture is restored even when an assertion fails.
++    original_source = hd(seed["source_journals"])
++    source_path = original_source["path"]
++    held_path = source_path <> ".coalesced-test-held"
++    before_source = File.stat!(source_path)
++    assert JSON.sha256(File.read!(source_path)) == original_source["sha256"]
++    refute File.exists?(held_path)
++    File.rename!(source_path, held_path)
++
++    try do
++      refute match?({:ok, _}, ManagedUse.with_worker_dependencies(context, dependencies, refused))
++      refute_received :coalesced_input_delivered
++    after
++      refute File.exists?(source_path), "original source path was unexpectedly recreated"
++      File.rename!(held_path, source_path)
++    end
++
++    assert File.stat!(source_path).inode == before_source.inode
++    assert JSON.sha256(File.read!(source_path)) == original_source["sha256"]
++
++    expired = put_in(original, ["subject", "validity", "valid_until_ms"], 0)
++    assert ManagedReference.dependency?(expired)
++    assert {:ok, expired_dependencies} = ManagedReference.union([dependencies, [expired]])
++
++    refute match?(
++             {:ok, _},
++             ManagedUse.with_worker_dependencies(context, expired_dependencies, refused)
++           )
++
++    refute_received :coalesced_input_delivered
++
++    assert {:ok, policy} = Consent.snapshot(c.control, c.binding["project_id"])
++    assert {:ok, _} = Consent.revoke(c.control, c.binding["project_id"], policy["epoch"])
++    refute match?({:ok, _}, ManagedUse.with_worker_dependencies(context, dependencies, refused))
++    refute_received :coalesced_input_delivered
++
+     assert Enum.any?(
+              events,
+              &(&1["type"] == "inference_dispatch_intent" and &1["phase"] == "decision.create")
+--- a/test/ipse/extension/collection_normalizer_v3_integration_test.exs
++++ b/test/ipse/extension/collection_normalizer_v3_integration_test.exs
+@@ -4355,6 +4355,340 @@
+   end
+ 
+   @tag :held_target_regression
++  @tag :managed_v4_batch
++  test "distinct signed literals share a view without changing their observations", c do
++    one = options(1, 0)
++    two = options(2, 1)
++    assert {:ok, _} = publish(c, one, scope(c), first: true)
++    assert {:ok, _} = publish(c, two, scope(c, false))
++    first = %{"op" => "get_record", "key" => hd(one.request["changes"])["key"]}
++    second = %{"op" => "get_record", "key" => hd(two.request["changes"])["key"]}
++    refute first["key"] == second["key"]
++    domain = Map.take(scope(c, false), [:namespace, :format])
++
++    assert {:ok, [a, b]} =
++             Identity.with_existing_domain_auth(c.home, c.cwd, c.binding, domain, fn cap,
++                                                                                     catalog ->
++               ObservedRead.managed_records(
++                 c.root,
++                 c.namespace,
++                 [{first, one.recipe}, {second, two.recipe}],
++                 cap,
++                 catalog
++               )
++             end)
++
++    for {request, recipe, expected} <- [{first, one.recipe, a}, {second, two.recipe, b}] do
++      assert {:ok, ^expected} =
++               Identity.with_existing_domain_auth(c.home, c.cwd, c.binding, domain, fn cap,
++                                                                                       catalog ->
++                 ObservedRead.managed_record(c.root, c.namespace, request, cap, catalog, recipe)
++               end)
++    end
++
++    assert a["observation"]["value"]["record"]["key"] == first["key"]
++    assert b["observation"]["value"]["record"]["key"] == second["key"]
++  end
++
++  @tag :managed_v4_33_distinct
++  @tag timeout: 360_000
++  test "33 distinct signed synthetic literals retain order across the 32-record batch boundary",
++       c do
++    # These trusted synthetic source proofs exercise signed Collection storage,
++    # not live Session source ownership or the private Worker scheduler.
++    options =
++      for n <- 1..33 do
++        opts = options(n, n - 1)
++        assert {:ok, _} = publish(c, opts, scope(c, n == 1), first: n == 1)
++        opts
++      end
++
++    selected = Enum.reverse(options)
++
++    requests =
++      Enum.map(selected, fn opts ->
++        change = hd(opts.request["changes"])
++        {%{"op" => "get_record", "key" => change["key"]}, opts.recipe}
++      end)
++
++    assert length(Enum.uniq_by(requests, fn {request, _} -> request["key"] end)) == 33
++    domain = Map.take(scope(c, false), [:namespace, :format])
++
++    assert {:error, :collection_observation_refused} =
++             ObservedRead.managed_records(c.root, c.namespace, requests, nil, %{})
++
++    assert {:ok, observations} =
++             Identity.with_existing_domain_auth(c.home, c.cwd, c.binding, domain, fn cap,
++                                                                                     catalog ->
++               with {:ok, first} <-
++                      ObservedRead.managed_records(
++                        c.root,
++                        c.namespace,
++                        Enum.take(requests, 32),
++                        cap,
++                        catalog
++                      ),
++                    {:ok, last} <-
++                      ObservedRead.managed_records(
++                        c.root,
++                        c.namespace,
++                        Enum.drop(requests, 32),
++                        cap,
++                        catalog
++                      ) do
++                 {:ok, first ++ last}
++               end
++             end)
++
++    assert length(observations) == 33
++
++    assert Enum.map(observations, &get_in(&1, ["observation", "value", "record", "key"])) ==
++             Enum.map(requests, fn {request, _} -> request["key"] end)
++
++    assert Enum.map(observations, &get_in(&1, ["observation", "value", "record", "value"])) ==
++             Enum.map(selected, &hd(&1.request["changes"])["value"])
++
++    assert observations
++           |> Enum.map(&get_in(&1, ["observation", "witness"]))
++           |> Enum.uniq()
++           |> length() == 1
++  end
++
++  @tag :managed_v4_batch_fence
++  test "a lost native owner cannot return any batched literal", c do
++    opts = options(1, 0)
++    assert {:ok, _} = publish(c, opts, scope(c), first: true)
++    request = %{"op" => "get_record", "key" => hd(opts.request["changes"])["key"]}
++    domain = Map.take(scope(c, false), [:namespace, :format])
++    handler = {__MODULE__, make_ref()}
++    owner = self()
++
++    :ok =
++      :telemetry.attach(
++        handler,
++        [:ipse, :extension, :collection, :view_read],
++        &__MODULE__.batch_owner_fence/4,
++        owner
++      )
++
++    try do
++      assert {:unknown, :project_identity_lock_lost} =
++               Identity.with_existing_domain_auth(c.home, c.cwd, c.binding, domain, fn cap,
++                                                                                       catalog ->
++                 result =
++                   ObservedRead.managed_records(
++                     c.root,
++                     c.namespace,
++                     [{request, opts.recipe}, {request, opts.recipe}],
++                     cap,
++                     catalog
++                   )
++
++                 send(owner, {:batch_inner_result, result})
++                 result
++               end)
++
++      assert_receive {:batch_owner_closed, true, true}
++      assert_receive {:batch_inner_result, {:error, :collection_observation_refused}}
++      assert [] == Registry.lookup(Ipse.Registry, {C.ReadView, owner})
++    after
++      :telemetry.detach(handler)
++    end
++  end
++
++  @tag :managed_v4_batch_fence
++  test "a root change between two literal reads refuses the entire batch", c do
++    one = options(1, 0)
++    two = options(2, 1)
++    assert {:ok, _} = publish(c, one, scope(c), first: true)
++    assert {:ok, _} = publish(c, two, scope(c, false))
++    first = %{"op" => "get_record", "key" => hd(one.request["changes"])["key"]}
++    second = %{"op" => "get_record", "key" => hd(two.request["changes"])["key"]}
++    refute first["key"] == second["key"]
++    domain = Map.take(scope(c, false), [:namespace, :format])
++    handler = {__MODULE__, make_ref()}
++    flag = :atomics.new(1, [])
++    owner = self()
++
++    :ok =
++      :telemetry.attach(
++        handler,
++        [:ipse, :extension, :collection, :view_read],
++        &__MODULE__.install_batch_root_gate/4,
++        {owner, flag}
++      )
++
++    task =
++      Task.async(fn ->
++        Identity.with_existing_domain_auth(c.home, c.cwd, c.binding, domain, fn cap, catalog ->
++          ObservedRead.managed_records(
++            c.root,
++            c.namespace,
++            [{first, one.recipe}, {second, two.recipe}],
++            cap,
++            catalog
++          )
++        end)
++      end)
++
++    try do
++      assert_receive {:batch_second_record_gate, view}, 10_000
++
++      assert {:ok, _} =
++               C.execute(
++                 c.root,
++                 c.namespace,
++                 %{
++                   "op" => "commit",
++                   "expected_generation" => 2,
++                   "advance_floor" => false,
++                   "changes" => [
++                     %{
++                       "key" => "unrelated.root-change",
++                       "expected_revision" => 0,
++                       "value" => %{"text" => "synthetic changed root"}
++                     }
++                   ]
++                 },
++                 Usage.id()
++               )
++
++      send(view, :release_batch_second_record)
++      assert {:error, :collection_observation_refused} = Task.await(task, 10_000)
++      assert [] == Registry.lookup(Ipse.Registry, {C.ReadView, task.pid})
++    after
++      :telemetry.detach(handler)
++      if Process.alive?(task.pid), do: Task.shutdown(task, :brutal_kill)
++    end
++  end
++
++  def batch_owner_fence(_, _, _, owner) do
++    case Process.get({C, :lock_held}) do
++      %{port: port, controller: controller} ->
++        shared =
++          Process.get({Identity, :lock_held}) === true and
++            Process.get({Ipse.Runner.Transaction, :controller}) === controller
++
++        send(owner, {:batch_owner_closed, Port.close(port), shared})
++
++      _ ->
++        send(owner, {:batch_owner_closed, false, false})
++    end
++  end
++
++  def install_batch_root_gate(_, _, _, {owner, flag}) do
++    if :atomics.compare_exchange(flag, 1, 0, 1) == :ok do
++      effect_owner = Ipse.Session.Resources.file_effect_owner()
++      [{view, _}] = Registry.lookup(Ipse.Registry, {C.ReadView, effect_owner})
++
++      gate = fn
++        4, {:in, {:"$gen_call", _, {_ref, {:borrow, _}}}}, _ ->
++          send(owner, {:batch_second_record_gate, self()})
++          receive do: (:release_batch_second_record -> :ok)
++          5
++
++        count, {:in, {:"$gen_call", _, {_ref, {:borrow, _}}}}, _ ->
++          count + 1
++
++        count, _, _ ->
++          count
++      end
++
++      :ok = :sys.install(view, {gate, 0})
++    end
++  end
++
++  @tag :managed_v4_batch
++  test "bounded literal batch matches independent signed observations and rejects invalid members",
++       c do
++    opts = options(1, 0)
++    assert {:ok, _} = publish(c, opts, scope(c), first: true)
++    key = hd(opts.request["changes"])["key"]
++    request = %{"op" => "get_record", "key" => key}
++    domain = Map.take(scope(c, false), [:namespace, :format])
++
++    assert {:ok, [first, second]} =
++             Identity.with_existing_domain_auth(c.home, c.cwd, c.binding, domain, fn cap,
++                                                                                     catalog ->
++               ObservedRead.managed_records(
++                 c.root,
++                 c.namespace,
++                 [{request, opts.recipe}, {request, opts.recipe}],
++                 cap,
++                 catalog
++               )
++             end)
++
++    assert first === second
++
++    assert {:ok, ^first} =
++             Identity.with_existing_domain_auth(c.home, c.cwd, c.binding, domain, fn cap,
++                                                                                     catalog ->
++               ObservedRead.managed_record(
++                 c.root,
++                 c.namespace,
++                 request,
++                 cap,
++                 catalog,
++                 opts.recipe
++               )
++             end)
++
++    assert {:ok, records} =
++             Identity.with_existing_domain_auth(c.home, c.cwd, c.binding, domain, fn cap,
++                                                                                     catalog ->
++               ObservedRead.managed_records(
++                 c.root,
++                 c.namespace,
++                 List.duplicate({request, opts.recipe}, 32),
++                 cap,
++                 catalog
++               )
++             end)
++
++    assert records == List.duplicate(first, 32)
++
++    assert {:error, :collection_observation_refused} =
++             ObservedRead.managed_records(c.root, c.namespace, [], nil, %{})
++
++    assert {:error, :collection_observation_refused} =
++             ObservedRead.managed_records(
++               c.root,
++               c.namespace,
++               List.duplicate({request, opts.recipe}, 33),
++               nil,
++               %{}
++             )
++
++    missing = %{"op" => "get_record", "key" => "note." <> JSON.sha256("missing batch member")}
++
++    assert {:error, :collection_observation_refused} =
++             Identity.with_existing_domain_auth(c.home, c.cwd, c.binding, domain, fn cap,
++                                                                                     catalog ->
++               ObservedRead.managed_records(
++                 c.root,
++                 c.namespace,
++                 [{request, opts.recipe}, {missing, opts.recipe}],
++                 cap,
++                 catalog
++               )
++             end)
++
++    # A failed read closes its view and cannot poison a later fresh owner scope.
++    assert {:ok, [^first]} =
++             Identity.with_existing_domain_auth(c.home, c.cwd, c.binding, domain, fn cap,
++                                                                                     catalog ->
++               ObservedRead.managed_records(
++                 c.root,
++                 c.namespace,
++                 [{request, opts.recipe}],
++                 cap,
++                 catalog
++               )
++             end)
++  end
++
++  @tag :held_target_regression
+   test "one checked view binds the literal record to its authenticated live and anchor pages",
+        c do
+     opts = options(1, 0)
+--- a/test/support/managed_literal_ab_seed.exs
++++ b/test/support/managed_literal_ab_seed.exs
+@@ -4,7 +4,7 @@
+ import ExUnit.Assertions
+ {:ok, _} = Application.ensure_all_started(:ipse)
+ [root, mode] = System.argv()
+-true = mode in ["seed", "pair", "wide", "split"]
++true = mode in ["seed", "pair", "wide", "split", "split8"]
+ 
+ for key <- ~w(IPSE_PROVIDER IPSE_MODEL IPSE_CONFIG IPSE_PROFILE IPSE_SANDBOX IPSE_SUBAGENTS),
+     do: System.delete_env(key)
+@@ -76,7 +76,7 @@
+     "pair" ->
+       ["SYNTHETIC_LITERAL_A_PRIVATE", "SYNTHETIC_LITERAL_B_PRIVATE"]
+ 
+-    mode when mode in ["wide", "split"] ->
++    mode when mode in ["wide", "split", "split8"] ->
+       for n <- 1..8,
+           do: "SYNTHETIC_WIDE_NOTE_#{n}_" <> String.duplicate(<<96 + n>>, 950)
+   end
+@@ -88,7 +88,7 @@
+                                                                       {current, input_channel,
+                                                                        ids} ->
+     {current, input_channel, ids} =
+-      if mode == "split" and number == 5 do
++      if (mode == "split" and number == 5) or (mode == "split8" and number > 1) do
+         assert :ok = Ipse.Session.close_confirmed(current)
+ 
+         assert {:ok, next} =
+@@ -214,6 +214,10 @@
+   end)
+ 
+ if mode == "split", do: assert(Enum.frequencies(record_sources) == Map.new(session_ids, &{&1, 4}))
++
++if mode == "split8",
++  do: assert(Enum.frequencies(record_sources) == Map.new(session_ids, &{&1, 1}))
++
+ record = Enum.find(records, &(&1["value"]["text"] == text))
+ assert record["value"]["text"] == text
+ assert [proof] = record["value"]["evidence"]["sources"]
+@@ -249,7 +253,7 @@
+         other ->
+           %{"other_key" => other["key"]}
+ 
+-        mode in ["wide", "split"] ->
++        mode in ["wide", "split", "split8"] ->
+           %{
+             "keys" => Enum.map(records, & &1["key"]),
+             "source_journals" =>
+--- a/test/support/managed_literal_pair_runner.exs
++++ b/test/support/managed_literal_pair_runner.exs
+@@ -3,7 +3,7 @@
+ {root_arg, graph_arg, mode} =
+   case System.argv() do
+     [root, graph] -> {root, graph, "pair"}
+-    [root, graph, mode] when mode in ["wide", "split"] -> {root, graph, mode}
++    [root, graph, mode] when mode in ["wide", "split", "split8"] -> {root, graph, mode}
+   end
+ 
+ root = Path.expand(root_arg)
+--- a/test/extensions/knowledge/shadow_pending_candidate_session_test.exs
++++ b/test/extensions/knowledge/shadow_pending_candidate_session_test.exs
+@@ -3,6 +3,7 @@
+ 
+   for {name, scenario} <- [
+         {"approved", "save_managed_approval_root_shadow"},
++        {"mixed literal and pending sources", "save_managed_approval_mixed_v4_v7"},
+         {"low confidence", "save_managed_approval_low_confidence"},
+         {"unknown decision remains charged and is not replayed", "save_managed_approval_unknown"},
+         {"source withdrawn before decision", "save_managed_approval_input_source_lost"},
+--- a/test/support/shadow_pending_candidate_cli.exs
++++ b/test/support/shadow_pending_candidate_cli.exs
+@@ -17,6 +17,7 @@
+ output_source_lost? = scenario == "save_managed_approval_output_source_lost"
+ input_source_lost? = scenario == "save_managed_approval_input_source_lost"
+ unknown? = scenario == "save_managed_approval_unknown"
++mixed? = scenario == "save_managed_approval_mixed_v4_v7"
+ home = Path.join(root, "home")
+ cwd = Path.join(root, "project")
+ dir = Path.join(root, "sessions")
+@@ -227,6 +228,63 @@
+ 
+ {:ok, runtime} = Ipse.Config.runtime(effective, client)
+ 
++# This separate scenario creates a literal through the real native assertion
++# channel so a later protected input can include both v4 and v7 source owners.
++mixed_literal =
++  if mixed? do
++    {:ok, literal_session} =
++      DynamicSupervisor.start_child(
++        Ipse.Sessions,
++        {Ipse.Session, config: runtime, cwd: cwd, state_dir: dir, subscriber: self()}
++      )
++
++    literal_id = Ipse.Session.info(literal_session).id
++    assert {:ok, channel} = Ipse.Session.open_input_channel(literal_session, self())
++    command = "/remember ordinary Synthetic mixed-version literal."
++    File.write!(Path.join(root, "supersession-input-1"), command)
++    IO.write("IPSE_SUPERSESSION_READ_1> ")
++
++    assert {:ok, ^command, witness} =
++             Ipse.Session.observe_channel(literal_session, channel, %{"kind" => "prompt"}, 30_000)
++
++    assert {:ok, ticket} = Ipse.Session.stage_input(literal_session, channel, command, witness)
++
++    assert {:ok, %{"render_id" => render}} =
++             Ipse.Session.prepare_assertion(literal_session, channel, command, ticket)
++
++    assert {:ok, answer, answer_witness} =
++             Ipse.Session.observe_channel(
++               literal_session,
++               channel,
++               %{"kind" => "assertion", "render_id" => render},
++               30_000
++             )
++
++    assert :ok =
++             Ipse.Session.accept_assertion_observed(
++               literal_session,
++               channel,
++               render,
++               answer,
++               answer_witness
++             )
++
++    assert_receive {:ipse, ^literal_session, {:done, :ok}}, 15_000
++    assert {:ok, literal_events} = Ipse.Journal.load(dir, literal_id)
++
++    assert [write] =
++             Enum.filter(literal_events, fn event ->
++               event["type"] == "extension_action_result" and
++                 get_in(event, ["request", "op"]) == "collection.managed" and
++                 get_in(event, ["outcome", "status"]) == "ok"
++             end)
++
++    assert [%{"key" => literal_key}] = get_in(write, ["request", "request", "changes"])
++    assert String.starts_with?(literal_key, "note.")
++    assert :ok = Ipse.Session.close_confirmed(literal_session)
++    %{key: literal_key, session_id: literal_id}
++  end
++
+ # Capture a proposal through the actual main tool in a separate Session. The
+ # proposal's source quote is real, but its paraphrased text must stay pending.
+ seed_runtime = %{runtime | approval: :deny, approval_origin: :default_headless, headless: true}
+@@ -472,6 +530,91 @@
+ assert dependency["subject"]["validity"]["status"] == "never_current"
+ assert pending_read["classification"]["kind"] == "bundled_decision_shadow"
+ 
++if mixed? do
++  alias Ipse.Extension.ProjectIdentity
++  alias Ipse.Extension.Collection.ObservedRead
++  alias Ipse.Session.{ManagedReference, ManagedUse}
++  state = :sys.get_state(pid)
++  context = %{config: state.config, cwd: cwd, session_id: id, history_dir: dir}
++  pin = state.config.semantic_admission["pin"]
++  settings = state.config.semantic_admission["policy"]["settings"]
++
++  {_, recipe} =
++    Enum.find(settings["recipes"], fn {_, recipe} -> recipe["kind"] == "literal_source" end)
++
++  request = %{"op" => "get_record", "key" => mixed_literal.key}
++  domain = %{namespace: namespace, format: "managed-metadata-v3"}
++
++  assert {:ok, literal_dependency} =
++           ProjectIdentity.with_existing_domain_auth(home, cwd, binding, domain, fn cap,
++                                                                                    catalog ->
++             with {:ok, managed} <-
++                    ObservedRead.managed_record(
++                      collection,
++                      namespace,
++                      request,
++                      cap,
++                      catalog,
++                      recipe
++                    ),
++                  proofs =
++                    get_in(managed, [
++                      "observation",
++                      "value",
++                      "record",
++                      "value",
++                      "evidence",
++                      "sources"
++                    ]),
++                  {:ok, current} <-
++                    ObservedRead.managed_dependency(
++                      request,
++                      managed,
++                      pin,
++                      recipe,
++                      proofs,
++                      System.system_time(:millisecond)
++                    ) do
++               {:ok, current}
++             end
++           end)
++
++  assert {:ok, dependencies} = ManagedReference.union([[literal_dependency, dependency]])
++  assert Enum.sort(Enum.map(dependencies, & &1["version"])) == [4, 7]
++  capture = fn current, held -> {:ok, %{current: current, proofs: held.source_proofs}} end
++  assert {:ok, expected} = ManagedUse.with_approval_dependencies(context, dependencies, capture)
++  assert {:ok, ^expected} = ManagedUse.with_worker_dependencies(context, dependencies, capture)
++  assert Enum.map(expected.current, & &1["version"]) == Enum.map(dependencies, & &1["version"])
++  assert length(expected.proofs) == 2
++
++  owner = self()
++
++  refused = fn _, _ ->
++    send(owner, :mixed_input_delivered)
++    {:ok, :unexpected}
++  end
++
++  for source_id <- [mixed_literal.session_id, seed_id] do
++    journal = Path.join(dir, source_id <> ".jsonl")
++    held = journal <> ".mixed-test-held"
++    before = File.stat!(journal)
++    digest = Ipse.JSON.sha256(File.read!(journal))
++    refute File.exists?(held)
++    File.rename!(journal, held)
++
++    try do
++      refute match?({:ok, _}, ManagedUse.with_worker_dependencies(context, dependencies, refused))
++      refute_received :mixed_input_delivered
++    after
++      refute File.exists?(journal), "source journal path was unexpectedly recreated"
++      File.rename!(held, journal)
++    end
++
++    assert File.stat!(journal).inode == before.inode
++    assert Ipse.JSON.sha256(File.read!(journal)) == digest
++  end
++end
++
+ for field <-
+       ~w(artifact_sha256 descriptor_sha256 request_sha256 result_sha256 dependencies_sha256) do
+   changed = put_in(pending_read, ["classification", field], String.duplicate("0", 64))

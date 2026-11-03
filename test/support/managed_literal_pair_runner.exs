@@ -3,7 +3,7 @@
 {root_arg, graph_arg, mode} =
   case System.argv() do
     [root, graph] -> {root, graph, "pair"}
-    [root, graph, mode] when mode in ["wide", "split"] -> {root, graph, mode}
+    [root, graph, mode] when mode in ["wide", "split", "split8"] -> {root, graph, mode}
   end
 
 root = Path.expand(root_arg)

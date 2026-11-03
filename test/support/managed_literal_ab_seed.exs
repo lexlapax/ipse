@@ -4,7 +4,7 @@ ExUnit.start(autorun: false)
 import ExUnit.Assertions
 {:ok, _} = Application.ensure_all_started(:ipse)
 [root, mode] = System.argv()
-true = mode in ["seed", "pair", "wide", "split"]
+true = mode in ["seed", "pair", "wide", "split", "split8"]
 
 for key <- ~w(IPSE_PROVIDER IPSE_MODEL IPSE_CONFIG IPSE_PROFILE IPSE_SANDBOX IPSE_SUBAGENTS),
     do: System.delete_env(key)
@@ -76,7 +76,7 @@ texts =
     "pair" ->
       ["SYNTHETIC_LITERAL_A_PRIVATE", "SYNTHETIC_LITERAL_B_PRIVATE"]
 
-    mode when mode in ["wide", "split"] ->
+    mode when mode in ["wide", "split", "split8"] ->
       for n <- 1..8,
           do: "SYNTHETIC_WIDE_NOTE_#{n}_" <> String.duplicate(<<96 + n>>, 950)
   end
@@ -88,7 +88,7 @@ text = hd(texts)
                                                                       {current, input_channel,
                                                                        ids} ->
     {current, input_channel, ids} =
-      if mode == "split" and number == 5 do
+      if (mode == "split" and number == 5) or (mode == "split8" and number > 1) do
         assert :ok = Ipse.Session.close_confirmed(current)
 
         assert {:ok, next} =
@@ -214,6 +214,10 @@ record_sources =
   end)
 
 if mode == "split", do: assert(Enum.frequencies(record_sources) == Map.new(session_ids, &{&1, 4}))
+
+if mode == "split8",
+  do: assert(Enum.frequencies(record_sources) == Map.new(session_ids, &{&1, 1}))
+
 record = Enum.find(records, &(&1["value"]["text"] == text))
 assert record["value"]["text"] == text
 assert [proof] = record["value"]["evidence"]["sources"]
@@ -249,7 +253,7 @@ File.write!(
         other ->
           %{"other_key" => other["key"]}
 
-        mode in ["wide", "split"] ->
+        mode in ["wide", "split", "split8"] ->
           %{
             "keys" => Enum.map(records, & &1["key"]),
             "source_journals" =>

@@ -397,14 +397,7 @@ defmodule Ipse.Extension.Collection.ObservedRead do
   of the original automatic baseline; they grant no source truth or use permission.
   """
   def managed_record(root, namespace, request, cap, catalog, recipe) do
-    with {:ok, _, :get_record} <- select(request),
-         "note." <> lineage <- request["key"],
-         true <- JSON.sha256?(lineage),
-         true <- ManagedRecipe.valid?(recipe) and recipe["kind"] == "literal_source",
-         true <- request["key"] === recipe["key_prefix"] <> lineage,
-         true <-
-           is_map(catalog) and catalog["namespace"] === namespace and
-             catalog["format"] == "managed-metadata-v3" and catalog["state"] == "active",
+    with {:ok, lineage} <- managed_record_spec(namespace, request, catalog, recipe),
          {:ok, view} <- Collection.open_view(root, namespace) do
       result =
         try do
@@ -423,6 +416,74 @@ defmodule Ipse.Extension.Collection.ObservedRead do
     _ -> @error
   catch
     _, _ -> @error
+  end
+
+  @doc false
+  # At most 32 literals consume 416 of a ReadView's 512 observation units:
+  # each uses three selected keys, two four-unit neighbor checks and two keys.
+  # The caller must still obtain source and policy authority separately.
+  def managed_records(root, namespace, requests, cap, catalog)
+      when is_list(requests) and length(requests) in 1..32 do
+    with {:ok, entries} <- managed_record_specs(namespace, requests, catalog),
+         {:ok, view} <- Collection.open_view(root, namespace) do
+      result =
+        try do
+          Enum.reduce_while(entries, {:ok, []}, fn {request, recipe, lineage}, {:ok, acc} ->
+            case managed_record_view(view, request, cap, lineage, recipe) do
+              {:ok, record} -> {:cont, {:ok, [record | acc]}}
+              _ -> {:halt, @error}
+            end
+          end)
+          |> case do
+            {:ok, records} -> {:ok, Enum.reverse(records)}
+            error -> error
+          end
+        rescue
+          _ -> @error
+        catch
+          _, _ -> @error
+        end
+
+      if Collection.close_view(view) == :ok, do: result, else: @error
+    else
+      _ -> @error
+    end
+  rescue
+    _ -> @error
+  catch
+    _, _ -> @error
+  end
+
+  def managed_records(_, _, _, _, _), do: @error
+
+  defp managed_record_specs(namespace, requests, catalog) do
+    Enum.reduce_while(requests, {:ok, []}, fn
+      {request, recipe}, {:ok, entries} ->
+        case managed_record_spec(namespace, request, catalog, recipe) do
+          {:ok, lineage} -> {:cont, {:ok, [{request, recipe, lineage} | entries]}}
+          _ -> {:halt, @error}
+        end
+
+      _, _ ->
+        {:halt, @error}
+    end)
+    |> case do
+      {:ok, entries} -> {:ok, Enum.reverse(entries)}
+      error -> error
+    end
+  end
+
+  defp managed_record_spec(namespace, request, catalog, recipe) do
+    with {:ok, _, :get_record} <- select(request),
+         "note." <> lineage <- request["key"],
+         true <- JSON.sha256?(lineage),
+         true <- ManagedRecipe.valid?(recipe) and recipe["kind"] == "literal_source",
+         true <- request["key"] === recipe["key_prefix"] <> lineage,
+         true <-
+           is_map(catalog) and catalog["namespace"] === namespace and
+             catalog["format"] == "managed-metadata-v3" and catalog["state"] == "active",
+         do: {:ok, lineage},
+         else: (_ -> @error)
   end
 
   @doc """

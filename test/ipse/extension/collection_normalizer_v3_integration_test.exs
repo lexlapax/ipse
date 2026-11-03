@@ -4355,6 +4355,340 @@ defmodule Ipse.Extension.CollectionNormalizerV3IntegrationTest do
   end
 
   @tag :held_target_regression
+  @tag :managed_v4_batch
+  test "distinct signed literals share a view without changing their observations", c do
+    one = options(1, 0)
+    two = options(2, 1)
+    assert {:ok, _} = publish(c, one, scope(c), first: true)
+    assert {:ok, _} = publish(c, two, scope(c, false))
+    first = %{"op" => "get_record", "key" => hd(one.request["changes"])["key"]}
+    second = %{"op" => "get_record", "key" => hd(two.request["changes"])["key"]}
+    refute first["key"] == second["key"]
+    domain = Map.take(scope(c, false), [:namespace, :format])
+
+    assert {:ok, [a, b]} =
+             Identity.with_existing_domain_auth(c.home, c.cwd, c.binding, domain, fn cap,
+                                                                                     catalog ->
+               ObservedRead.managed_records(
+                 c.root,
+                 c.namespace,
+                 [{first, one.recipe}, {second, two.recipe}],
+                 cap,
+                 catalog
+               )
+             end)
+
+    for {request, recipe, expected} <- [{first, one.recipe, a}, {second, two.recipe, b}] do
+      assert {:ok, ^expected} =
+               Identity.with_existing_domain_auth(c.home, c.cwd, c.binding, domain, fn cap,
+                                                                                       catalog ->
+                 ObservedRead.managed_record(c.root, c.namespace, request, cap, catalog, recipe)
+               end)
+    end
+
+    assert a["observation"]["value"]["record"]["key"] == first["key"]
+    assert b["observation"]["value"]["record"]["key"] == second["key"]
+  end
+
+  @tag :managed_v4_33_distinct
+  @tag timeout: 360_000
+  test "33 distinct signed synthetic literals retain order across the 32-record batch boundary",
+       c do
+    # These trusted synthetic source proofs exercise signed Collection storage,
+    # not live Session source ownership or the private Worker scheduler.
+    options =
+      for n <- 1..33 do
+        opts = options(n, n - 1)
+        assert {:ok, _} = publish(c, opts, scope(c, n == 1), first: n == 1)
+        opts
+      end
+
+    selected = Enum.reverse(options)
+
+    requests =
+      Enum.map(selected, fn opts ->
+        change = hd(opts.request["changes"])
+        {%{"op" => "get_record", "key" => change["key"]}, opts.recipe}
+      end)
+
+    assert length(Enum.uniq_by(requests, fn {request, _} -> request["key"] end)) == 33
+    domain = Map.take(scope(c, false), [:namespace, :format])
+
+    assert {:error, :collection_observation_refused} =
+             ObservedRead.managed_records(c.root, c.namespace, requests, nil, %{})
+
+    assert {:ok, observations} =
+             Identity.with_existing_domain_auth(c.home, c.cwd, c.binding, domain, fn cap,
+                                                                                     catalog ->
+               with {:ok, first} <-
+                      ObservedRead.managed_records(
+                        c.root,
+                        c.namespace,
+                        Enum.take(requests, 32),
+                        cap,
+                        catalog
+                      ),
+                    {:ok, last} <-
+                      ObservedRead.managed_records(
+                        c.root,
+                        c.namespace,
+                        Enum.drop(requests, 32),
+                        cap,
+                        catalog
+                      ) do
+                 {:ok, first ++ last}
+               end
+             end)
+
+    assert length(observations) == 33
+
+    assert Enum.map(observations, &get_in(&1, ["observation", "value", "record", "key"])) ==
+             Enum.map(requests, fn {request, _} -> request["key"] end)
+
+    assert Enum.map(observations, &get_in(&1, ["observation", "value", "record", "value"])) ==
+             Enum.map(selected, &hd(&1.request["changes"])["value"])
+
+    assert observations
+           |> Enum.map(&get_in(&1, ["observation", "witness"]))
+           |> Enum.uniq()
+           |> length() == 1
+  end
+
+  @tag :managed_v4_batch_fence
+  test "a lost native owner cannot return any batched literal", c do
+    opts = options(1, 0)
+    assert {:ok, _} = publish(c, opts, scope(c), first: true)
+    request = %{"op" => "get_record", "key" => hd(opts.request["changes"])["key"]}
+    domain = Map.take(scope(c, false), [:namespace, :format])
+    handler = {__MODULE__, make_ref()}
+    owner = self()
+
+    :ok =
+      :telemetry.attach(
+        handler,
+        [:ipse, :extension, :collection, :view_read],
+        &__MODULE__.batch_owner_fence/4,
+        owner
+      )
+
+    try do
+      assert {:unknown, :project_identity_lock_lost} =
+               Identity.with_existing_domain_auth(c.home, c.cwd, c.binding, domain, fn cap,
+                                                                                       catalog ->
+                 result =
+                   ObservedRead.managed_records(
+                     c.root,
+                     c.namespace,
+                     [{request, opts.recipe}, {request, opts.recipe}],
+                     cap,
+                     catalog
+                   )
+
+                 send(owner, {:batch_inner_result, result})
+                 result
+               end)
+
+      assert_receive {:batch_owner_closed, true, true}
+      assert_receive {:batch_inner_result, {:error, :collection_observation_refused}}
+      assert [] == Registry.lookup(Ipse.Registry, {C.ReadView, owner})
+    after
+      :telemetry.detach(handler)
+    end
+  end
+
+  @tag :managed_v4_batch_fence
+  test "a root change between two literal reads refuses the entire batch", c do
+    one = options(1, 0)
+    two = options(2, 1)
+    assert {:ok, _} = publish(c, one, scope(c), first: true)
+    assert {:ok, _} = publish(c, two, scope(c, false))
+    first = %{"op" => "get_record", "key" => hd(one.request["changes"])["key"]}
+    second = %{"op" => "get_record", "key" => hd(two.request["changes"])["key"]}
+    refute first["key"] == second["key"]
+    domain = Map.take(scope(c, false), [:namespace, :format])
+    handler = {__MODULE__, make_ref()}
+    flag = :atomics.new(1, [])
+    owner = self()
+
+    :ok =
+      :telemetry.attach(
+        handler,
+        [:ipse, :extension, :collection, :view_read],
+        &__MODULE__.install_batch_root_gate/4,
+        {owner, flag}
+      )
+
+    task =
+      Task.async(fn ->
+        Identity.with_existing_domain_auth(c.home, c.cwd, c.binding, domain, fn cap, catalog ->
+          ObservedRead.managed_records(
+            c.root,
+            c.namespace,
+            [{first, one.recipe}, {second, two.recipe}],
+            cap,
+            catalog
+          )
+        end)
+      end)
+
+    try do
+      assert_receive {:batch_second_record_gate, view}, 10_000
+
+      assert {:ok, _} =
+               C.execute(
+                 c.root,
+                 c.namespace,
+                 %{
+                   "op" => "commit",
+                   "expected_generation" => 2,
+                   "advance_floor" => false,
+                   "changes" => [
+                     %{
+                       "key" => "unrelated.root-change",
+                       "expected_revision" => 0,
+                       "value" => %{"text" => "synthetic changed root"}
+                     }
+                   ]
+                 },
+                 Usage.id()
+               )
+
+      send(view, :release_batch_second_record)
+      assert {:error, :collection_observation_refused} = Task.await(task, 10_000)
+      assert [] == Registry.lookup(Ipse.Registry, {C.ReadView, task.pid})
+    after
+      :telemetry.detach(handler)
+      if Process.alive?(task.pid), do: Task.shutdown(task, :brutal_kill)
+    end
+  end
+
+  def batch_owner_fence(_, _, _, owner) do
+    case Process.get({C, :lock_held}) do
+      %{port: port, controller: controller} ->
+        shared =
+          Process.get({Identity, :lock_held}) === true and
+            Process.get({Ipse.Runner.Transaction, :controller}) === controller
+
+        send(owner, {:batch_owner_closed, Port.close(port), shared})
+
+      _ ->
+        send(owner, {:batch_owner_closed, false, false})
+    end
+  end
+
+  def install_batch_root_gate(_, _, _, {owner, flag}) do
+    if :atomics.compare_exchange(flag, 1, 0, 1) == :ok do
+      effect_owner = Ipse.Session.Resources.file_effect_owner()
+      [{view, _}] = Registry.lookup(Ipse.Registry, {C.ReadView, effect_owner})
+
+      gate = fn
+        4, {:in, {:"$gen_call", _, {_ref, {:borrow, _}}}}, _ ->
+          send(owner, {:batch_second_record_gate, self()})
+          receive do: (:release_batch_second_record -> :ok)
+          5
+
+        count, {:in, {:"$gen_call", _, {_ref, {:borrow, _}}}}, _ ->
+          count + 1
+
+        count, _, _ ->
+          count
+      end
+
+      :ok = :sys.install(view, {gate, 0})
+    end
+  end
+
+  @tag :managed_v4_batch
+  test "bounded literal batch matches independent signed observations and rejects invalid members",
+       c do
+    opts = options(1, 0)
+    assert {:ok, _} = publish(c, opts, scope(c), first: true)
+    key = hd(opts.request["changes"])["key"]
+    request = %{"op" => "get_record", "key" => key}
+    domain = Map.take(scope(c, false), [:namespace, :format])
+
+    assert {:ok, [first, second]} =
+             Identity.with_existing_domain_auth(c.home, c.cwd, c.binding, domain, fn cap,
+                                                                                     catalog ->
+               ObservedRead.managed_records(
+                 c.root,
+                 c.namespace,
+                 [{request, opts.recipe}, {request, opts.recipe}],
+                 cap,
+                 catalog
+               )
+             end)
+
+    assert first === second
+
+    assert {:ok, ^first} =
+             Identity.with_existing_domain_auth(c.home, c.cwd, c.binding, domain, fn cap,
+                                                                                     catalog ->
+               ObservedRead.managed_record(
+                 c.root,
+                 c.namespace,
+                 request,
+                 cap,
+                 catalog,
+                 opts.recipe
+               )
+             end)
+
+    assert {:ok, records} =
+             Identity.with_existing_domain_auth(c.home, c.cwd, c.binding, domain, fn cap,
+                                                                                     catalog ->
+               ObservedRead.managed_records(
+                 c.root,
+                 c.namespace,
+                 List.duplicate({request, opts.recipe}, 32),
+                 cap,
+                 catalog
+               )
+             end)
+
+    assert records == List.duplicate(first, 32)
+
+    assert {:error, :collection_observation_refused} =
+             ObservedRead.managed_records(c.root, c.namespace, [], nil, %{})
+
+    assert {:error, :collection_observation_refused} =
+             ObservedRead.managed_records(
+               c.root,
+               c.namespace,
+               List.duplicate({request, opts.recipe}, 33),
+               nil,
+               %{}
+             )
+
+    missing = %{"op" => "get_record", "key" => "note." <> JSON.sha256("missing batch member")}
+
+    assert {:error, :collection_observation_refused} =
+             Identity.with_existing_domain_auth(c.home, c.cwd, c.binding, domain, fn cap,
+                                                                                     catalog ->
+               ObservedRead.managed_records(
+                 c.root,
+                 c.namespace,
+                 [{request, opts.recipe}, {missing, opts.recipe}],
+                 cap,
+                 catalog
+               )
+             end)
+
+    # A failed read closes its view and cannot poison a later fresh owner scope.
+    assert {:ok, [^first]} =
+             Identity.with_existing_domain_auth(c.home, c.cwd, c.binding, domain, fn cap,
+                                                                                     catalog ->
+               ObservedRead.managed_records(
+                 c.root,
+                 c.namespace,
+                 [{request, opts.recipe}],
+                 cap,
+                 catalog
+               )
+             end)
+  end
+
+  @tag :held_target_regression
   test "one checked view binds the literal record to its authenticated live and anchor pages",
        c do
     opts = options(1, 0)

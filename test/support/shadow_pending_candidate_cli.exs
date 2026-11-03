@@ -17,6 +17,7 @@ low_confidence? = scenario == "save_managed_approval_low_confidence"
 output_source_lost? = scenario == "save_managed_approval_output_source_lost"
 input_source_lost? = scenario == "save_managed_approval_input_source_lost"
 unknown? = scenario == "save_managed_approval_unknown"
+mixed? = scenario == "save_managed_approval_mixed_v4_v7"
 home = Path.join(root, "home")
 cwd = Path.join(root, "project")
 dir = Path.join(root, "sessions")
@@ -226,6 +227,63 @@ client = %{
 }
 
 {:ok, runtime} = Ipse.Config.runtime(effective, client)
+
+# This separate scenario creates a literal through the real native assertion
+# channel so a later protected input can include both v4 and v7 source owners.
+mixed_literal =
+  if mixed? do
+    {:ok, literal_session} =
+      DynamicSupervisor.start_child(
+        Ipse.Sessions,
+        {Ipse.Session, config: runtime, cwd: cwd, state_dir: dir, subscriber: self()}
+      )
+
+    literal_id = Ipse.Session.info(literal_session).id
+    assert {:ok, channel} = Ipse.Session.open_input_channel(literal_session, self())
+    command = "/remember ordinary Synthetic mixed-version literal."
+    File.write!(Path.join(root, "supersession-input-1"), command)
+    IO.write("IPSE_SUPERSESSION_READ_1> ")
+
+    assert {:ok, ^command, witness} =
+             Ipse.Session.observe_channel(literal_session, channel, %{"kind" => "prompt"}, 30_000)
+
+    assert {:ok, ticket} = Ipse.Session.stage_input(literal_session, channel, command, witness)
+
+    assert {:ok, %{"render_id" => render}} =
+             Ipse.Session.prepare_assertion(literal_session, channel, command, ticket)
+
+    assert {:ok, answer, answer_witness} =
+             Ipse.Session.observe_channel(
+               literal_session,
+               channel,
+               %{"kind" => "assertion", "render_id" => render},
+               30_000
+             )
+
+    assert :ok =
+             Ipse.Session.accept_assertion_observed(
+               literal_session,
+               channel,
+               render,
+               answer,
+               answer_witness
+             )
+
+    assert_receive {:ipse, ^literal_session, {:done, :ok}}, 15_000
+    assert {:ok, literal_events} = Ipse.Journal.load(dir, literal_id)
+
+    assert [write] =
+             Enum.filter(literal_events, fn event ->
+               event["type"] == "extension_action_result" and
+                 get_in(event, ["request", "op"]) == "collection.managed" and
+                 get_in(event, ["outcome", "status"]) == "ok"
+             end)
+
+    assert [%{"key" => literal_key}] = get_in(write, ["request", "request", "changes"])
+    assert String.starts_with?(literal_key, "note.")
+    assert :ok = Ipse.Session.close_confirmed(literal_session)
+    %{key: literal_key, session_id: literal_id}
+  end
 
 # Capture a proposal through the actual main tool in a separate Session. The
 # proposal's source quote is real, but its paraphrased text must stay pending.
@@ -471,6 +529,91 @@ assert [dependency] = pending_read["dependencies"]
 assert dependency["subject"]["key"] == key
 assert dependency["subject"]["validity"]["status"] == "never_current"
 assert pending_read["classification"]["kind"] == "bundled_decision_shadow"
+
+if mixed? do
+  alias Ipse.Extension.ProjectIdentity
+  alias Ipse.Extension.Collection.ObservedRead
+  alias Ipse.Session.{ManagedReference, ManagedUse}
+  state = :sys.get_state(pid)
+  context = %{config: state.config, cwd: cwd, session_id: id, history_dir: dir}
+  pin = state.config.semantic_admission["pin"]
+  settings = state.config.semantic_admission["policy"]["settings"]
+
+  {_, recipe} =
+    Enum.find(settings["recipes"], fn {_, recipe} -> recipe["kind"] == "literal_source" end)
+
+  request = %{"op" => "get_record", "key" => mixed_literal.key}
+  domain = %{namespace: namespace, format: "managed-metadata-v3"}
+
+  assert {:ok, literal_dependency} =
+           ProjectIdentity.with_existing_domain_auth(home, cwd, binding, domain, fn cap,
+                                                                                    catalog ->
+             with {:ok, managed} <-
+                    ObservedRead.managed_record(
+                      collection,
+                      namespace,
+                      request,
+                      cap,
+                      catalog,
+                      recipe
+                    ),
+                  proofs =
+                    get_in(managed, [
+                      "observation",
+                      "value",
+                      "record",
+                      "value",
+                      "evidence",
+                      "sources"
+                    ]),
+                  {:ok, current} <-
+                    ObservedRead.managed_dependency(
+                      request,
+                      managed,
+                      pin,
+                      recipe,
+                      proofs,
+                      System.system_time(:millisecond)
+                    ) do
+               {:ok, current}
+             end
+           end)
+
+  assert {:ok, dependencies} = ManagedReference.union([[literal_dependency, dependency]])
+  assert Enum.sort(Enum.map(dependencies, & &1["version"])) == [4, 7]
+  capture = fn current, held -> {:ok, %{current: current, proofs: held.source_proofs}} end
+  assert {:ok, expected} = ManagedUse.with_approval_dependencies(context, dependencies, capture)
+  assert {:ok, ^expected} = ManagedUse.with_worker_dependencies(context, dependencies, capture)
+  assert Enum.map(expected.current, & &1["version"]) == Enum.map(dependencies, & &1["version"])
+  assert length(expected.proofs) == 2
+
+  owner = self()
+
+  refused = fn _, _ ->
+    send(owner, :mixed_input_delivered)
+    {:ok, :unexpected}
+  end
+
+  for source_id <- [mixed_literal.session_id, seed_id] do
+    journal = Path.join(dir, source_id <> ".jsonl")
+    held = journal <> ".mixed-test-held"
+    before = File.stat!(journal)
+    digest = Ipse.JSON.sha256(File.read!(journal))
+    refute File.exists?(held)
+    File.rename!(journal, held)
+
+    try do
+      refute match?({:ok, _}, ManagedUse.with_worker_dependencies(context, dependencies, refused))
+      refute_received :mixed_input_delivered
+    after
+      refute File.exists?(journal), "source journal path was unexpectedly recreated"
+      File.rename!(held, journal)
+    end
+
+    assert File.stat!(journal).inode == before.inode
+    assert Ipse.JSON.sha256(File.read!(journal)) == digest
+  end
+end
 
 for field <-
       ~w(artifact_sha256 descriptor_sha256 request_sha256 result_sha256 dependencies_sha256) do

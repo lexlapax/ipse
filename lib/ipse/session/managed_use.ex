@@ -448,7 +448,7 @@ defmodule Ipse.Session.ManagedUse do
         with_input_journals(context, dependencies, purpose, fn journals, journal_leases ->
           with {:ok, first} <-
                  protected(context, dependencies, fn cap, catalog, _ ->
-                   observe(context, dependencies, cap, catalog, journals)
+                   observe(context, dependencies, cap, catalog, journals, purpose == :worker)
                  end),
                true <- length(first.proofs) <= @max_sources do
             use = fn _sources, leases, active ->
@@ -467,7 +467,8 @@ defmodule Ipse.Session.ManagedUse do
                   active,
                   journals,
                   journal_leases,
-                  fun
+                  fun,
+                  purpose == :worker
                 )
               else
                 @error
@@ -499,10 +500,11 @@ defmodule Ipse.Session.ManagedUse do
          active,
          journals,
          journal_leases,
-         fun
+         fun,
+         batch_v4
        ) do
     protected(context, dependencies, fn cap, catalog, policy ->
-      with {:ok, ^first} <- observe(context, dependencies, cap, catalog, journals),
+      with {:ok, ^first} <- observe(context, dependencies, cap, catalog, journals, batch_v4),
            policy = use_deadline(policy, first.current),
            deadline = min(policy["expires_at_ms"], System.system_time(:millisecond) + 5_000),
            true <- System.system_time(:millisecond) < deadline,
@@ -984,8 +986,13 @@ defmodule Ipse.Session.ManagedUse do
     end
   end
 
-  defp observe(c, dependencies, cap, catalog, journals) do
-    with {:ok, results} <- observe_all(c, dependencies, cap, catalog, journals) do
+  defp observe(c, dependencies, cap, catalog, journals, batch_v4 \\ false) do
+    observed =
+      if batch_v4,
+        do: observe_all_worker(c, dependencies, cap, catalog, journals),
+        else: observe_all(c, dependencies, cap, catalog, journals)
+
+    with {:ok, results} <- observed do
       Enum.reduce_while(dependencies, {:ok, %{current: [], proofs: []}}, fn dependency,
                                                                             {:ok, acc} ->
         case results[JSON.digest([dependency])] do
@@ -1000,39 +1007,135 @@ defmodule Ipse.Session.ManagedUse do
     end
   end
 
+  # Worker input is all-or-nothing. Only this path coalesces v4 records across
+  # other dependency versions; other consumers retain per-dependency verdicts.
+  # This changes internal observation and failure order: v4 reads run before
+  # v3/v5/v6/v7 reads. Each view closes before those other observations and no
+  # authority or results are shared between the two independent passes.
+  defp observe_all_worker(c, dependencies, cap, catalog, journals) do
+    pin = c.config[:semantic_admission]["pin"]
+    root = SemanticAdmission.collection_root(c.config[:home])
+
+    batched =
+      dependencies
+      |> Enum.filter(&(&1["version"] == 4))
+      |> Enum.chunk_every(32)
+      |> Enum.reduce_while({:ok, %{}}, fn chunk, {:ok, cache} ->
+        case observe_v4_chunk(c, root, pin, chunk, cap, catalog, cache) do
+          {:ok, cache} -> {:cont, {:ok, cache}}
+          _ -> {:halt, @error}
+        end
+      end)
+
+    with {:ok, cache} <- batched do
+      {results, _cache} =
+        Enum.reduce(dependencies, {%{}, cache}, fn dependency, {results, cache} ->
+          if dependency["version"] == 4 do
+            result = Map.fetch!(cache, observation_key(dependency))
+            {Map.put(results, JSON.digest([dependency]), result), cache}
+          else
+            observe_one(c, root, pin, dependency, cap, catalog, journals, {results, cache})
+          end
+        end)
+
+      {:ok, results}
+    end
+  end
+
+  defp observe_v4_chunk(c, root, pin, dependencies, cap, catalog, cache) do
+    pending =
+      dependencies
+      |> Enum.reject(&Map.has_key?(cache, observation_key(&1)))
+      |> Enum.uniq_by(&observation_key/1)
+
+    if pending == [] do
+      {:ok, cache}
+    else
+      with {:ok, specs} <- v4_specs(c, pending),
+           {:ok, records} <-
+             ObservedRead.managed_records(
+               root,
+               pin["namespace"],
+               Enum.map(specs, fn {_dependency, request, recipe} -> {request, recipe} end),
+               cap,
+               catalog
+             ),
+           true <- length(records) == length(specs) do
+        Enum.zip(specs, records)
+        |> Enum.reduce_while({:ok, cache}, fn {{dependency, request, recipe}, record},
+                                              {:ok, acc} ->
+          case finish_v4_observation(c, pin, request, recipe, record) do
+            {:ok, _, _} = result ->
+              {:cont, {:ok, Map.put(acc, observation_key(dependency), result)}}
+
+            _ ->
+              {:halt, @error}
+          end
+        end)
+      else
+        _ -> @error
+      end
+    end
+  end
+
+  defp v4_specs(c, dependencies) do
+    settings = c.config[:semantic_admission]["policy"]["settings"]
+
+    Enum.reduce_while(dependencies, {:ok, []}, fn dependency, {:ok, acc} ->
+      recipe_sha = get_in(dependency, ["subject", "validity", "recipe_sha256"])
+      recipe = settings["recipes"][recipe_sha]
+      request = %{"op" => "get_record", "key" => dependency["subject"]["key"]}
+
+      if ManagedRecipe.valid?(recipe) and JSON.digest([recipe]) == recipe_sha and
+           Enum.any?(settings["effects"], &(recipe_sha in Map.get(&1, "managed_read", []))),
+         do: {:cont, {:ok, [{dependency, request, recipe} | acc]}},
+         else: {:halt, @error}
+    end)
+    |> case do
+      {:ok, specs} -> {:ok, Enum.reverse(specs)}
+      error -> error
+    end
+  end
+
   defp observe_all(c, dependencies, cap, catalog, journals \\ %{}) do
     pin = c.config[:semantic_admission]["pin"]
     root = SemanticAdmission.collection_root(c.config[:home])
 
     {results, _} =
-      Enum.reduce(dependencies, {%{}, %{}}, fn dependency, {results, cache} ->
-        key =
-          if dependency["version"] == 3,
-            do: :root,
-            else:
-              {dependency["version"], dependency["subject"]["key"],
-               get_in(dependency, ["subject", "validity", "recipe_sha256"])}
-
-        result =
-          Map.get_lazy(cache, key, fn ->
-            if key == :root,
-              do: observe_root(root, pin),
-              else: observe_dependency(c, root, pin, dependency, cap, catalog, journals)
-          end)
-
-        checked =
-          if key == :root do
-            with {:ok, actual} <- result,
-                 true <- actual === dependency["collection"],
-                 do: {:ok, dependency, []}
-          else
-            result
-          end
-
-        {Map.put(results, JSON.digest([dependency]), checked), Map.put(cache, key, result)}
+      Enum.reduce(dependencies, {%{}, %{}}, fn dependency, acc ->
+        observe_one(c, root, pin, dependency, cap, catalog, journals, acc)
       end)
 
     {:ok, results}
+  end
+
+  defp observation_key(%{"version" => 3}), do: :root
+
+  defp observation_key(dependency),
+    do:
+      {dependency["version"], dependency["subject"]["key"],
+       get_in(dependency, ["subject", "validity", "recipe_sha256"])}
+
+  defp observe_one(c, root, pin, dependency, cap, catalog, journals, {results, cache}) do
+    key = observation_key(dependency)
+
+    result =
+      Map.get_lazy(cache, key, fn ->
+        if key == :root,
+          do: observe_root(root, pin),
+          else: observe_dependency(c, root, pin, dependency, cap, catalog, journals)
+      end)
+
+    checked =
+      if key == :root do
+        with {:ok, actual} <- result,
+             true <- actual === dependency["collection"],
+             do: {:ok, dependency, []}
+      else
+        result
+      end
+
+    {Map.put(results, JSON.digest([dependency]), checked), Map.put(cache, key, result)}
   end
 
   defp observe_root(root, pin) do
@@ -1055,27 +1158,8 @@ defmodule Ipse.Session.ManagedUse do
     with true <- ManagedRecipe.valid?(recipe) and JSON.digest([recipe]) == recipe_sha,
          true <- Enum.any?(settings["effects"], &(recipe_sha in Map.get(&1, "managed_read", []))),
          {:ok, managed} <-
-           ObservedRead.managed_record(root, pin["namespace"], request, cap, catalog, recipe),
-         value = managed["observation"]["value"]["record"]["value"],
-         proofs when is_list(proofs) <-
-           Enum.reduce(recipe["evidence_path"], value, fn key, value ->
-             if is_map(value), do: value[key], else: nil
-           end),
-         :ok <-
-           SemanticConsent.check_sources(
-             c.config[:semantic_admission]["policy"],
-             Enum.map(proofs, &%{"category" => &1["origin"], "path" => &1["path"]})
-           ),
-         {:ok, current} <-
-           ObservedRead.managed_dependency(
-             request,
-             managed,
-             pin,
-             recipe,
-             proofs,
-             System.system_time(:millisecond)
-           ) do
-      {:ok, current, proofs}
+           ObservedRead.managed_record(root, pin["namespace"], request, cap, catalog, recipe) do
+      finish_v4_observation(c, pin, request, recipe, managed)
     else
       _ -> @error
     end
@@ -1175,6 +1259,33 @@ defmodule Ipse.Session.ManagedUse do
                  _ -> @error
                end
              end
+           ) do
+      {:ok, current, proofs}
+    else
+      _ -> @error
+    end
+  end
+
+  defp finish_v4_observation(c, pin, request, recipe, managed) do
+    value = managed["observation"]["value"]["record"]["value"]
+
+    with proofs when is_list(proofs) <-
+           Enum.reduce(recipe["evidence_path"], value, fn key, value ->
+             if is_map(value), do: value[key], else: nil
+           end),
+         :ok <-
+           SemanticConsent.check_sources(
+             c.config[:semantic_admission]["policy"],
+             Enum.map(proofs, &%{"category" => &1["origin"], "path" => &1["path"]})
+           ),
+         {:ok, current} <-
+           ObservedRead.managed_dependency(
+             request,
+             managed,
+             pin,
+             recipe,
+             proofs,
+             System.system_time(:millisecond)
            ) do
       {:ok, current, proofs}
     else
