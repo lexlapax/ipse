@@ -1,0 +1,2 @@
+verifier_exit=0
+source_archive_postcheck_exit=0

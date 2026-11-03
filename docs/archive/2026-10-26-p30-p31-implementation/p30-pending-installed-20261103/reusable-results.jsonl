@@ -1,0 +1,5 @@
+{"exit_status":0,"scenario":"save_managed_approval_root_shadow","marker_present":true,"log_sha256":"4c6210320f2e28d9dadc44c6c9f727a8c00bc022a62fef7ebb2687a9aba3d78d"}
+{"exit_status":0,"scenario":"save_managed_approval_deny","marker_present":true,"log_sha256":"a498beb835e8036d5a9d8beebbca727ab63c99f49d4d5bc2a367527e09294027"}
+{"exit_status":0,"scenario":"save_managed_approval_input_source_lost","marker_present":true,"log_sha256":"7a742220133e0baa3cca8d31698e0fccb3797f183410ae24b3f3378127cf994e"}
+{"exit_status":0,"scenario":"save_managed_approval_output_source_lost","marker_present":true,"log_sha256":"b188dcd67e276852e0bcaaffed8591748b5f9ce5f07b043a27611f7ff8390e15"}
+{"exit_status":0,"scenario":"save_managed_approval_unknown","marker_present":true,"log_sha256":"ec2f5015afb2b6d399a2e242ee08901bd628ef33f2dc6efd950a676c538054c3"}

@@ -142,7 +142,7 @@ workflow, follow [Memory](memory.md).
 
 ## Try a local shadow assessment
 
-The development build can ask a separately approved local decision service for
+Ipse can ask a separately approved local decision service for
 shadow advice about one eligible native literal note or one pending proposal
 created under the same grant. Accepted decisions are not supported by this
 assessment. Set up an Ollama main
@@ -244,8 +244,9 @@ The tested assessments start with a literal note or main-tool pending proposal
 saved under this grant in a previous Session. Carrying a record captured under a
 replaced grant into this experiment has not been qualified.
 Automatic assessment immediately after a write in the same Session is not yet
-supported. Synthetic local controls establish the flow, not model quality or
-paid-service readiness.
+supported. Synthetic local controls exercise this flow. An installed-package
+fixture covers a prior-Session pending proposal. These controls do not establish
+model quality, independent human use or paid-service readiness.
 
 ## Save your own reviewed statement
 

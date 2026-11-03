@@ -1,0 +1,6 @@
+PASS installed pending assessment: save_managed_approval_root_shadow
+PASS installed pending assessment: save_managed_approval_deny
+PASS installed pending assessment: save_managed_approval_input_source_lost
+PASS installed pending assessment: save_managed_approval_output_source_lost
+PASS installed pending assessment: save_managed_approval_unknown
+INSTALLED_PENDING_SHADOW_ALL_FIVE_PASSED

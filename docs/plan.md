@@ -1033,7 +1033,9 @@ The subsequent [pending-candidate shadow increment](archive/2026-10-26-p30-p31-i
 assesses an actual main-tool-created bundled proposal under a separate finite
 grant, with source-loss and replay controls. Its synthetic advice is not a
 qualified production strategy, and historical v3 compatible-resume behavior
-remains under investigation.
+remains under investigation. An [installed prior-Session control](archive/2026-10-26-p30-p31-implementation/p30-pending-installed-20261103.md)
+also passes approved, denied, source-loss and charged-unknown synthetic cases;
+it does not establish live decision quality or same-Session assessment.
 The [cross-Session experiment controls](archive/2026-10-26-p30-p31-implementation/p30-cross-session-allowance-20261103.md)
 observe two settled one-call reservations and no third dispatch, plus a new
 Session quarantined after an unknown call. The settled case's third failure is

@@ -544,6 +544,32 @@ mix test test/ipse/extension/decision_outer_test.exs test/extensions/knowledge/s
 mix test test/ipse/extension/managed_collection_call_session_test.exs --only pending_original_source_boundary
 ```
 
+To check the same prior-Session pending-candidate path in a built package, first
+record its independently expected SHA-256 and source commit label. Set the
+archive, independently recorded values and an **absent** private output
+directory below, then run:
+
+```sh
+IPSE_ARCHIVE=/absolute/path/to/ipse.tar.gz
+IPSE_SHADOW_PROOF_ROOT=/absolute/private/path/new-shadow-proof
+IPSE_ARCHIVE_SHA256=replace-with-recorded-64-character-sha256
+IPSE_ARCHIVE_COMMIT=replace-with-recorded-40-character-commit
+elixir dev/verification/pending_shadow_installed.exs \
+  "$IPSE_ARCHIVE" "$IPSE_SHADOW_PROOF_ROOT" \
+  "$IPSE_ARCHIVE_SHA256" "$IPSE_ARCHIVE_COMMIT"
+```
+
+The verifier checks the archive and checksum sidecar, checks the reported commit
+label, and runs the existing source fixture against the extracted release and its
+bundled worker. It needs a native Linux PTY, Rust compiler and precompiled
+ExUnit. Each scenario has a fresh synthetic project and loopback services: an
+approved assessment, denial, source loss before dispatch and before output, and
+an unknown decision followed by Session reopening. It stops on the first
+failure. Preserve its private output and inspect its result before another run;
+terminal logs contain synthetic approval codes. A package label and matching
+checksum identify the checked artifact but do not prove its source provenance.
+These controls do not establish independent human use or live-service quality.
+
 The shipped-bundle Session fixtures cover prior-Session protected note and
 proposal reads, approval, settlement, denial, pre-Session revocation and grant
 expiry interpositions. They use loopback fixtures, not a real account or a
