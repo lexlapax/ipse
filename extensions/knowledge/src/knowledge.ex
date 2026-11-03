@@ -5,6 +5,15 @@ defmodule IpseKnowledge.Knowledge do
   alias IpseKnowledge.Knowledge.Contracts
   @preset "native"
   @recall_candidates 32
+  # Each live metadata page and successful read contributes a host dependency;
+  # leave two positions for the initial and final root observations.
+  @recall_projection_limit 126
+  @recall_host_read_limit 512
+  @recall_host_dependency_limit 128
+  @recall_host_source_limit 128
+  @max_record_proofs 8
+  # An accepted decision can additionally require its management-journal owner.
+  @max_record_owners 9
 
   def describe do
     capture =
@@ -106,8 +115,20 @@ defmodule IpseKnowledge.Knowledge do
           | ctx: Map.put(state.ctx || %{}, :operation_id, operation)
         })
 
+  def handle(
+        "host.actions",
+        %{
+          "outcome" => %{
+            "status" => "failed",
+            "value" => %{"code" => "collection_original_source_missing"}
+          }
+        },
+        %{phase: :recall_read} = state
+      ),
+      do: recall_next(%{state | ctx: Map.update!(state.ctx, :unavailable, &(&1 + 1))})
+
   def handle("host.actions", %{"outcome" => _}, %{phase: :recall_read} = state),
-    do: recall_next(%{state | ctx: Map.update!(state.ctx, :unavailable, &(&1 + 1))})
+    do: recall_unavailable(state)
 
   def handle("host.actions", %{"outcome" => _}, %{phase: :recall_verify} = state),
     do: recall_unavailable(state)
@@ -117,7 +138,15 @@ defmodule IpseKnowledge.Knowledge do
       do:
         recall_publish(%{
           state
-          | ctx: %{state.ctx | coverage: "unavailable", index: [], total: nil, next: nil}
+          | ctx: %{
+              state.ctx
+              | coverage: "unavailable",
+                index: [],
+                notes: [],
+                candidates: [],
+                total: nil,
+                next: nil
+            }
         })
 
   def handle("host.actions", %{"outcome" => outcome}, state),
@@ -219,6 +248,9 @@ defmodule IpseKnowledge.Knowledge do
   defp advance(:recall_index_only, value, state), do: finish(state, value)
   defp advance(:recall_read_only, value, state), do: finish(state, value)
 
+  defp advance(:recall_index, value, %{ctx: %{mode: :seed}} = state),
+    do: recall_seed_index(value, state)
+
   defp advance(:recall_index, value, state) do
     rows = value["records"]
     next = value["next"]
@@ -281,15 +313,23 @@ defmodule IpseKnowledge.Knowledge do
        do: recall_unavailable(state)
 
   defp advance(:recall_read, %{"generation" => _, "record" => record}, state) do
+    ctx = state.ctx
+
+    ctx = %{
+      ctx
+      | successful_reads: ctx.successful_reads + 1,
+        source_proofs: ctx.source_proofs + recall_record_proofs(record)
+    }
+
     ctx =
-      if is_map(record) and record["key"] === state.ctx.expected["key"] and
-           record["revision"] === state.ctx.expected["revision"] and
-           is_binary(record["sha256"]) and record["sha256"] === state.ctx.expected["sha256"] and
-           is_integer(record["bytes"]) and record["bytes"] === state.ctx.expected["bytes"] and
+      if is_map(record) and record["key"] === ctx.expected["key"] and
+           record["revision"] === ctx.expected["revision"] and
+           is_binary(record["sha256"]) and record["sha256"] === ctx.expected["sha256"] and
+           is_integer(record["bytes"]) and record["bytes"] === ctx.expected["bytes"] and
            (IpseKnowledge.Notes.valid?(record["value"]) or
               match?({:ok, _}, Records.accepted_projection(record["key"], record["value"]))),
-         do: %{state.ctx | notes: state.ctx.notes ++ [{record, state.ctx.operation_id}]},
-         else: %{state.ctx | unavailable: state.ctx.unavailable + 1}
+         do: %{ctx | notes: ctx.notes ++ [{record, ctx.operation_id}]},
+         else: %{ctx | unavailable: ctx.unavailable + 1}
 
     recall_next(%{state | ctx: ctx})
   end
@@ -443,8 +483,114 @@ defmodule IpseKnowledge.Knowledge do
       query: nil,
       start_cursor: nil,
       index_pages: 0,
-      index_cursors: []
+      index_cursors: [],
+      successful_reads: 0,
+      source_proofs: 0
     }
+
+  defp recall_seed_index(value, state) do
+    rows = value["records"]
+    next = value["next"]
+    total = value["count"]
+    generation = value["generation"]
+
+    keys =
+      if is_list(rows), do: Enum.map(rows, fn row -> if is_map(row), do: row["key"] end), else: []
+
+    prior_keys = Enum.map(state.ctx.index, & &1["key"])
+    observed = length(prior_keys) + length(keys)
+
+    if is_list(rows) and length(rows) <= @recall_candidates and
+         is_integer(total) and total in 0..8192 and total >= observed and
+         is_integer(generation) and generation in 0..9_007_199_254_740_991 and
+         (state.ctx.index_pages == 0 or generation === state.ctx.generation) and
+         (state.ctx.index_pages == 0 or total == state.ctx.total) and
+         (is_nil(next) or total > observed) and
+         (not is_nil(next) or total == observed) and
+         Enum.all?(keys, &is_binary/1) and length(keys) == length(Enum.uniq(keys)) and
+         Enum.all?(keys, &(&1 not in prior_keys)) and
+         (is_nil(next) or
+            (is_binary(next) and next != "" and rows != [] and
+               next not in state.ctx.index_cursors)) do
+      ctx = %{
+        state.ctx
+        | candidates: rows,
+          index: state.ctx.index ++ rows,
+          total: total,
+          generation: generation,
+          next: next,
+          index_pages: state.ctx.index_pages + 1,
+          index_cursors:
+            if(is_nil(next), do: state.ctx.index_cursors, else: [next | state.ctx.index_cursors])
+      }
+
+      recall_next(%{state | ctx: ctx})
+    else
+      refused(state, :invalid_index_progress)
+    end
+  end
+
+  defp recall_record_proofs(%{"value" => %{"kind" => "accepted_decision"}}), do: 2
+
+  defp recall_record_proofs(%{"value" => %{"evidence" => %{"sources" => sources}}})
+       when is_list(sources) and length(sources) in 1..@max_record_proofs,
+       do: length(sources)
+
+  # Unknown shapes can still be the result of a successful managed read. Count
+  # the host's full per-record proof allowance rather than discard its lineage.
+  defp recall_record_proofs(_), do: @max_record_owners
+
+  defp recall_seed_room?(ctx, kind) do
+    # Reserve the final root verification and, for a record, its worst-case
+    # source count. Every successful read stays in the host's causal union.
+    extra_sources = if kind == :record, do: @max_record_owners, else: 0
+
+    ctx.read + ctx.index_pages + 2 <= @recall_host_read_limit and
+      ctx.successful_reads + ctx.index_pages + 2 <= @recall_host_dependency_limit and
+      ctx.source_proofs + extra_sources <= @recall_host_source_limit
+  end
+
+  # Preserve the original bounded selection when the complete set does not fit.
+  defp recall_seed_fits?(%{notes: notes})
+       when is_list(notes) and length(notes) < @recall_candidates, do: true
+
+  defp recall_seed_fits?(%{budget: %{"instance" => instance, "available_bytes" => bytes}} = ctx)
+       when is_binary(instance) and is_integer(bytes) and bytes >= 0 do
+    case recall_projection(ctx, ctx.notes, instance, min(bytes, 8192)) do
+      {:ok, %{fits: fits}} -> fits
+      _ -> false
+    end
+  end
+
+  defp recall_seed_fits?(_), do: false
+
+  defp recall_next(%{ctx: %{mode: :seed, candidates: [row | rest]}} = state) do
+    ctx = state.ctx
+
+    if recall_seed_room?(ctx, :record) and recall_seed_fits?(ctx) do
+      collection(%{"op" => "get", "key" => row["key"]}, %{
+        state
+        | phase: :recall_read,
+          ctx: %{ctx | candidates: rest, read: ctx.read + 1, expected: row}
+      })
+    else
+      recall_next(%{state | ctx: %{ctx | candidates: [], coverage: "partial"}})
+    end
+  end
+
+  defp recall_next(
+         %{ctx: %{mode: :seed, candidates: [], next: next, coverage: "complete"}} = state
+       )
+       when is_binary(next) do
+    if recall_seed_room?(state.ctx, :page) and recall_seed_fits?(state.ctx) do
+      collection(
+        %{"op" => "index", "prefix" => "note.", "cursor" => next, "limit" => @recall_candidates},
+        %{state | phase: :recall_index}
+      )
+    else
+      recall_next(%{state | ctx: %{state.ctx | coverage: "partial"}})
+    end
+  end
 
   defp recall_next(%{ctx: %{candidates: [row | rest]}} = state) do
     collection(%{"op" => "get", "key" => row["key"]}, %{
@@ -537,7 +683,8 @@ defmodule IpseKnowledge.Knowledge do
   # The caller must retain/revalidate the source authority behind the supplied
   # context and must never treat a reconstructed context as an admission.
   def recall_projection(%{notes: eligible} = ctx, selected, instance, available)
-      when is_list(eligible) and length(eligible) <= @recall_candidates and is_list(selected) and
+      when is_list(eligible) and length(eligible) <= @recall_projection_limit and
+             is_list(selected) and
              is_binary(instance) and is_integer(available) and available in 0..8192 do
     keys = Enum.map(eligible, fn {row, _} -> row["key"] end)
 
@@ -590,7 +737,7 @@ defmodule IpseKnowledge.Knowledge do
   # Measure bounded alternative sets against the real recall envelope. As with
   # recall_projection/4, this is data only and the context is not authority.
   def recall_pack_projections(%{notes: eligible} = ctx, packs, instance, available)
-      when is_list(eligible) and length(eligible) <= @recall_candidates and is_list(packs) and
+      when is_list(eligible) and length(eligible) <= @recall_projection_limit and is_list(packs) and
              length(packs) <= 8 and is_binary(instance) and is_integer(available) and
              available in 0..8192 do
     keys = Enum.map(eligible, fn {row, _} -> row["key"] end)
@@ -854,6 +1001,7 @@ defmodule IpseKnowledge.Knowledge do
     coverage =
       cond do
         ctx.coverage == "unavailable" -> "unavailable"
+        ctx.coverage == "partial" -> "partial"
         length(notes) < length(ctx.notes) or ctx.next != nil or ctx.unavailable > 0 -> "partial"
         true -> "complete"
       end

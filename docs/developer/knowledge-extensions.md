@@ -393,15 +393,34 @@ human, full-workload or real-model quality.
 
 ### Revalidate recall before use
 
-Automatic recall considers at most 32 current notes without another model.
-It compares each read's key, revision, value hash, byte count and Collection
-generation with the metadata index. Index traversal rejects repeated keys/tokens,
-an empty page with a continuation and inconsistent counts. A final first-page
-check must reproduce the same generation/count. Failed traversal or changed
-generation discards the pass and reports unavailable coverage with an unknown
-candidate count. Missing individual reads, omitted notes or remaining pages
-produce partial coverage. Starting a search from a later cursor also remains
-partial, and a query without lexical terms refuses before indexing.
+Automatic recall alternates bounded metadata pages with current reads without
+another model. It compares each read's key, revision, value hash, byte count and
+Collection generation with the index. Index traversal rejects repeated
+keys/tokens, an empty page with a continuation and inconsistent counts, refusing
+invalid progress. A final first-page check must reproduce the same generation/count.
+A failed index call or a changed generation during a read or final check discards
+the pass and reports unavailable coverage with an unknown candidate count.
+
+The worker can continue beyond 32 candidates while all notes read so far fit.
+When they do not fit, it attempts the existing selection over the first 32 eligible
+notes, subject to the host bounds. It reserves a final read and counts page
+dependencies, every successful read and worst-case proof and management-journal
+owners before issuing further work. Reaching a bound or omitting a note reports
+partial coverage. Those worker counts cover this invocation only; inherited
+history can make the host's final union too large, in which case admission still
+refuses. Search keeps its separate 32-candidate bound, and a later cursor
+remains partial.
+
+A missing original is distinguishable from a generic source refusal only for a
+single literal record and its one inactive original journal. On Linux, the host
+holds an identity-checked source lock, rechecks the original directory and file
+absence, and re-observes the exact collection root, record, signed metadata and
+current source policy. A lock, identity, policy, ambiguous source or collection
+failure remains a general refusal and withholds the pass. The missing-journal
+outcome carries no later-use absence dependency: if that journal reappears after
+the check, the omission remains partial and is not automatically repaired. Full
+fitting-set coverage across arbitrary sparse collections or that reappearance race
+requires a separate host discovery and final-use contract.
 
 Accepted decisions use a distinct version-6 dependency. `ManagedRead` discovers
 their immutable link, retains the original committed management journal outside
@@ -675,9 +694,11 @@ locations alongside source generation and literal quotation. Its outer version
 is 2 for legacy sources and 3 for Collection sources. Inside `document`, version 1
 retains the original single locator and local byte range. A quotation crossing
 packed blocks uses version 2, one `part` and compact `spans` rows. `span_fields`
-names their columns: paragraph, local start/end, quotation start/end, then optional
-table/row/cell coordinates. Ordinary paragraph rows have five values and table
-rows eight. Quotation offsets retain the newline gaps between original blocks.
+names their columns: paragraph, local start/end, quotation start/end, then
+table/row/cell coordinates. V14 and v15 rows contain five values for paragraphs
+and eight for table cells. V16 rows have nine fixed positions: the first five,
+nullable table/row/cell coordinates and nullable numbering metadata. Quotation
+offsets retain the newline gaps between original blocks.
 Rows must be ordered and are reconstructed exactly from the stored block map;
 changed coordinates, offsets or column labels refuse. Evidence revalidates the typed receipt,
 canonical envelope and source spans. An ordinary text `put` cannot smuggle in

@@ -4,7 +4,9 @@ import ExUnit.Assertions
 Code.require_file(Path.expand("provider_fixture.ex", __DIR__))
 
 [root, "recall-many"] = System.argv()
-baseline = System.get_env("IPSE_RECALL_BASELINE_CONTROL") == "1"
+sparse = System.get_env("IPSE_TEST_RECALL_SPARSE") == "1"
+reappear = System.get_env("IPSE_TEST_RECALL_REAPPEAR") == "1"
+assert not reappear or sparse
 
 provider_timeout =
   System.get_env("IPSE_TEST_RECALL_PROVIDER_TIMEOUT_MS", "5000") |> String.to_integer()
@@ -126,35 +128,48 @@ dir = Path.join(home, "sessions")
 opts = [config: config, cwd: cwd, state_dir: dir, subscriber: self()]
 assert {:ok, source} = DynamicSupervisor.start_child(Ipse.Sessions, {Ipse.Session, opts})
 source_id = Ipse.Session.info(source).id
+pin = :sys.get_state(source).config.semantic_admission["pin"]
 assert {:ok, channel} = Ipse.Session.open_input_channel(source, self())
 
-texts =
-  for step <- 1..33 do
+{texts, source, source_ids} =
+  Enum.reduce(1..33, {[], source, channel, [source_id]}, fn step,
+                                                            {texts, current, channel, ids} ->
+    {current, channel, ids} =
+      if sparse and step == 2 do
+        assert :ok = Ipse.Session.close_confirmed(current)
+        assert {:ok, other} = DynamicSupervisor.start_child(Ipse.Sessions, {Ipse.Session, opts})
+        assert {:ok, next_channel} = Ipse.Session.open_input_channel(other, self())
+        {other, next_channel, ids ++ [Ipse.Session.info(other).id]}
+      else
+        {current, channel, ids}
+      end
+
     text = "~N" <> String.pad_leading(Integer.to_string(step), 2, "0") <> "~"
     command = "/remember ordinary " <> text
     File.write!(Path.join(root, "supersession-input-#{step}"), command)
     IO.write("IPSE_SUPERSESSION_READ_#{step}> ")
 
     assert {:ok, ^command, witness} =
-             Ipse.Session.observe_channel(source, channel, %{"kind" => "prompt"}, 30_000)
+             Ipse.Session.observe_channel(current, channel, %{"kind" => "prompt"}, 30_000)
 
-    assert {:ok, ticket} = Ipse.Session.stage_input(source, channel, command, witness)
+    assert {:ok, ticket} = Ipse.Session.stage_input(current, channel, command, witness)
 
     assert {:ok, %{"render_id" => render}} =
-             Ipse.Session.prepare_assertion(source, channel, command, ticket)
+             Ipse.Session.prepare_assertion(current, channel, command, ticket)
 
     assert {:ok, input, observed} =
              Ipse.Session.observe_channel(
-               source,
+               current,
                channel,
                %{"kind" => "assertion", "render_id" => render},
                30_000
              )
 
-    assert :ok = Ipse.Session.accept_assertion_observed(source, channel, render, input, observed)
-    assert_receive {:ipse, ^source, {:done, :ok}}, 30_000
-    text
-  end
+    assert :ok = Ipse.Session.accept_assertion_observed(current, channel, render, input, observed)
+    assert_receive {:ipse, ^current, {:done, :ok}}, 30_000
+    {texts ++ [text], current, channel, ids}
+  end)
+  |> then(fn {texts, current, _, ids} -> {texts, current, ids} end)
 
 assert :ok = Ipse.Session.close_confirmed(source)
 assert {:ok, source_events} = Ipse.Journal.load(dir, source_id)
@@ -185,11 +200,91 @@ if System.get_env("IPSE_TEST_RECALL_TIMING") == "1" do
   end
 end
 
-assert Enum.count(source_events, &(&1["type"] == "operator_assertion")) == 33
+assert Enum.count(source_events, &(&1["type"] == "operator_assertion")) ==
+         if(sparse, do: 1, else: 33)
+
 refute Enum.any?(source_events, &(&1["type"] == "inference_dispatch_intent"))
+
+{held_journal, expected_texts} =
+  if sparse do
+    collection = Ipse.Extension.SemanticAdmission.collection_root(home)
+
+    {:ok, snapshot} =
+      Ipse.Extension.Collection.execute(
+        collection,
+        pin["namespace"],
+        %{"op" => "snapshot"},
+        Ipse.Usage.id()
+      )
+
+    scan = fn scan, after_key, acc ->
+      {:ok, page} =
+        Ipse.Extension.Collection.scan_visible(
+          collection,
+          pin["namespace"],
+          %{
+            "op" => "scan",
+            "after" => after_key,
+            "generation" => snapshot["generation"],
+            "limit" => 4
+          },
+          Ipse.Usage.id()
+        )
+
+      rows = acc ++ Enum.filter(page["records"], &String.starts_with?(&1["key"], "note."))
+      if is_nil(page["next"]), do: rows, else: scan.(scan, page["next"], rows)
+    end
+
+    rows = scan.(scan, nil, [])
+    assert length(rows) == 33
+
+    first_source =
+      Enum.find(
+        rows,
+        &(get_in(&1, ["value", "evidence", "sources"]) |> List.first() |> Map.fetch!("session_id") ==
+            source_id)
+      )
+
+    assert is_map(first_source)
+
+    unavailable_id =
+      if List.last(rows)["key"] == first_source["key"], do: List.last(source_ids), else: source_id
+
+    expected =
+      Enum.reject(rows, fn row ->
+        get_in(row, ["value", "evidence", "sources"]) |> List.first() |> Map.fetch!("session_id") ==
+          unavailable_id
+      end)
+
+    assert Enum.any?(Enum.drop(rows, 32), &(&1 in expected))
+    journal = Path.join(dir, unavailable_id <> ".jsonl")
+    File.rename!(journal, journal <> ".held")
+    {journal, Enum.map(expected, & &1["value"]["text"])}
+  else
+    {nil, texts}
+  end
 
 assert {:ok, session} = DynamicSupervisor.start_child(Ipse.Sessions, {Ipse.Session, opts})
 session_id = Ipse.Session.info(session).id
+
+if reappear do
+  owner = self()
+
+  hook = fn
+    false, {:in, {:"$gen_call", _, {:managed_preflight_begin, _, "model"}}}, _ ->
+      assert File.regular?(held_journal <> ".held")
+      refute File.exists?(held_journal)
+      File.rename!(held_journal <> ".held", held_journal)
+      send(owner, {:recall_source_reappeared_before_preflight, session})
+      true
+
+    state, _, _ ->
+      state
+  end
+
+  assert :ok = :sys.install(session, {hook, false})
+end
+
 assert :ok = Ipse.Session.prompt(session, "Which synthetic notes are available?")
 
 request =
@@ -226,12 +321,30 @@ request =
   end
 
 wire = Jason.encode!(request["messages"])
+
+if reappear do
+  assert_receive {:recall_source_reappeared_before_preflight, ^session}, 5_000
+  assert File.regular?(held_journal)
+end
+
 included = Enum.count(texts, &String.contains?(wire, &1))
 assert_receive {:ipse, ^session, {:done, :ok}}, 30_000
 assert :ok = Task.await(server, 5_000)
 
 assert {:ok, events} = Ipse.Journal.load(dir, session_id)
 assert {:ok, _} = Ipse.Session.Saved.restore(events, session_id)
+
+if reappear do
+  {before_dispatch, dispatch} =
+    Enum.split_while(events, &(&1["type"] != "inference_dispatch_intent"))
+
+  assert dispatch != []
+
+  assert Enum.any?(before_dispatch, fn event ->
+           event["type"] == "extension_action_result" and
+             get_in(event, ["outcome", "value", "code"]) == "collection_original_source_missing"
+         end)
+end
 
 reads =
   Enum.filter(events, fn event ->
@@ -264,12 +377,15 @@ IO.puts(
     })
 )
 
-assert included == if(baseline, do: 32, else: 33)
-assert length(reads) == if(baseline, do: 32, else: 33)
-assert coverage["coverage"] == if(baseline, do: "partial", else: "complete")
+expected_count = length(expected_texts)
+assert included == expected_count
+assert length(reads) == expected_count
+assert Enum.all?(expected_texts, &String.contains?(wire, &1))
+assert coverage["coverage"] == if(sparse, do: "partial", else: "complete")
 assert coverage["included"] == included
 assert :ok = Ipse.Session.close_confirmed(session)
 
-IO.puts(
-  if(baseline, do: "NATIVE_NOTE_RECALL_BASELINE_PASSED", else: "NATIVE_NOTE_RECALL_MANY_PASSED")
-)
+if held_journal && File.exists?(held_journal <> ".held"),
+  do: File.rename!(held_journal <> ".held", held_journal)
+
+IO.puts("NATIVE_NOTE_RECALL_MANY_PASSED")

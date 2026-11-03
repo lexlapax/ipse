@@ -5,7 +5,7 @@ defmodule Ipse.Extension.CollectionCall do
   @reads ~w(status snapshot get inspect scan index)
   @binding ~w(kind version namespace pin inner_op request_sha256)
   @summary ~w(version project generation floor floor_anchor)
-  @failures ~w(collection_unavailable collection_consent_denied collection_source_refused collection_policy_refused collection_deadline_unavailable collection_result_limit collection_capacity collection_filesystem_unsupported collection_writer_fenced collection_duplicate)
+  @failures ~w(collection_unavailable collection_consent_denied collection_source_refused collection_original_source_missing collection_policy_refused collection_deadline_unavailable collection_result_limit collection_capacity collection_filesystem_unsupported collection_writer_fenced collection_duplicate)
   @error {:error, :invalid_extension_collection_call}
 
   def operation?(request), do: is_map(request) and request["op"] == "collection.call"
@@ -578,6 +578,10 @@ defmodule Ipse.Extension.CollectionCall do
 
   defp failed(code), do: {:failed, %{"code" => code}}
   defp normalize({status, _} = result) when status in [:ok, :conflict, :failed], do: result
+
+  defp normalize({:error, :collection_original_source_missing}),
+    do: failed("collection_original_source_missing")
+
   defp normalize({:error, :collection_source_refused}), do: failed("collection_source_refused")
   defp normalize({:error, _}), do: failed("collection_consent_denied")
   defp normalize(_), do: :unknown

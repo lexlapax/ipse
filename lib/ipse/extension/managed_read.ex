@@ -29,36 +29,72 @@ defmodule Ipse.Extension.ManagedRead do
           links = for %{kind: :accepted, link: link} <- notes, do: link["value"]
           pin = i["effect_binding"]["pin"]
 
-          PendingAcceptance.with_committed_management_journals(
-            c.config[:home],
-            pin["project_id"],
-            i["namespace"],
-            links,
-            fn journals ->
-              StoredSources.with_verified(c, i, proofs, fn verified ->
-                protect.(true, fn cap, catalog ->
-                  with {:ok, ^first} <- observe(c, i, recipes),
-                       {:ok, dependencies} <-
-                         authenticate(c, i, notes, first, verified, cap, catalog, journals),
-                       {:ok, root} <- root_dependency(i, first) do
-                    dependencies =
-                      if i["request"]["request"]["op"] == "scan",
-                        do: [root | dependencies],
-                        else: dependencies
+          case missing_original(c, i, recipes, first, protect) do
+            {:error, :collection_original_source_missing} = missing ->
+              missing
 
-                    admit.(first.observation["value"], dependencies)
-                  else
-                    _ -> @error
-                  end
-                end)
-              end)
-            end
-          )
+            _ ->
+              PendingAcceptance.with_committed_management_journals(
+                c.config[:home],
+                pin["project_id"],
+                i["namespace"],
+                links,
+                fn journals ->
+                  StoredSources.with_verified(c, i, proofs, fn verified ->
+                    protect.(true, fn cap, catalog ->
+                      with {:ok, ^first} <- observe(c, i, recipes),
+                           {:ok, dependencies} <-
+                             authenticate(c, i, notes, first, verified, cap, catalog, journals),
+                           {:ok, root} <- root_dependency(i, first) do
+                        dependencies =
+                          if i["request"]["request"]["op"] == "scan",
+                            do: [root | dependencies],
+                            else: dependencies
+
+                        admit.(first.observation["value"], dependencies)
+                      else
+                        _ -> @error
+                      end
+                    end)
+                  end)
+                end
+              )
+          end
       end
     end
   rescue
     _ -> @error
   end
+
+  # This distinct outcome applies only to a single literal record whose one
+  # original inactive Session journal is absent under its source lock. The
+  # root, signed managed metadata, current source policy and recipe are checked
+  # again while that absence is held; no record or dependency is returned.
+  defp missing_original(
+         c,
+         i,
+         recipes,
+         %{notes: [%{kind: :literal, proofs: [proof]} = note]} = first,
+         protect
+       ) do
+    if i["request"]["request"]["op"] == "get" do
+      StoredSources.with_missing_original(c, proof, fn ->
+        protect.(true, fn cap, catalog ->
+          with {:ok, ^first} <- observe(c, i, recipes),
+               {:ok, _} <-
+                 authenticate_record(c, i, note, first, [%{"proof" => proof}], cap, catalog, %{}) do
+            {:error, :collection_original_source_missing}
+          else
+            _ -> @error
+          end
+        end)
+      end)
+    else
+      @error
+    end
+  end
+
+  defp missing_original(_, _, _, _, _), do: @error
 
   defp observe(c, i, recipes) do
     request = i["request"]["request"]

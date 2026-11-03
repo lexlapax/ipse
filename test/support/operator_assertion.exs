@@ -436,6 +436,60 @@ if scenario == "save" and not isolated_save do
   assert {:ok, %{"record" => ^preference}} =
            Ipse.Extension.ManagedRead.execute(read_context, read_intent, [recipe], protect)
 
+  held_journal = journal <> ".held-for-absence"
+  File.rename!(journal, held_journal)
+
+  expected_missing =
+    if :os.type() == {:unix, :linux},
+      do: {:error, :collection_original_source_missing},
+      else: {:error, :collection_source_refused}
+
+  assert ^expected_missing =
+           Ipse.Extension.ManagedRead.execute(read_context, read_intent, [recipe], protect)
+
+  change_while_missing = fn domain, fun ->
+    if domain do
+      assert {:ok, current} =
+               Ipse.Extension.Collection.execute(
+                 collection,
+                 pin["namespace"],
+                 %{"op" => "snapshot"},
+                 Ipse.Usage.id()
+               )
+
+      assert {:ok, _} =
+               Ipse.Extension.Collection.execute(
+                 collection,
+                 pin["namespace"],
+                 %{
+                   "op" => "commit",
+                   "expected_generation" => current["generation"],
+                   "advance_floor" => false,
+                   "changes" => [
+                     %{
+                       "key" => "synthetic.absence-root-change",
+                       "expected_revision" => 0,
+                       "value" => %{"value" => "changed"}
+                     }
+                   ]
+                 },
+                 Ipse.Usage.id()
+               )
+    end
+
+    protect.(domain, fun)
+  end
+
+  assert {:error, :collection_source_refused} =
+           Ipse.Extension.ManagedRead.execute(
+             read_context,
+             read_intent,
+             [recipe],
+             change_while_missing
+           )
+
+  File.rename!(held_journal, journal)
+
   changed_protect = fn domain, fun ->
     if domain do
       assert {:ok, current} =

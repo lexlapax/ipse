@@ -61,6 +61,7 @@ nor resource/offline qualification. No daemon configuration or existing model wa
 
 ## P31A contracts and evidence
 
+- [Bounded paged recall and missing-original classification](recall-paging-20261102.md) records isolated paging, inode-swap and actual Session controls; reappearance, host limits and final integrated verification remain open.
 - [Integrated synthetic Session smoke](integrated-final-smoke-20261102.md) records 40 actual turns interleaved with four native effects, a read-only audit and replay refusal, with retained synthetic receipts; it is not a 2,000-note or annual qualification.
 - [Frozen native population seed runner](native-notes-seed-20261102.md) preserves actual statement/category/pin input, 100 operations/day, fresh-process clocks, original sources and separate control/journal costs; its two-day smoke precedes the full 2,000-record population and annual workload.
 - [Closed native initial population](native-initial-population-20261102.md) records 2,000 captures and 100 pin publications with component allocation and original-Session costs; its full signed-record audit and annual qualification were still pending at that checkpoint.

@@ -22,7 +22,29 @@ defmodule Ipse.Session.NativeNoteRecallTest do
     run("recall-many")
   end
 
-  defp run(mode) do
+  @tag timeout: 300_000
+  @tag :recall_many
+  @tag skip:
+         if(System.get_env("IPSE_TEST_RECALL_MANY") == "1",
+           do: false,
+           else: "multi-page native recall remains unqualified; opt in for the diagnostic"
+         )
+  test "a fresh Session reaches an eligible note after unavailable indexed sources" do
+    run("recall-many", sparse: true)
+  end
+
+  @tag timeout: 300_000
+  @tag :recall_many
+  @tag skip:
+         if(System.get_env("IPSE_TEST_RECALL_MANY") == "1",
+           do: false,
+           else: "multi-page native recall remains unqualified; opt in for the diagnostic"
+         )
+  test "a source reappearing before model preflight leaves coverage explicitly partial" do
+    run("recall-many", sparse: true, reappear: true)
+  end
+
+  defp run(mode, opts \\ []) do
     root = Path.join(System.tmp_dir!(), "ipse-native-recall-" <> Ipse.Usage.id())
     File.mkdir!(root)
     File.chmod!(root, 0o700)
@@ -59,7 +81,11 @@ defmodule Ipse.Session.NativeNoteRecallTest do
             root,
             mode
           ],
-        stderr_to_stdout: true
+        stderr_to_stdout: true,
+        env: [
+          {"IPSE_TEST_RECALL_SPARSE", if(opts[:sparse], do: "1", else: "0")},
+          {"IPSE_TEST_RECALL_REAPPEAR", if(opts[:reappear], do: "1", else: "0")}
+        ]
       )
 
     assert status == 0, String.slice(output, -8000, 8000)
@@ -70,10 +96,7 @@ defmodule Ipse.Session.NativeNoteRecallTest do
           "NATIVE_NOTE_RECALL_RACE_PASSED"
 
         "recall-many" ->
-          if(System.get_env("IPSE_RECALL_BASELINE_CONTROL") == "1",
-            do: "NATIVE_NOTE_RECALL_BASELINE_PASSED",
-            else: "NATIVE_NOTE_RECALL_MANY_PASSED"
-          )
+          "NATIVE_NOTE_RECALL_MANY_PASSED"
 
         _ ->
           "NATIVE_NOTE_RECALL_PASSED"

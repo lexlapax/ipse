@@ -20,6 +20,107 @@ defmodule Ipse.Session.StoredSources do
     with_sources(Map.put(context, :stored_source_resolution, :strict), intent, proofs, fun)
   end
 
+  @doc false
+  # Only a missing inactive original journal is classified here. The callback
+  # must authenticate the referring record and current policy under their own
+  # locks; no source bytes or source authority are returned by this check.
+  def with_missing_original(context, proof, fun)
+      when is_map(context) and is_map(proof) and is_function(fun, 0) do
+    with {:ok, _} <- Ipse.Extension.ManagedRecipe.source_identity(proof),
+         id when is_binary(id) <- proof["session_id"],
+         true <- id != context[:session_id],
+         dir when is_binary(dir) <- context[:history_dir],
+         {:ok, before_dir} <- File.lstat(dir),
+         true <- private_directory?(before_dir),
+         lock_path = Path.join(dir, id <> ".lock"),
+         journal_path = Path.join(dir, id <> ".jsonl"),
+         {:error, :enoent} <- File.lstat(journal_path),
+         {:ok, before_lock} <- File.lstat(lock_path),
+         true <- protected?(before_lock) and before_lock.uid == before_dir.uid,
+         {:ok, lock} <- Runner.share_source_lock(lock_path) do
+      monitor = :erlang.monitor(:port, lock)
+
+      result =
+        try do
+          with true <-
+                 missing_original?(
+                   dir,
+                   before_dir,
+                   lock_path,
+                   before_lock,
+                   journal_path,
+                   lock,
+                   monitor
+                 ),
+               result <- fun.(),
+               true <-
+                 missing_original?(
+                   dir,
+                   before_dir,
+                   lock_path,
+                   before_lock,
+                   journal_path,
+                   lock,
+                   monitor
+                 ) do
+            result
+          else
+            _ -> @error
+          end
+        rescue
+          _ -> @error
+        catch
+          _, _ -> @error
+        end
+
+      try do
+        live = lock_live?(lock, monitor)
+        if Runner.unlock_export_candidate(lock) == :ok and live, do: result, else: @error
+      after
+        Process.demonitor(monitor, [:flush])
+      end
+    else
+      _ -> @error
+    end
+  rescue
+    _ -> @error
+  catch
+    _, _ -> @error
+  end
+
+  def with_missing_original(_, _, _), do: @error
+
+  defp missing_original?(dir, before_dir, lock_path, before_lock, journal_path, lock, monitor) do
+    with true <- lock_live?(lock, monitor),
+         true <- missing_lock_identity?(lock, before_lock),
+         {:ok, current_dir} <- File.lstat(dir),
+         true <- private_directory?(current_dir) and identity(current_dir) == identity(before_dir),
+         true <- same_lock?(lock_path, before_lock),
+         {:error, :enoent} <- File.lstat(journal_path) do
+      true
+    else
+      _ -> false
+    end
+  end
+
+  @doc false
+  def missing_lock_identity?(lock, before) do
+    deadline = System.monotonic_time(:millisecond) + 5_000
+
+    with {:ok, %{device: device, inode: inode}} <-
+           Runner.session_header_lock_identity(lock, deadline),
+         true <- device == before.major_device and inode == before.inode do
+      true
+    else
+      _ -> false
+    end
+  rescue
+    _ -> false
+  end
+
+  defp private_directory?(stat),
+    do: stat.type == :directory and Bitwise.band(stat.mode, 0o077) == 0
+
   @doc "Retain one inactive original source with a private, same-owner transferable lease."
   def with_shareable_verified(context, proof, fun) when is_map(context) and is_function(fun, 2) do
     with_shareable_verified_many(context, [proof], fn [source], token -> fun.(source, token) end)

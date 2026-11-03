@@ -27,7 +27,7 @@ defmodule IpseKnowledge.KnowledgeRecallTest do
       hash = Ipse.JSON.sha256(Integer.to_string(number))
       attrs = %{
         "id" => hash, "lineage" => hash, "text" => text,
-        "evidence" => %{"quote" => text, "source" => "synthetic-only"},
+        "evidence" => %{"sources" => [%{"fixture" => "synthetic-only"}]},
         "category" => "ordinary", "reason" => "admitted fixture",
         "observed_at_ms" => 0, "event_at_ms" => nil
       }
@@ -74,7 +74,7 @@ defmodule IpseKnowledge.KnowledgeRecallTest do
     defp drive({:ok, %{"kind" => "result", "value" => value}, state}, _, _, calls, items),
       do: {value, state, Enum.reverse(calls), items}
     defp drive({:ok, %{"kind" => "host_call", "request" => request}, state}, records, opts, calls, items) do
-      assert length(calls) < 40
+      assert length(calls) < 600
       {outcome, items} = case request do
         %{"op" => "context.publish", "items" => published} ->
           if Keyword.get(opts, :capture_projection_context, false) and state.phase == :recall_published,
@@ -95,15 +95,26 @@ defmodule IpseKnowledge.KnowledgeRecallTest do
             next_offset = offset + length(rows)
             next = if next_offset < length(records), do: if(Keyword.has_key?(opts, :page_size), do: "page:#{next_offset}", else: "opaque-next")
             {%{"status" => "ok", "value" => %{"records" => rows,
-              "generation" => if(state.phase == :recall_verify, do: Keyword.get(opts, :verify_generation, 1), else: 1), "count" => length(records), "next" => next}}, items}
+              "generation" => cond do
+                state.phase == :recall_verify -> Keyword.get(opts, :verify_generation, 1)
+                Keyword.has_key?(opts, :changed_index_cursor) and cursor == opts[:changed_index_cursor] -> 2
+                true -> 1
+              end, "count" => length(records), "next" => next}}, items}
           end
         %{"op" => "collection.call", "request" => %{"op" => "get", "key" => key}} ->
-          if Keyword.get(opts, :unavailable, false) or key in Keyword.get(opts, :unavailable_keys, []),
-            do: {%{"status" => "failed", "value" => %{"code" => "collection_source_refused"}}, items},
-            else: {%{"status" => "ok", "value" => %{"generation" => if(key in Keyword.get(opts, :changed_generation_keys, []), do: 2, else: 1), "record" =>
+          cond do
+            key in Keyword.get(opts, :denied_keys, []) ->
+              {%{"status" => "failed", "value" => %{"code" => "collection_consent_denied"}}, items}
+            key in Keyword.get(opts, :refused_keys, []) ->
+              {%{"status" => "failed", "value" => %{"code" => "collection_source_refused"}}, items}
+            Keyword.get(opts, :unavailable, false) or key in Keyword.get(opts, :unavailable_keys, []) ->
+              {%{"status" => "failed", "value" => %{"code" => "collection_original_source_missing"}}, items}
+            true ->
+              {%{"status" => "ok", "value" => %{"generation" => if(key in Keyword.get(opts, :changed_generation_keys, []), do: 2, else: 1), "record" =>
               Enum.find(records, &(&1["key"] == key))
               |> then(fn row -> if key in Keyword.get(opts, :changed_keys, []), do: Map.update!(row, "revision", &(&1 + 1)), else: row end)
               |> then(fn row -> if replacement = opts[:replacement], do: if(key == replacement["key"], do: replacement, else: row), else: row end)}}, items}
+          end
       end
       operation = :crypto.hash(:md5, Integer.to_string(length(calls))) |> Base.encode16(case: :lower)
       next = K.handle("host.actions", %{"operation_id" => operation, "outcome" => outcome}, state)
@@ -277,7 +288,7 @@ defmodule IpseKnowledge.KnowledgeRecallTest do
       assert result["coverage"] == "unavailable" and result["candidates"] == nil
       assert result["included"] == 0
       assert Enum.count(calls, &(get_in(&1, ["request", "op"]) == "index")) == 2
-      refute Enum.any?(calls, &(get_in(&1, ["request", "op"]) == "get"))
+      assert Enum.count(calls, &(get_in(&1, ["request", "op"]) == "get")) == 2
       assert hd(calls) == %{"op" => "context.publish", "items" => []}
       index = Enum.find(items, &(&1["id"] == "note_index")) |> Map.fetch!("text") |> JSON.decode!()
       assert index["keys"] == [] and index["candidates"] == nil
@@ -377,7 +388,7 @@ defmodule IpseKnowledge.KnowledgeRecallTest do
       assert {:ok, %{projection: %{fits: true}}} = K.recall_decision_projection(ctx, plan, binding, advice, "knowledge")
       Process.put(:real_index_publications, [])
       {unavailable, recall_cursors} = walk.(walk, start(), [], {2, 100})
-      assert length(recall_cursors) == 2
+      assert length(recall_cursors) == 1
       assert unavailable["coverage"] == "unavailable" and unavailable["candidates"] == nil
       assert [[], published] = Process.get(:real_index_publications)
       index = Enum.find(published, &(&1["id"] == "note_index")) |> Map.fetch!("text") |> JSON.decode!()
@@ -532,6 +543,71 @@ defmodule IpseKnowledge.KnowledgeRecallTest do
         assert Enum.all?(parts, &(Enum.at(&1, 4) == expected))
         {key, text}
       end)
+    end
+
+    test "fitting notes continue across the first index page" do
+      records = for n <- 1..33, do: record(n, "~N#{n}~")
+      {result, _, calls, items} = drive(start(), records, page_size: 32)
+      assert result["coverage"] == "complete" and result["included"] == 33
+      assert decoded_notes(items) == Map.new(records, &{&1["key"], &1["value"]["text"]})
+      assert Enum.count(calls, &(get_in(&1, ["request", "op"]) == "get")) == 33
+      assert Enum.map(Enum.filter(calls, &(get_in(&1, ["request", "op"]) == "index")),
+               &get_in(&1, ["request", "cursor"])) == [nil, "page:32", nil]
+    end
+
+    test "unavailable earlier records do not hide a later fitting note" do
+      records = for n <- 1..97, do: record(n, "~N#{n}~")
+      unavailable = records |> Enum.take(96) |> Enum.map(& &1["key"])
+      {result, _, calls, items} =
+        drive(start(), records, page_size: 32, unavailable_keys: unavailable)
+
+      assert result["coverage"] == "partial" and result["unavailable"] == 96
+      assert result["included"] == 1
+      assert decoded_notes(items) == %{List.last(records)["key"] => "~N97~"}
+      assert Enum.count(calls, &(get_in(&1, ["request", "op"]) == "get")) == 97
+    end
+
+    test "an ambiguous source or consent failure aborts paging and withholds earlier notes" do
+      records = for n <- 1..40, do: record(n, "~N#{n}~")
+      denied = Enum.at(records, 34)["key"]
+
+      for failure <- [denied_keys: [denied], refused_keys: [denied]] do
+        {result, _, calls, items} = drive(start(), records, [{:page_size, 32}, failure])
+        assert result["coverage"] == "unavailable" and result["included"] == 0
+        assert decoded_notes(items) == %{}
+        assert Enum.count(calls, &(get_in(&1, ["request", "op"]) == "get")) == 35
+      end
+    end
+
+    test "a changed root between pages refuses the accumulated recall" do
+      records = for n <- 1..33, do: record(n, "~N#{n}~")
+      {result, _, calls, _} = drive(start(), records, page_size: 32, changed_index_cursor: "page:32")
+      assert result == %{"status" => "refused", "code" => "invalid_index_progress"}
+      assert Enum.count(calls, &(get_in(&1, ["request", "op"]) == "get")) == 32
+      refute Enum.any?(calls, &(&1["op"] == "context.publish" and &1["items"] != []))
+    end
+
+    test "sparse discovery stops at the real host read bound with partial coverage" do
+      records = for n <- 1..600, do: record(n, "~N#{n}~")
+      {result, _, calls, _} = drive(start(), records, page_size: 32, unavailable: true)
+      host_reads = Enum.count(calls, &(get_in(&1, ["request", "op"]) in ~w(index get)))
+      assert result["coverage"] == "partial" and result["included"] == 0
+      assert result["unavailable"] > 32 and result["unavailable"] < 600
+      assert host_reads <= 512
+    end
+
+    test "recall reserves all proofs in each successful causal read" do
+      records = for n <- 1..25 do
+        row = record(n, "~N#{n}~")
+        value = put_in(row, ["value", "evidence", "sources"], for(i <- 1..8, do: %{"proof" => i}))
+        bytes = Ipse.Extension.Collection.Migration.encode(value["value"])
+        %{value | "bytes" => byte_size(bytes), "sha256" => Ipse.JSON.sha256(bytes)}
+      end
+
+      {result, _, calls, _} = drive(start(), records, page_size: 25)
+      assert result["coverage"] == "partial"
+      assert result["included"] <= 15
+      assert Enum.count(calls, &(get_in(&1, ["request", "op"]) == "get")) <= 15
     end
 
     test "all32 tiny notes fitting the actual envelope are included without arbitrary item caps" do
@@ -758,7 +834,7 @@ defmodule IpseKnowledge.KnowledgeRecallTest do
       )
 
     assert status == 0, output
-    assert output =~ "21 passed"
+    assert output =~ "27 passed"
     refute :code.is_loaded(IpseKnowledge.Knowledge)
   end
 end

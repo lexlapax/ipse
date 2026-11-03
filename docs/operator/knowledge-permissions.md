@@ -479,24 +479,41 @@ credential-free demo does not qualify this delivery path. A later ordinary tool
 proposal uses the separate native `allow CODE` review described above; accepting
 the decision itself supplies no tool permission.
 
-The automatic pass considers at most 32 notes and fits whole notes into the
-available context envelope. Larger sets or insufficient space produce partial
-coverage with omitted keys/pages. Missing original sources are unavailable;
-their text is withheld. Inspect coverage and use the declared index/read tools
-for further pages rather than treating an incomplete search as proof that no
-note exists. Each search reports partial coverage if it starts from a later
-cursor, a current record cannot be read or its indexed identity changes, or more
-metadata pages remain. Check `unavailable` and `next`, and inspect earlier
-pages as well when searching the whole collection. A search made only of
-whitespace or punctuation is refused; provide at least one search term. If
-recall or search reports `invalid_index_progress`, it stopped on an inconsistent
-metadata page, continuation or count. Inspect the collection and recovery guidance before
+The automatic pass reads metadata pages and whole current notes within its
+context and host-resource limits. If all notes read so far fit, it can continue
+past the first 32 candidates. When the set does not fit, it tries to consider
+the first 32 eligible notes before choosing whole notes for the available space;
+host limits can stop it sooner.
+The pass reports partial coverage when it stops early, omits notes or encounters
+an unavailable original. On Linux, a confirmed missing original Session journal
+can be skipped while later notes are checked. Other source, ownership or permission
+failures withhold the pass when the cause cannot be established safely. Missing
+source text is never supplied.
+
+Inspect coverage and use the declared index/read tools for further pages rather
+than treating an incomplete pass as proof that no note exists. A skipped journal
+may reappear before the model request; the pass remains partial and does not
+automatically add that note. Start another pass if you need to check it again.
+Search examines at most 32 candidates per invocation. It reports partial coverage
+for a later cursor, a safely skipped missing original, a record metadata mismatch
+or remaining metadata pages. Other source or permission failures and a changed
+collection generation withhold the pass as unavailable. Check `unavailable` and
+`next`, and inspect earlier pages as well when searching the whole collection.
+A practical prompt is: “Use the knowledge index tool to list the next page, then
+read the note with this exact key: `note.<64-hex-character-key>`.” Replace the
+placeholder with a returned key and ask the model to follow the returned cursor
+when another page is needed. These are model tools, not slash commands.
+A search made only of
+whitespace or punctuation is refused; provide at least one search term. If recall
+or search reports `invalid_index_progress`, it stopped on an inconsistent metadata
+page, continuation or count. Inspect the collection and recovery guidance before
 retrying; the interrupted pass does not establish complete coverage. Pending
 proposals do not become current merely by being recalled.
 
-If the automatic pass cannot finish the metadata index, its earlier keys are
-discarded and its coverage is unavailable. A null candidate count means the
-number is unknown; it does not mean the collection is empty.
+If an automatic index call fails, the pass discards its earlier keys and reports
+unavailable coverage. A deliberate stop at a context or resource bound instead
+retains its selected results and reports partial coverage. A null candidate count
+means the number is unknown; it does not mean the collection is empty.
 If a current read or the final index check observes a different collection
 generation, recall or search also withholds that pass and reports unavailable
 coverage. Start a new pass to inspect the current collection. These checks do

@@ -2,6 +2,12 @@
 
 This development investigation found an unfinished P31E recall path; it is not a qualification or milestone completion. Current status is in the [plan](../../plan.md#p31-usable-knowledge-and-prompt-assistance).
 
+**Historical fixture notice:** the command and worker behavior below describe the
+recorded earlier source. The current fixture no longer implements the
+`IPSE_RECALL_BASELINE_CONTROL` switch. The later
+[paged recall record](recall-paging-20261102.md) reports its separate isolated
+results and remaining limits.
+
 **Correction, 2026-11-02:** the original native fixture's 33 texts were not a fitting set in the 8,192-byte envelope. A later [frozen pure projection](recall-fitting-envelope-20261102.exs) measured 8,223 bytes for all 33 original texts, so a later 32-note inclusion from that fixture does not by itself demonstrate loss of a fitting note. The worker-only 33-short-note result below remains distinct. The native fixture now uses shorter, uniquely identifiable synthetic statements; the same projection measures 7,794 bytes for all 33. The [recorded output](recall-fitting-envelope-20261102.json) uses a temporary candidate-bound change only to measure the complete projection; it does not change the shipped worker or qualify the actual native journey or the remaining eligibility/paging requirements.
 
 The existing automatic worker considers at most 32 indexed notes, so a pure worker test with 33 short notes reported partial coverage even when the complete projection fit the available envelope. An experimental change followed more 32-record index pages; its isolated worker tests included all 33 and passed an unavailable-source control. That change was not retained.

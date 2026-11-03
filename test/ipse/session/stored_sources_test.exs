@@ -173,6 +173,76 @@ defmodule Ipse.Session.StoredSourcesTest do
     }
   end
 
+  test "missing original classification requires a retained lock and stable absence", c do
+    refute_receive :missing_check_reached
+
+    assert {:error, :collection_source_refused} =
+             StoredSources.with_missing_original(c.context, c.proof, fn ->
+               send(self(), :missing_check_reached)
+               :missing
+             end)
+
+    refute_receive :missing_check_reached
+
+    held = c.journal_path <> ".held"
+    File.rename!(c.journal_path, held)
+
+    if :os.type() == {:unix, :linux} do
+      assert :missing =
+               StoredSources.with_missing_original(c.context, c.proof, fn ->
+                 assert {:error, _} = Runner.lock(c.lock_path)
+                 :missing
+               end)
+
+      assert {:error, :collection_source_refused} =
+               StoredSources.with_missing_original(c.context, c.proof, fn ->
+                 File.rename!(held, c.journal_path)
+                 :must_not_escape
+               end)
+
+      File.rename!(c.journal_path, held)
+      assert {:ok, owner} = Runner.lock(c.lock_path)
+
+      assert {:error, :collection_source_refused} =
+               StoredSources.with_missing_original(c.context, c.proof, fn -> :must_not_escape end)
+
+      assert :ok = Runner.unlock(owner)
+    else
+      assert {:error, :collection_source_refused} =
+               StoredSources.with_missing_original(c.context, c.proof, fn -> :must_not_escape end)
+    end
+
+    File.rename!(held, c.journal_path)
+  end
+
+  test "a swapped source lock cannot impersonate the originally inspected inode", c do
+    if :os.type() == {:unix, :linux} do
+      {:ok, original} = File.lstat(c.lock_path)
+      saved = c.lock_path <> ".original"
+      replacement = c.lock_path <> ".replacement"
+      File.rename!(c.lock_path, saved)
+      File.write!(c.lock_path, "")
+      File.chmod!(c.lock_path, 0o600)
+      assert {:ok, swapped_owner} = Runner.share_source_lock(c.lock_path)
+      File.rename!(c.lock_path, replacement)
+      File.rename!(saved, c.lock_path)
+
+      # The visible path now looks unchanged, but the held file is the
+      # replacement and a separate process can still lock the original.
+      assert {:ok, other_owner} = Runner.lock(c.lock_path)
+      refute StoredSources.missing_lock_identity?(swapped_owner, original)
+      assert :ok = Runner.unlock(other_owner)
+      # The identity query may make the helper close itself after detecting the
+      # swapped path. Regardless of its acknowledgement, the lock must end.
+      _ = Runner.unlock_export_candidate(swapped_owner)
+      assert {:ok, replacement_owner} = Runner.lock(replacement)
+      assert :ok = Runner.unlock(replacement_owner)
+      File.rm!(replacement)
+    else
+      assert {:error, :header_lock_unavailable} = Runner.share_source_lock(c.lock_path)
+    end
+  end
+
   test "bound result publication can append sources without invalidating selected originals", c do
     text = "A newly committed source"
     input = Input.received(c.proof["session_id"], Usage.id(), text, text, nil)
