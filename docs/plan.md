@@ -963,7 +963,8 @@ final replies.
 The [chat-card consistency check](archive/2026-10-26-p30-p31-implementation/pending-chat-journal-binding-20261102.md)
 now refuses different Session and journal IDs before review and rejects a source
 check using another Session's pinned admission; it does not create an in-chat
-review or effect path.
+review or effect path. A source-owner adapter now distinguishes inactive leases
+from an active Session that still needs its real Session/Writer share.
 
 | Package | Output and prerequisites |
 | --- | --- |

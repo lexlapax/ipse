@@ -1675,6 +1675,65 @@ defmodule Ipse.Session.StoredSourcesTest do
                :standalone
              end)
 
+    assert :inactive =
+             Ipse.Session.PendingAcceptance.with_shareable_source_union(
+               context,
+               facts,
+               fn source, leases, active ->
+                 assert source["proof"] === proof and not active
+                 assert [%{token: lease}] = leases
+                 assert {:ok, _} = StoredSources.share_identity(lease)
+                 :inactive
+               end
+             )
+
+    assert {:ok, owner} = LocalSourceOwner.start_link({:indexes, c.index, c.index})
+    active_context = active_context(c, owner, "tool.effect")
+
+    active_facts =
+      Map.merge(facts, %{
+        "session_id" => active_context.session_id,
+        "journal_id" => active_context.session_id
+      })
+
+    assert :active =
+             Ipse.Session.PendingAcceptance.with_shareable_source_union(
+               active_context,
+               active_facts,
+               fn source, leases, active ->
+                 assert source["proof"] === proof and leases == [] and active
+                 :active
+               end
+             )
+
+    {_, before_count} = :sys.get_state(owner)
+
+    assert {:error, :pending_acceptance_refused} =
+             Ipse.Session.PendingAcceptance.with_shareable_source(
+               active_context,
+               active_facts,
+               fn _, _ -> :must_not_enter end
+             )
+
+    assert {_, ^before_count} = :sys.get_state(owner)
+
+    GenServer.stop(owner)
+
+    assert {:ok, redacted} =
+             SourceIndex.redact(c.index, proof["occurrence_id"], c.index.policy_generation + 1)
+
+    assert {:ok, changed_owner} = LocalSourceOwner.start_link({:indexes, c.index, redacted})
+    changed_context = active_context(c, changed_owner, "tool.effect")
+
+    assert {:error, :collection_source_refused} =
+             Ipse.Session.PendingAcceptance.with_shareable_source_union(
+               changed_context,
+               active_facts,
+               fn _, _, _ -> :must_not_escape end
+             )
+
+    GenServer.stop(changed_owner)
+
     assert {:error, :pending_acceptance_refused} =
              Ipse.Session.PendingAcceptance.with_verified_source(
                context,

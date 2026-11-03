@@ -209,6 +209,11 @@ one, the card validator requires it to equal the journal ID; the ID by itself
 does not establish a live Session, terminal or publication authority. Source
 revalidation also requires the current admission to be pinned to the consuming
 Session or management journal, rather than another Session in the same project.
+`PendingAcceptance.with_shareable_source_union/3` reuses the existing source
+owner checks for both cases: an inactive source supplies its transferable lease;
+an active source supplies no lease and requires the caller to retain and share
+the actual Session and Writer separately. This adapter alone does not authorize
+display, acceptance or publication.
 
 After exact native `accept CODE`, publication acquires and verifies the original
 source, reacquires current target owners and reproduces the same facts before

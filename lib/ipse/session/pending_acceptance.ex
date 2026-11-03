@@ -205,12 +205,37 @@ defmodule Ipse.Session.PendingAcceptance do
 
   @doc "Retain the same verified original source with an owner-bound shareable lease."
   def with_shareable_source(context, facts, fun) when is_map(context) and is_function(fun, 2) do
+    if get_in(facts, ["source_proof", "session_id"]) === context[:session_id] do
+      @error
+    else
+      with_shareable_source_union(context, facts, fn
+        source, [%{token: lease}], false -> fun.(source, lease)
+        _, _, _ -> @error
+      end)
+    end
+  rescue
+    _ -> @error
+  catch
+    :exit, _ -> @error
+  end
+
+  def with_shareable_source(_, _, _), do: @error
+
+  @doc """
+  Verify the original source and identify whether its Session owner is active.
+
+  Inactive sources carry transferable leases. An active source carries no such
+  lease; a caller using it for a native effect must separately retain and share
+  its actual Session/Writer owner. This check grants no review or effect authority.
+  """
+  def with_shareable_source_union(context, facts, fun)
+      when is_map(context) and is_function(fun, 3) do
     with true <- source_context?(context, facts) do
       proof = facts["source_proof"]
 
-      Ipse.Session.StoredSources.with_shareable_verified(context, proof, fn
-        %{"proof" => ^proof} = source, lease -> fun.(source, lease)
-        _, _ -> @error
+      Ipse.Session.StoredSources.with_shareable_union(context, nil, [proof], fn
+        [%{"proof" => ^proof} = source], leases, active -> fun.(source, leases, active)
+        _, _, _ -> @error
       end)
     else
       _ -> @error
@@ -221,7 +246,7 @@ defmodule Ipse.Session.PendingAcceptance do
     :exit, _ -> @error
   end
 
-  def with_shareable_source(_, _, _), do: @error
+  def with_shareable_source_union(_, _, _), do: @error
 
   @doc "Check the exact current semantic policy and source selection; this grants no lease."
   def check_source_policy(facts, policy, note_recipe, now) do
