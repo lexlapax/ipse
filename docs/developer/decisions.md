@@ -82,9 +82,10 @@ mix test test/ipse/extension/decision_session_test.exs
 
 These fixtures verify admission and wire behavior, including hosted wire subsets
 with synthetic keys. They establish no live account eligibility or consumer
-quality. The pure consumer exercise below adds zero-call planning controls;
-saved decision-helper consent and qualified automatic consumers remain separate
-implementation/acceptance work in the
+quality. The pure consumer exercise below adds zero-call planning controls. A
+separately reviewed, finite [local shadow grant](../operator/knowledge-permissions.md#try-a-local-shadow-assessment)
+exists for the specific saved-note experiment; broader saved helper consent and
+qualified automatic consumers remain separate implementation and acceptance work in the
 [plan](../plan.md#p30-advisory-decision-engines).
 
 ## Build one request and inspect its wire form
