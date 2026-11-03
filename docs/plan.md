@@ -1095,8 +1095,10 @@ and an available Qwen3.5 9B comparison. Model details and contracts live in the
 
 The [bounded v16 Word numbering increment](archive/2026-10-26-p30-p31-implementation/word-numbering-20261102.md)
 records direct single-level decimal labels as locator metadata, with focused
-extraction and native Session checks. Installed integration, independent Word
-quality and the broader P31F requirements remain open.
+extraction and native Session checks. A [PDF-free synthetic Linux package](archive/2026-10-26-p30-p31-implementation/word-numbering-installed-20261103.md)
+also passes acquisition, cited retrieval, changed-file refusal and resume in
+both State and Collection. Larger packed spans, standard PDF-enabled release
+integration, independent Word quality and the broader P31F requirements remain open.
 
 The [operator-authored planning-decision increment](archive/2026-10-26-p30-p31-implementation/operator-planning-20261103/index.md)
 adds a separate native acceptance and explicit post-exit save with linked original

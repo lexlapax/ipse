@@ -26,6 +26,36 @@ defmodule DocumentSetupJourney do
     bytes
   end
 
+  def numbered_document do
+    word = "http://schemas.openxmlformats.org/wordprocessingml/2006/main"
+    rel = "http://schemas.openxmlformats.org/package/2006/relationships"
+    office = "http://schemas.openxmlformats.org/officeDocument/2006/relationships/"
+    content = "application/vnd.openxmlformats-officedocument.wordprocessingml"
+
+    {:ok, {_, bytes}} =
+      :zip.create(
+        ~c"numbered.docx",
+        [
+          {~c"_rels/.rels",
+           "<Relationships xmlns=\"#{rel}\"><Relationship Id=\"main\" Type=\"#{office}officeDocument\" Target=\"word/document.xml\"/></Relationships>"},
+          {~c"[Content_Types].xml",
+           "<Types xmlns=\"http://schemas.openxmlformats.org/package/2006/content-types\"><Default Extension=\"rels\" ContentType=\"application/vnd.openxmlformats-package.relationships+xml\"/><Override PartName=\"/word/document.xml\" ContentType=\"#{content}.document.main+xml\"/><Override PartName=\"/word/numbering.xml\" ContentType=\"#{content}.numbering+xml\"/></Types>"},
+          {~c"word/_rels/document.xml.rels",
+           "<Relationships xmlns=\"#{rel}\"><Relationship Id=\"numbers\" Type=\"#{office}numbering\" Target=\"numbering.xml\"/></Relationships>"},
+          {~c"word/numbering.xml",
+           "<w:numbering xmlns:w=\"#{word}\"><w:abstractNum w:abstractNumId=\"1\"><w:multiLevelType w:val=\"singleLevel\"/><w:lvl w:ilvl=\"0\"><w:start w:val=\"3\"/><w:numFmt w:val=\"decimal\"/><w:lvlText w:val=\"%1.\"/></w:lvl></w:abstractNum><w:num w:numId=\"7\"><w:abstractNumId w:val=\"1\"/></w:num></w:numbering>"},
+          {~c"word/document.xml",
+           "<w:document xmlns:w=\"#{word}\"><w:body>" <>
+             Enum.map_join(["First item", "amberneedle exact evidence"], fn text ->
+               "<w:p><w:pPr><w:numPr><w:ilvl w:val=\"0\"/><w:numId w:val=\"7\"/></w:numPr></w:pPr><w:r><w:t>#{text}</w:t></w:r></w:p>"
+             end) <> "</w:body></w:document>"}
+        ],
+        [:memory]
+      )
+
+    bytes
+  end
+
   def invoke(pid, id, arguments, digest) do
     assert :ok = Ipse.Session.invoke_export(pid, :command, "ext__documents__" <> id, arguments)
     wait(pid, digest, System.monotonic_time(:millisecond) + 20_000)
@@ -257,7 +287,90 @@ else
   assert DocumentSetupJourney.invoke(resumed, "query", query, instance["artifact"])["evidence"] ==
            result["evidence"]
 
+  numbered = DocumentSetupJourney.numbered_document()
+  numbered_path = Path.join(cwd, "numbered.docx")
+  File.write!(numbered_path, numbered)
+
+  numbered_source = %{
+    "store" => "notes",
+    "action" => "read_document",
+    "args" => %{
+      "source_id" => "workspace:numbered",
+      "generation" => 1,
+      "expected_revision" => 0,
+      "title" => "Numbered Word source",
+      "path" => "numbered.docx",
+      "expected_sha256" => Ipse.JSON.sha256(numbered),
+      "uri" => "workspace:numbered.docx",
+      "observed_at_ms" => 10,
+      "event_at_ms" => nil,
+      "expires_at_ms" => nil
+    }
+  }
+
+  stored = DocumentSetupJourney.invoke(resumed, "source", numbered_source, instance["artifact"])
+  stored = DocumentSetupJourney.finish(resumed, stored, instance["artifact"])
+  assert stored["status"] == "ok", inspect(stored)
+
+  numbered_query = %{
+    "store" => "notes",
+    "retrieval" => "words",
+    "query" => "amberneedle",
+    "top_k" => 1,
+    "as_of_ms" => 20
+  }
+
+  find_numbered = fn session ->
+    {command, args} =
+      if profile == "collection" do
+        {"query_selected", Map.put(numbered_query, "source_ids", ["workspace:numbered"])}
+      else
+        {"query", Map.put(numbered_query, "rerank", nil)}
+      end
+
+    DocumentSetupJourney.invoke(session, command, args, instance["artifact"])
+  end
+
+  numbered_result = find_numbered.(resumed)
+  assert numbered_result["status"] == "partial", inspect(numbered_result)
+  assert Enum.any?(numbered_result["gaps"], &(&1["code"] == "partial_document"))
+  [numbered_hit] = numbered_result["evidence"]
+  citation = numbered_hit["citation"]
+  assert citation["quote"] =~ "amberneedle exact evidence"
+  refute citation["quote"] =~ "4."
+  doc = citation["document"]
+  assert doc["original_sha256"] == Ipse.JSON.sha256(numbered)
+  assert doc["extraction_version"] == "ipse-documents-v16"
+
+  if doc["version"] == 2 do
+    assert Enum.any?(doc["spans"], fn
+             [2, _, _, _, _, nil, nil, nil, %{"ordinal" => 4, "label" => "4."}] -> true
+             _ -> false
+           end)
+  else
+    assert doc["locator"]["paragraph"] == 2
+    assert doc["locator"]["numbering"]["ordinal"] == 4
+    assert doc["locator"]["numbering"]["label"] == "4."
+  end
+
+  File.write!(numbered_path, DocumentSetupJourney.document())
+  changed = find_numbered.(resumed)
+  assert changed["status"] == "refused"
+  assert changed["evidence"] == []
+  assert Enum.any?(changed["gaps"], &(&1["code"] == "document_source_changed_or_unavailable"))
+  File.write!(numbered_path, numbered)
+
   :ok = Ipse.Session.close_confirmed(resumed)
+
+  {:ok, resumed_numbered} =
+    DynamicSupervisor.start_child(
+      Ipse.Sessions,
+      {Ipse.Session, Keyword.put(session_opts, :id, session_id)}
+    )
+
+  assert find_numbered.(resumed_numbered)["evidence"] == numbered_result["evidence"]
+  :ok = Ipse.Session.close_confirmed(resumed_numbered)
+
   assert Ipse.CLI.run(["documents", "disable", "--cwd", cwd, "--write"]) == 0
   disabled = Jason.decode!(File.read!(path))
   assert [Map.put(instance, "enabled", false)] == disabled["extensions"]

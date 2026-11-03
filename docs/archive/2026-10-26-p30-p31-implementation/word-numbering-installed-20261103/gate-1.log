@@ -1,0 +1,4 @@
+** (RuntimeError) Installed setup failed in state; see private fixture log
+    dev/verification/documents_setup_installed.exs:110: anonymous fn/8 in :elixir_compiler_0.__FILE__/1
+    (elixir 1.20.4) lib/enum.ex:2622: Enum."-reduce/3-lists^foldl/2-0-"/3
+    dev/verification/documents_setup_installed.exs:72: (file)

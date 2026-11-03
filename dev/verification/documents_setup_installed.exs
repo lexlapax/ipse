@@ -63,7 +63,8 @@ for module <- [Ipse.CLI, Ipse.CLI.Documents, Ipse.Extension.Bundles] do
 end
 Code.prepend_path(#{inspect(Path.join(exunit, "ebin"))})
 {:ok, entries} = Ipse.Extension.Bundles.inventory()
-~w(corpus-collection-documents corpus-state-documents knowledge) = Enum.map(entries, & &1.id)
+~w(corpus-collection-documents corpus-state-documents knowledge knowledge-decision-shadow) =
+  Enum.map(entries, & &1.id)
 Code.require_file(#{inspect(source)})
 false = :code.is_loaded(IpseKnowledge.Corpus)
 """
