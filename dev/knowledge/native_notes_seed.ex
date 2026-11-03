@@ -7,6 +7,7 @@ defmodule Ipse.Development.NativeNotesSeed do
   alias Ipse.Extension.Collection.ObservedRead
   @day 86_400_000
   @source_files ~w(dev/knowledge/native_notes_seed.ex dev/knowledge/native_notes_seed.exs test/support/managed_clock_lifecycle.exs)
+  @recorded_time_keys ~w(checked_at_ms observed_at_ms created_at_ms accepted_at_ms reviewed_at_ms started_at_ms finished_at_ms published_at_ms)
 
   defmodule NoModel do
     def complete(config, _, _, _) do
@@ -56,6 +57,30 @@ defmodule Ipse.Development.NativeNotesSeed do
       }
     ]
   end
+
+  @doc "Summarize selected recorded event times; this is not a physical-completion bound."
+  def recorded_times(events) when is_list(events) do
+    %{
+      "events" => length(events),
+      "maxima_ms" => Enum.reduce(events, %{}, &recorded_times_in/2)
+    }
+  end
+
+  defp recorded_times_in(value, maxima) when is_map(value) do
+    Enum.reduce(value, maxima, fn {key, nested}, acc ->
+      acc =
+        if key in @recorded_time_keys and JSON.safe_uint?(nested),
+          do: Map.update(acc, key, nested, &max(&1, nested)),
+          else: acc
+
+      recorded_times_in(nested, acc)
+    end)
+  end
+
+  defp recorded_times_in(value, maxima) when is_list(value),
+    do: Enum.reduce(value, maxima, &recorded_times_in/2)
+
+  defp recorded_times_in(_, maxima), do: maxima
 
   def main(["--init", root, kind]) when kind in ~w(initial smoke), do: initialize(root, kind)
   def main(["--run", root, count]), do: run(root, count)
@@ -171,19 +196,28 @@ defmodule Ipse.Development.NativeNotesSeed do
 
     sources = Enum.flat_map(reports, & &1["sources"])
 
-    Enum.each(sources, fn source ->
-      verify_fingerprint(source)
-
-      if Path.dirname(source["path"]) == Path.join(home, "sessions") do
+    recorded =
+      Enum.reduce(sources, %{"events" => 0, "maxima_ms" => %{}}, fn source, totals ->
+        verify_fingerprint(source)
+        directory = Path.dirname(source["path"])
         id = Path.basename(source["path"], ".jsonl")
+        assert {:ok, events} = Journal.load(directory, id)
 
-        assert {:ok, %{"release_claim" => "signed_release_claim"}} =
-                 Session.Saved.inspect_saved(Path.dirname(source["path"]), id)
+        if directory == Path.join(home, "sessions") do
+          assert {:ok, %{"release_claim" => "signed_release_claim"}} =
+                   Session.Saved.inspect_saved(directory, id)
 
-        assert {:ok, events} = Journal.load(Path.dirname(source["path"]), id)
-        assert {:ok, _} = Session.Saved.restore(events, id)
-      end
-    end)
+          assert {:ok, _} = Session.Saved.restore(events, id)
+        end
+
+        summary = recorded_times(events)
+
+        %{
+          "events" => totals["events"] + summary["events"],
+          "maxima_ms" =>
+            Map.merge(totals["maxima_ms"], summary["maxima_ms"], fn _, a, b -> max(a, b) end)
+        }
+      end)
 
     rows =
       records
@@ -294,6 +328,9 @@ defmodule Ipse.Development.NativeNotesSeed do
       "root_sha256" => root_sha,
       "snapshot" => initial["value"],
       "unchanged_sources" => length(sources),
+      "recorded_event_times" => recorded,
+      "recorded_time_scope" =>
+        "Selected event-field maxima in retained source journals; not an upper bound on physical completion or proof of clock monotonicity",
       "unchanged_control" => true,
       "unchanged_root" => true,
       "status" => status,

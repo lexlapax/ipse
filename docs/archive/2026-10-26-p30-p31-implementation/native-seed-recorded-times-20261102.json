@@ -1,0 +1,148 @@
+{
+  "actual_native_operations": 0,
+  "annual_qualification": false,
+  "base_commit": "fae8165",
+  "date": "2026-11-02",
+  "files_sha256": {
+    "/tmp/ipse-native-seed-audit-smoke-recorded-times-20261102.json": "b2059f55f0a4429475d356290a808fcc85780d4b3ce61304cd105d18450a1353",
+    "/tmp/ipse-native-seed-audit-smoke-recorded-times-20261102.log": "53d1159cb8b664cfa36a58ead90bb9bbe693ca6b2e5fb4758a43d4bd9a38ccb4",
+    "/tmp/ipse-native-seed-clock-candidate-20261102.json": "2329ba1890bb9ce59a051a4ec9eb5f704c80c5bd223fd35ff8bb21a948f80905",
+    "/tmp/ipse-native-seed-recorded-times-20261102-tests.log": "bf94e8807bcf04893fa73fa6505b321a030da95cb37502da23cc96aeb185d7b4",
+    "/tmp/ipse-native-seed-timestamp-audit-20261102.exs": "5ce46d43ab9d71bb22c4c1eb25ed836b8628f576e4b2266811eaf74492f5b91e",
+    "/tmp/ipse-native-seed-timestamp-audit-20261102.json": "fc9c3a410b08c005eaf9583a7c67a230615ff1e637d6473730852f76f1cfbbdf",
+    "dev/knowledge/native_notes_seed.ex": "1c830f6abf37b5902e137f481c65dd9fb35c0092bf16a00a8eab64c5bd494126",
+    "docs/archive/2026-10-26-p30-p31-implementation/native-seed-recorded-times-scan-20261102.exs": "5ce46d43ab9d71bb22c4c1eb25ed836b8628f576e4b2266811eaf74492f5b91e",
+    "test/dev/knowledge/native_notes_seed_test.exs": "6403d64be888a9b7c6d3c76d4ec72dc7e21fa7e4661398a852fb3c1d98ce4e54"
+  },
+  "full_signed_audit": "running at time of record; no result claimed",
+  "model_calls": 0,
+  "separate_full_source_scan": {
+    "events_read": 53938,
+    "gap_ms": 78342310,
+    "kind": "synthetic_seed_recorded_times",
+    "latest_recognized_ms": 1795389015486,
+    "native_operations": 0,
+    "next_day_start_ms": 1795467357796,
+    "qualification": false,
+    "recognized_maxima_ms": {
+      "checked_at_ms": 1795389015486,
+      "created_at_ms": 1795389011687,
+      "observed_at_ms": 1795389011687
+    },
+    "source_scope": "exact retained seed source bytes; designated timestamp names only; excludes clock deadlines and is not an upper bound on physical completion",
+    "sources_verified": 373
+  },
+  "smoke_audit": {
+    "allocation_scope": "Collection plus actual control, identity, management and original Session sources; excludes installed artifacts, frozen SDK and benchmark oracle; no double-counted control reserve",
+    "annual_workload_qualification": false,
+    "audit_source": {
+      "bytes": 32976,
+      "path": "/tmp/ipse-native-seed-audit-smoke-recorded-times-20261102.json.driver.ex",
+      "sha256": "1c830f6abf37b5902e137f481c65dd9fb35c0092bf16a00a8eab64c5bd494126"
+    },
+    "full_6_kib_record_payload_qualification": false,
+    "kind": "smoke",
+    "largest_record_encoded_bytes": 3129,
+    "manifest": {
+      "bytes": 157691,
+      "path": "/tmp/ipse-native-seed-smoke-20261102-payload/manifest.json",
+      "sha256": "a97b49df56ac087e0fc8ff3de75f7ce970aafc8bc92f0170e282c605ad142515"
+    },
+    "measured_components_allocated_bytes": 569344,
+    "physical_allocations": {
+      "control": {
+        "allocated_bytes": 32768,
+        "entries": 5,
+        "logical_bytes": 30438
+      },
+      "identity": {
+        "allocated_bytes": 4096,
+        "entries": 4,
+        "logical_bytes": 1397
+      },
+      "management": {
+        "allocated_bytes": 12288,
+        "entries": 3,
+        "logical_bytes": 8643
+      },
+      "sessions": {
+        "allocated_bytes": 458752,
+        "entries": 7,
+        "logical_bytes": 448234
+      }
+    },
+    "recorded_event_times": {
+      "events": 197,
+      "maxima_ms": {
+        "checked_at_ms": 1793737871555,
+        "created_at_ms": 1793737870540,
+        "observed_at_ms": 1793737870540
+      }
+    },
+    "recorded_time_scope": "Selected event-field maxima in retained source journals; not an upper bound on physical completion or proof of clock monotonicity",
+    "root": "/tmp/ipse-native-seed-smoke-20261102-payload",
+    "root_sha256": "47bb9a95d70e306f694984570d26ebddfc883f9553ff6844f95c4b463aa867e9",
+    "rows_sha256": "30e0324c776a37d32def76ec1b5dd95674bb306586bee655c283ecd1b5755eda",
+    "snapshot": {
+      "floor": 8,
+      "floor_anchor": "1cf3b803be793257ce25921d631f9131",
+      "generation": 8,
+      "project": "d0fd41e58babf761b6f761e217f77d2d4484adcf9cc408cb88abd69e209c4dd6",
+      "version": 3
+    },
+    "status": {
+      "accounted_allocated_bytes": 23130112,
+      "accounted_total_bytes": 23097841,
+      "allocated_bytes": 61440,
+      "checkpoint": null,
+      "checkpoint_data_bytes": 0,
+      "checkpoint_records": 0,
+      "data_bytes": 24841,
+      "disk_bytes": 29169,
+      "envelope_data_bytes": 24841,
+      "floor": 8,
+      "floor_anchor": "1cf3b803be793257ce25921d631f9131",
+      "generation": 8,
+      "limits": {
+        "control_reserved_bytes": 23068672,
+        "data_bytes": 25165824,
+        "operations": 32768,
+        "records": 8192,
+        "total_bytes": 67108864,
+        "value_bytes": 6144
+      },
+      "migration": null,
+      "notice": null,
+      "operations": 8,
+      "project": "d0fd41e58babf761b6f761e217f77d2d4484adcf9cc408cb88abd69e209c4dd6",
+      "records": 10,
+      "reserved_operation_slots": 0,
+      "staged_data_bytes": 0,
+      "staged_records": 0,
+      "version": 3
+    },
+    "unchanged_control": true,
+    "unchanged_root": true,
+    "unchanged_sources": 3,
+    "verified_categories": {
+      "current": 1,
+      "ordinary": 4,
+      "pin": 1,
+      "preference": 1
+    },
+    "verified_records": 7,
+    "verified_rows": {
+      "bytes": 4385,
+      "path": "/tmp/ipse-native-seed-audit-smoke-recorded-times-20261102.json.rows.json",
+      "sha256": "38cb0c5897ef9d74aa9d54bdd21b398a2ab83077447d36c0087ec9348b51a5bd"
+    },
+    "version": 1
+  },
+  "tests": {
+    "exit_status": 0,
+    "failed": 0,
+    "passed": 14,
+    "seed": 791862
+  },
+  "version": 1
+}

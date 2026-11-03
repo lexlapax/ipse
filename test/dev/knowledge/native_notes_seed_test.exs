@@ -38,4 +38,19 @@ defmodule Ipse.Development.NativeNotesSeedTest do
     assert Enum.frequencies_by(first["actions"], & &1["op"]) == %{"capture" => 3, "pin" => 1}
     assert Enum.all?(second["actions"], &(&1["category"] == "ordinary"))
   end
+
+  test "recorded time summaries ignore deadlines and invalid values while retaining nested maxima" do
+    events = [
+      %{"checked_at_ms" => 5, "deadline_ms" => 999, "nested" => [%{"observed_at_ms" => 8}]},
+      %{"checked_at_ms" => 7, "created_at_ms" => -1, "other" => %{"observed_at_ms" => 3}},
+      %{"checked_at_ms" => "future", "finished_at_ms" => 9_007_199_254_740_992}
+    ]
+
+    assert Seed.recorded_times(events) == %{
+             "events" => 3,
+             "maxima_ms" => %{"checked_at_ms" => 7, "observed_at_ms" => 8}
+           }
+
+    assert Seed.recorded_times([]) == %{"events" => 0, "maxima_ms" => %{}}
+  end
 end

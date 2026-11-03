@@ -442,6 +442,12 @@ rather than counting the Collection's reserved control allowance again. Installe
 artifacts, the frozen SDK and the benchmark oracle are outside that measured sum;
 whole-process RAM/disk peaks still need their own measurement.
 
+`recorded_event_times` counts retained journal events and gives maxima for a
+small set of recorded timestamp fields. Use it to compare the seed's recorded
+timeline with the planned first continuation day. Those selected fields are not
+an upper bound on physical completion and do not prove the host clock was
+monotonic; establish and record a defensible start bound before dispatch.
+
 A successful smoke audit proves the seven-note smoke population, not the full
 initial plan. A successful full audit proves only its current initial population:
 maximum-record, annual lifecycle, cleanup, concurrent-owner and independent

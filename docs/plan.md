@@ -1390,6 +1390,9 @@ closure and nonreplaying recovery remains to be built.
 The [compensated fixture-clock preflight](archive/2026-10-26-p30-p31-implementation/native-calendar-clock-anchor-20261102.md)
 accounts for real elapsed time between simulated days and refuses a backward or
 overflowed day. Persistence and actual long-running clock behavior remain open.
+The [seed recorded-time audit](archive/2026-10-26-p30-p31-implementation/native-seed-recorded-times-20261102.md)
+adds selected journal-field maxima to the signed audit; its smoke control passes.
+Those fields alone are not a physical-completion or clock-monotonicity bound.
 The [native consent-renewal control](archive/2026-10-26-p30-p31-implementation/native-consent-renewal-20261102.md)
 checks expired-policy refusal and a later native capture after fresh review,
 preserving the original signed stored note and saved source. The follow-up
