@@ -46,6 +46,16 @@ defmodule Ipse.CLI.KnowledgeTest do
              "ASSISTANT_PROPOSAL_PUBLIC_REVIEW_PASSED"
   end
 
+  @tag timeout: 120_000, assistant_pending_public_review: true
+  test "recall withholds an accepted assistant proposal when its original source is missing" do
+    assert scenario(
+             "assistant_model_source_lost",
+             "--knowledge",
+             "headless_untrusted_capture.exs"
+           ) =~
+             "ASSISTANT_PROPOSAL_PUBLIC_REVIEW_PASSED"
+  end
+
   @tag knowledge_readiness: true
   test "saved native permission distinguishes activation matching from unavailable capture" do
     output = scenario("readiness", "--knowledge")

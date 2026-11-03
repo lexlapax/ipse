@@ -29,12 +29,14 @@ owner = self()
 server =
   Task.async(fn ->
     try do
-      for number <-
-            1..if(
-              scenario in ~w(assistant_model assistant_model_bad_quote assistant_model_review),
-              do: 6,
-              else: 2
-            ) do
+      requests =
+        cond do
+          scenario in ~w(assistant_model_review assistant_model_source_lost) -> 7
+          scenario in ~w(assistant_model assistant_model_bad_quote) -> 6
+          true -> 2
+        end
+
+      for number <- 1..requests do
         {:ok, socket} = :gen_tcp.accept(listener, 30_000)
 
         try do
@@ -112,9 +114,11 @@ server =
                   }
                 ]
 
-              6 ->
+              number when number in [6, 7] ->
                 []
             end
+
+          if number == 7, do: send(owner, {:accepted_recall_request, request})
 
           message =
             if calls == [],
@@ -228,12 +232,12 @@ origin =
       "attributed_reference"
 
     scenario
-    when scenario in ~w(assistant assistant_model assistant_model_bad_quote assistant_model_review) ->
+    when scenario in ~w(assistant assistant_model assistant_model_bad_quote assistant_model_review assistant_model_source_lost) ->
       "assistant_proposal"
   end
 
 text =
-  if scenario in ~w(assistant_model assistant_model_bad_quote assistant_model_review) do
+  if scenario in ~w(assistant_model assistant_model_bad_quote assistant_model_review assistant_model_source_lost) do
     assert :ok = Ipse.Session.prompt(session, "Record the suggestion from your previous reply.")
     "Synthetic fixture done."
   else
@@ -310,7 +314,7 @@ if scenario == "assistant_model_bad_quote" do
   IO.puts("ASSISTANT_PROPOSAL_BAD_QUOTE_REFUSED")
 end
 
-if scenario in ~w(assistant assistant_model assistant_model_review) do
+if scenario in ~w(assistant assistant_model assistant_model_review assistant_model_source_lost) do
   assert outcome == :ok
   assert [record] = page["records"]
   assert record["value"]["state"] == "pending"
@@ -349,7 +353,7 @@ if scenario in ~w(assistant assistant_model assistant_model_review) do
 
   assert checked["proof"] == proof
 
-  if scenario in ~w(assistant_model assistant_model_review) do
+  if scenario in ~w(assistant_model assistant_model_review assistant_model_source_lost) do
     calls =
       for event <- events,
           event["type"] == "message",
@@ -389,7 +393,7 @@ refute File.exists?(Path.join(cwd, "forbidden.txt"))
 refute File.exists?(Path.join(cwd, "forbidden-shell"))
 assert :ok = Ipse.Session.close_confirmed(session)
 
-if scenario == "assistant_model_review" do
+if scenario in ~w(assistant_model_review assistant_model_source_lost) do
   [pending] = page["records"]
   [original_proof] = pending["value"]["evidence"]["sources"]
   management = Path.join(home, "knowledge-management")
@@ -460,6 +464,62 @@ if scenario == "assistant_model_review" do
            )
 
   assert removed["record"] == nil
+
+  assert {:ok, before_recall} =
+           Ipse.Extension.Collection.execute(
+             collection,
+             namespace,
+             %{"op" => "snapshot"},
+             Ipse.Usage.id()
+           )
+
+  source_path = Path.join(dir, id <> ".jsonl")
+  held_source = source_path <> ".held"
+  source_hash = Ipse.JSON.sha256(File.read!(source_path))
+  if scenario == "assistant_model_source_lost", do: File.rename!(source_path, held_source)
+
+  assert {:ok, later} =
+           DynamicSupervisor.start_child(
+             Ipse.Sessions,
+             {Ipse.Session, [config: config, cwd: cwd, state_dir: dir, subscriber: self()]}
+           )
+
+  later_id = Ipse.Session.info(later).id
+  assert :ok = Ipse.Session.prompt(later, "What decision did we record?")
+  assert_receive {:accepted_recall_request, request}, 30_000
+  wire = Jason.encode!(request["messages"])
+
+  if scenario == "assistant_model_source_lost" do
+    refute wire =~ "Synthetic fixture done."
+  else
+    assert wire =~ "Synthetic fixture done."
+    assert wire =~ "note_parts_v2"
+  end
+
+  assert_receive {:ipse, ^later, {:done, :ok}}, 30_000
+  assert {:ok, later_events} = Ipse.Journal.load(dir, later_id)
+  assert {:ok, _} = Ipse.Session.Saved.restore(later_events, later_id)
+
+  if scenario == "assistant_model_review" do
+    assert Enum.any?(later_events, fn event ->
+             event["type"] == "managed_read_observed" and
+               Enum.any?(event["dependencies"], &(&1["version"] == 6))
+           end)
+  end
+
+  assert :ok = Ipse.Session.close_confirmed(later)
+  assert Task.await(server, 5000) == Enum.map(1..7, &{:fixture_request, &1})
+  if scenario == "assistant_model_source_lost", do: File.rename!(held_source, source_path)
+  assert Ipse.JSON.sha256(File.read!(source_path)) == source_hash
+
+  assert {:ok, ^before_recall} =
+           Ipse.Extension.Collection.execute(
+             collection,
+             namespace,
+             %{"op" => "snapshot"},
+             Ipse.Usage.id()
+           )
+
   IO.puts("ASSISTANT_PROPOSAL_PUBLIC_REVIEW_PASSED")
 end
 

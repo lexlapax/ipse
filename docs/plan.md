@@ -953,8 +953,9 @@ A [current direct-client control](archive/2026-10-26-p30-p31-implementation/assi
 now saves a synthetic completed assistant reply as signed pending material with
 its original source attribution. A synthetic main model can select that reply
 on an explicitly requested later turn; a fabricated quotation is refused, and
-separate native review preserves that attribution on acceptance. Automatic
-same-reply capture and in-chat acceptance remain open.
+separate native review preserves that attribution on acceptance. A fresh-session
+synthetic recall includes the accepted decision and withholds it when the original
+source is missing. Automatic same-reply capture and in-chat acceptance remain open.
 The [chat-card consistency check](archive/2026-10-26-p30-p31-implementation/pending-chat-journal-binding-20261102.md)
 now refuses different Session and journal IDs before review; it does not create
 an in-chat review or effect path.
