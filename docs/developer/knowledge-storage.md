@@ -415,6 +415,10 @@ A [lock and interruption follow-up](../archive/2026-10-26-p30-p31-implementation
 illustrates why standalone management needs its own cleanup owner, and checks
 refusal after a completed effect whose driver report was interrupted. It does
 not establish active-effect or concurrent-restart safety for a full driver.
+The later [batched smoke](../archive/2026-10-26-p30-p31-implementation/native-turnover-batch-20261102.md)
+checks confirmed-batch restart and reuse of one persisted same-day clock anchor.
+Its fixed actions and stated real-clock assumption do not replace a reviewed
+calendar driver or long-running clock and failure tests.
 
 ### Audit the complete retained population
 

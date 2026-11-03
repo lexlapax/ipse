@@ -1,0 +1,427 @@
+{
+  "annual_qualification": false,
+  "base_commit": "4e43b81",
+  "date": "2026-11-02",
+  "files_sha256": {
+    "/tmp/ipse-native-batch-pilot-audit-20261102.json": "6881efba8a82985fbcc8e9c790194fb8b7205e1b204006d86c8904cf14c0d4e7",
+    "/tmp/ipse-native-batch-pilot-completed-refusal-20261102.log": "1b035727463024969e052f99b54704bcf2237927dfbc9037d26e88b150931e23",
+    "/tmp/ipse-native-batch-pilot-first-20261102.log": "465917714ec76edfda845127adeade0adff985c511fc1ab62f58826432f231be",
+    "/tmp/ipse-native-batch-pilot-post-refusal-20261102.json": "6881efba8a82985fbcc8e9c790194fb8b7205e1b204006d86c8904cf14c0d4e7",
+    "/tmp/ipse-native-batch-pilot-resume-20261102.log": "0bf9c7e715922bac4afc7c061b028f0c273c5726d4b0c58dbfb3e25a54e7dd1d",
+    "/tmp/ipse-native-batch-v2-anchor-after-20261102.sha256": "652e3407fe694da56276c572fef55500ddbe10263470da9916820aa1f52768e3",
+    "/tmp/ipse-native-batch-v2-anchor-before-20261102.sha256": "652e3407fe694da56276c572fef55500ddbe10263470da9916820aa1f52768e3",
+    "/tmp/ipse-native-batch-v2-completed-refusal-20261102.log": "4fa371343835855b587ea9abc028097ad1d59c0e6a9970199a44bf852c630ca5",
+    "/tmp/ipse-native-batch-v2-first-20261102.log": "418c35657b79de56ffca18c721fd8ebd4a6d6e5bd2b194c2c03a0f940730b0fd",
+    "/tmp/ipse-native-batch-v2-later-days-20261102.log": "5f4332def76d4d61319cd8819e92e6d53ccd24d22a9851e9e014c48fd4e2d990",
+    "/tmp/ipse-native-batch-v2-pilot-audit-20261102.json": "44aa35d2651a70b74f00df558f91f8e2650f437d4409756ede4c3beb66d02b69",
+    "/tmp/ipse-native-batch-v2-post-refusal-20261102.json": "44aa35d2651a70b74f00df558f91f8e2650f437d4409756ede4c3beb66d02b69",
+    "/tmp/ipse-native-batch-v2-same-day-resume-20261102.log": "c2ad67b086465fa43c687e0bdf126d966ffce33134eefc09b3ff7d7bb9ef80d3",
+    "/tmp/ipse-native-seed-batch-smoke-20261102/turnover-pilot/manifest.json": "cff42c1c9e9cb7b2a74e0b1904b9873179d37d999cab5dafaf03b133bf5fcfa5",
+    "/tmp/ipse-native-seed-batch-v2-smoke-20261102/turnover-pilot/manifest.json": "e4f231eb2c66a226dd2d7e20a5aad57779ec1e975618a4503b929b98bc7e8426",
+    "docs/archive/2026-10-26-p30-p31-implementation/native-turnover-batch-audit-v1-20261102.exs": "06912a6e86c391da31a9f2bb5ac5d1d06d72203d568880d3a451703fe823eb71",
+    "docs/archive/2026-10-26-p30-p31-implementation/native-turnover-batch-audit-v2-20261102.exs": "772c0b0e850928d5f568f54d732018c169b8e577b4b331c562e675e76a60e7ee",
+    "docs/archive/2026-10-26-p30-p31-implementation/native-turnover-batch-v1-20261102.exs": "e034eaf658e52d9cef2b0f1982535a6762f51f5923704a780651515ba89ef330",
+    "docs/archive/2026-10-26-p30-p31-implementation/native-turnover-batch-v2-20261102.exs": "46bd0ac2523738ec7e24b9f47f751a5e308d3b594af7beec8053edcec7f77904"
+  },
+  "model_calls": 0,
+  "same_day_restart": {
+    "after_anchor_sha256": "1fb7b6251044d0f804398e7ec2a4772362616413bfca9cb34399d7eba41a07ab",
+    "audit": {
+      "absent_aliases": [
+        "seed/3",
+        "seed/4",
+        "seed/5",
+        "pilot/correct"
+      ],
+      "clock_days": [
+        2,
+        92,
+        368
+      ],
+      "collection_status": {
+        "accounted_allocated_bytes": 23126016,
+        "accounted_total_bytes": 23092335,
+        "allocated_bytes": 57344,
+        "checkpoint": null,
+        "checkpoint_data_bytes": 0,
+        "checkpoint_records": 0,
+        "data_bytes": 18202,
+        "disk_bytes": 23663,
+        "envelope_data_bytes": 18202,
+        "floor": 15,
+        "floor_anchor": "92775d6c06b9c3d2e799d72c8a30662f",
+        "generation": 15,
+        "limits": {
+          "control_reserved_bytes": 23068672,
+          "data_bytes": 25165824,
+          "operations": 32768,
+          "records": 8192,
+          "total_bytes": 67108864,
+          "value_bytes": 6144
+        },
+        "migration": null,
+        "notice": null,
+        "operations": 15,
+        "project": "c41dea047bc1e59f42a4e7f76290103ed404a93adb68e2519b52decbf2e125d7",
+        "records": 9,
+        "reserved_operation_slots": 0,
+        "staged_data_bytes": 0,
+        "staged_records": 0,
+        "version": 3
+      },
+      "generation": 15,
+      "measured_components_allocated_bytes": 847872,
+      "physical_allocations": {
+        "control": {
+          "allocated_bytes": 49152,
+          "entries": 5,
+          "logical_bytes": 47323
+        },
+        "identity": {
+          "allocated_bytes": 4096,
+          "entries": 4,
+          "logical_bytes": 1399
+        },
+        "management": {
+          "allocated_bytes": 57344,
+          "entries": 11,
+          "logical_bytes": 40384
+        },
+        "sessions": {
+          "allocated_bytes": 679936,
+          "entries": 16,
+          "logical_bytes": 653961
+        }
+      },
+      "qualification": false,
+      "root_sha256": "c2c569fe16ed0b1757126dec05584150f6fce47139d2e5e31377e973ff8d2efe",
+      "same_day_anchor_reused": true,
+      "saved_sessions": 5,
+      "settled_control_sequence": 15,
+      "verified": [
+        {
+          "category": "pin",
+          "expired": false,
+          "id": "seed/1",
+          "value_sha256": "e112c2b13b3850ec867dcb0edf4ab6d52ef694f526fbcf6f55a638594fc4e8df"
+        },
+        {
+          "category": "preference",
+          "expired": false,
+          "id": "seed/2",
+          "value_sha256": "bb8d5e622047a7dd044f6bf33fcbdfc8eb1970948a97fb3c3861616936843b03"
+        },
+        {
+          "category": "ordinary",
+          "expired": true,
+          "id": "seed/6",
+          "value_sha256": "ae80a1c6ee21baad0ba0ce4e37751648198c6c0275610f4374f02a63569d6765"
+        },
+        {
+          "category": "ordinary",
+          "expired": true,
+          "id": "seed/7",
+          "value_sha256": "5abd723ee1ec4a195341dcdb7ed05e8044898cc2d420badca990a584faeaee50"
+        },
+        {
+          "category": "ordinary",
+          "expired": true,
+          "id": "pilot/capture",
+          "value_sha256": "935c01dd67a6ffe64d53fab75a48b9a62c65f2e44d24452c7412e420c976b3bc"
+        },
+        {
+          "category": "current",
+          "expired": false,
+          "id": "pilot/current",
+          "value_sha256": "629a66303cfb4f98852484d5ca1d20170209964a7b61ca5519016f9a5f00e4db"
+        }
+      ]
+    },
+    "before_anchor_sha256": "1fb7b6251044d0f804398e7ec2a4772362616413bfca9cb34399d7eba41a07ab",
+    "closures": [
+      {
+        "closed": {
+          "exit_code": 0,
+          "index": 1,
+          "input": {
+            "bytes": 4061,
+            "path": "/tmp/ipse-native-seed-batch-v2-smoke-20261102/turnover-pilot/input-1.json",
+            "sha256": "9e8279e0f861fa781d30b0c6544c176dab643a988bcefbc527ad2e9c31da1177"
+          },
+          "log": {
+            "bytes": 11566,
+            "path": "/tmp/ipse-native-seed-batch-v2-smoke-20261102/turnover-pilot/segment-1-841540013b2ffb9a4463854be901a0bc.log",
+            "sha256": "a030d3b951cc8a0fcc58532af3891e6b2802a01e4b052a2d4f057aa5a640c552"
+          },
+          "report": {
+            "bytes": 3009,
+            "path": "/tmp/ipse-native-seed-batch-v2-smoke-20261102/turnover-pilot/report-1.json",
+            "sha256": "cf17c7f36fd861f86ef6425312572db0b2e6d7af2e6665161ab2f5dbe01c0973"
+          }
+        },
+        "path": "/tmp/ipse-native-seed-batch-v2-smoke-20261102/turnover-pilot/closed-1.json",
+        "sha256": "c0c5ec4432ce9d3ae15c271b54e14882d6cf109ad70a5923687628e3105b8865"
+      },
+      {
+        "closed": {
+          "exit_code": 0,
+          "index": 2,
+          "input": {
+            "bytes": 7280,
+            "path": "/tmp/ipse-native-seed-batch-v2-smoke-20261102/turnover-pilot/input-2.json",
+            "sha256": "f2b63021b7f480baf4c906098c99be5dba1088a991ec53294689c790cc6d4e80"
+          },
+          "log": {
+            "bytes": 18023,
+            "path": "/tmp/ipse-native-seed-batch-v2-smoke-20261102/turnover-pilot/segment-2-383d3f1ce1cbae3103c552c50445a5e6.log",
+            "sha256": "59762241f63258a93f1bd8fa80257ffe5a921845f8a6fa8779b4037e42c843d7"
+          },
+          "report": {
+            "bytes": 1752,
+            "path": "/tmp/ipse-native-seed-batch-v2-smoke-20261102/turnover-pilot/report-2.json",
+            "sha256": "10e7190b99ce7cd6dc1b0e14d4aa45b02dc2ed7452b135a7c65f7ba880084adb"
+          }
+        },
+        "path": "/tmp/ipse-native-seed-batch-v2-smoke-20261102/turnover-pilot/closed-2.json",
+        "sha256": "921318c78d27956c8feff7bc87f284ab83bf7cd1c219167e151f152f1b567be7"
+      },
+      {
+        "closed": {
+          "exit_code": 0,
+          "index": 3,
+          "input": {
+            "bytes": 5279,
+            "path": "/tmp/ipse-native-seed-batch-v2-smoke-20261102/turnover-pilot/input-3.json",
+            "sha256": "03072b5a3cdc53386aacb6713aed14d8a955b0fbcce80cb9a532da9fff138316"
+          },
+          "log": {
+            "bytes": 12424,
+            "path": "/tmp/ipse-native-seed-batch-v2-smoke-20261102/turnover-pilot/segment-3-04f011f2a1547662f6913bc921ce92c9.log",
+            "sha256": "6e0f77673c24093629dd3cfe8e4f06c8796bdb1f6dde2e252fffd207221359ec"
+          },
+          "report": {
+            "bytes": 510,
+            "path": "/tmp/ipse-native-seed-batch-v2-smoke-20261102/turnover-pilot/report-3.json",
+            "sha256": "f51db01bd501e77ce9f50ab9cc1bfa72cd54bfe90f59d889580b179a9dbee754"
+          }
+        },
+        "path": "/tmp/ipse-native-seed-batch-v2-smoke-20261102/turnover-pilot/closed-3.json",
+        "sha256": "ae8e13193494c6f1f61e7de7ea82d2346687ff145e65eb49a19ab09455ad2a8a"
+      },
+      {
+        "closed": {
+          "exit_code": 0,
+          "index": 4,
+          "input": {
+            "bytes": 3960,
+            "path": "/tmp/ipse-native-seed-batch-v2-smoke-20261102/turnover-pilot/input-4.json",
+            "sha256": "0f0d42331ff0a33dd87651d6f1812111b8cd60cc586d36735c08d09bb8d8f534"
+          },
+          "log": {
+            "bytes": 7413,
+            "path": "/tmp/ipse-native-seed-batch-v2-smoke-20261102/turnover-pilot/segment-4-5135f8432ecab4a0f0629738d8226c16.log",
+            "sha256": "290b3eb93c3391e9902e76ed2745b9d110d2fbf502f1f895387b2f4139a662d2"
+          },
+          "report": {
+            "bytes": 510,
+            "path": "/tmp/ipse-native-seed-batch-v2-smoke-20261102/turnover-pilot/report-4.json",
+            "sha256": "bc00c6b3f916a724ba01dc46cd6816919dc614f33b65868c15dcd0e426d93855"
+          }
+        },
+        "path": "/tmp/ipse-native-seed-batch-v2-smoke-20261102/turnover-pilot/closed-4.json",
+        "sha256": "ae0a27ab371f1636e3aff48a5e0c3bf4b9c51c0bb47f3f32f9dee32f6ad0b77f"
+      }
+    ],
+    "parent_exits": [
+      0,
+      0,
+      0
+    ],
+    "replay_refusal_exit": 1
+  },
+  "snapshot_scope": "frozen seed and pilot files, source fingerprints, root/control and closed report/log/input hashes; no complete machine closure or active-effect concurrency proof",
+  "three_batch": {
+    "audit": {
+      "absent_aliases": [
+        "seed/3",
+        "seed/4",
+        "seed/5",
+        "pilot/correct"
+      ],
+      "collection_status": {
+        "accounted_allocated_bytes": 23126016,
+        "accounted_total_bytes": 23092336,
+        "allocated_bytes": 57344,
+        "checkpoint": null,
+        "checkpoint_data_bytes": 0,
+        "checkpoint_records": 0,
+        "data_bytes": 18203,
+        "disk_bytes": 23664,
+        "envelope_data_bytes": 18203,
+        "floor": 15,
+        "floor_anchor": "ea589e9722ef6da99ebf9878cf07883a",
+        "generation": 15,
+        "limits": {
+          "control_reserved_bytes": 23068672,
+          "data_bytes": 25165824,
+          "operations": 32768,
+          "records": 8192,
+          "total_bytes": 67108864,
+          "value_bytes": 6144
+        },
+        "migration": null,
+        "notice": null,
+        "operations": 15,
+        "project": "f21ad22f14cec61c91cec3a798e6df0ba772f8947224d8be0571c70e7cead084",
+        "records": 9,
+        "reserved_operation_slots": 0,
+        "staged_data_bytes": 0,
+        "staged_records": 0,
+        "version": 3
+      },
+      "generation": 15,
+      "measured_components_allocated_bytes": 847872,
+      "physical_allocations": {
+        "control": {
+          "allocated_bytes": 49152,
+          "entries": 5,
+          "logical_bytes": 47323
+        },
+        "identity": {
+          "allocated_bytes": 4096,
+          "entries": 4,
+          "logical_bytes": 1393
+        },
+        "management": {
+          "allocated_bytes": 57344,
+          "entries": 11,
+          "logical_bytes": 40354
+        },
+        "sessions": {
+          "allocated_bytes": 679936,
+          "entries": 16,
+          "logical_bytes": 653661
+        }
+      },
+      "qualification": false,
+      "root_sha256": "2cc378f09d2d151d9d414115655badcf1fe91808aa50f317fc028360bce5c7de",
+      "saved_sessions": 5,
+      "settled_control_sequence": 15,
+      "verified": [
+        {
+          "category": "pin",
+          "expired": false,
+          "id": "seed/1",
+          "value_sha256": "275acbb2a0fe60adf71178740903f7827de63ceda34c7e161ab237c4b46354cb"
+        },
+        {
+          "category": "preference",
+          "expired": false,
+          "id": "seed/2",
+          "value_sha256": "ad76c9e95adff0924f1f99832f656ca1cef4720219c41b9673329db732a6b5c8"
+        },
+        {
+          "category": "ordinary",
+          "expired": true,
+          "id": "seed/6",
+          "value_sha256": "9dbf2c9fa5579080c8f941b6c95ca99e97e020c29d2d22287e5b898a9156b517"
+        },
+        {
+          "category": "ordinary",
+          "expired": true,
+          "id": "seed/7",
+          "value_sha256": "b07492b4662b5e0b43d2235a3f31922f1b5702323f61b5e460daeb553c16379b"
+        },
+        {
+          "category": "ordinary",
+          "expired": true,
+          "id": "pilot/capture",
+          "value_sha256": "d2c661452c577ef925c652764d11debc968d52575f8bce6b05108ffa340ea2f8"
+        },
+        {
+          "category": "current",
+          "expired": false,
+          "id": "pilot/current",
+          "value_sha256": "3c96a4d43c94f4af2c6da8825c9256573fa556043ed835c998feb1db9e144a98"
+        }
+      ]
+    },
+    "closures": [
+      {
+        "closed": {
+          "exit_code": 0,
+          "index": 1,
+          "input": {
+            "bytes": 10673,
+            "path": "/tmp/ipse-native-seed-batch-smoke-20261102/turnover-pilot/input-1.json",
+            "sha256": "dcc3cc0ba9618f8f667f86a20278e76eda103a621e0cb8204a03aa070cb85781"
+          },
+          "log": {
+            "bytes": 29551,
+            "path": "/tmp/ipse-native-seed-batch-smoke-20261102/turnover-pilot/segment-1-38a111f333eac7ee43c569336d21d681.log",
+            "sha256": "31e09fac32a3fae433baac3281b5afa241777e31b6113028f6615c0f7bf2b652"
+          },
+          "report": {
+            "bytes": 4252,
+            "path": "/tmp/ipse-native-seed-batch-smoke-20261102/turnover-pilot/report-1.json",
+            "sha256": "415bc3c0625c69ad5d8bd73e4595534a450f72a0c0d71d5d62f49461fa5168d0"
+          }
+        },
+        "path": "/tmp/ipse-native-seed-batch-smoke-20261102/turnover-pilot/closed-1.json",
+        "sha256": "f1cd1cd7d510ba0c3f6786d1d60058311d3ea909de73e246f4312ccba55d162c"
+      },
+      {
+        "closed": {
+          "exit_code": 0,
+          "index": 2,
+          "input": {
+            "bytes": 5279,
+            "path": "/tmp/ipse-native-seed-batch-smoke-20261102/turnover-pilot/input-2.json",
+            "sha256": "71e66077927b6093bfea071371e5c20e47c86966c5f174fb4a22c369db98fe35"
+          },
+          "log": {
+            "bytes": 12424,
+            "path": "/tmp/ipse-native-seed-batch-smoke-20261102/turnover-pilot/segment-2-03bfb679128e12108610e21c22a62b92.log",
+            "sha256": "79c6a2d8d42cc47294ee3907fec6f0182ec6676fff22546af3c28c79b6cece0c"
+          },
+          "report": {
+            "bytes": 510,
+            "path": "/tmp/ipse-native-seed-batch-smoke-20261102/turnover-pilot/report-2.json",
+            "sha256": "2e6f7cdff00dd94854c1cf059ba12f300005b2f315dffa7ef9d40ce2e4f3a075"
+          }
+        },
+        "path": "/tmp/ipse-native-seed-batch-smoke-20261102/turnover-pilot/closed-2.json",
+        "sha256": "0e65744fad4eaea9036fffe39cadfb7043f676f3af35ba375bd9fe1dd4ae725d"
+      },
+      {
+        "closed": {
+          "exit_code": 0,
+          "index": 3,
+          "input": {
+            "bytes": 3960,
+            "path": "/tmp/ipse-native-seed-batch-smoke-20261102/turnover-pilot/input-3.json",
+            "sha256": "6ac16e86d535f9a3a1fa92f29ed881e01f2e8f6d086a82c67089d45856d3cd1d"
+          },
+          "log": {
+            "bytes": 7413,
+            "path": "/tmp/ipse-native-seed-batch-smoke-20261102/turnover-pilot/segment-3-42e7ef47dafaec646130f3a816f46e5c.log",
+            "sha256": "8711cab6de3a695e1882c7468782b49d1713b123d246fc63799bfb8968622e48"
+          },
+          "report": {
+            "bytes": 510,
+            "path": "/tmp/ipse-native-seed-batch-smoke-20261102/turnover-pilot/report-3.json",
+            "sha256": "9b362845237122b8dc57a7142ff05f1c592e2565f817fbb3f8105ae39109ea50"
+          }
+        },
+        "path": "/tmp/ipse-native-seed-batch-smoke-20261102/turnover-pilot/closed-3.json",
+        "sha256": "26cd50a1c5f5cab4b375406456696a48986eb1276fac9edbab3e855161ec0cc5"
+      }
+    ],
+    "parent_exits": [
+      0,
+      0
+    ],
+    "replay_refusal_exit": 1
+  },
+  "version": 1
+}

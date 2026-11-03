@@ -992,6 +992,9 @@ The [locked continuation follow-up](archive/2026-10-26-p30-p31-implementation/na
 preserves an initial management-owner conflict and verifies a separate-worker
 repair plus post-effect interruption/refusal on fresh smoke stores. Active-effect
 loss, concurrency, scalable recovery and annual qualification remain open.
+The [batched smoke continuation](archive/2026-10-26-p30-p31-implementation/native-turnover-batch-20261102.md)
+checks grouped effects, clean restart and reuse of a compensated same-day clock
+anchor on separate small stores. It does not execute the annual calendar.
 
 P31D1 now has optional [cooperative model checks around registered Ollama jobs](archive/2026-10-26-p30-p31-implementation/ollama-model-pin-jobs-20261031.md).
 Named operator text/embedding profiles bind expected metadata and minimum loaded
