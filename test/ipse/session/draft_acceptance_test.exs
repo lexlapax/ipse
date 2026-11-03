@@ -151,7 +151,11 @@ defmodule Ipse.Session.DraftAcceptanceTest do
       assert status == 0, output
       assert output =~ "SYNTHETIC_DRAFT_CLI_PASSED"
       if mode == "transport", do: assert(output =~ "DRAFT_NATIVE_TRANSPORT_PASSED")
-      if mode == "ollama", do: assert(output =~ "DRAFT_OLLAMA_TRANSPORT_PASSED")
+
+      if mode == "ollama" do
+        assert output =~ "DRAFT_OLLAMA_TRANSPORT_PASSED"
+        refute output =~ "draft thinking canary"
+      end
     end
   end
 
@@ -310,16 +314,28 @@ defmodule Ipse.Session.DraftAcceptanceTest do
       |> Enum.reverse()
       |> Enum.flat_map(&["-pa", &1])
 
-    {output, status} =
-      System.cmd(
-        driver,
-        ["--enhance-cancel", System.find_executable("elixir"), "--erl", "+S 2:2"] ++
-          paths ++ [Path.expand("test/support/draft_cli_pty.exs"), "cancel", root],
-        stderr_to_stdout: true
-      )
+    for mode <- ["basic", "ollama"] do
+      workspace = Path.join(root, mode)
+      File.mkdir!(workspace)
+      File.chmod!(workspace, 0o700)
 
-    assert status == 0, output
-    assert output =~ "SYNTHETIC_ENHANCE_CANCEL_PASSED"
+      {output, status} =
+        System.cmd(
+          driver,
+          ["--enhance-cancel", System.find_executable("elixir"), "--erl", "+S 2:2"] ++
+            paths ++ [Path.expand("test/support/draft_cli_pty.exs"), "cancel", workspace],
+          env: [{"IPSE_TEST_DRAFT_TRANSPORT", mode}],
+          stderr_to_stdout: true
+        )
+
+      assert status == 0, output
+      assert output =~ "SYNTHETIC_ENHANCE_CANCEL_PASSED"
+
+      if mode == "ollama" do
+        assert output =~ "DRAFT_OLLAMA_CANCEL_PASSED"
+        refute output =~ "draft thinking canary"
+      end
+    end
   end
 
   test "inline replacement binds the full native command and rejects altered replay" do

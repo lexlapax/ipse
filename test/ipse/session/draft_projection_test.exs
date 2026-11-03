@@ -139,7 +139,7 @@ defmodule Ipse.Session.DraftProjectionTest do
              )
   end
 
-  test "Ollama plain-text drafts withdraw intact and reject unsafe native continuations" do
+  test "Ollama no-tool drafts withdraw thinking and reject unsafe native continuations" do
     native = %{
       "role" => "assistant",
       "content" => "private proposal",
@@ -164,10 +164,36 @@ defmodule Ipse.Session.DraftProjectionTest do
     accepted = %{cancelled | status: :consumed} |> Map.put(:accepted_message, true)
     assert {:ok, ^projected} = Draft.project(accepted, messages, MapSet.new(), :ollama)
 
+    with_thinking =
+      put_in(native, ["provider_data", "message", "thinking"], "draft-only thinking canary")
+
+    refute Ipse.Session.DraftNative.plain_text_only?(with_thinking)
+    assert Ipse.Session.DraftNative.ollama_draft_without_tools?(with_thinking)
+
+    {thinking_draft, thinking_history} =
+      projection([%{"role" => "user", "content" => "draft"}, with_thinking])
+
+    assert {:ok, thinking_projected} =
+             Draft.project(thinking_draft, thinking_history, MapSet.new(), :ollama)
+
+    refute Jason.encode!(thinking_projected) =~ "draft-only thinking canary"
+    accepted_thinking = %{thinking_draft | status: :consumed} |> Map.put(:accepted_message, true)
+
+    assert {:ok, ^thinking_projected} =
+             Draft.project(accepted_thinking, thinking_history, MapSet.new(), :ollama)
+
+    for thinking <- [nil, %{}, <<255>>, :binary.copy("x", 8_388_609)] do
+      malformed = put_in(native, ["provider_data", "message", "thinking"], thinking)
+      refute Ipse.Session.DraftNative.ollama_draft_without_tools?(malformed)
+    end
+
     unsafe = [
-      put_in(native, ["provider_data", "message", "thinking"], "private thinking"),
       put_in(native, ["provider_data", "message", "content"], "different native text"),
+      put_in(native, ["provider_data", "message", "role"], "user"),
+      put_in(native, ["provider_data", "provider"], "other"),
+      put_in(native, ["provider_data", "message", "tool_calls"], nil),
       put_in(native, ["provider_data", "message", "tool_calls"], [%{"function" => %{}}]),
+      Map.put(native, "tool_calls", [%{"function" => %{}}]),
       put_in(native, ["provider_data", "message", "unknown"], "opaque"),
       put_in(native, ["provider_data", "unexpected"], "opaque")
     ]

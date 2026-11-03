@@ -899,7 +899,7 @@ defmodule Ipse.Session.DraftVerticalTest do
     end
   end
 
-  test "Ollama transport withdraws plain drafts on cancellation and acceptance across resume",
+  test "Ollama transport withdraws no-tool drafts with thinking on cancellation and acceptance across resume",
        c do
     fixture = Ipse.Test.ProviderFixture
 
@@ -933,11 +933,11 @@ defmodule Ipse.Session.DraftVerticalTest do
     {base_url, server} =
       fixture.sequence([
         reply.("earlier response", "earlier thinking canary"),
-        reply.("private proposal", ""),
+        reply.("private proposal", "cancelled draft thinking canary"),
         tool_call,
         reply.("ordinary response", "later thinking canary"),
         reply.("resumed response", ""),
-        reply.("private proposal", ""),
+        reply.("private proposal", "accepted draft thinking canary"),
         reply.("accepted response", ""),
         reply.("after acceptance response", "")
       ])
@@ -950,6 +950,22 @@ defmodule Ipse.Session.DraftVerticalTest do
     assert :ok = Session.start_draft(pid, "private draft input")
     assert_receive {:ipse, ^pid, {:done, :ok}}, 5_000
     assert :ok = Session.cancel_draft(pid)
+    {:ok, cancelled_events} = Journal.load(c.dir, id)
+
+    assert Enum.any?(cancelled_events, fn event ->
+             get_in(event, ["message", "provider_data", "message", "thinking"]) ==
+               "cancelled draft thinking canary"
+           end)
+
+    assert {:ok, page} = Session.sources(pid, "source.list", %{"limit" => 32})
+
+    for row <- page["sources"] do
+      assert {:ok, source} =
+               Session.sources(pid, "source.read", %{"handle" => row["read_handle"]})
+
+      refute Jason.encode!(source) =~ "cancelled draft thinking canary"
+    end
+
     assert :ok = Session.prompt(pid, "ordinary task")
     assert_receive {:ipse, ^pid, {:done, :ok}}, 5_000
     assert :ok = Session.close_confirmed(pid)
@@ -1028,7 +1044,12 @@ defmodule Ipse.Session.DraftVerticalTest do
     assert Jason.encode!(later_request["messages"]) =~ "accepted response"
 
     for body <- [ordinary, after_tool, resumed_request, accepted_request, later_request],
-        canary <- ["private draft input", "private proposal"] do
+        canary <- [
+          "private draft input",
+          "private proposal",
+          "cancelled draft thinking canary",
+          "accepted draft thinking canary"
+        ] do
       refute Jason.encode!(body) =~ canary
     end
   end

@@ -6,7 +6,13 @@ defmodule Ipse.Session.DraftNative do
   def policy(_), do: :none
 
   @doc false
-  def plain_text_only?(
+  def plain_text_only?(message),
+    do:
+      ollama_draft_without_tools?(message) and
+        get_in(message, ["provider_data", "message", "thinking"]) === ""
+
+  @doc false
+  def ollama_draft_without_tools?(
         %{
           "role" => "assistant",
           "content" => content,
@@ -19,13 +25,14 @@ defmodule Ipse.Session.DraftNative do
          Ipse.Provider.model_name(data["reported_model"]) === data["reported_model"]) and
       Enum.sort(Map.keys(native)) == ~w(content role thinking tool_calls) and
       native["role"] === "assistant" and native["content"] === content and
-      native["thinking"] === "" and native["tool_calls"] === [] and
+      is_binary(native["thinking"]) and byte_size(native["thinking"]) <= 8_388_608 and
+      String.valid?(native["thinking"]) and native["tool_calls"] === [] and
       message["tool_calls"] in [nil, []]
   rescue
     _ -> false
   end
 
-  def plain_text_only?(_), do: false
+  def ollama_draft_without_tools?(_), do: false
 
   def visible_models(messages) do
     messages

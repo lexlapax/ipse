@@ -1,0 +1,371 @@
+--- a/lib/ipse/session/draft.ex
++++ b/lib/ipse/session/draft.ex
+@@ -344,7 +344,7 @@
+     do: Ipse.Session.DraftNative.responses_owned?([message])
+ 
+   defp safe_native?(message, :ollama),
+-    do: Ipse.Session.DraftNative.plain_text_only?(message)
++    do: Ipse.Session.DraftNative.ollama_draft_without_tools?(message)
+ 
+   defp safe_native?(_, _), do: false
+ 
+--- a/lib/ipse/session/draft_native.ex
++++ b/lib/ipse/session/draft_native.ex
+@@ -6,7 +6,13 @@
+   def policy(_), do: :none
+ 
+   @doc false
+-  def plain_text_only?(
++  def plain_text_only?(message),
++    do:
++      ollama_draft_without_tools?(message) and
++        get_in(message, ["provider_data", "message", "thinking"]) === ""
++
++  @doc false
++  def ollama_draft_without_tools?(
+         %{
+           "role" => "assistant",
+           "content" => content,
+@@ -19,13 +25,14 @@
+          Ipse.Provider.model_name(data["reported_model"]) === data["reported_model"]) and
+       Enum.sort(Map.keys(native)) == ~w(content role thinking tool_calls) and
+       native["role"] === "assistant" and native["content"] === content and
+-      native["thinking"] === "" and native["tool_calls"] === [] and
++      is_binary(native["thinking"]) and byte_size(native["thinking"]) <= 8_388_608 and
++      String.valid?(native["thinking"]) and native["tool_calls"] === [] and
+       message["tool_calls"] in [nil, []]
+   rescue
+     _ -> false
+   end
+ 
+-  def plain_text_only?(_), do: false
++  def ollama_draft_without_tools?(_), do: false
+ 
+   def visible_models(messages) do
+     messages
+--- a/test/ipse/session/draft_projection_test.exs
++++ b/test/ipse/session/draft_projection_test.exs
+@@ -139,7 +139,7 @@
+              )
+   end
+ 
+-  test "Ollama plain-text drafts withdraw intact and reject unsafe native continuations" do
++  test "Ollama no-tool drafts withdraw thinking and reject unsafe native continuations" do
+     native = %{
+       "role" => "assistant",
+       "content" => "private proposal",
+@@ -164,10 +164,36 @@
+     accepted = %{cancelled | status: :consumed} |> Map.put(:accepted_message, true)
+     assert {:ok, ^projected} = Draft.project(accepted, messages, MapSet.new(), :ollama)
+ 
++    with_thinking =
++      put_in(native, ["provider_data", "message", "thinking"], "draft-only thinking canary")
++
++    refute Ipse.Session.DraftNative.plain_text_only?(with_thinking)
++    assert Ipse.Session.DraftNative.ollama_draft_without_tools?(with_thinking)
++
++    {thinking_draft, thinking_history} =
++      projection([%{"role" => "user", "content" => "draft"}, with_thinking])
++
++    assert {:ok, thinking_projected} =
++             Draft.project(thinking_draft, thinking_history, MapSet.new(), :ollama)
++
++    refute Jason.encode!(thinking_projected) =~ "draft-only thinking canary"
++    accepted_thinking = %{thinking_draft | status: :consumed} |> Map.put(:accepted_message, true)
++
++    assert {:ok, ^thinking_projected} =
++             Draft.project(accepted_thinking, thinking_history, MapSet.new(), :ollama)
++
++    for thinking <- [nil, %{}, <<255>>, :binary.copy("x", 8_388_609)] do
++      malformed = put_in(native, ["provider_data", "message", "thinking"], thinking)
++      refute Ipse.Session.DraftNative.ollama_draft_without_tools?(malformed)
++    end
++
+     unsafe = [
+-      put_in(native, ["provider_data", "message", "thinking"], "private thinking"),
+       put_in(native, ["provider_data", "message", "content"], "different native text"),
++      put_in(native, ["provider_data", "message", "role"], "user"),
++      put_in(native, ["provider_data", "provider"], "other"),
++      put_in(native, ["provider_data", "message", "tool_calls"], nil),
+       put_in(native, ["provider_data", "message", "tool_calls"], [%{"function" => %{}}]),
++      Map.put(native, "tool_calls", [%{"function" => %{}}]),
+       put_in(native, ["provider_data", "message", "unknown"], "opaque"),
+       put_in(native, ["provider_data", "unexpected"], "opaque")
+     ]
+--- a/test/ipse/session/draft_vertical_test.exs
++++ b/test/ipse/session/draft_vertical_test.exs
+@@ -899,7 +899,7 @@
+     end
+   end
+ 
+-  test "Ollama transport withdraws plain drafts on cancellation and acceptance across resume",
++  test "Ollama transport withdraws no-tool drafts with thinking on cancellation and acceptance across resume",
+        c do
+     fixture = Ipse.Test.ProviderFixture
+ 
+@@ -933,11 +933,11 @@
+     {base_url, server} =
+       fixture.sequence([
+         reply.("earlier response", "earlier thinking canary"),
+-        reply.("private proposal", ""),
++        reply.("private proposal", "cancelled draft thinking canary"),
+         tool_call,
+         reply.("ordinary response", "later thinking canary"),
+         reply.("resumed response", ""),
+-        reply.("private proposal", ""),
++        reply.("private proposal", "accepted draft thinking canary"),
+         reply.("accepted response", ""),
+         reply.("after acceptance response", "")
+       ])
+@@ -950,6 +950,22 @@
+     assert :ok = Session.start_draft(pid, "private draft input")
+     assert_receive {:ipse, ^pid, {:done, :ok}}, 5_000
+     assert :ok = Session.cancel_draft(pid)
++    {:ok, cancelled_events} = Journal.load(c.dir, id)
++
++    assert Enum.any?(cancelled_events, fn event ->
++             get_in(event, ["message", "provider_data", "message", "thinking"]) ==
++               "cancelled draft thinking canary"
++           end)
++
++    assert {:ok, page} = Session.sources(pid, "source.list", %{"limit" => 32})
++
++    for row <- page["sources"] do
++      assert {:ok, source} =
++               Session.sources(pid, "source.read", %{"handle" => row["read_handle"]})
++
++      refute Jason.encode!(source) =~ "cancelled draft thinking canary"
++    end
++
+     assert :ok = Session.prompt(pid, "ordinary task")
+     assert_receive {:ipse, ^pid, {:done, :ok}}, 5_000
+     assert :ok = Session.close_confirmed(pid)
+@@ -1028,7 +1044,12 @@
+     assert Jason.encode!(later_request["messages"]) =~ "accepted response"
+ 
+     for body <- [ordinary, after_tool, resumed_request, accepted_request, later_request],
+-        canary <- ["private draft input", "private proposal"] do
++        canary <- [
++          "private draft input",
++          "private proposal",
++          "cancelled draft thinking canary",
++          "accepted draft thinking canary"
++        ] do
+       refute Jason.encode!(body) =~ canary
+     end
+   end
+--- a/test/ipse/session/draft_acceptance_test.exs
++++ b/test/ipse/session/draft_acceptance_test.exs
+@@ -151,7 +151,11 @@
+       assert status == 0, output
+       assert output =~ "SYNTHETIC_DRAFT_CLI_PASSED"
+       if mode == "transport", do: assert(output =~ "DRAFT_NATIVE_TRANSPORT_PASSED")
+-      if mode == "ollama", do: assert(output =~ "DRAFT_OLLAMA_TRANSPORT_PASSED")
++
++      if mode == "ollama" do
++        assert output =~ "DRAFT_OLLAMA_TRANSPORT_PASSED"
++        refute output =~ "draft thinking canary"
++      end
+     end
+   end
+ 
+@@ -310,16 +314,28 @@
+       |> Enum.reverse()
+       |> Enum.flat_map(&["-pa", &1])
+ 
+-    {output, status} =
+-      System.cmd(
+-        driver,
+-        ["--enhance-cancel", System.find_executable("elixir"), "--erl", "+S 2:2"] ++
+-          paths ++ [Path.expand("test/support/draft_cli_pty.exs"), "cancel", root],
+-        stderr_to_stdout: true
+-      )
++    for mode <- ["basic", "ollama"] do
++      workspace = Path.join(root, mode)
++      File.mkdir!(workspace)
++      File.chmod!(workspace, 0o700)
++
++      {output, status} =
++        System.cmd(
++          driver,
++          ["--enhance-cancel", System.find_executable("elixir"), "--erl", "+S 2:2"] ++
++            paths ++ [Path.expand("test/support/draft_cli_pty.exs"), "cancel", workspace],
++          env: [{"IPSE_TEST_DRAFT_TRANSPORT", mode}],
++          stderr_to_stdout: true
++        )
+ 
+-    assert status == 0, output
+-    assert output =~ "SYNTHETIC_ENHANCE_CANCEL_PASSED"
++      assert status == 0, output
++      assert output =~ "SYNTHETIC_ENHANCE_CANCEL_PASSED"
++
++      if mode == "ollama" do
++        assert output =~ "DRAFT_OLLAMA_CANCEL_PASSED"
++        refute output =~ "draft thinking canary"
++      end
++    end
+   end
+ 
+   test "inline replacement binds the full native command and rejects altered replay" do
+--- a/test/support/draft_cli_pty.exs
++++ b/test/support/draft_cli_pty.exs
+@@ -150,11 +150,11 @@
+       Code.require_file(Path.expand("test/support/provider_fixture.ex"))
+       fixture = Ipse.Test.ProviderFixture
+ 
+-      reply = fn text ->
++      reply = fn text, thinking ->
+         fixture.ndjson([
+           %{
+             "model" => "synthetic",
+-            "message" => %{"role" => "assistant", "content" => text},
++            "message" => %{"role" => "assistant", "content" => text, "thinking" => thinking},
+             "done" => true
+           }
+         ])
+@@ -164,12 +164,23 @@
+       capture = Path.join(root, "ollama-transport-capture.json")
+ 
+       spawn_link(fn ->
+-        {base_url, server} =
+-          fixture.sequence([
+-            reply.("suggested request"),
+-            reply.("accepted response"),
+-            reply.("resumed response")
+-          ])
++        responses =
++          if cancel do
++            [
++              reply.("ordinary before response", "earlier native thinking canary"),
++              reply.("suggested request", "draft thinking canary"),
++              reply.("ordinary after response", "later native thinking canary"),
++              reply.("resumed response", "")
++            ]
++          else
++            [
++              reply.("suggested request", "draft thinking canary"),
++              reply.("accepted response", ""),
++              reply.("resumed response", "")
++            ]
++          end
++
++        {base_url, server} = fixture.sequence(responses)
+ 
+         send(receiver, {:fixture_url, base_url})
+         requests = Task.await(server, 30_000) |> Enum.map(&elem(&1, 1))
+@@ -322,13 +333,56 @@
+            Ipse.Session.Draft.project(
+              cancelled,
+              messages,
+-             Ipse.Session.Reference.occurrences(events)
++             Ipse.Session.Reference.occurrences(events),
++             if(ollama_transport, do: :ollama, else: :none)
+            )
+ 
+   refute Jason.encode!(projected) =~ "private initial request"
+   assert Enum.any?(projected, &(&1["content"] == "ordinary before draft"))
+   assert Enum.any?(projected, &(&1["content"] == "ordinary after cancellation"))
+   assert :ok = Ipse.Session.close_confirmed(session)
++
++  if ollama_transport do
++    {:ok, before_reopen} = Ipse.Journal.load(Path.join(root, "state"), id)
++    before_count = Enum.count(before_reopen, &(&1["type"] == "request_admitted"))
++
++    {:ok, resumed} =
++      Ipse.Session.start_link(
++        config: session_config,
++        cwd: root,
++        state_dir: Path.join(root, "state"),
++        subscriber: self(),
++        id: id
++      )
++
++    assert Ipse.Session.info(resumed).phase == :idle
++    {:ok, after_reopen} = Ipse.Journal.load(Path.join(root, "state"), id)
++    assert Enum.count(after_reopen, &(&1["type"] == "request_admitted")) == before_count
++    assert :ok = Ipse.Session.prompt(resumed, "later resumed task")
++    assert_receive {:ipse, ^resumed, {:done, :ok}}, 5_000
++    assert :ok = Ipse.Session.close_confirmed(resumed)
++    assert_receive :fixture_capture_complete, 5_000
++
++    [first, draft_request, after_request, resumed_request] =
++      transport_server |> File.read!() |> Jason.decode!()
++
++    assert Jason.encode!(first) =~ "ordinary before draft"
++    assert Jason.encode!(draft_request) =~ "private initial request"
++    assert Jason.encode!(after_request) =~ "ordinary after cancellation"
++    assert Jason.encode!(resumed_request) =~ "later resumed task"
++
++    for request <- [after_request, resumed_request] do
++      encoded = Jason.encode!(request)
++      assert encoded =~ "earlier native thinking canary"
++      refute encoded =~ "private initial request"
++      refute encoded =~ "suggested request"
++      refute encoded =~ "draft thinking canary"
++    end
++
++    assert Jason.encode!(resumed_request) =~ "later native thinking canary"
++    IO.puts("DRAFT_OLLAMA_CANCEL_PASSED")
++  end
++
+   IO.puts("SYNTHETIC_ENHANCE_CANCEL_PASSED")
+   System.halt(0)
+ end
+@@ -457,6 +511,7 @@
+   {:ok, source} = Ipse.Session.sources(session, "source.read", %{"handle" => row["read_handle"]})
+   refute Jason.encode!(source) =~ "private initial request"
+   refute Jason.encode!(source) =~ "private answer canary"
++  refute Jason.encode!(source) =~ "draft thinking canary"
+ end
+ 
+ assert :ok = Ipse.Session.close_confirmed(session)
+@@ -486,6 +541,7 @@
+         "private initial request",
+         "suggested request",
+         "private encrypted canary",
++        "draft thinking canary",
+         "rs_private",
+         "msg_private"
+       ] do
+--- a/docs/operator/usage.md
++++ b/docs/operator/usage.md
+@@ -292,13 +292,13 @@
+ Cancelled draft text and clarification answers remain in the private journal,
+ but are withheld from later model input and eligible Session sources. Accepted
+ text is admitted as fresh intent with links to its original input, answers and
+-read evidence. With Ollama, this same-Session continuation supports plain-text
+-native assistant messages with no thinking or tool calls. A draft can still
+-complete or be cancelled if it contains a tool exchange, thinking or unsupported
+-native fields, but acceptance or later continuation can refuse when the draft
+-cannot be safely withheld. Follow the recovery procedure below; no native data is
+-silently removed. Earlier and later ordinary history remains available, subject to
+-complete tool-call boundaries.
++read evidence. With Ollama, the complete no-tool draft interval can be withheld
++even when its native assistant messages contain thinking. That draft-only thinking
++remains in the private journal and is not sent on later turns. A draft can still
++complete or be cancelled if it contains a tool exchange or unsupported native
++fields, but acceptance or later continuation can refuse when the draft cannot be
++safely withheld. Follow the recovery procedure below; earlier and later ordinary
++history remains available, subject to complete tool-call boundaries.
+ Unsupported provider continuation, required compaction, or active
+ extension delivery can refuse drafting or later continuation. Use the explicit
+ [draft recovery procedure](recovery.md#recover-a-request-draft); no alternate
+--- a/docs/developer/workspace-context.md
++++ b/docs/developer/workspace-context.md
+@@ -255,10 +255,12 @@
+ `Saved` repeats those checks chronologically and validates rebasing before
+ compaction. The original journal remains intact. ChatGPT uses the stateless
+ Responses isolation validator. Ollama also permits a complete no-tool draft
+-interval when each removed native assistant message has the strict plain-text
+-shape checked by `DraftNative.plain_text_only?/1`: its visible and native text
+-match, thinking and tool calls are empty, and no unknown fields are present.
+-Native messages outside that interval are preserved unchanged. The prefix,
++interval when each removed native assistant message has the exact shape checked
++by `DraftNative.ollama_draft_without_tools?/1`: visible and native text match,
++thinking is a bounded UTF-8 string, tool calls are empty and unknown fields refuse.
++The whole interval, including thinking, is withheld; native messages outside it
++are preserved unchanged. The separate `plain_text_only?/1` predicate remains
++stricter for managed lineage and reference checks. The prefix,
+ removed interval and tail each require complete tool grouping. Replay selects the
+ policy from the saved provider; unsupported native continuation refuses projection
+ instead of dropping selected fields.

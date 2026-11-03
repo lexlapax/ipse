@@ -344,7 +344,7 @@ defmodule Ipse.Session.Draft do
     do: Ipse.Session.DraftNative.responses_owned?([message])
 
   defp safe_native?(message, :ollama),
-    do: Ipse.Session.DraftNative.plain_text_only?(message)
+    do: Ipse.Session.DraftNative.ollama_draft_without_tools?(message)
 
   defp safe_native?(_, _), do: false
 

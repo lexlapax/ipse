@@ -150,11 +150,11 @@ end
       Code.require_file(Path.expand("test/support/provider_fixture.ex"))
       fixture = Ipse.Test.ProviderFixture
 
-      reply = fn text ->
+      reply = fn text, thinking ->
         fixture.ndjson([
           %{
             "model" => "synthetic",
-            "message" => %{"role" => "assistant", "content" => text},
+            "message" => %{"role" => "assistant", "content" => text, "thinking" => thinking},
             "done" => true
           }
         ])
@@ -164,12 +164,23 @@ end
       capture = Path.join(root, "ollama-transport-capture.json")
 
       spawn_link(fn ->
-        {base_url, server} =
-          fixture.sequence([
-            reply.("suggested request"),
-            reply.("accepted response"),
-            reply.("resumed response")
-          ])
+        responses =
+          if cancel do
+            [
+              reply.("ordinary before response", "earlier native thinking canary"),
+              reply.("suggested request", "draft thinking canary"),
+              reply.("ordinary after response", "later native thinking canary"),
+              reply.("resumed response", "")
+            ]
+          else
+            [
+              reply.("suggested request", "draft thinking canary"),
+              reply.("accepted response", ""),
+              reply.("resumed response", "")
+            ]
+          end
+
+        {base_url, server} = fixture.sequence(responses)
 
         send(receiver, {:fixture_url, base_url})
         requests = Task.await(server, 30_000) |> Enum.map(&elem(&1, 1))
@@ -322,13 +333,56 @@ if cancel do
            Ipse.Session.Draft.project(
              cancelled,
              messages,
-             Ipse.Session.Reference.occurrences(events)
+             Ipse.Session.Reference.occurrences(events),
+             if(ollama_transport, do: :ollama, else: :none)
            )
 
   refute Jason.encode!(projected) =~ "private initial request"
   assert Enum.any?(projected, &(&1["content"] == "ordinary before draft"))
   assert Enum.any?(projected, &(&1["content"] == "ordinary after cancellation"))
   assert :ok = Ipse.Session.close_confirmed(session)
+
+  if ollama_transport do
+    {:ok, before_reopen} = Ipse.Journal.load(Path.join(root, "state"), id)
+    before_count = Enum.count(before_reopen, &(&1["type"] == "request_admitted"))
+
+    {:ok, resumed} =
+      Ipse.Session.start_link(
+        config: session_config,
+        cwd: root,
+        state_dir: Path.join(root, "state"),
+        subscriber: self(),
+        id: id
+      )
+
+    assert Ipse.Session.info(resumed).phase == :idle
+    {:ok, after_reopen} = Ipse.Journal.load(Path.join(root, "state"), id)
+    assert Enum.count(after_reopen, &(&1["type"] == "request_admitted")) == before_count
+    assert :ok = Ipse.Session.prompt(resumed, "later resumed task")
+    assert_receive {:ipse, ^resumed, {:done, :ok}}, 5_000
+    assert :ok = Ipse.Session.close_confirmed(resumed)
+    assert_receive :fixture_capture_complete, 5_000
+
+    [first, draft_request, after_request, resumed_request] =
+      transport_server |> File.read!() |> Jason.decode!()
+
+    assert Jason.encode!(first) =~ "ordinary before draft"
+    assert Jason.encode!(draft_request) =~ "private initial request"
+    assert Jason.encode!(after_request) =~ "ordinary after cancellation"
+    assert Jason.encode!(resumed_request) =~ "later resumed task"
+
+    for request <- [after_request, resumed_request] do
+      encoded = Jason.encode!(request)
+      assert encoded =~ "earlier native thinking canary"
+      refute encoded =~ "private initial request"
+      refute encoded =~ "suggested request"
+      refute encoded =~ "draft thinking canary"
+    end
+
+    assert Jason.encode!(resumed_request) =~ "later native thinking canary"
+    IO.puts("DRAFT_OLLAMA_CANCEL_PASSED")
+  end
+
   IO.puts("SYNTHETIC_ENHANCE_CANCEL_PASSED")
   System.halt(0)
 end
@@ -457,6 +511,7 @@ for row <- page["sources"] do
   {:ok, source} = Ipse.Session.sources(session, "source.read", %{"handle" => row["read_handle"]})
   refute Jason.encode!(source) =~ "private initial request"
   refute Jason.encode!(source) =~ "private answer canary"
+  refute Jason.encode!(source) =~ "draft thinking canary"
 end
 
 assert :ok = Ipse.Session.close_confirmed(session)
@@ -486,6 +541,7 @@ if transport do
         "private initial request",
         "suggested request",
         "private encrypted canary",
+        "draft thinking canary",
         "rs_private",
         "msg_private"
       ] do

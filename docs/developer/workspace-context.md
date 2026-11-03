@@ -255,10 +255,12 @@ native tool grouping before withholding the interval from later dispatch.
 `Saved` repeats those checks chronologically and validates rebasing before
 compaction. The original journal remains intact. ChatGPT uses the stateless
 Responses isolation validator. Ollama also permits a complete no-tool draft
-interval when each removed native assistant message has the strict plain-text
-shape checked by `DraftNative.plain_text_only?/1`: its visible and native text
-match, thinking and tool calls are empty, and no unknown fields are present.
-Native messages outside that interval are preserved unchanged. The prefix,
+interval when each removed native assistant message has the exact shape checked
+by `DraftNative.ollama_draft_without_tools?/1`: visible and native text match,
+thinking is a bounded UTF-8 string, tool calls are empty and unknown fields refuse.
+The whole interval, including thinking, is withheld; native messages outside it
+are preserved unchanged. The separate `plain_text_only?/1` predicate remains
+stricter for managed lineage and reference checks. The prefix,
 removed interval and tail each require complete tool grouping. Replay selects the
 policy from the saved provider; unsupported native continuation refuses projection
 instead of dropping selected fields.

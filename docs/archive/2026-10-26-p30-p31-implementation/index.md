@@ -61,6 +61,7 @@ nor resource/offline qualification. No daemon configuration or existing model wa
 
 ## P31I planning and acceptance
 
+- [Ollama no-tool draft thinking](ollama-draft-thinking-20261103.md) records synthetic Session and terminal acceptance/cancellation checks while retaining stricter managed-source admission.
 - [Ollama draft recovery](ollama-draft-recovery-20261103.md) records focused synthetic cancellation, acceptance and resume controls, with full-suite and installed qualification still open.
 - [Leased terminal deadline rounding](leased-terminal-quantization-20261103.md) repairs a bounded conversion excess and records focused review controls; cross-clock rate and suspend assumptions remain open.
 - [Acceptance clock-domain assessment](session-acceptance-clock-anchor-assessment-20261103.md) records why the native wall cutoff does not establish the BEAM Review lifetime and compares unimplemented alternatives; it also identifies an existing terminal-conversion qualification.

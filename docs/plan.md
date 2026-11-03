@@ -1177,8 +1177,10 @@ and independent-human qualification, and the rest of P31I remain open.
 
 The [Ollama draft recovery increment](archive/2026-10-26-p30-p31-implementation/ollama-draft-recovery-20261103.md)
 supports cancellation or acceptance of a plain-text draft while preserving unrelated
-native continuation on later turns and resume. Synthetic Session, loopback and
-terminal controls pass; live-model, installed and full integrated checks remain open.
+native continuation on later turns and resume. A [no-tool thinking follow-up](archive/2026-10-26-p30-p31-implementation/ollama-draft-thinking-20261103.md)
+also withdraws a bounded native thinking field with the draft, with synthetic
+Session and terminal acceptance/cancellation controls. Tool-assisted drafts,
+live-model, installed and full integrated checks remain open.
 
 A [current direct-client control](archive/2026-10-26-p30-p31-implementation/assistant-proposal-current-20261102.md)
 now saves a synthetic completed assistant reply as signed pending material with
