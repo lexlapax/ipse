@@ -78,11 +78,14 @@ human think time; expire and freshly render when the relevant authority lapses.
 The current native primitive receives only a wall cutoff, while the existing
 Review permit uses BEAM monotonic time. Converting the permit's remaining time
 to wall time does not prove that the native switch cannot outlive that permit,
-especially across descheduling or clock changes. Do not integrate the primitive
-with that permit until a separately reviewed clock-domain binding enforces the
-permit's actual lifetime through the switch; no such binding is established here.
+especially across descheduling or clock changes. The existing BEAM permit alone
+cannot serve as the native switch's final expiry fence; no binding establishes
+that its separate deadline holds through the switch.
 The [clock-domain assessment](session-acceptance-clock-anchor-assessment-20261103.md)
-compares conditional and native-clock alternatives without adopting either.
+compares alternatives and records a reviewed direction for an acceptance-only
+native BOOTTIME permit. That permit may be integrated only after its actual
+input, owner and clock-namespace bindings to the intended transaction are
+implemented and independently reviewed; they remain unimplemented.
 No ordinary unfenced root switch is a fallback. An uncertain switch or cleanup
 is unknown even when a later read suggests publication happened.
 

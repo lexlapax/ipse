@@ -7,6 +7,54 @@ unchanged. The partial, unwired Session acceptance overlays are isolated in
 `.session-acceptance-1405.iBOSbYlH` at the repository root; they do not expose a
 card or constitute an acceptance job.
 
+## Reviewed direction for the new acceptance path
+
+The frozen [decision-card contract](baseline.md#confirming-a-proposed-decision)
+does not prescribe a clock or a 30-second permit. For the new, unimplemented
+same-reply acceptance path, the reviewed direction is to make a single native
+permit expire 30 seconds after the actual verified input observation, measured
+by Linux `CLOCK_BOOTTIME`. Time spent suspended counts. The existing BEAM
+Review checks remain additional gates at their existing points, as do every
+applicable wall, Session, Writer, source, Consent and transaction deadline.
+Standalone and other existing Review paths retain their current behavior.
+This direction does not establish that a BEAM-monotonic deadline is enforced
+at the native rename, and the two clocks are not assumed to have the same
+rate or suspend behavior. If BEAM authority expires during an effect, preserve
+the appropriate visible unknown outcome; never infer that an uncertain effect
+did not happen or replay it automatically.
+
+A possible implementation is a one-shot native `CLOCK_BOOTTIME` timerfd,
+armed with an absolute deadline derived from the input reader's observation,
+then handed once to the actual guarded transaction. This is a proposal, not a
+proven handoff. Arming a relative remaining duration after sampling is
+insufficient: descheduling before `timerfd_settime` can extend it. A delayed
+parent must instead arm against the original absolute deadline and refuse if
+it has elapsed. If the input reader and parent are in different Linux time
+namespaces, their absolute readings cannot simply be compared. Both actual
+current namespace identities must be authenticated and pinned, with mismatch
+or unavailable proof refusing; `time_for_children` and unpinned PID or inode
+claims are not substitutes.
+
+The exact native input, displayed card and render acknowledgment, Session and
+client, source, Consent, event, intent and normalized request still require a
+live, one-use binding to the real terminal and intended transaction. A bare
+host-provided timestamp or descriptor proves none of that. The design must prove
+the timer's clock, original arming and issuer, exact recipient and all retained
+copies; prevent input/display children or later forks from retaining a timer
+that can be reset or consumed; and refuse substitutions, second use, owner loss
+and unconfirmed handoff. The current terminal exits before Review creates its
+permit, and its existing authenticated descriptor protocols transfer lock or
+control descriptions, not this timer. A purpose-specific ownership and cleanup
+protocol is therefore still required. Existing final owner checks remain a
+userspace admission fence, not atomic cancellation at rename. No test or
+production path establishes this proposed timerfd protocol.
+
+The earlier cross-clock assessment below remains the historical reason for
+the hold on combining the current BEAM permit with the native guard. The
+acceptance-only native permit direction does not retroactively close that hold
+or the complete same-reply journey; it requires its own implementation and
+independent verification.
+
 ## Why an earlier native anchor is conditional
 
 The live Review permit currently uses `System.monotonic_time(:millisecond)`;
@@ -90,12 +138,13 @@ claim. `LeasedTerminal.finish_input` currently computes its Review lifetime in
 BEAM after input. Therefore the existing scalar `R` alone is not authority and
 must not simply be accepted from a caller.
 
-Independent source review also found that existing `LeasedTerminal.run_opened`
-adds BEAM millisecond-quantized remaining durations to this earlier native
-`R` for display and overall native deadlines. The earlier anchor is
-conservative against delivery delay, but that existing conversion has no
-explicit rounding reserve or established cross-clock rate/suspend bound.
-This is a source-level qualification issue; it is not a demonstrated exploit.
+Independent source review found that `LeasedTerminal.run_opened` adds BEAM
+millisecond-quantized remaining durations to this earlier native `R` for display
+and overall native deadlines. The earlier anchor is conservative against delivery
+delay. A subsequent [rounding repair](leased-terminal-quantization-20261103.md)
+subtracts a full millisecond, but the cross-clock rate and suspend bound remains
+unestablished. This is a source-level qualification issue; it is not a
+demonstrated exploit.
 
 A narrower candidate is to make an earlier terminal-clock reading the
 authoritative native deadline for this new acceptance permit. For example, a
