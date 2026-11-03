@@ -1,0 +1,64 @@
+{
+  "version": 1,
+  "date": "2026-11-02",
+  "base_commit": "5f20b5a",
+  "files_sha256": {
+    "/tmp/ipse-native-calendar-quota-clock-20261102-boundary.log": "f5f06179c5bb1e6ae2e9e578cd2991c47548a25b8d5431fb03df31fcf3688f35",
+    "/tmp/ipse-native-calendar-quota-clock-20261102-cli.json": "2af138fcea4f0c5751b8503ab5893d88323f7cd33689cb2b311983c8ed4a412b",
+    "/tmp/ipse-native-calendar-quota-clock-20261102-integration-final.log": "ee31152e15f5f1f8ba05c1d752a999e32ce641321044268fd16eb6abbdc0926a",
+    "/tmp/ipse-native-calendar-quota-clock-20261102-integration-final2.log": "a9d3cab2d00f1ff46fd489420fbc962e365d138b628b97eb74ff8828a7cbc071",
+    "/tmp/ipse-native-calendar-quota-clock-20261102-integration.log": "dbb477f60ba79479e621f3a661c9961430d2c983ec2cfa050afd27bc99edc70b",
+    "/tmp/ipse-native-calendar-quota-clock-20261102-tests.log": "9feb0bda8d849c998d2752049513f4b15ca5f26870ac669f1ef9da6bb98fbe8c",
+    "dev/knowledge/native_notes_workload.ex": "7efe9a1666f31250ab16faa165758df11ff8e874e417df6e529c7183cd1a18e4",
+    "lib/ipse/extension/consent.ex": "4ce9cccabf505945b47689de1160f782c2734fcf666bf5c39ff3001ebe010d17",
+    "test/dev/knowledge/native_notes_workload_test.exs": "596dc5bd54eb6b82ff4c73b55332c04f4b9d9ec582171385a02161db3adf9b02",
+    "test/dev/knowledge/native_quota_clock_test.exs": "c3bad163b5adfb0bfccb2ed3bbc4abc016cb488b998196d52574a35980adf17b",
+    "test/dev/knowledge/process_clock_test.exs": "1f1f4c739850a0bb11719d6bcbb0b7c9f609f098f5557e3a269ef1ec8cef7a75"
+  },
+  "initial_fixture_failures": [
+    {
+      "exit_status": 2,
+      "reason": "existing control root instead of a new path",
+      "failed": 1,
+      "seed": 791864,
+      "passed": 17
+    },
+    {
+      "exit_status": 2,
+      "reason": "settlement attempted before admission",
+      "failed": 1,
+      "seed": 791865,
+      "passed": 17
+    }
+  ],
+  "final_tests": {
+    "exit_status": 0,
+    "failed": 0,
+    "seed": 791866,
+    "passed": 18
+  },
+  "final_failure_fixture_versions_separately_snapshotted": false,
+  "cli_example": {
+    "actual_native_operations": 0,
+    "actual_turns": 0,
+    "anchor": {
+      "day": 21,
+      "end_ms": 1801872000000,
+      "offset_ms": 1717200000,
+      "previous_virtual_ms": 1801728000000,
+      "real_start_ms": 1800097200000,
+      "seed_ms": 1800000000000,
+      "start_ms": 1801814400000
+    },
+    "current": {
+      "offset_ms": 1717200000,
+      "virtual_ms": 1801814400000
+    },
+    "kind": "native_fixture_clock_preflight",
+    "qualification_passed": false
+  },
+  "boundary_cli_exit_status": 2,
+  "actual_native_publications": 0,
+  "model_calls": 0,
+  "annual_qualification": false
+}

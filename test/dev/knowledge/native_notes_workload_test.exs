@@ -214,6 +214,7 @@ defmodule Ipse.Development.NativeNotesWorkloadTest do
     assert {:ok, first} = Workload.clock_day(seed, 21, real_start, previous)
     assert first["start_ms"] == seed + 21 * day_ms
     assert first["offset_ms"] == 21 * day_ms - 3 * 3_600_000
+    assert first["end_ms"] == div(first["start_ms"], day_ms) * day_ms + day_ms
 
     assert {:ok, one} = Workload.clock_now(first, real_start + 3_600_000, previous)
     assert one["virtual_ms"] == first["start_ms"] + 3_600_000
@@ -229,6 +230,7 @@ defmodule Ipse.Development.NativeNotesWorkloadTest do
 
     assert second["start_ms"] == seed + 22 * day_ms
     assert second["offset_ms"] == 22 * day_ms - 15 * 3_600_000
+    assert div(second["start_ms"], day_ms) == div(first["start_ms"], day_ms) + 1
   end
 
   test "fixture-clock planning refuses backward time, a day overflow and unsupported offsets" do
@@ -241,6 +243,12 @@ defmodule Ipse.Development.NativeNotesWorkloadTest do
 
     assert {:error, :fixture_clock_refused} =
              Workload.clock_now(anchor, real_start + day_ms, prior)
+
+    until_quota_reset = anchor["end_ms"] - anchor["start_ms"]
+    assert {:ok, _} = Workload.clock_now(anchor, real_start + until_quota_reset - 1, prior)
+
+    assert {:error, :fixture_clock_refused} =
+             Workload.clock_now(anchor, real_start + until_quota_reset, prior)
 
     assert {:error, :fixture_clock_refused} =
              Workload.clock_now(anchor, real_start, anchor["start_ms"] + 1)

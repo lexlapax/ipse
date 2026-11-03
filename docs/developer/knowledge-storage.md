@@ -266,10 +266,15 @@ The result has offset `1717200000` milliseconds and virtual start
 `1801814400000`; it reports zero operations and turns. Persist the actual day's
 anchor before dispatch and reuse its offset across that day, including restart.
 Check the latest unshifted real time against the last verified virtual time and
-the day's exclusive end before each effect. A changed anchor, backwards time,
-day overflow or unsupported offset refuses. The
+the day's exclusive end before and after each effect. The end is the next UTC
+midnight, matching the saved-consent quota period; it may leave less than 24
+hours for a simulated workday. A changed anchor, backwards time, reaching that
+boundary or unsupported offset refuses admission; crossing after dispatch leaves
+the effect unconfirmed and must not trigger replay. Confirm that seed operations do not
+occupy the first continuation quota period. The
 [clock preflight](../archive/2026-10-26-p30-p31-implementation/native-calendar-clock-anchor-20261102.md)
-does not persist the anchor or implement the live driver.
+and its [quota correction](../archive/2026-10-26-p30-p31-implementation/native-calendar-quota-clock-20261102.md)
+do not persist the anchor or implement the live driver.
 
 Inspect the returned record lower bound before running the calendar. The current
 page profiles permit at most 122 anchor rows and 26 live rows per page, even at

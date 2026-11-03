@@ -220,7 +220,10 @@ defmodule Ipse.Development.NativeNotesWorkload do
              day in 0..500 and is_integer(real_start_ms) and real_start_ms in 0..@safe_uint and
              is_integer(previous_virtual_ms) and previous_virtual_ms in 0..@safe_uint do
     start_ms = seed_ms + day * @day_ms
-    end_ms = start_ms + @day_ms
+    # Consent's daily quota uses UTC-aligned 24-hour periods. Ending this
+    # simulated workday at that same boundary prevents adjacent workdays from
+    # accidentally sharing one quota window.
+    end_ms = div(start_ms, @day_ms) * @day_ms + @day_ms
     offset_ms = start_ms - real_start_ms
 
     if end_ms <= @safe_uint and previous_virtual_ms < start_ms and

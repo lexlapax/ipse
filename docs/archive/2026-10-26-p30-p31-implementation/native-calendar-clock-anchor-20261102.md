@@ -1,5 +1,10 @@
 # Compensate the annual fixture clock for real elapsed time
 
+**Later correction:** The original planner allowed a full 24 hours after the
+seed-relative day start. The actual consent quota resets at UTC midnight, so
+that window could cross quota periods. Use the [quota-aligned follow-up](native-calendar-quota-clock-20261102.md)
+for the current boundary. The original calculations below remain historical.
+
 Dated **2026-11-02**, based on `fb96381` plus the source and output hashes in
 the [receipt](native-calendar-clock-anchor-20261102.json). The
 [plan](../../plan.md) owns acceptance and the

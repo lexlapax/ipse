@@ -1392,7 +1392,9 @@ effects nor turns. A scalable continuation with authenticated targets, durable
 closure and nonreplaying recovery remains to be built.
 The [compensated fixture-clock preflight](archive/2026-10-26-p30-p31-implementation/native-calendar-clock-anchor-20261102.md)
 accounts for real elapsed time between simulated days and refuses a backward or
-overflowed day. Persistence and actual long-running clock behavior remain open.
+overflowed day. Its [quota-aligned correction](archive/2026-10-26-p30-p31-implementation/native-calendar-quota-clock-20261102.md)
+ends the workday at the actual UTC quota reset and has a protected-consent
+boundary control. Persistence and actual long-running clock behavior remain open.
 The [seed recorded-time audit](archive/2026-10-26-p30-p31-implementation/native-seed-recorded-times-20261102.md)
 adds selected journal-field maxima to the signed audit; its smoke control passes.
 Those fields alone are not a physical-completion or clock-monotonicity bound.
