@@ -1060,6 +1060,12 @@ records direct single-level decimal labels as locator metadata, with focused
 extraction and native Session checks. Installed integration, independent Word
 quality and the broader P31F requirements remain open.
 
+The [operator-authored planning-decision increment](archive/2026-10-26-p30-p31-implementation/operator-planning-20261103/index.md)
+adds a separate native acceptance and explicit post-exit save with linked original
+provenance. Its synthetic verification passed 11 native journeys and 95 focused
+regressions. Assistant-proposal acceptance, wider source combinations, installed
+and independent-human qualification, and the rest of P31I remain open.
+
 A [current direct-client control](archive/2026-10-26-p30-p31-implementation/assistant-proposal-current-20261102.md)
 now saves a synthetic completed assistant reply as signed pending material with
 its original source attribution. A synthetic main model can select that reply

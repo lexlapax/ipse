@@ -172,14 +172,57 @@ delegation and knowledge publication. An operator-declared planning MCP read
 may run with its ordinary approval; see [MCP planning reads](mcp.md#review-a-tool-for-request-refinement).
 `--yes` does not override the ceiling. `--planning` also works with `run`, and
 cannot be combined with `--accept-edits`. The ceiling remains in force when the
-session is resumed, even if the flag is omitted. This experimental interface
-does not yet save deferred plan decisions; start a new ordinary session when an
-inherited or ambiguous ceiling cannot be exited and review its context.
+session is resumed, even if the flag is omitted. Start a new ordinary session
+when an inherited or ambiguous ceiling cannot be exited and review its context.
 For a session resumed with an earlier development build that did not record a
 later planning selection, pass `--planning` again: the saved history cannot
 establish that earlier selection. A changed resume policy is saved in a newer
 checkpoint format; an older build that cannot read it refuses the session. Keep
 the current runner available if you need to resume that history.
+
+To retain a decision you write yourself while locally planning, enter:
+
+```text
+/plan decide Use a local fixture for this check.
+```
+
+The text must be nonblank valid UTF-8 and at most 1,024 bytes. Review the exact
+text and enter the displayed `accept CODE`. This records a
+deferred decision in the Session journal; it does not publish a note. Bare `yes`,
+a stale code, or cancelling the review does not accept it. Use `/plan decisions`
+to inspect retained IDs and status, including after resuming the same Session.
+Up to sixteen decisions can be retained per Session. This records your own words;
+acceptance of an assistant-proposed decision remains a separate, unimplemented
+planning path.
+
+For the save journey, start in the admitted project with the saved provider and
+configuration used for its native knowledge selection. The earlier `--provider
+demo` example is for planning alone and can fail that pinned route. After
+`/plan exit`, explicitly select an accepted ID to review a save:
+
+```text
+/plan save COPY_THE_32_LOWERCASE_HEX_CHARACTER_ID
+```
+
+Saving needs both active and enclosing ceilings to be `normal`, the Session's
+active [native knowledge permission](knowledge-permissions.md), current source
+and supported protected storage. Review the exact statement again and enter its
+fresh `remember CODE`; cancelling this review before confirmation saves nothing.
+A successful capture stores it as an ordinary operator-authored literal, with its source
+receipt linked to the earlier planning acceptance. Exiting planning alone never
+saves it. A cancelled save review leaves the decision available for a new
+explicit review. `/plan decisions` distinguishes a known refusal before the
+extension starts from a save intent that needs journal inspection. The intent
+alone does not establish that the extension started. Neither is automatically
+repeated; an attempted save cannot be retried with the same ID. The displayed
+statuses are `waiting_for_planning_exit`, `ready_for_save_review`,
+`save_refused_before_publication` and `save_started_inspect_journal`. If its
+outcome is unavailable, inspect the Session journal and stored state. The ID is
+bound to this Session. If an enclosing ceiling prevents saving, keep its journal;
+a fresh ordinary Session can review the text as a new assertion, but does not
+transfer the old decision or its provenance.
+This development-source path
+has not yet been qualified for installed or independent human use.
 
 ## Refine a request before submitting it
 

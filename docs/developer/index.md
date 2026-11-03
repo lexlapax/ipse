@@ -75,7 +75,7 @@ they must not acquire a host dependency merely to share a small predicate.
 | Resolve/preview settings, extend provider specs and native wire/auth contracts, diagnose setup and bound requests | [Configuration](configuration.md) |
 | Trace shared inference admission, unknown work and native operator reconciliation | [Registered services](configuration.md#trace-registered-service-admission-and-reconciliation) |
 | Snapshot instructions/skills and compact active context | [Workspace and context](workspace-context.md) |
-| Preserve accepted request provenance and withdraw abandoned draft intent | [Draft projections](workspace-context.md#withdraw-draft-intent-before-ordinary-work) |
+| Trace planning ceilings, deferred decisions and draft provenance | [Planning and draft projections](workspace-context.md#withdraw-draft-intent-before-ordinary-work) |
 | Change journals, recovery, protected identity, or saved-result capacity | [Persistence](persistence.md) |
 | Restore canonical usage and reserve shared budget liability | [Accounting](accounting.md) |
 | Admit advisory effects, validate native subsets and account for advice | [Typed decisions](decisions.md) |

@@ -174,6 +174,14 @@ defmodule Ipse.Session.OperatorAssertion do
     _ -> @error
   end
 
+  def valid_event?(%{"planning_decision" => decision} = event, session) do
+    Ipse.Session.PlanningDecisions.valid_accepted?(decision, session) and
+      event["text"] === decision["text"] and event["category"] === "ordinary" and
+      valid_event?(Map.delete(event, "planning_decision"), session)
+  rescue
+    _ -> false
+  end
+
   def valid_event?(event, session) do
     with true <- keys?(event, @event) and event["type"] == "operator_assertion",
          true <- event["session_id"] == session,

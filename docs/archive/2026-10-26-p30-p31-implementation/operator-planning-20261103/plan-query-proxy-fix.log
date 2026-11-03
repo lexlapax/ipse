@@ -1,0 +1,8 @@
+Running ExUnit with seed: 176250, max_cases: 4
+Excluding tags: [:test, :native_sandbox, :macos_sandbox, :macos_filesystem, :memory_scope, :controlled_tty_bridge, :controlled_tty_loss]
+Including tags: [planning_decision_scenario: "plan_query_failure"]
+
+.
+Finished in 1.4 seconds (0.00s async, 1.4s sync)
+
+Result: 1 passed, 10 excluded

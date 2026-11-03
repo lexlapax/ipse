@@ -1,0 +1,6 @@
+Documentation check of refreshed P31I overlays
+Base: git archive c37e14520764ee7df256074b76a1d7d1e8b79024
+Sanitized mirror: /tmp/ipse-p31-doc-mirror.DPAf0W5p
+All 13 overlay files were copied from /tmp/ipse-p31i-c37.pq2HFHyS and verified against overlay.sha256. The mirror includes the committed archive and a temporary Git index created with git init and git add -N -f ., solely so the checker enumerates mirror files. It contains no untracked private .serenity directories from the main workspace.
+Command, from the mirror: ERL_FLAGS='+S 1:1 +A 1' elixir dev/check-docs.exs
+Result: Checked 1084 Markdown files, 8913 local links and manual/archive rules; 0 errors. Exit 0, 1.6 seconds tool wall time. No Mix, application startup, native helper, socket, or PTY was used.

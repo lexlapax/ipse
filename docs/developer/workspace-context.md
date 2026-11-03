@@ -182,7 +182,34 @@ its entry observation does not create local exit provenance.
 `Session.info` exposes the effective active and enclosing ceilings so the
 terminal describes the actual resumed policy. `Permissions.new` cannot activate
 an edit grant under that ceiling. An inherited or unrecorded planning ceiling
-does not by itself authorize exit, and deferred-decision publication remains unimplemented.
+does not by itself authorize exit.
+
+For an operator-authored decision, `/plan decide TEXT` consumes the witnessed
+command and renders a separate `accept CODE` review. `PlanningDecisions` records
+the exact accepted text, both native observations and the local planning-entry
+digest. The receipt is not admitted to `SourceWindow`, so it is not by itself a
+saveable source or a collection mutation. Plain `/plan exit` marks the matching
+local entry exited without publication. `/plan decisions` reports the retained
+IDs; chronological replay checks the entry, observation uniqueness and exit.
+
+After exit, `/plan save ID` begins the existing native assertion review for that
+same text and ordinary category. The Session checks its current permission and
+source-window binding again when the review is confirmed. It records a one-shot
+save-start intent before admitting an `operator_assertion` event that includes
+the original planning acceptance. The derived source proof hashes the full
+assertion event. Existing protected capture verifies that source and consent
+before publication. Replay requires the earlier accepted
+receipt and save intent, refuses duplicates and never starts another capture for
+an interrupted attempt. A confirmed refusal before worker start is recorded
+separately from an uncertain attempted save; neither automatically retries.
+For an unresolved assertion, replay treats any later extension invocation as a
+conservative fence against recording an unstarted refusal; it does not attribute
+that invocation to the decision. A save-start status proves the intent was
+recorded, not that a worker started.
+Cancelling the second review before the save intent leaves the decision available
+for another explicit review. The resulting record is an operator-authored literal,
+not an accepted-proposal/link record. Acceptance of assistant suggestions during
+planning is not implemented.
 After a resumed pending draft is cancelled or consumed, `PlanningMCP` replay
 returns from the temporary draft mode to the persisted startup mode; completion
 alone does not exit the draft. Check both an ordinary continuation and one that
@@ -261,7 +288,12 @@ mix test test/ipse/session/draft_vertical_test.exs test/ipse/session/draft_proje
 mix test test/ipse/session/draft_response_limits_test.exs
 mix test test/ipse/session/draft_acceptance_test.exs test/ipse/session/draft_native_test.exs
 mix test test/ipse/session/draft_lineage_test.exs test/ipse/mcp/catalog_session_test.exs
+mix test test/ipse/session/planning_decisions_test.exs test/ipse/session/planning_decision_native_test.exs --max-cases 1
 ```
+
+After the required build, the planning-decision tests exercise replay and
+one-shot status plus synthetic PTY save, refusal and resume boundaries. They do
+not establish installed or independent-human use.
 
 Check zero file effects under existing grants, stale acceptance, exact original
 command bytes, question provenance, canary absence after cancellation, changed

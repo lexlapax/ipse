@@ -36,6 +36,7 @@ are refused as busy; they are not queued for later execution.
 | Install from source and prepare Linux native policy | [Arch Linux setup](arch-linux.md) |
 | Preview, save or replace a private first-run provider choice | [Guided setup](configuration.md#choose-and-save-a-provider) |
 | Work interactively or run once, approve effects, inspect/revoke session permissions, delegate, resume | [Use a workspace](usage.md) |
+| Enter planning, review a deferred decision and save it after exit | [Plan before acting](usage.md#plan-before-acting) |
 | Draft, edit and explicitly submit a clearer request in the current conversation | [Refine a request](usage.md#refine-a-request-before-submitting-it) |
 | Select profiles, use Gemini or Grok, pin an OpenRouter upstream, connect a local compatible server and resolve policy | [Configuration](configuration.md) |
 | Inspect an installed Ollama model's digest and reported loaded context | [Local model inspection](configuration.md#inspect-an-installed-ollama-model) |

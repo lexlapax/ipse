@@ -157,6 +157,9 @@ defmodule Ipse.CLI.Terminal do
   /supersede NOTE_KEY TEXT             Review a new current statement and retained history
   /plan                                Enter planning mode from an idle native terminal
   /plan exit                           Exit a locally entered planning mode
+  /plan decide TEXT                    Review an operator-authored decision for later saving
+  /plan decisions                      Inspect retained planning decisions in this Session
+  /plan save ID                        Review and save one accepted decision after planning
   /enhance show|replace [TEXT]|replace multi|accept [ID]|cancel  Review and manage the draft
   Invoke skills with $name.
   EOF finishes accepted work; errors and /cancel clear queued input.
@@ -205,6 +208,36 @@ defmodule Ipse.CLI.Terminal do
                 puts(
                   :stderr,
                   "Statement review refused. Use a fresh session with the reviewed native knowledge permission."
+                )
+
+                client_loop(s)
+            end
+
+          match?({:ok, _}, Ipse.Session.PlanningDecisions.parse(text)) and
+            not s.busy and s.draft_action == nil ->
+            case Ipse.Session.prepare_planning_decision(s.pid, s.input_channel, text, ticket) do
+              {:ok, %{"render_id" => id}} ->
+                client_loop(%{s | planning_decision_render: id})
+
+              _ ->
+                puts(
+                  :stderr,
+                  "Decision review refused; enter locally selected planning mode first."
+                )
+
+                client_loop(s)
+            end
+
+          match?({:ok, _}, Ipse.Session.PlanningDecisions.parse_save(text)) and
+            not s.busy and s.draft_action == nil ->
+            case Ipse.Session.prepare_planning_save(s.pid, s.input_channel, text, ticket) do
+              {:ok, %{"render_id" => id}} ->
+                client_loop(%{s | assertion_accept_render: id})
+
+              _ ->
+                puts(
+                  :stderr,
+                  "Decision save refused; inspect the retained decision and current knowledge permission."
                 )
 
                 client_loop(s)
@@ -397,6 +430,11 @@ defmodule Ipse.CLI.Terminal do
         puts("Statement review cancelled.")
         client_loop(%{s | assertion_accept_render: nil, native_relation: false})
 
+      {:input, "/cancel"} when s.planning_decision_render != nil and not s.busy ->
+        Ipse.Session.cancel(s.pid)
+        puts("Planning decision review cancelled.")
+        client_loop(%{s | planning_decision_render: nil})
+
       {:input, "/cancel"} when s.draft_action != nil and not s.busy ->
         case s.draft_action do
           {:lines, _, _, lines} ->
@@ -473,6 +511,10 @@ defmodule Ipse.CLI.Terminal do
 
       {:input, "/plan exit"} ->
         puts(:stderr, "Planning exit requires an idle native terminal.")
+        client_loop(s)
+
+      {:input, "/plan decisions"} when not s.busy ->
+        puts(Jason.encode!(Ipse.Session.planning_decisions(s.pid), pretty: true))
         client_loop(s)
 
       {:input, "/enhance"} when s.input_mode == :native and not s.busy ->
@@ -1079,6 +1121,12 @@ defmodule Ipse.CLI.Terminal do
   defp reader_request(%{assertion_accept_render: render, busy: false} = s) when is_binary(render),
     do: {s, {:assertion, render}, %{"kind" => "assertion", "render_id" => render}}
 
+  defp reader_request(%{planning_decision_render: render, busy: false} = s)
+       when is_binary(render),
+       do:
+         {s, {:planning_decision, render},
+          %{"kind" => "planning_decision", "render_id" => render}}
+
   defp reader_request(%{question: {id, arguments, [item | _]}} = s) do
     item_id = item["id"]
 
@@ -1161,7 +1209,10 @@ defmodule Ipse.CLI.Terminal do
                             Ipse.Session.OperatorAssertion.parse_intake(text)
                           ) and
                             s.draft_action == nil) or
-                         (text in ["/plan", "/plan exit"] and s.draft_action == nil)))) ->
+                         ((text in ["/plan", "/plan exit"] or
+                             match?({:ok, _}, Ipse.Session.PlanningDecisions.parse(text)) or
+                             match?({:ok, _}, Ipse.Session.PlanningDecisions.parse_save(text))) and
+                            s.draft_action == nil)))) ->
         Ipse.Session.discard_input(s.pid, s.input_channel, witness)
         next = %{s | reader_key: nil}
         next = if request["kind"] == "question", do: %{next | native_render: nil}, else: next
@@ -1202,6 +1253,28 @@ defmodule Ipse.CLI.Terminal do
 
             client_loop(%{s | native_render: nil})
         end
+
+      request["kind"] == "planning_decision" ->
+        result =
+          Ipse.Session.accept_planning_decision(
+            s.pid,
+            s.input_channel,
+            request["render_id"],
+            text,
+            witness
+          )
+
+        case result do
+          {:ok, id} ->
+            puts(
+              "Planning decision #{id} retained in this Session; nothing was saved to knowledge."
+            )
+
+          _ ->
+            puts(:stderr, "Planning decision was not accepted.")
+        end
+
+        client_loop(%{s | reader_key: nil, planning_decision_render: nil})
 
       request["kind"] == "assertion" ->
         result =
@@ -1398,6 +1471,7 @@ defmodule Ipse.CLI.Terminal do
         draft_action: nil,
         draft_accept_render: nil,
         assertion_accept_render: nil,
+        planning_decision_render: nil,
         native_relation: false,
         busy: prompt != nil,
         cancelling: false,

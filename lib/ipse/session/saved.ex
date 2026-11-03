@@ -15,6 +15,7 @@ defmodule Ipse.Session.Saved do
          :ok <- Ipse.Session.Input.validate_events(events, id),
          :ok <- Ipse.Session.OperatorAssertion.validate_events(events, id),
          :ok <- Ipse.Session.PlanningTransition.validate_events(events, id),
+         {:ok, planning_decisions} <- Ipse.Session.PlanningDecisions.restore(events, id),
          :ok <- Ipse.Session.OperatorAnswer.validate_events(events, id),
          {:ok, pending_acceptance_unknown} <-
            Ipse.Session.PendingAcceptance.unknown_effects(events, id),
@@ -77,6 +78,7 @@ defmodule Ipse.Session.Saved do
          question: question,
          question_recovery: question_recovery,
          pending_acceptance_unknown: pending_acceptance_unknown,
+         planning_decisions: planning_decisions,
          worker_input_unknown: extension_state.worker_input_unknown,
          historical_model: safe_historical_model(events, draft, visible_messages),
          last_request_id: request_field(events, "request_id"),

@@ -120,6 +120,18 @@ defmodule Ipse.Session do
     do: GenServer.call(pid, {:accept_assertion_observed, channel, render_id, text, witness})
 
   @doc false
+  def prepare_planning_decision(pid, channel, command, ticket),
+    do: GenServer.call(pid, {:prepare_planning_decision, channel, command, ticket})
+
+  @doc false
+  def accept_planning_decision(pid, channel, render_id, text, witness),
+    do: GenServer.call(pid, {:accept_planning_decision, channel, render_id, text, witness})
+
+  @doc false
+  def prepare_planning_save(pid, channel, command, ticket),
+    do: GenServer.call(pid, {:prepare_planning_save, channel, command, ticket})
+
+  @doc false
   def replace_draft(pid, id, revision, text),
     do: GenServer.call(pid, {:replace_draft, id, revision, text})
 
@@ -589,6 +601,8 @@ defmodule Ipse.Session do
 
   def refresh_context(pid), do: GenServer.call(pid, :refresh_context)
   def info(pid), do: GenServer.call(pid, :info)
+  @doc false
+  def planning_decisions(pid), do: GenServer.call(pid, :planning_decisions)
 
   defp input_binding(s),
     do: %{session_id: s.id, cwd: s.cwd, generation: s.input_generation}
@@ -627,6 +641,17 @@ defmodule Ipse.Session do
     case s.assertion_render do
       %{render: %{"id" => ^id, "display" => display}} -> {:ok, display, "assertion", id}
       _ -> :error
+    end
+  end
+
+  defp operator_request(s, %{"kind" => "planning_decision", "render_id" => id} = request)
+       when map_size(request) == 2 do
+    case s.planning_decision_render do
+      %{render: %{"id" => ^id, "display" => display}} ->
+        {:ok, display, "planning_decision", id}
+
+      _ ->
+        :error
     end
   end
 
@@ -807,6 +832,9 @@ defmodule Ipse.Session do
         operator_render: nil,
         draft_render: nil,
         assertion_render: nil,
+        planning_decision_render: nil,
+        planning_decisions: saved.planning_decisions,
+        planning_save_active: nil,
         managed_supersession: nil,
         operator_answers: %{},
         operator_pieces: [],
@@ -2561,6 +2589,25 @@ defmodule Ipse.Session do
     end
   end
 
+  def handle_call(:planning_decisions, _from, s) do
+    decisions =
+      s.planning_decisions
+      |> Enum.map(fn {id, decision} ->
+        status =
+          cond do
+            decision.refused -> "save_refused_before_publication"
+            decision.attempted -> "save_started_inspect_journal"
+            decision.exited -> "ready_for_save_review"
+            true -> "waiting_for_planning_exit"
+          end
+
+        %{"id" => id, "text" => decision.receipt["text"], "status" => status}
+      end)
+      |> Enum.sort_by(& &1["id"])
+
+    {:reply, decisions, s}
+  end
+
   def handle_call(:info, _from, s) do
     {:ok, execution_mode} = Ipse.Extension.Mode.capture(s.config)
 
@@ -3649,6 +3696,7 @@ defmodule Ipse.Session do
            operator_render: nil,
            draft_render: nil,
            assertion_render: nil,
+           planning_decision_render: nil,
            operator_answers: %{},
            operator_pieces: []
        }}
@@ -3716,6 +3764,142 @@ defmodule Ipse.Session do
     do: {:reply, {:error, :invalid_input_witness}, s}
 
   def handle_call(
+        {:prepare_planning_decision, channel, command, ticket},
+        {client, _},
+        %{phase: :idle, operator_channel: %{id: channel, client: client}} = s
+      ) do
+    with true <- planning_entry_quiet?(s) and is_map(s.planning_entry),
+         true <- map_size(s.planning_decisions) < 16,
+         {:ok, mode} <- Ipse.Extension.Mode.capture(s.config),
+         true <- mode["ceiling"] == "planning",
+         {:ok, text} <- Ipse.Session.PlanningDecisions.parse(command),
+         {:ok, observation} <-
+           Ipse.Session.Input.submit(ticket, command, operator_binding(s, "prompt", nil)),
+         true <- Ipse.Session.Input.valid_observation?(observation, command, 2),
+         {:ok, render} <-
+           Ipse.Session.PlanningDecisions.render(s.id, channel, s.planning_entry, text),
+         false <- Map.has_key?(s.planning_decisions, render["id"]) do
+      pending = %{
+        render: render,
+        command: command,
+        command_observation: observation,
+        input_generation: s.input_generation
+      }
+
+      {:reply, {:ok, %{"render_id" => render["id"]}}, %{s | planning_decision_render: pending}}
+    else
+      _ ->
+        Ipse.Session.Input.discard(ticket)
+        {:reply, {:error, :planning_decision_refused}, %{s | planning_decision_render: nil}}
+    end
+  end
+
+  def handle_call({:prepare_planning_decision, _, _, _}, _, s),
+    do: {:reply, {:error, :planning_decision_refused}, s}
+
+  def handle_call(
+        {:accept_planning_decision, channel, render_id, text, witness},
+        {client, _},
+        %{
+          phase: :idle,
+          operator_channel: %{id: channel, client: client},
+          planning_decision_render: %{render: %{"id" => render_id} = render} = pending
+        } = s
+      ) do
+    with true <- planning_entry_quiet?(s) and is_map(s.planning_entry),
+         true <- pending.input_generation == s.input_generation,
+         true <- render["entry_sha256"] == Ipse.JSON.digest([s.planning_entry]),
+         {:ok, mode} <- Ipse.Extension.Mode.capture(s.config),
+         true <- mode["ceiling"] == "planning",
+         {:ok, observation} <-
+           Ipse.Session.Input.consume(
+             witness,
+             text,
+             operator_binding(s, "planning_decision", render_id)
+           ),
+         {:ok, event} <-
+           Ipse.Session.PlanningDecisions.accept(
+             render,
+             pending.command,
+             pending.command_observation,
+             text,
+             observation
+           ) do
+      record(s, event)
+
+      decision = %{
+        receipt: event,
+        exited: false,
+        attempted: false,
+        asserted: false,
+        later_invocation_seen: false,
+        refused: false
+      }
+
+      {:reply, {:ok, event["id"]},
+       %{
+         s
+         | planning_decision_render: nil,
+           planning_decisions: Map.put(s.planning_decisions, event["id"], decision),
+           input_generation: Ipse.Usage.id()
+       }}
+    else
+      _ ->
+        Ipse.Session.Input.discard(witness)
+        {:reply, {:error, :planning_decision_refused}, %{s | planning_decision_render: nil}}
+    end
+  end
+
+  def handle_call({:accept_planning_decision, _, _, _, _}, _, s),
+    do: {:reply, {:error, :planning_decision_refused}, s}
+
+  def handle_call(
+        {:prepare_planning_save, channel, command, ticket},
+        {client, _},
+        %{phase: :idle, operator_channel: %{id: channel, client: client}} = s
+      ) do
+    with true <- planning_entry_quiet?(s),
+         {:ok, mode} <- Ipse.Extension.Mode.capture(s.config),
+         true <- mode["ceiling"] == "normal" and mode["enclosing_ceiling"] == "normal",
+         {:ok, id} <- Ipse.Session.PlanningDecisions.parse_save(command),
+         %{receipt: decision, exited: true, attempted: false} <- s.planning_decisions[id],
+         {:ok, scope, name} <- Ipse.Session.OperatorAssertion.selection(s.config),
+         {:ok, origin} when is_map(origin) <- Writer.source_query(s.journal_writer, :origin),
+         {:ok, window} <- Writer.source_query(s.journal_writer, :snapshot),
+         {:ok, observation} <-
+           Ipse.Session.Input.submit(ticket, command, operator_binding(s, "prompt", nil)),
+         true <- Ipse.Session.Input.valid_observation?(observation, command, 2),
+         true <- observation["display_sha256"] == Ipse.JSON.sha256("you> "),
+         {:ok, render} <-
+           Ipse.Session.OperatorAssertion.render(
+             s.id,
+             channel,
+             "ordinary",
+             decision["text"],
+             scope
+           ) do
+      pending = %{
+        render: render,
+        purpose: nil,
+        name: name,
+        source_generation: window["generation"],
+        input_generation: s.input_generation,
+        planning_decision: decision,
+        planning_save_observation: observation
+      }
+
+      {:reply, {:ok, %{"render_id" => render["id"]}}, %{s | assertion_render: pending}}
+    else
+      _ ->
+        Ipse.Session.Input.discard(ticket)
+        {:reply, {:error, :planning_save_refused}, %{s | assertion_render: nil}}
+    end
+  end
+
+  def handle_call({:prepare_planning_save, _, _, _}, _, s),
+    do: {:reply, {:error, :planning_save_refused}, s}
+
+  def handle_call(
         {:prepare_assertion, channel, text, ticket},
         {client, _},
         %{phase: :idle, operator_channel: %{id: channel, client: client}} = s
@@ -3766,7 +3950,8 @@ defmodule Ipse.Session do
          {:ok, observation} <-
            Ipse.Session.Input.consume(witness, text, operator_binding(s, "assertion", render_id)),
          {:ok, event} <- Ipse.Session.OperatorAssertion.receipt(render, text, observation),
-         :ok <- Writer.ensure_source_window(s.journal_writer) do
+         :ok <- Writer.ensure_source_window(s.journal_writer),
+         {:ok, s, event} <- link_planning_assertion(s, pending, event) do
       record(s, event)
       s = %{s | assertion_render: nil, input_generation: Ipse.Usage.id()}
 
@@ -3783,11 +3968,12 @@ defmodule Ipse.Session do
           with {:ok, s} <- prepare_supersession_intake(s, pending, event, source) do
             invoke_assertion_capture(s, name, args)
           else
-            _ -> {:reply, {:error, :operator_assertion_refused}, s}
+            _ ->
+              {:reply, {:error, :operator_assertion_refused}, planning_save_refused_unstarted(s)}
           end
 
         _ ->
-          {:reply, {:error, :operator_assertion_refused}, s}
+          {:reply, {:error, :operator_assertion_refused}, planning_save_refused_unstarted(s)}
       end
     else
       _ ->
@@ -3877,6 +4063,12 @@ defmodule Ipse.Session do
          | config: apply_execution_mode(s.config, next_mode),
            planning_mcp_epoch_id: epoch_id,
            planning_entry: nil,
+           planning_decisions:
+             Map.new(s.planning_decisions, fn {id, decision} ->
+               if decision.receipt["entry_sha256"] == event["entry_sha256"],
+                 do: {id, %{decision | exited: true}},
+                 else: {id, decision}
+             end),
            input_generation: Ipse.Usage.id(),
            operator_channel: %{s.operator_channel | generation: Ipse.Usage.id()}
        }}
@@ -4548,7 +4740,8 @@ defmodule Ipse.Session do
   def handle_call(:cancel, _from, %{draft: %{status: status}} = s)
       when status in [:pending, :completed, :accepted], do: cancel_draft_work(s)
 
-  def handle_call(:cancel, _from, s), do: cancel_work(%{s | assertion_render: nil}, false)
+  def handle_call(:cancel, _from, s),
+    do: cancel_work(%{s | assertion_render: nil, planning_decision_render: nil}, false)
 
   def handle_call(:close, _from, %{lock_mode: mode} = s)
       when mode in [:export_v1, :header_v1, :resume_v1, :header_share_v2, :resume_share_v2] do
@@ -4813,6 +5006,7 @@ defmodule Ipse.Session do
     s = %{
       s
       | operator_render: nil,
+        planning_save_active: nil,
         operator_answers: %{},
         operator_pieces: [],
         managed_result_seal: nil,
@@ -5173,7 +5367,11 @@ defmodule Ipse.Session do
         case CurrentInvocation.command_outer(s, request, result) do
           {:noreply, %{task: nil} = next} ->
             if s.managed_supersession != nil, do: notify(s, :native_relation_ready)
+            next = planning_save_refused_unstarted(next)
             {:noreply, %{next | managed_supersession: release_supersession_reservation(next)}}
+
+          {:noreply, next} ->
+            {:noreply, %{next | planning_save_active: nil}}
 
           other ->
             other
@@ -5427,6 +5625,8 @@ defmodule Ipse.Session do
        | operator_channel: nil,
          draft_render: nil,
          operator_render: nil,
+         assertion_render: nil,
+         planning_decision_render: nil,
          operator_answers: %{},
          operator_pieces: []
      }}
@@ -6525,6 +6725,46 @@ defmodule Ipse.Session do
     end
   end
 
+  defp link_planning_assertion(s, %{planning_decision: receipt} = pending, event) do
+    id = receipt["id"]
+
+    with %{receipt: ^receipt, exited: true, attempted: false} = decision <-
+           s.planning_decisions[id],
+         true <- Ipse.Session.PlanningDecisions.valid_accepted?(receipt, s.id),
+         true <- event["text"] === receipt["text"] and event["category"] == "ordinary",
+         true <- is_map(pending.planning_save_observation) do
+      started =
+        Ipse.Session.PlanningDecisions.save_started(
+          s.id,
+          receipt,
+          pending.planning_save_observation
+        )
+
+      record(s, started)
+      linked = Map.put(event, "planning_decision", receipt)
+      decisions = Map.put(s.planning_decisions, id, %{decision | attempted: true, asserted: true})
+      {:ok, %{s | planning_decisions: decisions, planning_save_active: id}, linked}
+    else
+      _ -> {:error, :planning_save_refused}
+    end
+  end
+
+  defp link_planning_assertion(s, _, event), do: {:ok, s, event}
+
+  defp planning_save_refused_unstarted(%{planning_save_active: id} = s) when is_binary(id) do
+    case s.planning_decisions[id] do
+      %{receipt: receipt, attempted: true, asserted: true, refused: false} = decision ->
+        record(s, Ipse.Session.PlanningDecisions.refused_unstarted(s.id, receipt))
+        decisions = Map.put(s.planning_decisions, id, %{decision | refused: true})
+        %{s | planning_decisions: decisions, planning_save_active: nil}
+
+      _ ->
+        %{s | planning_save_active: nil}
+    end
+  end
+
+  defp planning_save_refused_unstarted(s), do: s
+
   defp invoke_assertion_capture(s, name, args) do
     case CurrentInvocation.invoke_export(s, :command, name, args) do
       {:reply, :ok, started} = result ->
@@ -6534,6 +6774,8 @@ defmodule Ipse.Session do
         result
 
       {:reply, error, refused} ->
+        refused = planning_save_refused_unstarted(refused)
+
         {:reply, error,
          %{refused | managed_supersession: release_supersession_reservation(refused)}}
     end

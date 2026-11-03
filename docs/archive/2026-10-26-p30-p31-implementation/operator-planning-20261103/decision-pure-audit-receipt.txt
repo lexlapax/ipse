@@ -1,0 +1,7 @@
+Working directory: /tmp/ipse-p31i-c37.pq2HFHyS
+Base commit: c37e14520764ee7df256074b76a1d7d1e8b79024; refreshed overlays in overlay.sha256
+Command:
+IPSE_HOME=/tmp/ipse-p31i-c37.pq2HFHyS/test-home ERL_FLAGS='+S 1:1 +A 1' elixir -e ':code.add_paths(Path.wildcard("/home/lexlapax/projects/lexlapax/ipse/_build/test/lib/*/ebin") |> Enum.map(&String.to_charlist/1)); for path <- ~w(lib/ipse/json.ex lib/ipse/usage.ex lib/ipse/extension/mode.ex lib/ipse/session/input.ex lib/ipse/session/planning_transition.ex lib/ipse/session/draft_acceptance.ex lib/ipse/session/planning_decisions.ex), do: Code.require_file(path); ExUnit.start(autorun: false, seed: 176245); Code.require_file("test/ipse/session/planning_decisions_test.exs"); if ExUnit.run().failures != 0, do: System.halt(1)'
+Result: ExUnit seed 176245, 4 passed, 0 failures, exit 0; 1.3 s tool wall time. Snapshot source file read times included 2026-11-02 23:45:42 Pacific; these are not exact process start/end logs.
+The source modules were loaded from the snapshot; existing compiled test dependencies were read from the main worktree. Expected module-redefinition warnings appeared. No Mix, application startup, native helper, socket, or PTY was used. This verifies pure replay, not Session or native behavior.
+The original five changed overlay files and previous manifest/receipt are retained at /tmp/ipse-p31i-preaudit.HRJ0IcVh.

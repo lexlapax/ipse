@@ -41,8 +41,10 @@ fn main() {
     if reject_injected { args.remove(0); }
     let guard_backpressure = args.first().is_some_and(|a| a == "--guard-backpressure");
     if guard_backpressure { args.remove(0); }
-    let assertion = args.first().is_some_and(|a| a == "--assertion");
-    if assertion { args.remove(0); }
+    let planning_decision = args.first().is_some_and(|a| a == "--planning-decision");
+    if planning_decision { args.remove(0); }
+    let assertion = planning_decision || args.first().is_some_and(|a| a == "--assertion");
+    if assertion && !planning_decision { args.remove(0); }
     let channel = args.first().is_some_and(|a| a == "--channel");
     if channel { args.remove(0); }
     let guarded_review = args.first().is_some_and(|a| a == "--review-guarded");
@@ -230,6 +232,63 @@ fn main() {
         if assertion {
             let text = String::from_utf8_lossy(&output);
             let root = std::path::Path::new(&args[args.len() - 2]);
+            if planning_decision {
+                let scenario = args.last().unwrap().to_string_lossy();
+                if let Some((_, tail)) = text.split_once("IPSE_PLAN_DECISION_READY") {
+                    if tail.contains("you> ") && !answered.iter().any(|s| s == "plan-enter") {
+                        master.write_all(b"/plan\n").unwrap();
+                        answered.push("plan-enter".to_owned());
+                    }
+                    if let Some((_, after_entry)) = tail.split_once("Planning mode entered.") {
+                        if after_entry.contains("you> ") && !answered.iter().any(|s| s == "plan-propose") {
+                            master.write_all(b"/plan decide Use a synthetic local fixture.\n").unwrap();
+                            answered.push("plan-propose".to_owned());
+                        }
+                    }
+                    if let Some((_, after_prefix)) = tail.rsplit_once("Type accept ") {
+                        if let Some(code) = after_prefix.get(..32) {
+                            if code.bytes().all(|b| b.is_ascii_hexdigit()) && after_prefix[32..].contains("accept> ") && !answered.iter().any(|s| s == "plan-accept") {
+                                let input = if scenario == "plan_cancel" { "n".to_owned() }
+                                    else if scenario == "plan_stale" { format!("accept {}", if code == "00000000000000000000000000000000" { "11111111111111111111111111111111" } else { "00000000000000000000000000000000" }) }
+                                    else { format!("accept {code}") };
+                                master.write_all(format!("{input}\n").as_bytes()).unwrap();
+                                answered.push("plan-accept".to_owned());
+                            }
+                        }
+                    }
+                    let notice = if scenario == "plan_cancel" || scenario == "plan_stale" { "Planning decision was not accepted." } else { "retained in this Session; nothing was saved to knowledge." };
+                    if let Some((_, after_accept)) = tail.split_once(notice) {
+                        if after_accept.contains("you> ") && !answered.iter().any(|s| s == "plan-exit") {
+                            master.write_all(b"/plan exit\n").unwrap();
+                            answered.push("plan-exit".to_owned());
+                        }
+                    }
+                    if let Some((_, after_exit)) = tail.split_once("Local planning mode exited.") {
+                        if after_exit.contains("you> ") && !answered.iter().any(|s| s == "plan-next") {
+                            std::fs::write(root.join("plan-decision-exited"), b"ready").unwrap();
+                            if !root.join("plan-decision-proceed").is_file() { continue; }
+                            if scenario == "plan_exit" || scenario == "plan_cancel" || scenario == "plan_stale" {
+                                master.write_all(b"/exit\n").unwrap();
+                            } else if let Some((_, after_id)) = tail.split_once("Planning decision ") {
+                                let id = after_id.get(..32).unwrap();
+                                assert!(id.bytes().all(|b| b.is_ascii_hexdigit()));
+                                master.write_all(format!("/plan save {id}\n").as_bytes()).unwrap();
+                            } else { continue; }
+                            answered.push("plan-next".to_owned());
+                        }
+                    }
+                    if answered.iter().any(|s| s == "plan-next") && !answered.iter().any(|s| s == "plan-finish") && scenario != "plan_exit" && scenario != "plan_cancel" && scenario != "plan_stale" {
+                        let finished = tail.rfind("Finished.").or_else(|| tail.rfind("Finished with an error.")).or_else(|| tail.rfind("Decision save refused;")).or_else(|| tail.rfind("Statement review or note publication admission was refused;"));
+                        if let Some(pos) = finished {
+                            let prompt_ready = tail[pos..].contains("you> ") || text.get(assertion_sent_at..).is_some_and(|after_reply| after_reply.contains("you> "));
+                            if prompt_ready {
+                                master.write_all(b"/exit\n").unwrap();
+                                answered.push("plan-finish".to_owned());
+                            }
+                        }
+                    }
+                }
+            }
             if args.last().is_some_and(|value| value == "terminal" || value == "terminal_cancel" || value == "terminal_unknown" || value == "terminal_effect_unknown" || value == "terminal_deadline") {
                 let ready = "IPSE_SUPERSESSION_TERMINAL_READY";
                 if let Some(start) = text.find(ready) {
@@ -299,6 +358,11 @@ fn main() {
                 if !code.bytes().all(|b| b.is_ascii_hexdigit()) || !tail[32..].starts_with(" to confirm.") || !tail[32..].contains("remember> ") { continue; }
                 let reply = format!("remember {code}");
                 if !answered.contains(&reply) {
+                    if scenario == "plan_intake_failure" {
+                        let root = std::path::Path::new(&args[args.len() - 2]);
+                        std::fs::write(root.join("plan-intake-review-ready"), b"ready").unwrap();
+                        if !root.join("plan-intake-interposed").is_file() { continue; }
+                    }
                     if scenario == "revoked" {
                         let root = std::path::Path::new(&args[args.len() - 2]);
                         std::fs::write(root.join("assertion-review-ready"), b"ready").unwrap();
@@ -306,6 +370,8 @@ fn main() {
                     }
                     let line = match scenario.as_ref() {
                         "cancel" => "yes".to_owned(),
+                        "plan_save_cancel" => "n".to_owned(),
+                        "plan_save_stale" => format!("remember {}", if code == "00000000000000000000000000000000" { "11111111111111111111111111111111" } else { "00000000000000000000000000000000" }),
                         "stale" => format!("remember {}", if code == "00000000000000000000000000000000" { "11111111111111111111111111111111" } else { "00000000000000000000000000000000" }),
                         _ => reply.clone(),
                     };
