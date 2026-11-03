@@ -14,6 +14,8 @@ A later synthetic follow-up starts a second Session turn with an explicit reques
 
 The model-positive and fabricated-quotation cases passed together (two tests, seed 791874). The final combined run with the direct-client and adjacent headless argv/stdin controls passed five tests, with eight excluded, at seed 791875. The changed-file formatting check passed. This explicit second-turn request does not establish automatic same-reply capture, a displayed chat decision card, in-chat acceptance, human review, real-model usefulness, full-source or installed qualification.
 
+The model-selected fixture also checks that its subscriber tool-result preview contains the actual pending key and `pending` within the terminal's first-800-character rendering limit. The model, public-review, missing-source and resume controls passed together (five tests, 11 excluded, seed 791894). This checks the emitted preview and terminal limit, not a native rendered-card acknowledgment.
+
 ## Standalone review of the model-selected proposal
 
 The follow-up fixture now closes the original Session, then launches the public `knowledge review` in a separate process with the review-specific synthetic PTY. It checks the committed management journal, removal of the pending row, the accepted decision and immutable link, and exact preservation of the assistant reply's original source proof. This joins the model-selected second-turn capture to the existing standalone review path; it still does not test in-chat acceptance or a human operator.

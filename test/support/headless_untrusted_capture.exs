@@ -382,6 +382,10 @@ if scenario in ~w(assistant assistant_model assistant_model_review assistant_mod
     assert get_in(publication, ["outcome", "value", "normalization", "eligibility"]) ==
              "never_current"
 
+    assert_receive {:ipse, ^session, {:tool_result, "ext__knowledge__capture", preview}}, 1000
+    visible = String.slice(preview, 0, 800)
+    assert visible =~ record["key"] and visible =~ "pending"
+
     assert Enum.all?(1..6, fn number ->
              receive do
                {:fixture_request, ^number} -> true
