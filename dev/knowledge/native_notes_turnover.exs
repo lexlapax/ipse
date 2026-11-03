@@ -24,7 +24,7 @@ defmodule Ipse.Development.NativeNotesTurnover do
   end
 
   def main(["--init", root, audit_path, maximum_arg]) do
-    Process.flag(:max_heap_size, %{size: 16_000_000, kill: true, error_logger: true})
+    Process.flag(:max_heap_size, %{size: 64_000_000, kill: true, error_logger: true})
     maximum = String.to_integer(maximum_arg)
     assert maximum in 1..8
 
@@ -224,7 +224,7 @@ defmodule Ipse.Development.NativeNotesTurnover do
   end
 
   def main(["--run", root, count_arg]) do
-    Process.flag(:max_heap_size, %{size: 16_000_000, kill: true, error_logger: true})
+    Process.flag(:max_heap_size, %{size: 64_000_000, kill: true, error_logger: true})
     m = manifest(root)
     dir = Path.join(root, "turnover")
 

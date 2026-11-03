@@ -998,6 +998,9 @@ anchor on separate small stores. A [calendar-runner smoke](archive/2026-10-26-p3
 adds frozen-source validation, UTC-aligned windows, native renewal and refusal
 controls. Neither executes main turns or qualifies the annual calendar; active
 effect loss, concurrent restart and power loss remain unverified.
+The [first large-seed calendar day](archive/2026-10-26-p30-p31-implementation/native-calendar-first-day-20261102.md)
+closed and independently checked 57 effects; the other 364 days and main-model
+turns remain open.
 
 P31D1 now has optional [cooperative model checks around registered Ollama jobs](archive/2026-10-26-p30-p31-implementation/ollama-model-pin-jobs-20261031.md).
 Named operator text/embedding profiles bind expected metadata and minimum loaded
