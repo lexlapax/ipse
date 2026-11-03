@@ -85,9 +85,13 @@ copies the existing precompiled ExUnit library and compiles the synthetic PTY
 before launch. Runtime PATH has utilities and the package's own ERTS tools,
 including its bundled `erlc`, without system Elixir/Mix/Rust/Cargo. It checks actual
 CLI setup, ordinary action approvals, Saved/close/resume, disable, four refusal
-cases, exact bundled code origin and unchanged extracted files. Private fixture
-logs and a structured report stay under the new output directory. Run terminal
-suites sequentially within a bounded job; synthetic input proves no human use.
+cases, exact bundled code origin and unchanged extracted files. Both document
+profiles also refuse missing-original evidence before and after an idle Session
+reopen, then return the original citation when the same file is restored. The
+reopen adds no extension invocation or action intent, or model request admission;
+the numbered acquisition is not repeated. Private fixture logs and a structured
+report stay under the new output directory. Run terminal suites sequentially
+within a bounded job; synthetic input proves no human use.
 
 ## Follow protected capture from a Session source
 

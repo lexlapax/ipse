@@ -309,6 +309,8 @@ else
   numbered = DocumentSetupJourney.numbered_document()
   numbered_path = Path.join(cwd, "numbered.docx")
   File.write!(numbered_path, numbered)
+  identity = fn stat -> Map.take(stat, [:major_device, :minor_device, :inode, :uid, :size]) end
+  original_identity = identity.(File.stat!(numbered_path))
 
   numbered_source = %{
     "store" => "notes",
@@ -389,7 +391,46 @@ else
   assert Enum.any?(changed["gaps"], &(&1["code"] == "document_source_changed_or_unavailable"))
   File.write!(numbered_path, numbered)
 
+  # Retain the same original inode while the saved document becomes unavailable.
+  held_path = Path.join(cwd, "numbered-held.docx")
+  refute File.exists?(held_path)
+  assert identity.(File.stat!(numbered_path)) == original_identity
+  assert File.read!(numbered_path) == numbered
+  assert :ok = File.rename(numbered_path, held_path)
+  refute File.exists?(numbered_path)
+  assert identity.(File.stat!(held_path)) == original_identity
+  assert File.read!(held_path) == numbered
+
+  unavailable = fn session ->
+    missing = find_numbered.(session)
+    assert missing["status"] == "refused", inspect(missing)
+    assert missing["evidence"] == []
+    assert missing["claims"] == []
+    assert Enum.any?(missing["gaps"], &(&1["code"] == "document_source_changed_or_unavailable"))
+  end
+
+  unavailable.(resumed)
   :ok = Ipse.Session.close_confirmed(resumed)
+  {:ok, before_reopen} = Ipse.Journal.load(session_opts[:state_dir], session_id)
+
+  # Reopening alone must not run a saved acquisition or any other new action.
+  effect_intents = fn events ->
+    Enum.filter(
+      events,
+      &(&1["type"] in ~w(extension_invocation_intent extension_action_intent request_admitted))
+    )
+  end
+
+  acquisitions = fn events ->
+    Enum.filter(events, fn event ->
+      event["type"] == "extension_invocation_intent" and
+        get_in(event, ["payload", "arguments", "action"]) == "read_document" and
+        get_in(event, ["payload", "arguments", "args", "source_id"]) == "workspace:numbered"
+    end)
+  end
+
+  before_acquisitions = acquisitions.(before_reopen)
+  assert length(before_acquisitions) == 1
 
   {:ok, resumed_numbered} =
     DynamicSupervisor.start_child(
@@ -397,7 +438,21 @@ else
       {Ipse.Session, Keyword.put(session_opts, :id, session_id)}
     )
 
-  assert find_numbered.(resumed_numbered)["evidence"] == numbered_result["evidence"]
+  assert Ipse.Session.info(resumed_numbered).phase == :idle
+  {:ok, after_reopen} = Ipse.Journal.load(session_opts[:state_dir], session_id)
+  assert effect_intents.(after_reopen) == effect_intents.(before_reopen)
+  unavailable.(resumed_numbered)
+
+  # Return the exact held original, then require the full prior citation.
+  assert :ok = File.rename(held_path, numbered_path)
+  assert identity.(File.stat!(numbered_path)) == original_identity
+  assert File.read!(numbered_path) == numbered
+  recovered = find_numbered.(resumed_numbered)
+  assert recovered["status"] == numbered_result["status"]
+  assert recovered["evidence"] == numbered_result["evidence"]
+  {:ok, after_recovery} = Ipse.Journal.load(session_opts[:state_dir], session_id)
+  assert acquisitions.(after_recovery) == before_acquisitions
+  refute Enum.any?(after_recovery, &(&1["type"] == "request_admitted"))
   :ok = Ipse.Session.close_confirmed(resumed_numbered)
 
   # Inspect the same imported package after the live Session journey has closed.

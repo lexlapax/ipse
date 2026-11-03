@@ -1163,7 +1163,10 @@ both State and Collection. A [40-block packed-numbering fixture](archive/2026-10
 also passes those paths in both profiles, with a separate pure forged-label
 control. The [default PDF-enabled Linux package](archive/2026-10-26-p30-p31-implementation/default-pdf-package-20261103.md)
 also passes synthetic installed document and packed Word setup controls in both
-profiles. Broader document capacity, independent Word and PDF quality, other
+profiles. A [subsequent installed recovery control](archive/2026-10-26-p30-p31-implementation/word-disappearance-installed-20261103.md)
+checks missing-original refusal across Session reopen and the same citation after
+restoring the original file in both profiles, without acquisition replay.
+Broader document capacity, independent Word and PDF quality, other
 platforms and the broader P31F requirements remain open.
 
 The [operator-authored planning-decision increment](archive/2026-10-26-p30-p31-implementation/operator-planning-20261103/index.md)
