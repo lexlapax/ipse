@@ -289,6 +289,44 @@ defmodule Ipse.Extension.DecisionSessionTest do
   defp done(pid), do: assert_receive({:ipse, ^pid, {:done, _}}, 10_000)
   defp events(ctx, pid), do: elem(Journal.load(ctx.dir, Session.info(pid).id), 1)
 
+  defp experimental_artifact(ctx) do
+    path = Path.join(ctx.root, "experimental-artifact")
+    File.cp_r!(ctx.artifact, path)
+    sidecar = Jason.encode!(%{"domain" => "knowledge", "preset" => "decision-shadow"})
+    File.write!(Path.join(path, "operator.json"), sidecar)
+    manifest_path = Path.join(path, "extension.json")
+    manifest = Jason.decode!(File.read!(manifest_path))
+
+    manifest =
+      manifest
+      |> Map.put("id", "ipse-knowledge/knowledge")
+      |> Map.update!("files", fn files ->
+        files ++
+          [
+            %{
+              "path" => "operator.json",
+              "bytes" => byte_size(sidecar),
+              "sha256" => Ipse.JSON.sha256(sidecar)
+            }
+          ]
+      end)
+
+    File.write!(manifest_path, Jason.encode!(manifest))
+    %{ctx | artifact: path}
+  end
+
+  test "a digest-marked experiment with no reviewed claim sends no decision request", ctx do
+    {base, tag} = http()
+    ctx = experimental_artifact(ctx)
+    pid = start(ctx, config(ctx, base))
+    invoke(pid)
+    assert_receive {:ipse, ^pid, {:approval, ref, "extension:decision.create", _}}, 5_000
+    assert :ok = Session.approve(pid, ref, true)
+    done(pid)
+    refute_receive {:decision_http, ^tag, _, _, _}, 100
+    refute Enum.any?(events(ctx, pid), &(&1["type"] == "extension_decision_response"))
+  end
+
   defp http do
     {:ok, listener} = :gen_tcp.listen(0, [:binary, active: false, ip: {127, 0, 0, 1}])
     {:ok, {_, port}} = :inet.sockname(listener)

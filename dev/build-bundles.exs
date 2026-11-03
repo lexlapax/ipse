@@ -9,7 +9,8 @@ try do
     for {id, package, preset} <- [
           {"corpus-collection-documents", "corpus", "collection-documents"},
           {"corpus-state-documents", "corpus", "state-documents"},
-          {"knowledge", "knowledge", "native"}
+          {"knowledge", "knowledge", "native"},
+          {"knowledge-decision-shadow", "knowledge", "decision-shadow"}
         ] do
       output = Path.join(staging, id)
 

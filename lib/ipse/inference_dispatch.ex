@@ -400,11 +400,18 @@ defmodule Ipse.InferenceDispatch do
       managed?(context) ->
         wire = context.wire
 
+        deadline = System.monotonic_time(:millisecond) + timeout
+
+        deadline =
+          if context[:experiment_deadline],
+            do: min(deadline, context.experiment_deadline),
+            else: deadline
+
         expected = %{
           kind: wire["kind"],
           target_sha256: wire["target_sha256"],
           body_sha256: wire["body_sha256"],
-          deadline_ms: System.monotonic_time(:millisecond) + timeout,
+          deadline_ms: deadline,
           upstream: context.owner
         }
 

@@ -63,7 +63,11 @@ try do
 
   sidecars =
     if package == "knowledge" do
-      operator = apply(IpseKnowledge.Knowledge.Contracts, :operator, [])
+      operator =
+        IpseKnowledge.Knowledge.Contracts
+        |> apply(:operator, [])
+        |> Map.put("preset", preset)
+
       bytes = IO.iodata_to_binary(JSON.encode!(operator))
       true = byte_size(bytes) <= 65_536
       File.write!(Path.join(temporary, "operator.json"), bytes)

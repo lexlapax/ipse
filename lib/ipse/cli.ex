@@ -169,6 +169,20 @@ defmodule Ipse.CLI do
   defp dispatch(["knowledge", command], opts),
     do: Ipse.CLI.Knowledge.run(command, opts, home(), opts[:cwd] || default_cwd())
 
+  defp dispatch(["knowledge", "experiment", profile, calls], opts),
+    do: dispatch(["knowledge", "experiment", profile, calls, "1800"], opts)
+
+  defp dispatch(["knowledge", "experiment", profile, calls, seconds], opts),
+    do:
+      Ipse.CLI.Knowledge.run_experiment(
+        profile,
+        calls,
+        seconds,
+        opts,
+        home(),
+        opts[:cwd] || default_cwd()
+      )
+
   defp dispatch(["knowledge", "review", first, second | rest], opts),
     do:
       Ipse.CLI.Knowledge.run_batch(

@@ -3,6 +3,7 @@ defmodule IpseKnowledge.Knowledge do
   alias IpseKnowledge.Profiles
   alias IpseKnowledge.Knowledge.Records
   alias IpseKnowledge.Knowledge.Contracts
+  alias IpseKnowledge.Knowledge.DecisionPolicy
   @preset "native"
   @recall_candidates 32
   # Each live metadata page and successful read contributes a host dependency;
@@ -42,24 +43,35 @@ defmodule IpseKnowledge.Knowledge do
         "version" => 1,
         "services" => [],
         "commands" => [capture],
-        "tools" => [
-          capture,
-          entry(
-            "index",
-            "Page the current note metadata index; metadata is unverified until read, and coverage is explicit",
-            object(%{"cursor" => nullable_string(2048)})
-          ),
-          entry(
-            "read",
-            "Read one current eligible note by its exact note key, with source receipts",
-            object(%{"key" => string(96)})
-          ),
-          entry(
-            "search",
-            "Search at most 32 current note candidates without another model; follow explicit metadata pages for larger sets",
-            object(%{"query" => string(256), "cursor" => nullable_string(2048)})
-          )
-        ],
+        "tools" =>
+          [
+            capture,
+            entry(
+              "index",
+              "Page the current note metadata index; metadata is unverified until read, and coverage is explicit",
+              object(%{"cursor" => nullable_string(2048)})
+            ),
+            entry(
+              "read",
+              "Read one current eligible note by its exact note key, with source receipts",
+              object(%{"key" => string(96)})
+            ),
+            entry(
+              "search",
+              "Search at most 32 current note candidates without another model; follow explicit metadata pages for larger sets",
+              object(%{"query" => string(256), "cursor" => nullable_string(2048)})
+            )
+          ] ++
+            if(@preset == "decision-shadow",
+              do: [
+                entry(
+                  "assess",
+                  "Request shadow advice on one previously saved, currently eligible note",
+                  object(%{"key" => string(96)})
+                )
+              ],
+              else: []
+            ),
         "jobs" => [
           entry(
             "recall",
@@ -182,6 +194,18 @@ defmodule IpseKnowledge.Knowledge do
       else: refused(state, :invalid_note_key)
   end
 
+  defp invoke(%{"id" => "assess", "arguments" => %{"key" => key} = args}, state)
+       when @preset == "decision-shadow" and map_size(args) == 1 do
+    if is_binary(key) and Regex.match?(~r/\Anote\.[0-9a-f]{64}\z/, key),
+      do:
+        collection(%{"op" => "get", "key" => key}, %{
+          state
+          | phase: :assess_read,
+            ctx: %{key: key}
+        }),
+      else: refused(state, :invalid_note_key)
+  end
+
   defp invoke(
          %{"id" => "search", "arguments" => %{"query" => query, "cursor" => cursor} = args},
          state
@@ -247,6 +271,40 @@ defmodule IpseKnowledge.Knowledge do
 
   defp advance(:recall_index_only, value, state), do: finish(state, value)
   defp advance(:recall_read_only, value, state), do: finish(state, value)
+
+  defp advance(:assess_read, %{"record" => %{"key" => key, "value" => note}}, state)
+       when key == state.ctx.key do
+    if IpseKnowledge.Notes.valid?(note) and key == "note." <> note["id"] do
+      facts = %{
+        "version" => 1,
+        "availability" => "available",
+        "budget_available" => true,
+        "candidates" => [
+          %{"id" => "candidate", "input" => IO.iodata_to_binary(JSON.encode!(note))}
+        ],
+        "alternatives" => ~w(keep_baseline defer_candidate)
+      }
+
+      policy =
+        DecisionPolicy.default("notes.assess")
+        |> Map.merge(%{"strategy" => "decision", "profile" => "advice"})
+
+      case DecisionPolicy.plan(policy, facts, :development_experiment) do
+        {:ok, %{request: request}} when is_map(request) ->
+          call(request, %{state | phase: :assess_decision})
+
+        _ ->
+          refused(state, :assessment_unavailable)
+      end
+    else
+      refused(state, :assessment_unavailable)
+    end
+  end
+
+  defp advance(:assess_read, _, state), do: refused(state, :assessment_unavailable)
+
+  defp advance(:assess_decision, _, state),
+    do: finish(state, %{"status" => "assessed", "key" => state.ctx.key})
 
   defp advance(:recall_index, value, %{ctx: %{mode: :seed}} = state),
     do: recall_seed_index(value, state)
@@ -423,14 +481,14 @@ defmodule IpseKnowledge.Knowledge do
     end
   end
 
-  defp advance(:commit, value, state),
-    do:
-      finish(state, %{
-        "status" => "saved",
-        "key" => state.ctx.key,
-        "category" => state.ctx.value["category"] || "pending",
-        "receipt" => value
-      })
+  defp advance(:commit, value, state) do
+    finish(state, %{
+      "status" => "saved",
+      "key" => state.ctx.key,
+      "category" => state.ctx.value["category"] || "pending",
+      "receipt" => value
+    })
+  end
 
   defp advance(_, _, state), do: refused(state, :invalid_host_response)
 

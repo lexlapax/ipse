@@ -932,6 +932,11 @@ The [2026-10-31 local follow-up](archive/2026-10-26-p30-p31-implementation/curre
 has current typed/Session regressions and protected shadow controls over eight
 native-reviewed notes from two original Sessions. It does not qualify a
 production consumer or replace the separate whole-source baseline.
+The [prior-Session shadow assessment](archive/2026-10-26-p30-p31-implementation/decision-shadow-prior-session-20261102.md)
+adds an explicitly reviewed, finite numeric-loopback experiment and passes
+synthetic bundled approval, denial, expiry and revoked-grant controls. The
+same-Session post-write case still refuses; held-out experiments, quality and
+final integrated qualification remain open.
 The later [exact Linux package proof](archive/2026-10-26-p30-p31-implementation/package-idle-resume-20261031.md#passing-final-package)
 passes generic installed checks and the independent synthetic decision/document
 artifacts; full-source, consumer-quality and installed knowledge qualification
@@ -1070,8 +1075,9 @@ original 32-note worker and an attempted larger candidate limit. A later pure
 projection found that its original 33 texts exceeded the context envelope. An
 [isolated paged-recall candidate](archive/2026-10-26-p30-p31-implementation/recall-paging-20261102.md)
 passed a shorter 33-fitting-note fixture, a missing-original case and a
-reappearance case using a 15-second synthetic provider timeout. The final combined
-source, arbitrary sparse coverage and final-use absence revalidation remain open.
+reappearance case using a 15-second synthetic provider timeout. Those controls
+also pass on the later combined P30 candidate. Arbitrary sparse coverage,
+final-use absence revalidation and full-source qualification remain open.
 [Bounded replay computation](archive/2026-10-26-p30-p31-implementation/recall-replay-capacity-20261102.md)
 reduces repeated pure encoding and hashing without caching source authority.
 An exploratory [batched-read prototype](archive/2026-10-26-p30-p31-implementation/recall-batched-read-20261102.md)

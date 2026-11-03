@@ -1000,47 +1000,57 @@ defmodule Ipse.Extension.Inference do
           result
         end
 
-        if is_nil(dispatch) do
-          Ipse.Usage.Budget.run(config, admission, emit, fn selected, guarded ->
-            execute.(selected, guarded, nil)
-          end)
-        else
-          gate = fn facts ->
-            nonce = make_ref()
-            send(coordinator, {tag, :dispatch_gate, self(), nonce, dispatch, facts})
+        prepared =
+          if kind == :decision do
+            case Ipse.Extension.DecisionExperiment.classify(context) do
+              {:ok, :ordinary} ->
+                {:ok, nil, dispatch}
 
-            receive do
-              {^tag, ^nonce, result} -> result
-            after
-              5_000 -> {:error, :inference_dispatch_refused}
+              {:ok, :experiment} ->
+                case Ipse.Extension.DecisionExperiment.reserve(context, intent, config, dispatch) do
+                  {:ok, claim} ->
+                    selected =
+                      Map.merge(dispatch, %{
+                        experiment_ticket: claim.ticket,
+                        experiment_issued_at: claim.issued_at,
+                        experiment_expires_at: claim.expires_at,
+                        experiment_deadline: claim.deadline
+                      })
+
+                    {:ok, claim, selected}
+
+                  error ->
+                    error
+                end
+
+              error ->
+                error
             end
+          else
+            {:ok, nil, dispatch}
           end
 
-          result =
-            Ipse.InferenceDispatch.run(
-              dispatch.config,
-              config,
-              intent["request"]["op"],
-              intent["request"]["profile"],
-              dispatch,
-              emit,
-              gate,
-              execute
-            )
-
-          case result do
-            {:ok, value, raw} ->
-              send(
+        case prepared do
+          {:ok, claim, selected_dispatch} ->
+            result =
+              run_selected(
+                context,
+                intent,
+                config,
+                admission,
+                selected_dispatch,
+                emit,
+                execute,
                 coordinator,
-                {tag, :response,
-                 %{value: value, usage: Ipse.Usage.observation(admission, raw, 1)["usage"]}}
+                tag
               )
 
-            _ ->
-              :ok
-          end
+            if is_nil(claim) or Ipse.Extension.DecisionExperiment.settle(claim, result) == :ok,
+              do: result,
+              else: {:error, :decision_experiment_settlement_unconfirmed}
 
-          result
+          _ ->
+            {:error, :decision_experiment_refused}
         end
       end)
 
@@ -1059,6 +1069,61 @@ defmodule Ipse.Extension.Inference do
     after
       Process.demonitor(monitor, [:flush])
       Task.shutdown(task, :brutal_kill)
+    end
+  end
+
+  defp run_selected(
+         _context,
+         intent,
+         config,
+         admission,
+         dispatch,
+         emit,
+         execute,
+         coordinator,
+         tag
+       ) do
+    if is_nil(dispatch) do
+      Ipse.Usage.Budget.run(config, admission, emit, fn selected, guarded ->
+        execute.(selected, guarded, nil)
+      end)
+    else
+      gate = fn facts ->
+        nonce = make_ref()
+        send(coordinator, {tag, :dispatch_gate, self(), nonce, dispatch, facts})
+
+        receive do
+          {^tag, ^nonce, result} -> result
+        after
+          5_000 -> {:error, :inference_dispatch_refused}
+        end
+      end
+
+      result =
+        Ipse.InferenceDispatch.run(
+          dispatch.config,
+          config,
+          intent["request"]["op"],
+          intent["request"]["profile"],
+          dispatch,
+          emit,
+          gate,
+          execute
+        )
+
+      case result do
+        {:ok, value, raw} ->
+          send(
+            coordinator,
+            {tag, :response,
+             %{value: value, usage: Ipse.Usage.observation(admission, raw, 1)["usage"]}}
+          )
+
+        _ ->
+          :ok
+      end
+
+      result
     end
   end
 

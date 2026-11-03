@@ -161,11 +161,35 @@ defmodule Ipse.Extension.SemanticConsent do
 
   def policy?(policy) do
     Consent.valid_policy?(policy) and settings?(policy["settings"]) and
+      experiment_policy?(policy) and
       namespace(policy["project"], policy["settings"]["storage"]["collection"]) ===
         {:ok, policy["settings"]["namespace"]} and
       policy["source_sha256"] == JSON.digest([policy["settings"]["sources"]]) and
       policy["operations"] == operations(policy["settings"]["effects"]) and
       activation_matches?(policy)
+  rescue
+    _ -> false
+  end
+
+  # An experiment allocation never renews at the ledger's period boundary.
+  # Ordinary semantic policies retain their existing shape and behavior.
+  defp experiment_policy?(%{"settings" => settings} = policy) do
+    case settings["experiment"] do
+      nil ->
+        true
+
+      %{"version" => 1, "issued_at_ms" => issued} = experiment ->
+        keys?(experiment, ~w(version issued_at_ms)) and JSON.safe_uint?(issued) and
+          issued < policy["expires_at_ms"] and
+          div(issued, policy["period_ms"]) ==
+            div(policy["expires_at_ms"] - 1, policy["period_ms"]) and
+          policy["limits"]["model_calls"] > 0 and
+          Enum.any?(settings["routes"], &(&1["operation"] == "decision.create")) and
+          Enum.any?(settings["effects"], &(&1["class"] == "decision.create"))
+
+      _ ->
+        false
+    end
   rescue
     _ -> false
   end
@@ -244,13 +268,20 @@ defmodule Ipse.Extension.SemanticConsent do
       keys?(selection, ["version" | @selection ++ @v2]) and selection["version"] === 2 ->
         {:ok, 2, @settings ++ @v2}
 
+      keys?(selection, ["version", "experiment" | @selection ++ @v2]) and
+          selection["version"] === 2 ->
+        {:ok, 2, @settings ++ @v2 ++ ["experiment"]}
+
       true ->
         @error
     end
   end
 
   defp settings_shape?(%{"version" => 1} = settings), do: keys?(settings, @settings)
-  defp settings_shape?(%{"version" => 2} = settings), do: keys?(settings, @settings ++ @v2)
+
+  defp settings_shape?(%{"version" => 2} = settings),
+    do: keys?(settings, @settings ++ @v2) or keys?(settings, @settings ++ @v2 ++ ["experiment"])
+
   defp settings_shape?(_), do: false
 
   defp settings_mappings?(%{"version" => 1} = settings), do: mappings?(settings["effects"])

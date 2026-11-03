@@ -180,6 +180,8 @@ defmodule Ipse.Extension.ManagedCollectionCallSessionTest do
           call(%{"op" => "collection.call", "request" => %{"op" => "snapshot"}}, Map.put(state, "step", "nested_mcp"))
         state["mode"] == "nested_native" ->
           call(%{"op" => "collection.call", "request" => %{"op" => "snapshot"}}, Map.put(state, "step", "nested_native"))
+        state["mode"] == "nested_shell" ->
+          call(%{"op" => "collection.call", "request" => %{"op" => "snapshot"}}, Map.put(state, "step", "nested_shell"))
         state["mode"] in ["nested_document", "nested_document_hold"] ->
           call(%{"op" => "collection.call", "request" => %{"op" => "snapshot"}}, Map.put(state, "step", "nested_document"))
         true ->
@@ -349,6 +351,9 @@ defmodule Ipse.Extension.ManagedCollectionCallSessionTest do
       end
       defp advance("nested_native", _, state) do
         call(%{"op" => "tool.call", "name" => "write", "arguments" => %{"path" => "nested-native.txt", "content" => "SYNTHETIC_NESTED_NATIVE"}, "timeout_ms" => 5000}, Map.put(state, "step", "done"))
+      end
+      defp advance("nested_shell", _, state) do
+        call(%{"op" => "tool.call", "name" => "shell", "arguments" => %{"command" => "touch nested-shell.txt", "timeout_ms" => 2000}, "timeout_ms" => 5000}, Map.put(state, "step", "done"))
       end
       defp advance("nested_document", _, state) do
         if state["mode"] == "nested_document_hold" do
@@ -678,12 +683,41 @@ defmodule Ipse.Extension.ManagedCollectionCallSessionTest do
       File.rm(trace <> ".candidate-release")
     end
 
+    artifact_source =
+      if c[:experiment_decision] do
+        path = Path.join(root, "experimental-artifact")
+        File.cp_r!(c.artifact, path)
+        sidecar = Jason.encode!(%{"domain" => "knowledge", "preset" => "decision-shadow"})
+        File.write!(Path.join(path, "operator.json"), sidecar)
+        manifest_path = Path.join(path, "extension.json")
+        manifest = Jason.decode!(File.read!(manifest_path))
+
+        manifest =
+          manifest
+          |> Map.put("id", "ipse-knowledge/knowledge")
+          |> Map.update!("files", fn files ->
+            files ++
+              [
+                %{
+                  "path" => "operator.json",
+                  "bytes" => byte_size(sidecar),
+                  "sha256" => JSON.sha256(sidecar)
+                }
+              ]
+          end)
+
+        File.write!(manifest_path, Jason.encode!(manifest))
+        path
+      else
+        c.artifact
+      end
+
     {:ok, artifact} =
       Artifact.import(
         cond do
           c[:managed_host_service] -> c.service_artifact
           c[:nested_document] -> c.document_artifact
-          true -> c.artifact
+          true -> artifact_source
         end,
         Path.join(home, "extensions/artifacts")
       )
@@ -1361,6 +1395,30 @@ defmodule Ipse.Extension.ManagedCollectionCallSessionTest do
         else
           selection
         end
+      end
+
+    selection =
+      if c[:experiment_decision] || c[:mixed_outer] do
+        now = System.system_time(:millisecond)
+
+        decisions =
+          for descriptor <- descriptors,
+              descriptor["id"] == if(c[:mixed_outer], do: "inspect", else: "capture") do
+            %{
+              "operation" => "notes.assess",
+              "class" => "decision.create",
+              "outer_sha256" => JSON.digest([descriptor]),
+              "inner_op" => "decision.create"
+            }
+          end
+
+        selection
+        |> Map.put("experiment", %{"version" => 1, "issued_at_ms" => now})
+        |> Map.update!("effects", &(&1 ++ decisions))
+        |> put_in(["limits", "model_calls"], 2)
+        |> Map.put("expires_at_ms", min(now + 600_000, (div(now, 86_400_000) + 1) * 86_400_000))
+      else
+        selection
       end
 
     selection = Map.update!(selection, "effects", &sort_mappings/1)
@@ -3522,6 +3580,23 @@ defmodule Ipse.Extension.ManagedCollectionCallSessionTest do
     end
   end
 
+  @tag registered_main: true,
+       managed_helper: true,
+       managed_decision: true,
+       experiment_decision: true
+  test "an imported artifact cannot impersonate the inventoried shadow bundle", c do
+    [entry] = c.config.extensions
+
+    context = %{
+      identity: entry.identity,
+      config: c.config,
+      parent: %{"semantic_binding" => %{"class" => "decision.create"}}
+    }
+
+    assert {:error, :decision_experiment_refused} =
+             Ipse.Extension.DecisionExperiment.classify(context)
+  end
+
   defp native_inference_approval(c, kind, boundary) do
     {operation, profile} =
       case kind do
@@ -3592,6 +3667,24 @@ defmodule Ipse.Extension.ManagedCollectionCallSessionTest do
           events,
           &(&1["type"] == "extension_action_result" and get_in(&1, ["request", "op"]) == operation)
         )
+
+      if c[:experiment_decision] do
+        {:ok, control} =
+          Consent.existing_snapshot(
+            SemanticAdmission.control_root(c.home),
+            c.binding["project_id"]
+          )
+
+        reservation = control["operations"][action["operation_id"]]
+
+        if boundary == :current do
+          assert reservation["status"] == "settled"
+          assert reservation["actual"]["model_calls"] == 1
+          assert reservation["artifact_sha256"] == control["policy"]["artifact_sha256"]
+        else
+          assert is_nil(reservation)
+        end
+      end
 
       inputs = Enum.filter(events, &(&1["type"] == "worker_input_intent"))
       assert [read_input, result_input] = inputs
@@ -4881,6 +4974,69 @@ defmodule Ipse.Extension.ManagedCollectionCallSessionTest do
 
     assert Ipse.Extension.validate(%{"payload" => String.duplicate("x", 8193)}) ==
              {:error, :invalid_extension_value}
+  end
+
+  for {mode, operation} <- [
+        {"nested_native", "tool.call"},
+        {"nested_shell", "tool.call"},
+        {"nested_mcp", "mcp.call"},
+        {"helper", "model.complete"},
+        {"embedding_helper", "embedding.create"}
+      ] do
+    @tag registered_main: true,
+         managed_helper: true,
+         managed_embedding: true,
+         managed_decision: true,
+         mixed_outer: true,
+         metadata_version: 3
+    test "reviewed decision owner refuses and cannot replay #{mode}", c do
+      pid = start(c, %{approval: :allow, approval_origin: :yes, headless: true})
+      id = Session.info(pid).id
+
+      assert :ok =
+               Session.invoke_export(pid, :command, "ext__capture__inspect", %{
+                 "mode" => unquote(mode)
+               })
+
+      assert_receive {:ipse, ^pid, {:done, _}}, 15_000
+      assert {:ok, events} = Journal.load(c.dir, id)
+      outer = Enum.find(events, &(&1["type"] == "extension_invocation_intent"))
+      assert outer["semantic_binding"]["class"] == "decision.create"
+
+      attempted =
+        Enum.find(events, fn event ->
+          event["type"] == "extension_action_intent" and
+            get_in(event, ["request", "op"]) == unquote(operation)
+        end)
+
+      if attempted do
+        assert attempted["approval"] == "denied"
+
+        refute Ipse.Extension.Actions.valid_intent?(
+                 Map.put(attempted, "approval", "approved"),
+                 outer,
+                 c.cwd
+               )
+
+        forged =
+          Enum.map(events, fn event ->
+            if event["operation_id"] == attempted["operation_id"] and
+                 event["type"] in ~w(extension_action_intent extension_action_result),
+               do: Map.put(event, "approval", "approved"),
+               else: event
+          end)
+
+        assert {:error, _} = Session.Saved.restore(forged, id)
+      else
+        assert unquote(operation) == "mcp.call"
+      end
+
+      refute File.exists?(Path.join(c.cwd, "nested-native.txt"))
+      refute File.exists?(Path.join(c.cwd, "nested-shell.txt"))
+      refute File.exists?(Path.join(c.cwd, "nested-mcp.txt"))
+      assert {:ok, _} = Session.Saved.restore(events, id)
+      assert :ok = Session.close_confirmed(pid)
+    end
   end
 
   @tag read_only_export: true, metadata_version: 3
@@ -6256,7 +6412,7 @@ defmodule Ipse.Extension.ManagedCollectionCallSessionTest do
         boundary == :owner_loss ->
           "save_managed_approval_owner_loss"
 
-        kind in ~w(nested_mcp nested_native helper_model helper_decision helper_embedding) and
+        kind in ~w(nested_mcp nested_native helper_model helper_decision helper_decision_experiment helper_embedding) and
             boundary in [:deny, :stale_token, :cancel] ->
           "save_managed_approval_" <> to_string(boundary)
 

@@ -456,6 +456,41 @@ validation and a saved acceptance alone do not authorize that input. The
 [input contract](session-sources.md#deliver-a-managed-export-input-under-its-original-owners)
 defines its owner, deadline and uncertainty checks.
 
+### Trace a finite shadow assessment
+
+The separately built `knowledge/decision-shadow` preset adds an `assess` tool;
+the ordinary `knowledge/native` preset continues to make no secondary decision
+calls. Follow the operator's [local assessment](../operator/knowledge-permissions.md#try-a-local-shadow-assessment)
+from the reviewed project policy to a fresh Session. `CLI.Knowledge` binds the
+inventoried bundle digest, numeric loopback route, exact `advice` profile, finite
+call count and expiry to the review. The policy replaces the prior project grant;
+it cannot acquire extra authority from worker-supplied labels.
+
+`SemanticAdmission` recognizes the decision outer only for the reviewed
+protected-read and decision mappings. `Actions` enforces the same restriction
+during live execution and replay: this owner can read a protected collection and
+request `decision.create`, but cannot write the collection, use shell or MCP, or
+invoke unrelated mutations. `ManagedRead` binds the selected literal note to its current
+source and policy. A separate native approval precedes the project Consent ledger
+reservation; the exact shipped shadow digest, route and source union are checked
+again before send. Successful work settles one call; an uncertain effect retains
+its liability. An admitted send can finish after expiry, while result release
+checks the reviewed deadline again. None of this establishes a monetary cap or
+qualifies a hosted engine.
+
+Run the focused synthetic controls when changing this boundary:
+
+```sh
+mix test test/ipse/extension/decision_outer_test.exs test/extensions/knowledge/shadow_experiment_session_test.exs
+```
+
+The shipped-bundle Session fixtures cover a prior-Session protected read,
+approval, settlement, denial, revocation and expiry interpositions. They use
+loopback fixtures, not a real account or a quality assessment. Same-Session
+assessment immediately after a write remains unsupported: historical root
+observations can make the subsequent protected preflight refuse. Do not remove
+those dependencies or automatically retry the failed effect.
+
 ### Verify the complete boundary
 
 The builder includes inert `operator.json` in the artifact's hashed inventory.

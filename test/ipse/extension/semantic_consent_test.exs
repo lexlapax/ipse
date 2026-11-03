@@ -135,6 +135,201 @@ defmodule Ipse.Extension.SemanticConsentTest do
     refute Map.has_key?(request, "class")
   end
 
+  test "an experiment's finite decision pool cannot cross its accounting reset", c do
+    [main] = c.selection["routes"]
+
+    decision_route = %{
+      main
+      | "operation" => "decision.create",
+        "profile" => "advice",
+        "provider" => "system_one_compatible",
+        "endpoint" => "http://127.0.0.1:11434/v1/decide",
+        "billing_mode" => "local"
+    }
+
+    mapping = %{
+      "operation" => "notes.assess",
+      "class" => "decision.create",
+      "outer_sha256" => hash("outer"),
+      "inner_op" => "decision.create"
+    }
+
+    selection =
+      c.selection
+      |> Map.merge(%{
+        "version" => 2,
+        "constraints" => %{},
+        "recipes" => %{},
+        "activation" => nil,
+        "experiment" => %{"version" => 1, "issued_at_ms" => @now},
+        "routes" => [decision_route, main],
+        "effects" => [mapping],
+        "limits" => vector(operations: 2, model_calls: 2),
+        "period_ms" => 1_000,
+        "expires_at_ms" => @now + 1_000
+      })
+
+    assert {:ok, policy} = SemanticConsent.prepare(c.binding, c.identity, selection)
+    refute SemanticConsent.policy?(%{policy | "expires_at_ms" => @now + 1_001})
+
+    refute SemanticConsent.policy?(
+             put_in(policy, ["settings", "experiment", "issued_at_ms"], @now - 1)
+           )
+
+    parent = Path.join(System.tmp_dir!(), "ipse-experiment-consent-" <> Ipse.Usage.id())
+    File.mkdir!(parent)
+    File.chmod!(parent, 0o700)
+    on_exit(fn -> File.rm_rf!(parent) end)
+    root = Path.join(parent, "control")
+    project = c.binding["project_id"]
+    assert {:ok, _} = Consent.replace(root, project, 0, policy, @now)
+
+    request = %{
+      "id" => Ipse.Usage.id(),
+      "operation" => mapping["operation"],
+      "artifact_sha256" => policy["artifact_sha256"],
+      "source_sha256" => policy["source_sha256"],
+      "policy_sha256" => JSON.digest([policy]),
+      "request_sha256" => hash("session-and-request"),
+      "source_generation" => 3,
+      "reserved" => vector(operations: 1, model_calls: 1),
+      "headless" => false
+    }
+
+    assert {:error, _} = Consent.reserve_experiment(root, project, request, @now - 1)
+    assert {:ok, ticket} = Consent.reserve_experiment(root, project, request, @now)
+    assert {:error, _} = Consent.with_experiment_ticket(root, project, ticket, @now, &{:ok, &1})
+    assert {:ok, ^ticket} = Consent.admit(root, project, ticket, @now)
+
+    assert {:ok, %{"policy" => ^policy}} =
+             Consent.with_experiment_ticket(root, project, ticket, @now, &{:ok, &1})
+
+    second = %{request | "id" => Ipse.Usage.id(), "request_sha256" => hash("other-session")}
+    assert {:ok, second_ticket} = Consent.reserve_experiment(root, project, second, @now)
+    assert {:ok, ^second_ticket} = Consent.admit(root, project, second_ticket, @now)
+    assert {:ok, _} = Consent.settle(root, project, second_ticket, {:known, second["reserved"]})
+    third = %{request | "id" => Ipse.Usage.id(), "request_sha256" => hash("third-session")}
+    assert {:error, _} = Consent.reserve_experiment(root, project, third, @now)
+
+    assert {:error, _} =
+             Consent.with_experiment_ticket(root, project, ticket, @now + 1_000, &{:ok, &1})
+
+    replacement = put_in(policy, ["limits", "model_calls"], 1)
+    assert {:ok, _} = Consent.replace(root, project, 1, replacement, @now)
+    assert {:error, _} = Consent.with_experiment_ticket(root, project, ticket, @now, &{:ok, &1})
+
+    assert {:ok, _} = Consent.settle(root, project, ticket, :unknown)
+    assert {:error, _} = Consent.with_experiment_ticket(root, project, ticket, @now, &{:ok, &1})
+
+    race_root = Path.join(parent, "race-control")
+    race_policy = put_in(policy, ["limits", "model_calls"], 1)
+    assert {:ok, _} = Consent.replace(race_root, project, 0, race_policy, @now)
+    barrier = Path.join(parent, "release")
+
+    code = ~S'''
+    {:ok, _} = Application.ensure_all_started(:ipse)
+    [root, project, payload, barrier, name, now] = System.argv()
+    now = String.to_integer(now)
+    request = Jason.decode!(File.read!(payload))
+    File.write!(barrier <> "." <> name, "ready")
+    wait = fn wait ->
+      unless File.exists?(barrier), do: (Process.sleep(5); wait.(wait))
+    end
+    wait.(wait)
+    result = Ipse.Extension.Consent.reserve_experiment(root, project, request, now)
+    won =
+      case result do
+        {:ok, %{"sequence" => _} = ticket} ->
+          {:ok, ^ticket} = Ipse.Extension.Consent.admit(root, project, ticket, now)
+          {:ok, _} = Ipse.Extension.Consent.settle(root, project, ticket, :unknown)
+          true
+        _ -> false
+      end
+    IO.puts(Jason.encode!(%{"won" => won}))
+    '''
+
+    paths =
+      :code.get_path()
+      |> Enum.map(&List.to_string/1)
+      |> Enum.reject(&(&1 == "."))
+      |> Enum.map(&Path.expand/1)
+      |> Enum.reverse()
+      |> Enum.flat_map(&["-pa", &1])
+
+    tasks =
+      for name <- ~w(first second) do
+        payload = Path.join(parent, name <> ".json")
+
+        attempted = %{
+          request
+          | "id" => Ipse.Usage.id(),
+            "policy_sha256" => JSON.digest([race_policy]),
+            "request_sha256" => hash(name)
+        }
+
+        File.write!(payload, Jason.encode!(attempted))
+
+        Task.async(fn ->
+          System.cmd(
+            System.find_executable("elixir"),
+            ["--erl", "+S 2:2"] ++
+              paths ++
+              [
+                "-e",
+                code,
+                "--",
+                race_root,
+                project,
+                payload,
+                barrier,
+                name,
+                Integer.to_string(@now)
+              ],
+            stderr_to_stdout: true
+          )
+        end)
+      end
+
+    wait = fn wait, remaining ->
+      unless Enum.all?(~w(first second), &File.exists?(barrier <> "." <> &1)) do
+        assert remaining > 0
+        Process.sleep(10)
+        wait.(wait, remaining - 1)
+      end
+    end
+
+    try do
+      wait.(wait, 2000)
+      File.write!(barrier, "release")
+
+      results =
+        for task <- tasks do
+          {output, status} = Task.await(task, 20_000)
+          assert status == 0, output
+          Jason.decode!(String.trim(output))
+        end
+
+      assert Enum.count(results, & &1["won"]) == 1
+      {:ok, race} = Consent.existing_snapshot(race_root, project)
+      assert [%{"status" => "unknown"}] = Map.values(race["operations"])
+
+      assert {:error, _} =
+               Consent.reserve_experiment(
+                 race_root,
+                 project,
+                 %{
+                   request
+                   | "id" => Ipse.Usage.id(),
+                     "policy_sha256" => JSON.digest([race_policy])
+                 },
+                 @now
+               )
+    after
+      File.write!(barrier, "release")
+      Enum.each(tasks, &Task.shutdown(&1, 20_000))
+    end
+  end
+
   test "reviewed publication constraints stay policy-owned and base mappings remain unique", c do
     constraints = %{
       "version" => 1,

@@ -139,6 +139,21 @@ defmodule Ipse.Extension.Consent do
 
   def with_policy(_, _, _, _, _, _), do: {:error, :consent_read_refused}
 
+  @doc "Retain the exact admitted experiment reservation while a protected send is checked."
+  def with_experiment_ticket(root, project, ticket, now, fun) when is_function(fun, 1) do
+    existing_transaction(root, project, fn state ->
+      with {:ok, reservation} <- current(state, ticket, now),
+           true <- reservation["status"] == "admitted",
+           true <- experiment_reservation?(state["policy"], reservation, now) do
+        existing_callback(fun, Map.take(state, ~w(epoch policy)))
+      else
+        _ -> {:error, :consent_read_refused}
+      end
+    end)
+  end
+
+  def with_experiment_ticket(_, _, _, _, _), do: {:error, :consent_read_refused}
+
   @doc "Save already reviewed policy with CAS. Existing reservations and liabilities survive changes."
   def replace(root, project, expected_epoch, policy, now) do
     transaction(root, project, fn s ->
@@ -183,11 +198,18 @@ defmodule Ipse.Extension.Consent do
   end
 
   @doc "Reserve before egress; duplicate IDs return inspection data and never new admission."
-  def reserve(root, project, request, now) do
+  def reserve(root, project, request, now), do: reserve(root, project, request, now, false)
+
+  @doc "Reserve one reviewed decision experiment call in the current project policy."
+  def reserve_experiment(root, project, request, now),
+    do: reserve(root, project, request, now, true)
+
+  defp reserve(root, project, request, now, experiment?) do
     transaction(root, project, fn s ->
       with true <- request?(request) and uint?(now),
            nil <- existing(s, request["id"]),
            :ok <- eligible(s, request, now),
+           true <- not experiment? or experiment_reservation?(s["policy"], request, now),
            :ok <- capacity(s),
            true <- s["sequence"] < 9_007_199_254_740_991,
            true <- fits?(s, request["reserved"], now) do
@@ -214,6 +236,18 @@ defmodule Ipse.Extension.Consent do
         _ -> {:error, :consent_reservation_refused}
       end
     end)
+  end
+
+  defp experiment_reservation?(policy, request, now) do
+    experiment = get_in(policy, ["settings", "experiment"])
+
+    Ipse.Extension.SemanticConsent.policy?(policy) and is_map(experiment) and
+      uint?(now) and now >= experiment["issued_at_ms"] and
+      div(now, policy["period_ms"]) == div(experiment["issued_at_ms"], policy["period_ms"]) and
+      request["reserved"]["operations"] === 1 and
+      request["reserved"]["model_calls"] === 1
+  rescue
+    _ -> false
   end
 
   @doc "Durably mark possible dispatch before egress. A repeated admission is refused."

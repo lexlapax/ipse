@@ -36,6 +36,17 @@ defmodule Ipse.KnowledgeProfilesTest do
     ''')
   end
 
+  test "decision shadow authority is limited to its explicit Knowledge preset" do
+    pure(~S'''
+    native=P.capabilities("knowledge","native")
+    shadow=P.capabilities("knowledge","decision-shadow")
+    refute "host.decision" in native
+    assert shadow--native==["host.decision"]
+    assert native--shadow==[]
+    assert {:ok,_}=P.validate("knowledge","decision-shadow",empty)
+    ''')
+  end
+
   test "workspace document acquisition is an explicit preset capability without widening existing presets" do
     pure(~S'''
     state_caps=P.capabilities("corpus","state-lexical")

@@ -193,6 +193,165 @@ defmodule Ipse.CLI.KnowledgeTest do
     assert {:error, _} =
              Ipse.CLI.Knowledge.prepare(config, binding, String.duplicate("0", 64), now)
 
+    assert {:error, _} =
+             Ipse.CLI.Knowledge.prepare_experiment(
+               config,
+               binding,
+               artifact.digest,
+               now,
+               "advice",
+               2
+             )
+
+    assert {:ok, shadow} = Ipse.Extension.Bundles.install("knowledge-decision-shadow", home)
+
+    local =
+      Map.merge(config, %{
+        inference_services: %{
+          "fixture" => %{"version" => 1, "origins" => ["http://127.0.0.1:12345"]}
+        },
+        decision_profiles: %{
+          "advice" => %{
+            "operation" => "decision",
+            "provider" => "system_one_compatible",
+            "model" => "fixture",
+            "service_id" => "fixture",
+            "base_url" => "http://127.0.0.1:12345"
+          }
+        }
+      })
+
+    assert {:ok, %{policy: experiment}} =
+             Ipse.CLI.Knowledge.prepare_experiment(
+               local,
+               binding,
+               shadow.digest,
+               now,
+               "advice",
+               2
+             )
+
+    assert experiment["limits"]["model_calls"] == 2
+    assert experiment["settings"]["experiment"]["issued_at_ms"] == now
+    assert experiment["expires_at_ms"] <= (div(now, 86_400_000) + 1) * 86_400_000
+
+    assess =
+      shadow.manifest["exports"]["tools"]
+      |> Enum.find(&(&1["id"] == "assess"))
+      |> Map.merge(%{
+        "instance" => "knowledge",
+        "stage" => "invoke.tool",
+        "name" => "ext__knowledge__assess"
+      })
+
+    assess_effects =
+      Enum.filter(experiment["settings"]["effects"], fn effect ->
+        effect["outer_sha256"] == Ipse.JSON.digest([assess])
+      end)
+
+    assert Enum.sort(Enum.map(assess_effects, & &1["class"])) ==
+             ~w(collection.read decision.create)
+
+    assert Enum.any?(assess_effects, &(&1["operation"] == "notes.assess"))
+    assess_hash = Ipse.JSON.digest([assess])
+
+    assert {:ok, "decision.create"} =
+             Ipse.Extension.SemanticAdmission.outer_class(experiment, assess_hash)
+
+    missing_grant = update_in(experiment, ["settings"], &Map.delete(&1, "experiment"))
+
+    assert {:ok, "collection.read"} =
+             Ipse.Extension.SemanticAdmission.outer_class(missing_grant, assess_hash)
+
+    additional_effect = %{
+      "operation" => "unexpected.model",
+      "class" => "model.complete",
+      "outer_sha256" => assess_hash,
+      "inner_op" => "model.complete"
+    }
+
+    widened = update_in(experiment, ["settings", "effects"], &[additional_effect | &1])
+
+    assert {:ok, "collection.read"} =
+             Ipse.Extension.SemanticAdmission.outer_class(widened, assess_hash)
+
+    assert {:error, _} = Ipse.CLI.Knowledge.prepare(local, binding, shadow.digest, now)
+
+    assert {:error, _} =
+             Ipse.CLI.Knowledge.prepare_experiment(local, binding, shadow.digest, now, "other", 2)
+
+    alternate = put_in(local, [:decision_profiles, "other"], local.decision_profiles["advice"])
+
+    assert {:error, _} =
+             Ipse.CLI.Knowledge.prepare_experiment(
+               alternate,
+               binding,
+               shadow.digest,
+               now,
+               "other",
+               2
+             )
+
+    localhost =
+      local
+      |> put_in([:decision_profiles, "advice", "base_url"], "http://localhost:12345")
+      |> put_in([:inference_services, "fixture", "origins"], ["http://localhost:12345"])
+
+    assert {:error, _} =
+             Ipse.CLI.Knowledge.prepare_experiment(
+               localhost,
+               binding,
+               shadow.digest,
+               now,
+               "advice",
+               2
+             )
+
+    shadow_root = Path.join([home, "extensions/artifacts", shadow.digest])
+    sidecar_path = Path.join(shadow_root, "operator.json")
+    sidecar = File.read!(sidecar_path)
+    File.chmod!(sidecar_path, 0o600)
+    File.write!(sidecar_path, String.replace(sidecar, "decision-shadow", "native"))
+
+    assert {:error, _} =
+             Ipse.CLI.Knowledge.prepare_experiment(
+               local,
+               binding,
+               shadow.digest,
+               now,
+               "advice",
+               2
+             )
+
+    File.write!(sidecar_path, sidecar)
+
+    manifest_path = Path.join(shadow_root, "extension.json")
+    manifest = File.read!(manifest_path)
+    File.chmod!(manifest_path, 0o600)
+    File.write!(manifest_path, String.replace(manifest, "capture", "changed"))
+
+    assert {:error, _} =
+             Ipse.CLI.Knowledge.prepare_experiment(
+               local,
+               binding,
+               shadow.digest,
+               now,
+               "advice",
+               2
+             )
+
+    File.write!(manifest_path, "{}")
+
+    assert {:error, _} =
+             Ipse.CLI.Knowledge.prepare_experiment(
+               local,
+               binding,
+               shadow.digest,
+               now,
+               "advice",
+               2
+             )
+
     refute File.exists?(control)
 
     installed = Path.join([home, "extensions/artifacts", artifact.digest, "operator.json"])

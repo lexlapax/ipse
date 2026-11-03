@@ -74,6 +74,57 @@ defmodule Ipse.CLI.Knowledge do
 
   def run(_, _, _, _), do: fail(:unknown_knowledge_command)
 
+  def run_experiment(profile, calls_text, seconds_text, opts, home, cwd) do
+    with true <- Enum.all?(Keyword.keys(opts), &(&1 in @options)) and opts[:json] != true,
+         {calls, ""} when calls in 1..100 <- Integer.parse(calls_text),
+         {seconds, ""} when seconds in 1..1800 <- Integer.parse(seconds_text),
+         {:ok, cwd} <- Ipse.Workspace.canonical_path(cwd),
+         {:ok, :native} <- Ipse.Runner.operator_channel(),
+         {:ok, config} <- runtime(opts, home, cwd),
+         :ok <- private_home(config.home),
+         {:ok, binding} <- admit_project(config.home, cwd),
+         {:ok, artifact} <- Bundles.install("knowledge-decision-shadow", config.home),
+         now = System.system_time(:millisecond),
+         {:ok, proposal} <-
+           prepare_experiment(config, binding, artifact.digest, now, profile, calls, seconds),
+         {:ok, before} <- current_snapshot(config.home, binding["project_id"]),
+         :ok <- confirm("experiment", experiment_review(binding, proposal.policy)),
+         {:ok, _} <-
+           ProjectIdentity.with_binding(config.home, cwd, binding, fn _ ->
+             with {:ok, current} <-
+                    refresh_configuration(config, fn -> runtime(opts, home, cwd) end),
+                  {:ok, repeated} <-
+                    prepare_experiment(
+                      current,
+                      binding,
+                      artifact.digest,
+                      now,
+                      profile,
+                      calls,
+                      seconds
+                    ),
+                  true <- repeated === proposal do
+               Consent.replace(
+                 SemanticAdmission.control_root(config.home),
+                 binding["project_id"],
+                 before["epoch"],
+                 proposal.policy,
+                 System.system_time(:millisecond)
+               )
+             else
+               _ -> @error
+             end
+           end) do
+      Terminal.puts("Saved finite shadow experiment permission. Start a new Session to use it.")
+      0
+    else
+      {:error, reason} -> fail(reason)
+      _ -> fail(:knowledge_setup_refused)
+    end
+  rescue
+    _ -> fail(:knowledge_setup_refused)
+  end
+
   def run_correction(key, text, opts, home, cwd) do
     with true <-
            Enum.all?(Keyword.keys(opts), &(&1 in (@options ++ [:state_dir]))) and
@@ -543,10 +594,33 @@ defmodule Ipse.CLI.Knowledge do
   end
 
   @doc "Build review data from actual installed bytes and configuration; grants no permission."
-  def prepare(config, binding, digest, now) do
+  def prepare(config, binding, digest, now),
+    do: prepare_selection(config, binding, digest, now, nil)
+
+  @doc "Prepare a finite local shadow experiment; this does not grant permission."
+  def prepare_experiment(config, binding, digest, now, "advice", calls)
+      when is_integer(calls) and calls in 1..100,
+      do: prepare_experiment(config, binding, digest, now, "advice", calls, 1800)
+
+  def prepare_experiment(_, _, _, _, _, _), do: @error
+
+  def prepare_experiment(config, binding, digest, now, "advice", calls, seconds)
+      when is_integer(calls) and calls in 1..100 and
+             is_integer(seconds) and seconds in 1..1800,
+      do:
+        prepare_selection(config, binding, digest, now, %{
+          profile: "advice",
+          calls: calls,
+          seconds: seconds
+        })
+
+  def prepare_experiment(_, _, _, _, _, _, _), do: @error
+
+  defp prepare_selection(config, binding, digest, now, experiment) do
     with true <- JSON.safe_uint?(now),
          {:ok, bundled} <- Bundles.inventory(),
-         true <- Enum.any?(bundled, &(&1.id == "knowledge" and &1.digest == digest)),
+         bundle_id = if(experiment, do: "knowledge-decision-shadow", else: "knowledge"),
+         true <- Enum.any?(bundled, &(&1.id == bundle_id and &1.digest == digest)),
          {:ok, artifact} <-
            Artifact.lookup(Path.join(config.home, "extensions/artifacts"), digest),
          {:ok, sidecar_bytes} <-
@@ -560,7 +634,9 @@ defmodule Ipse.CLI.Knowledge do
          true <- Enum.sort(Map.keys(sidecar)) == ~w(domain preset publication recipes version),
          true <-
            sidecar["version"] === 1 and sidecar["domain"] == "knowledge" and
-             sidecar["preset"] == "native",
+             sidecar["preset"] == if(experiment, do: "decision-shadow", else: "native"),
+         true <- artifact.manifest["id"] == "ipse-knowledge/knowledge",
+         true <- is_nil(experiment) or "host.decision" in artifact.manifest["capabilities"],
          {:ok, constraints, recipes} <- recipes(sidecar),
          true <- is_map(config[:base_extension_catalog]),
          true <- is_integer(config[:timeout_ms]) and config[:timeout_ms] >= 1000,
@@ -583,7 +659,13 @@ defmodule Ipse.CLI.Knowledge do
            Activation.draft(binding["project_id"], a, config.base_extension_catalog),
          {:ok, entries} <- Registry.prepare(drafted.catalog, config.home),
          selected = Map.put(config, :extensions, entries),
-         {:ok, reviewed} <- SemanticRoutes.review(selected, [main_selector()]),
+         selectors =
+           if(experiment,
+             do: [decision_selector(experiment.profile), main_selector()],
+             else: [main_selector()]
+           ),
+         {:ok, reviewed} <- SemanticRoutes.review(selected, selectors),
+         true <- is_nil(experiment) or local_decision_route?(reviewed.routes, experiment.profile),
          a = %{
            a
            | "service_refs" =>
@@ -611,7 +693,7 @@ defmodule Ipse.CLI.Knowledge do
            "storage" => %{"kind" => "local_collection", "collection" => "knowledge"},
            "retention" => %{"automatic" => 90, "manual" => 3650},
            "routes" => reviewed.routes,
-           "effects" => effects(catalog, sidecar),
+           "effects" => effects(catalog, sidecar, experiment),
            "constraints" => constraints,
            "recipes" => recipes,
            "activation" => a,
@@ -622,9 +704,14 @@ defmodule Ipse.CLI.Knowledge do
                "output_bytes" => 4_194_304
              }),
            "period_ms" => @day,
-           "expires_at_ms" => now + 365 * @day,
+           "expires_at_ms" =>
+             if(experiment,
+               do: min(now + experiment.seconds * 1000, (div(now, @day) + 1) * @day),
+               else: now + 365 * @day
+             ),
            "headless" => true
          },
+         selection = experiment_selection(selection, experiment, now),
          {:ok, policy} <- SemanticConsent.prepare(binding, entry.identity, selection) do
       {:ok, %{policy: policy}}
     else
@@ -649,7 +736,7 @@ defmodule Ipse.CLI.Knowledge do
     end
   end
 
-  defp effects(catalog, sidecar) do
+  defp effects(catalog, sidecar, experiment) do
     recipe_shas =
       Enum.map(~w(note pending), &JSON.digest([sidecar["recipes"][&1]])) |> Enum.sort()
 
@@ -659,7 +746,8 @@ defmodule Ipse.CLI.Knowledge do
         ((descriptor["stage"] in ["invoke.tool", "invoke.command"] and
             descriptor["id"] == "capture") or
            (descriptor["stage"] == "invoke.tool" and
-              descriptor["id"] in ~w(index read search)) or
+              (descriptor["id"] in ~w(index read search) or
+                 (experiment && descriptor["id"] == "assess"))) or
            (descriptor["stage"] == "event.job" and descriptor["id"] == "recall"))
     end)
     |> Enum.flat_map(fn descriptor ->
@@ -681,7 +769,22 @@ defmodule Ipse.CLI.Knowledge do
           []
         end
 
+      decision =
+        if experiment && descriptor["id"] == "assess" do
+          [
+            %{
+              "operation" => "notes.assess",
+              "class" => "decision.create",
+              "outer_sha256" => outer,
+              "inner_op" => "decision.create"
+            }
+          ]
+        else
+          []
+        end
+
       publish ++
+        decision ++
         [
           %{
             "operation" => "notes.recall",
@@ -704,6 +807,40 @@ defmodule Ipse.CLI.Knowledge do
     do:
       Map.new(~w(processing_region storage_region cache_retention account_controls), &{&1, nil})
       |> Map.merge(%{"operation" => "main", "profile" => nil})
+
+  defp decision_selector(profile),
+    do: Map.put(main_selector(), "operation", "decision.create") |> Map.put("profile", profile)
+
+  defp local_decision_route?(routes, profile),
+    do:
+      profile == "advice" and
+        Enum.any?(
+          routes,
+          &(&1["operation"] == "decision.create" and &1["profile"] == profile and
+              &1["provider"] == "system_one_compatible" and &1["billing_mode"] == "local" and
+              Ipse.Extension.DecisionExperiment.numeric_loopback?(&1["endpoint"]))
+        )
+
+  defp experiment_selection(selection, nil, _now), do: selection
+
+  defp experiment_selection(selection, experiment, now) do
+    selection
+    |> Map.put("experiment", %{"version" => 1, "issued_at_ms" => now})
+    |> put_in(["limits", "model_calls"], experiment.calls)
+    |> update_in(["limits", "operations"], &(&1 + experiment.calls))
+    |> update_in(["limits", "output_bytes"], &(&1 + experiment.calls * 65_536))
+  end
+
+  defp experiment_review(binding, policy) do
+    "Review a finite local shadow experiment for #{binding["root"]}.\n" <>
+      "This replaces the current project knowledge permission immediately; existing Sessions " <>
+      "lose that permission, and the shadow selection applies to new Sessions. " <>
+      "After expiry, run knowledge enable to review and restore ordinary permission. " <>
+      "The assess tool reads a previously saved eligible note for shadow advice; " <>
+      "capturing a note does not start an assessment. " <>
+      "Each decision still needs native approval. Admitted requests may finish after expiry; " <>
+      "unknown work retains its full reservation.\n" <> Jason.encode!(policy, pretty: true)
+  end
 
   defp admit_project(home, cwd) do
     with {:ok, existing} <- ProjectIdentity.existing(home, cwd) do

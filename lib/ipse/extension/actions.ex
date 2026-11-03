@@ -229,9 +229,7 @@ defmodule Ipse.Extension.Actions do
          true <-
            not ManagedCollectionCall.operation?(request) or
              event["effect_binding"]["outer_sha256"] == Ipse.JSON.digest([parent["descriptor"]]),
-         true <-
-           get_in(parent, ["semantic_binding", "class"]) != "collection.read" or
-             not mutating?(request) or event["approval"] == "denied",
+         true <- allowed_under_outer?(parent, request) or event["approval"] == "denied",
          true <- effect_binding?(event, parent["identity"]),
          {:ok, namespace} <-
            action_namespace(
@@ -1276,6 +1274,23 @@ defmodule Ipse.Extension.Actions do
   def capability(%{"op" => "mcp.call"}), do: "host.mcp"
   def capability(%{"op" => "effect.result.read"}), do: "host.results"
   def capability(request), do: State.capability(request)
+  @doc false
+  def allowed_under_outer?(parent, request) do
+    case get_in(parent, ["semantic_binding", "class"]) do
+      "collection.read" ->
+        not mutating?(request)
+
+      "decision.create" ->
+        request["op"] == "decision.create" or
+          (CollectionCall.operation?(request) and not CollectionCall.mutating?(request))
+
+      _ ->
+        true
+    end
+  rescue
+    _ -> false
+  end
+
   def mutating?(%{"op" => "tool.call", "name" => name}), do: Ipse.Tools.mutating?(name)
   def mutating?(%{"op" => "model.complete"}), do: true
   def mutating?(%{"op" => "embedding.create"}), do: true

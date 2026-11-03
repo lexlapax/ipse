@@ -470,6 +470,61 @@ defmodule Ipse.Extension.CollectionCallSessionTest do
     assert File.read!(c.trace) |> String.split("entered\n") |> length() == 2
   end
 
+  test "read and decision outer bindings cannot enter the collection write path", c do
+    pid = start(c)
+    assert :ok = Session.prompt(pid, "Synthetic café observation")
+    assert_receive {:ipse, ^pid, {:done, :ok}}, 15_000
+    id = Session.info(pid).id
+    {:ok, events} = Journal.load(c.dir, id)
+    parent = Enum.find(events, &(&1["type"] == "extension_invocation_intent"))
+
+    commit =
+      Enum.find(events, fn event ->
+        event["type"] == "extension_action_result" and
+          get_in(event, ["request", "request", "op"]) == "commit"
+      end)
+
+    assert is_map(parent) and is_map(commit)
+
+    assert Ipse.Extension.CollectionCall.valid_binding?(
+             commit["effect_binding"],
+             commit["request"],
+             parent["identity"]
+           )
+
+    for class <- ~w(collection.read decision.create) do
+      bound = put_in(parent, ["semantic_binding", "class"], class)
+
+      assert Ipse.Extension.SemanticAdmission.valid_outer_binding?(
+               bound["semantic_binding"],
+               bound["identity"],
+               bound["descriptor"],
+               id
+             )
+
+      # The deliberately incomplete context cannot perform effects; a denied
+      # outcome demonstrates the class fence is reached before that context.
+      context = %{parent: bound, identity: bound["identity"], session_id: id}
+
+      assert {:failed, %{"code" => "collection_consent_denied"}} =
+               Ipse.Extension.CollectionCall.execute(context, commit)
+    end
+
+    publishing = put_in(parent, ["semantic_binding", "class"], "collection.publish")
+
+    assert Ipse.Extension.SemanticAdmission.valid_outer_binding?(
+             publishing["semantic_binding"],
+             publishing["identity"],
+             publishing["descriptor"],
+             id
+           )
+
+    context = %{parent: publishing, identity: publishing["identity"], session_id: id}
+
+    assert {:failed, %{"code" => "collection_unavailable"}} =
+             Ipse.Extension.CollectionCall.execute(context, commit)
+  end
+
   test "revoked outer permission refuses before worker entry", c do
     pid = start(c)
     {:ok, snapshot} = Consent.snapshot(c.control, c.binding["project_id"])

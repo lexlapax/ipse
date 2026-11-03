@@ -18,6 +18,7 @@ defmodule Ipse.Session.InferenceDispatch do
       admission: admission,
       cwd: s.cwd,
       session_id: s.id,
+      source_generation: Session.source_snapshot(s)["generation"],
       history_dir: Map.get(s, :dir),
       owner: self(),
       job_ref: Map.get(s, :job_ref),
@@ -120,7 +121,9 @@ defmodule Ipse.Session.InferenceDispatch do
   @doc false
   def send(data, facts, continuation) do
     with_current(data, fn ->
-      with :ok <- current_wire(data, facts), do: continuation.()
+      with :ok <- current_wire(data, facts),
+           true <- experiment_current?(data),
+           do: continuation.()
     end)
   end
 
@@ -129,6 +132,7 @@ defmodule Ipse.Session.InferenceDispatch do
     Session.Resources.file_effect(fn ->
       with_current(data, fn ->
         with :ok <- current_wire(data, data.wire),
+             true <- experiment_current?(data),
              :ok <-
                GenServer.call(
                  data.owner,
@@ -136,9 +140,21 @@ defmodule Ipse.Session.InferenceDispatch do
                   result_digest(result)},
                  5_000
                ),
+             true <- experiment_current?(data),
              do: fun.()
       end)
     end)
+  end
+
+  defp experiment_current?(data) do
+    if is_nil(data[:experiment_expires_at]) do
+      true
+    else
+      now = System.system_time(:millisecond)
+
+      is_integer(data[:experiment_issued_at]) and now >= data.experiment_issued_at and
+        now < data.experiment_expires_at
+    end
   end
 
   @doc false
@@ -206,6 +222,7 @@ defmodule Ipse.Session.InferenceDispatch do
       history_dir: data.history_dir,
       owner: data.owner,
       job_ref: data.job_ref,
+      experiment_ticket: data[:experiment_ticket],
       source_binding: {:inference, data.phase, data.expected}
     }
 

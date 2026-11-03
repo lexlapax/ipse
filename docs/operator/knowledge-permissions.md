@@ -133,6 +133,85 @@ source and route limits below. Proposal management and quality qualification
 remain separate from permission setup. For the existing explicit note-management
 workflow, follow [Memory](memory.md).
 
+## Try a local shadow assessment
+
+The development build can ask a separately approved local decision service for
+shadow advice about one previously saved eligible native literal note. Accepted
+decisions are not supported by this assessment. Set up an Ollama main
+route and a System One-compatible decision service first; Ipse does not supply
+either service. For example, adapt this complete private operator configuration
+to the models and numeric loopback ports you actually run:
+
+```json
+{
+  "version": 1,
+  "profiles": {
+    "main": {"provider": "ollama", "model": "your-main-model", "base_url": "http://127.0.0.1:11434"}
+  },
+  "roles": {"main": "main"},
+  "decision_profiles": {
+    "advice": {"operation": "decision", "provider": "system_one_compatible", "model": "your-decision-model", "service_id": "local-advice", "credential": "none", "base_url": "http://127.0.0.1:8080", "timeout_ms": 30000}
+  },
+  "inference_services": {
+    "local-main": {"version": 1, "origins": ["http://127.0.0.1:11434"]},
+    "local-advice": {"version": 1, "origins": ["http://127.0.0.1:8080"]}
+  }
+}
+```
+
+Save it as `/private/path/ipse-local.json`. In a native terminal, review a grant
+for at most two decision calls and 300 seconds:
+
+```sh
+ipse knowledge experiment advice 2 300 --config /private/path/ipse-local.json --no-project-config --cwd /path/to/project
+ipse chat --config /private/path/ipse-local.json --no-project-config --cwd /path/to/project
+```
+
+Read the complete review and enter its fresh `experiment CODE`; the second
+command starts a new Session after the grant is saved. The time limit begins
+before the review and ends no later than the current UTC accounting period; an
+expired review cannot be saved. The grant replaces the project's prior knowledge
+permission: already-running Sessions pinned to it lose permission for later
+knowledge effects. The grant does not change the main provider. It limits call count, not money:
+a local endpoint can itself forward requests to a paid service, so check the
+chosen service's costs. In the new chat, save a reviewed literal statement under
+the shadow grant, then use `/exit` and start another chat with the same command.
+For example:
+
+```text
+/remember ordinary The release checklist requires a migration audit.
+/exit
+```
+
+Use `/ext` to inspect the selected tools in the fresh Session. Keep the saved
+note's complete key, or ask the model to find it with the knowledge index tool,
+then ask the model to assess that key:
+
+```text
+Use the knowledge assess tool on note.<64-hex-character-key>.
+```
+
+Replace the placeholder with the actual key. `assess` is a model tool, not a
+slash command; the model must choose to call it. Review and approve each decision
+request separately. A successful tool result reports `assessed` and does not
+include the advice; the decision action is recorded in the Session journal.
+Advice is shadow data and does not change the note or authorize another effect.
+A denied request sends no
+decision call. Work admitted before expiry may finish sending later; an unknown
+outcome retains its reservation. After the experiment, restore the ordinary
+selection through a fresh review:
+
+```sh
+ipse knowledge enable --config /private/path/ipse-local.json --no-project-config --cwd /path/to/project
+```
+
+The tested assessment starts with a literal note saved under this grant in a
+previous Session. Carrying a note captured under a replaced grant into this
+experiment has not been qualified.
+Automatic assessment immediately after a write in the same Session is not yet
+supported. Synthetic local controls establish the flow, not model quality or
+paid-service readiness.
+
 ## Save your own reviewed statement
 
 After enabling knowledge and starting a fresh chat in the same admitted project,

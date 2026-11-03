@@ -519,7 +519,7 @@ defmodule Ipse.Session.Invocation do
       get_in(s.invocation.parent || %{}, ["semantic_binding", "class"]) == "collection.read"
 
     mode =
-      if read_outer and mutation,
+      if not Actions.allowed_under_outer?(s.invocation.parent || %{}, request),
         do: :deny,
         else: Ipse.Extension.Mode.ordinary(captured_mode, mutation)
 
@@ -1175,8 +1175,7 @@ defmodule Ipse.Session.Invocation do
     allowed =
       allowed == true and
         (native or not Ipse.Session.ManagedToolUse.managed_invocation?(s)) and
-        not (get_in(s.invocation.parent, ["semantic_binding", "class"]) == "collection.read" and
-               Actions.mutating?(intent["request"])) and
+        Actions.allowed_under_outer?(s.invocation.parent, intent["request"]) and
         Ipse.Extension.Mode.ordinary(mode, Actions.mutating?(intent["request"])) != :deny
 
     intent = Map.put(intent, "approval", if(allowed, do: "approved", else: "denied"))
@@ -1437,7 +1436,8 @@ defmodule Ipse.Session.Invocation do
 
   defp extension_mcp_target(s, request) do
     with parent when is_map(parent) <- s.invocation.parent,
-         true <- get_in(parent, ["semantic_binding", "class"]) != "collection.read",
+         true <-
+           get_in(parent, ["semantic_binding", "class"]) not in ~w(collection.read decision.create),
          true <- not s.invocation.interrupted,
          true <- Ipse.Extension.Registry.live?(parent["identity"]),
          {:ok, ^request} <-
@@ -1593,6 +1593,12 @@ defmodule Ipse.Session.Invocation do
     context =
       if Ipse.Extension.Actions.inference?(intent["request"]),
         do: Map.merge(context, %{owner: self(), job_ref: s.job_ref}),
+        else: context
+
+    context =
+      if Ipse.Extension.DecisionCall.operation?(intent["request"]),
+        do:
+          Map.merge(context, %{config: s.config, session_id: s.id, parent: s.invocation.parent}),
         else: context
 
     context =

@@ -80,6 +80,36 @@ defmodule Ipse.Provider.EgressGateTest do
              )
   end
 
+  test "an admitted transport continuation can send after the admission deadline" do
+    owner = self()
+    target = "https://fixture.example/v1"
+    deadline = System.monotonic_time(:millisecond) + 1_000
+
+    task =
+      Task.async(fn ->
+        EgressGate.capture_owned(
+          expected(target, %{deadline_ms: deadline, upstream: owner}),
+          fn _, send -> send.() end,
+          fn ->
+            EgressGate.send("text", target, "body", fn ->
+              send(owner, {:send_interposed, self()})
+              receive do: (:continue_send -> :ok)
+              send(owner, {:send_resumed_at, System.monotonic_time(:millisecond)})
+              :ok
+            end)
+          end
+        )
+      end)
+
+    assert_receive {:send_interposed, transport}, 5_000
+    wait = max(deadline - System.monotonic_time(:millisecond) + 20, 0)
+    receive do: (:unexpected -> flunk("unexpected interposition message")), after: (wait -> :ok)
+    send(transport, :continue_send)
+    assert_receive {:send_resumed_at, sent_at}, 5_000
+    assert sent_at >= deadline
+    assert {:ok, :authorized} = Task.await(task, 5_000)
+  end
+
   test "one actual target and body digest are reported to the verifier" do
     target = "https://fixture.example/v1"
     owner = self()

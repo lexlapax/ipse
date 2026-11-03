@@ -1,7 +1,7 @@
 defmodule IpseKnowledge.BuildSpec do
   @moduledoc false
   @presets %{
-    "knowledge" => ~w(native),
+    "knowledge" => ~w(native decision-shadow),
     "corpus" =>
       ~w(state-lexical state-documents state-dense state-rerank state-semantic mcp-lexical mcp-documents mcp-dense mcp-rerank mcp-semantic collection-documents collection-dense),
     "research" => ~w(offline mcp mcp-model),

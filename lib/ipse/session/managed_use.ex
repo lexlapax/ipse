@@ -852,23 +852,34 @@ defmodule Ipse.Session.ManagedUse do
     pin = admission["pin"]
 
     callback = fn cap, catalog ->
-      Consent.with_policy(
-        SemanticAdmission.control_root(c.config[:home]),
-        pin["project_id"],
-        pin["epoch"],
-        pin["policy_sha256"],
-        System.system_time(:millisecond),
-        fn snapshot ->
-          with {:ok, _} <- SemanticAdmission.context(c.config, c.session_id, 0),
-               {:ok, mode} <- Mode.capture(c.config),
-               :ok <- Mode.knowledge(mode, "collection.read"),
-               true <- not mode["headless"] or snapshot["policy"]["headless"] do
-            {:ok, fun.(cap, catalog, snapshot["policy"])}
-          else
-            _ -> @error
-          end
+      check = fn snapshot ->
+        with true <- snapshot["epoch"] === pin["epoch"],
+             true <- JSON.digest([snapshot["policy"]]) === pin["policy_sha256"],
+             {:ok, _} <- SemanticAdmission.context(c.config, c.session_id, 0),
+             {:ok, mode} <- Mode.capture(c.config),
+             :ok <- Mode.knowledge(mode, "collection.read"),
+             true <- not mode["headless"] or snapshot["policy"]["headless"] do
+          {:ok, fun.(cap, catalog, snapshot["policy"])}
+        else
+          _ -> @error
         end
-      )
+      end
+
+      root = SemanticAdmission.control_root(c.config[:home])
+      now = System.system_time(:millisecond)
+
+      if c[:experiment_ticket] do
+        Consent.with_experiment_ticket(root, pin["project_id"], c.experiment_ticket, now, check)
+      else
+        Consent.with_policy(
+          root,
+          pin["project_id"],
+          pin["epoch"],
+          pin["policy_sha256"],
+          now,
+          check
+        )
+      end
     end
 
     result =

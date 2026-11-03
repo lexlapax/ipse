@@ -3,12 +3,19 @@ defmodule IpseKnowledge.KnowledgeCaptureTest do
 
   @suite ~S"""
   ExUnit.start(autorun: false)
-  for path <- ~w(profiles notes knowledge/records knowledge/contracts knowledge),
+  for path <- ~w(profiles notes knowledge/records knowledge/contracts knowledge/decision_policy knowledge),
     do: Code.require_file(Path.join("extensions/knowledge/src", path <> ".ex"))
+
+  "extensions/knowledge/src/knowledge.ex"
+  |> File.read!()
+  |> String.replace("defmodule IpseKnowledge.Knowledge do", "defmodule IpseKnowledge.KnowledgeShadowFixture do")
+  |> String.replace(~s(@preset "native"), ~s(@preset "decision-shadow"))
+  |> Code.compile_string()
 
   defmodule IpseKnowledge.KnowledgeCaptureSuite do
   use ExUnit.Case, async: true
   alias IpseKnowledge.Knowledge, as: K
+  alias IpseKnowledge.KnowledgeShadowFixture, as: Shadow
 
   defp options,
     do:
@@ -62,6 +69,9 @@ defmodule IpseKnowledge.KnowledgeCaptureTest do
   defp respond(state, value),
     do: K.handle("host.actions", %{"operation_id" => String.duplicate("a", 32), "outcome" => %{"status" => "ok", "value" => value}}, state)
 
+  defp shadow_respond(state, value),
+    do: Shadow.handle("host.actions", %{"operation_id" => String.duplicate("a", 32), "outcome" => %{"status" => "ok", "value" => value}}, state)
+
   defp request({:ok, %{"kind" => "host_call", "request" => request}, state}), do: {request, state}
 
   defp value({:ok, %Ipse.Extension.ResultPublication.Output{bytes: bytes}, state}),
@@ -110,6 +120,67 @@ defmodule IpseKnowledge.KnowledgeCaptureTest do
 
     {%{"status" => "saved", "category" => "ordinary"}, %{phase: :idle}} =
       value(respond(state, %{"generation" => 8}))
+  end
+
+  test "shadow capture returns its save result without starting an assessment" do
+    {:ok, %{phase: :idle}} = Shadow.init(options())
+    state = start()
+    {_, state} = request(respond(state, %{"record" => nil}))
+    {commit, state} = request(respond(state, %{"record" => nil, "generation" => 7}))
+    [change] = commit["request"]["changes"]
+
+    {%{"status" => "saved", "key" => key, "receipt" => %{"generation" => 8}}, %{phase: :idle}} =
+      value(shadow_respond(state, %{"generation" => 8}))
+    assert key == change["key"]
+  end
+
+  test "shadow assessment reads an existing note before requesting advice" do
+    state = start()
+    {_, state} = request(respond(state, %{"record" => nil}))
+    {commit, _} = request(respond(state, %{"record" => nil, "generation" => 7}))
+    [change] = commit["request"]["changes"]
+    key = change["key"]
+    note = change["value"]
+    {:ok, idle} = Shadow.init(options())
+
+    {read, pending} =
+      request(Shadow.handle("invoke.tool", %{"id" => "assess", "arguments" => %{"key" => key}}, idle))
+
+    assert read == %{"op" => "collection.call", "request" => %{"op" => "get", "key" => key}}
+
+    {decision, pending} =
+      request(shadow_respond(pending, %{"record" => %{"key" => key, "value" => note}}))
+
+    assert decision["op"] == "decision.create"
+    assert JSON.decode!(decision["input"])["candidates"] == [
+             %{"id" => "candidate", "input" => IO.iodata_to_binary(JSON.encode!(note))}
+           ]
+
+    {%{"status" => "assessed", "key" => ^key}, %{phase: :idle}} =
+      value(shadow_respond(pending, %{"result" => %{}}))
+
+    assert Enum.any?(Shadow.describe()["exports"]["tools"], &(&1["id"] == "assess"))
+    refute Enum.any?(K.describe()["exports"]["tools"], &(&1["id"] == "assess"))
+  end
+
+  test "shadow assessment refuses a missing or mismatched note" do
+    {:ok, idle} = Shadow.init(options())
+    key = "note." <> String.duplicate("a", 64)
+
+    for record <- [nil, %{"key" => key, "value" => %{}}, %{"key" => "note.wrong", "value" => %{}}] do
+      {_, pending} =
+        request(Shadow.handle("invoke.tool", %{"id" => "assess", "arguments" => %{"key" => key}}, idle))
+
+      {%{"status" => "refused"}, %{phase: :idle}} = shadow_respond(pending, %{"record" => record}) |> value()
+    end
+  end
+
+  test "pending proposals do not enter shadow assessment" do
+    state = start("assistant_proposal")
+    {_, state} = request(respond(state, %{"record" => nil}))
+    {_, state} = request(respond(state, %{"record" => nil, "generation" => 7}))
+    {%{"status" => "saved", "category" => "pending"}, %{phase: :idle}} =
+      value(shadow_respond(state, %{"generation" => 8}))
   end
 
   test "an operator-event fragment queues a proposal instead of a literal note" do
@@ -225,7 +296,7 @@ defmodule IpseKnowledge.KnowledgeCaptureTest do
     args = ["--erl", "+S 2:2"] ++ Enum.flat_map(paths, &["-pa", &1]) ++ ["-e", @suite]
     {output, status} = System.cmd(System.find_executable("elixir"), args, stderr_to_stdout: true)
     assert status == 0, output
-    assert output =~ "7 passed"
+    assert output =~ "11 passed"
     assert Enum.map(modules, &:code.is_loaded/1) == before
   end
 end

@@ -12,6 +12,9 @@ defmodule IpseKnowledge.Profiles do
         {"knowledge", "native"} ->
           ~w(host.actions host.actions.mixed host.sources host.collection.read host.collection.managed host.context event.job)
 
+        {"knowledge", "decision-shadow"} ->
+          ~w(host.actions host.actions.mixed host.sources host.collection.read host.collection.managed host.context host.decision event.job)
+
         {"corpus", "state-lexical"} ->
           @state
 

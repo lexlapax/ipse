@@ -201,6 +201,7 @@ fn main() {
                 ("folder", "Type one exact choice: folder "),
                 ("repository", "Type one exact choice: repository "),
                 ("enable", "Type enable "),
+                ("experiment", "Type experiment "),
                 ("disable", "Type disable "),
             ] {
                 for (index, _) in text.match_indices(prefix) {

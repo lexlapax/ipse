@@ -73,7 +73,7 @@ defmodule Ipse.Extension.SemanticAdmission do
       Enum.sort(Map.keys(binding)) ==
         ~w(artifact_sha256 class descriptor_sha256 kind namespace pin version) and
       binding["kind"] == "semantic.outer" and binding["version"] === 1 and
-      binding["class"] in ~w(collection.read collection.publish) and
+      binding["class"] in ~w(collection.read collection.publish decision.create) and
       SemanticConsent.pin?(binding["pin"]) and binding["pin"]["session_id"] == session_id and
       binding["namespace"] == binding["pin"]["namespace"] and
       Ipse.JSON.sha256?(binding["artifact_sha256"]) and
@@ -293,16 +293,30 @@ defmodule Ipse.Extension.SemanticAdmission do
   end
 
   def outer_class(policy, descriptor_sha256) do
-    effects =
+    all_effects =
       Enum.filter(
         policy["settings"]["effects"],
-        &(&1["outer_sha256"] == descriptor_sha256 and
-            &1["inner_op"] in ~w(collection.call collection.managed))
+        &(&1["outer_sha256"] == descriptor_sha256)
       )
+
+    effects =
+      Enum.filter(all_effects, &(&1["inner_op"] in ~w(collection.call collection.managed)))
 
     publish = Enum.filter(effects, &(&1["class"] == "collection.publish"))
 
     cond do
+      is_map(get_in(policy, ["settings", "experiment"])) and SemanticConsent.policy?(policy) and
+        length(all_effects) == 2 and
+        Enum.count(
+          all_effects,
+          &(&1["class"] == "collection.read" and &1["inner_op"] == "collection.call")
+        ) == 1 and
+          Enum.count(
+            all_effects,
+            &(&1["class"] == "decision.create" and &1["inner_op"] == "decision.create")
+          ) == 1 ->
+        {:ok, "decision.create"}
+
       publish != [] and
           Enum.any?(
             publish,

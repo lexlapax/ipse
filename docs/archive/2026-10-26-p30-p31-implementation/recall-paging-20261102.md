@@ -51,9 +51,10 @@ seconds. Those journeys again used a **15-second synthetic provider timeout**;
 they do not establish behavior at the default five seconds. The snapshot and
 logs were retained temporarily at `/tmp/ipse-recall-checkpoint-zZLls96R`.
 
-This checkpoint does not test the later combined P30 and recall source, an
-installed artifact, or the final full suite. The absence reappearance and
-sparse-discovery limits above still apply.
+The later [combined P30 and recall snapshot](decision-shadow-prior-session-20261102.md)
+also passed the worker suite and all three native journeys with the same synthetic
+timeout. Neither checkpoint tests an installed artifact or the final full suite.
+The absence reappearance and sparse-discovery limits above still apply.
 
 ## Earlier combined-source snapshot
 

@@ -253,7 +253,7 @@ defmodule Ipse.Extension.CollectionCall do
          true <- valid_binding?(intent["effect_binding"], intent["request"], context.identity),
          true <- intent["effect_binding"]["pin"]["session_id"] == context.session_id,
          true <-
-           get_in(context.parent, ["semantic_binding", "class"]) != "collection.read" or
+           get_in(context.parent, ["semantic_binding", "class"]) not in ~w(collection.read decision.create) or
              not mutating?(intent["request"]),
          true <- intent["namespace"] == intent["effect_binding"]["namespace"] do
       Ipse.Session.Resources.file_effect(fn -> protected_execute(context, intent) end)
