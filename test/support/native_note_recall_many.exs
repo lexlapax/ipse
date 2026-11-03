@@ -140,7 +140,33 @@ texts =
 
 assert :ok = Ipse.Session.close_confirmed(source)
 assert {:ok, source_events} = Ipse.Journal.load(dir, source_id)
-assert {:ok, _} = Ipse.Session.Saved.restore(source_events, source_id)
+{restore_us, restored} = :timer.tc(fn -> Ipse.Session.Saved.restore(source_events, source_id) end)
+assert {:ok, _} = restored
+
+if System.get_env("IPSE_TEST_RECALL_TIMING") == "1",
+  do: IO.puts("RECALL_SOURCE_RESTORE_TIMING_US=" <> Integer.to_string(restore_us))
+
+if System.get_env("IPSE_TEST_RECALL_TIMING") == "1" do
+  copy = Path.join(System.tmp_dir!(), "ipse-recall-profile-source-" <> source_id <> ".jsonl")
+  File.cp!(Path.join(dir, source_id <> ".jsonl"), copy)
+  File.chmod!(copy, 0o600)
+  IO.puts("RECALL_PROFILE_SOURCE=" <> copy)
+
+  checks = [
+    {"actions", fn -> Ipse.Extension.Actions.restore(source_events) end},
+    {"invocations", fn -> Ipse.Extension.Invocation.validate_events(source_events) end},
+    {"context", fn -> Ipse.Session.Saved.context(source_events) end},
+    {"source_window", fn -> Ipse.Session.SourceWindow.restore(source_events, source_id) end},
+    {"usage", fn -> Ipse.Usage.restore(source_events, source_id) end}
+  ]
+
+  for {name, check} <- checks do
+    {elapsed, result} = :timer.tc(check)
+    assert result == :ok or match?({:ok, _}, result)
+    IO.puts("RECALL_COMPONENT_TIMING_US " <> name <> "=" <> Integer.to_string(elapsed))
+  end
+end
+
 assert Enum.count(source_events, &(&1["type"] == "operator_assertion")) == 33
 refute Enum.any?(source_events, &(&1["type"] == "inference_dispatch_intent"))
 

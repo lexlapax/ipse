@@ -969,6 +969,10 @@ The [33-note native recall diagnostic](archive/2026-10-26-p30-p31-implementation
 found an unconfirmed worker-input handoff before provider dispatch on both the
 original 32-note worker and an attempted larger candidate limit. The expansion
 was not retained; fitting-set recall and the host failure remain open.
+[Bounded replay computation](archive/2026-10-26-p30-p31-implementation/recall-replay-capacity-20261102.md)
+reduces repeated pure encoding and hashing without caching source authority;
+the native 32-note control still ends before provider dispatch, so it does not
+resolve the recall gate.
 
 | Package | Output and prerequisites |
 | --- | --- |

@@ -13,6 +13,42 @@ defmodule Ipse.Session.ManagedReferenceTest do
   defp sha(value), do: JSON.digest([value])
   defp ordered(values), do: Enum.sort_by(values, &sha/1)
 
+  test "replay digest cache preserves exact hashes, bounds retention and clears its scope" do
+    values = [%{"zero" => 0.0}, %{"zero" => -0.0}] ++ for(n <- 1..130, do: dependency(n))
+    oversized = %{"synthetic" => String.duplicate("x", 9000)}
+
+    Managed.with_digest_cache(fn ->
+      for value <- values ++ Enum.reverse(values) do
+        assert Managed.dependency_digest(value) == JSON.digest([value])
+      end
+
+      assert Managed.dependency_digest(oversized) == JSON.digest([oversized])
+      cache = Process.get({Managed, :digest_cache})
+      assert map_size(cache) == 128
+      refute Map.has_key?(cache, :erlang.term_to_binary(oversized, [:deterministic]))
+
+      Managed.with_digest_cache(fn ->
+        assert Managed.dependency_digest(hd(values)) == JSON.digest([hd(values)])
+        assert map_size(Process.get({Managed, :digest_cache})) == 1
+      end)
+
+      assert Process.get({Managed, :digest_cache}) === cache
+    end)
+
+    assert Process.get({Managed, :digest_cache}) == nil
+
+    Process.put({Managed, :digest_cache}, :absent)
+    assert :ok == Managed.with_digest_cache(fn -> :ok end)
+    assert Process.get({Managed, :digest_cache}) == :absent
+    Process.delete({Managed, :digest_cache})
+
+    assert_raise RuntimeError, fn ->
+      Managed.with_digest_cache(fn -> raise "synthetic failure" end)
+    end
+
+    assert Process.get({Managed, :digest_cache}) == nil
+  end
+
   defp dependency(n \\ 0) do
     %{
       "version" => 1,

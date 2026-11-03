@@ -2,6 +2,9 @@ defmodule Ipse.Session.ManagedLineage do
   @moduledoc "Host-derived producer lineage; current eligibility belongs to a separate owned barrier."
   alias Ipse.{JSON, Session.ManagedReference}
   @error {:error, :managed_lineage_unavailable}
+  @capacity_cache {__MODULE__, :capacity_cache}
+  @capacity_cache_entries 64
+  @capacity_cache_bytes 4_194_304
   defstruct [
     :reference,
     requests: %{},
@@ -52,6 +55,65 @@ defmodule Ipse.Session.ManagedLineage do
   def new(session) do
     with {:ok, reference} <- ManagedReference.new(session),
          do: {:ok, %__MODULE__{reference: reference}}
+  end
+
+  @doc false
+  def with_capacity_cache(fun) when is_function(fun, 0) do
+    missing = make_ref()
+    previous = Process.get(@capacity_cache, missing)
+    Process.put(@capacity_cache, %{})
+
+    try do
+      fun.()
+    after
+      if previous === missing,
+        do: Process.delete(@capacity_cache),
+        else: Process.put(@capacity_cache, previous)
+    end
+  end
+
+  @doc false
+  def capacity_bytes(maps) when is_map(maps) do
+    case Process.get(@capacity_cache) do
+      cache when is_map(cache) ->
+        if Enum.all?(Map.keys(maps), &is_atom/1) do
+          # Object size is the braces, commas and the independently encoded
+          # key/value pairs. The cache is scoped to one replay and contains
+          # sizes only; it never authenticates a receipt or source.
+          {next, bytes, _retained} =
+            Enum.reduce(maps, {%{}, 2 + max(map_size(maps) - 1, 0), 0}, fn {key, value},
+                                                                           {next, bytes, retained} ->
+              # Preserve exact term representation, including signed zero.
+              signature = :erlang.term_to_binary(value, [:deterministic])
+
+              size =
+                case Map.get(cache, key) do
+                  {^signature, size} ->
+                    size
+
+                  _ ->
+                    byte_size(Jason.encode!(Atom.to_string(key))) + 1 +
+                      byte_size(Jason.encode!(value))
+                end
+
+              if map_size(next) < @capacity_cache_entries and
+                   retained + byte_size(signature) <= @capacity_cache_bytes do
+                {Map.put(next, key, {signature, size}), bytes + size,
+                 retained + byte_size(signature)}
+              else
+                {next, bytes + size, retained}
+              end
+            end)
+
+          Process.put(@capacity_cache, next)
+          bytes
+        else
+          byte_size(Jason.encode!(maps))
+        end
+
+      _ ->
+        byte_size(Jason.encode!(maps))
+    end
   end
 
   def dependencies(%__MODULE__{unavailable: false} = state, messages) do
@@ -1521,8 +1583,8 @@ defmodule Ipse.Session.ManagedLineage do
   defp pack(state, deps) do
     case ManagedReference.union([Map.values(state.dictionary), deps]) do
       {:ok, all} ->
-        dictionary = Map.new(all, &{JSON.digest([&1]), &1})
-        {%{state | dictionary: dictionary}, Enum.map(deps, &JSON.digest([&1]))}
+        dictionary = Map.new(all, &{ManagedReference.dependency_digest(&1), &1})
+        {%{state | dictionary: dictionary}, Enum.map(deps, &ManagedReference.dependency_digest/1)}
 
       _ ->
         throw(:managed_lineage_capacity)
@@ -1554,7 +1616,7 @@ defmodule Ipse.Session.ManagedLineage do
     maps = Map.take(Map.from_struct(state), fields)
 
     if Enum.all?(maps, fn {_, value} -> map_size(value) <= 2048 end) and
-         byte_size(Jason.encode!(maps)) <= 4_194_304 do
+         capacity_bytes(maps) <= 4_194_304 do
       state
     else
       throw(:managed_lineage_capacity)

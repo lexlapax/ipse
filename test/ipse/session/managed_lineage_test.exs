@@ -494,6 +494,68 @@ defmodule Ipse.Session.ManagedLineageTest do
 
     assert refused.unavailable and refused.requests == retained
     assert {:error, :managed_lineage_unavailable} = ManagedLineage.dependencies(refused, messages)
+
+    assert {:ok, ^refused} =
+             ManagedLineage.with_capacity_cache(fn ->
+               ManagedLineage.advance(
+                 state,
+                 %{"type" => "request_admitted", "request_id" => Usage.id()},
+                 messages,
+                 messages
+               )
+             end)
+  end
+
+  test "replay capacity caching preserves exact encoded sizes and clears its scope" do
+    samples = [
+      %{},
+      %{requests: %{}, native_requests: %{}},
+      %{requests: %{"one" => ["café", "\"\\\n"]}, native_requests: %{}},
+      %{requests: %{"one" => ["café", "\"\\\n"]}, native_requests: %{"two" => true}},
+      %{requests: %{"one" => ["changed"]}},
+      %{requests: %{"signed_zero" => 0.0}},
+      %{requests: %{"signed_zero" => -0.0}},
+      %{"string-key" => %{"nested" => [nil, 1, 1.0]}}
+    ]
+
+    base = byte_size(Jason.encode!(%{requests: ""}))
+    at_limit = %{requests: String.duplicate("x", 4_194_304 - base)}
+    over_limit = %{requests: at_limit.requests <> "x"}
+    many = Map.new(1..70, fn n -> {String.to_atom("ipse_capacity_fixture_#{n}"), n} end)
+
+    ManagedLineage.with_capacity_cache(fn ->
+      for maps <- samples ++ [at_limit, over_limit, many] ++ samples do
+        assert ManagedLineage.capacity_bytes(maps) == byte_size(Jason.encode!(maps))
+      end
+
+      assert ManagedLineage.capacity_bytes(at_limit) == 4_194_304
+      assert ManagedLineage.capacity_bytes(over_limit) == 4_194_305
+      assert ManagedLineage.capacity_bytes(many) == byte_size(Jason.encode!(many))
+      cache = Process.get({ManagedLineage, :capacity_cache})
+      assert map_size(cache) == 64
+
+      assert Enum.reduce(cache, 0, fn {_, {signature, _}}, n -> n + byte_size(signature) end) <=
+               4_194_304
+
+      ManagedLineage.with_capacity_cache(fn ->
+        assert ManagedLineage.capacity_bytes(hd(samples)) == 2
+      end)
+
+      assert ManagedLineage.capacity_bytes(over_limit) == 4_194_305
+    end)
+
+    assert Process.get({ManagedLineage, :capacity_cache}) == nil
+
+    Process.put({ManagedLineage, :capacity_cache}, :absent)
+    assert :ok == ManagedLineage.with_capacity_cache(fn -> :ok end)
+    assert Process.get({ManagedLineage, :capacity_cache}) == :absent
+    Process.delete({ManagedLineage, :capacity_cache})
+
+    assert_raise RuntimeError, fn ->
+      ManagedLineage.with_capacity_cache(fn -> raise "synthetic failure" end)
+    end
+
+    assert Process.get({ManagedLineage, :capacity_cache}) == nil
   end
 
   test "a frozen reference envelope inherits only the publisher fields actually selected" do

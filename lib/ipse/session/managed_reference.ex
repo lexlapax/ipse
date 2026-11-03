@@ -29,6 +29,9 @@ defmodule Ipse.Session.ManagedReference do
 
   @error {:error, :managed_reference_refused}
   @projection_error {:error, :managed_reference_projection_unsafe}
+  @digest_cache {__MODULE__, :digest_cache}
+  @digest_cache_entries 128
+  @digest_cache_value_bytes 8192
   @dependency_bytes 8192
   @occurrence_dependencies 128
   @occurrence_bytes 131_072
@@ -215,7 +218,7 @@ defmodule Ipse.Session.ManagedReference do
   def union(groups) when is_list(groups) and length(groups) <= @dependencies do
     Enum.reduce_while(groups, {:ok, %{}}, fn group, {:ok, acc} ->
       if is_list(group) and length(group) <= @dependencies and Enum.all?(group, &dependency?/1) do
-        next = Enum.reduce(group, acc, &Map.put(&2, digest(&1), &1))
+        next = Enum.reduce(group, acc, &Map.put(&2, dependency_digest(&1), &1))
         if dictionary?(next), do: {:cont, {:ok, next}}, else: {:halt, @error}
       else
         {:halt, @error}
@@ -230,6 +233,49 @@ defmodule Ipse.Session.ManagedReference do
   end
 
   def union(_), do: @error
+
+  @doc false
+  def with_digest_cache(fun) when is_function(fun, 0) do
+    missing = make_ref()
+    previous = Process.get(@digest_cache, missing)
+    Process.put(@digest_cache, %{})
+
+    try do
+      fun.()
+    after
+      if previous === missing,
+        do: Process.delete(@digest_cache),
+        else: Process.put(@digest_cache, previous)
+    end
+  end
+
+  @doc false
+  def dependency_digest(value) do
+    case Process.get(@digest_cache) do
+      cache when is_map(cache) ->
+        # This caches a pure hash, not the validation or freshness of a
+        # dependency. Exact term bytes avoid equality aliases such as -0.0.
+        signature = :erlang.term_to_binary(value, [:deterministic])
+
+        case Map.fetch(cache, signature) do
+          {:ok, hash} ->
+            hash
+
+          :error ->
+            hash = digest(value)
+
+            if map_size(cache) < @digest_cache_entries and
+                 byte_size(signature) <= @digest_cache_value_bytes do
+              Process.put(@digest_cache, Map.put(cache, signature, hash))
+            end
+
+            hash
+        end
+
+      _ ->
+        digest(value)
+    end
+  end
 
   @doc "Union inherited occurrences with additional host reads; missing or withdrawn parents refuse."
   def inherit(%State{} = state, ids, reads) when is_list(ids) and length(ids) <= @occurrences do

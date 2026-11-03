@@ -24,6 +24,15 @@ pairs those receipts chronologically. The existing Session-owned
 advances it only after a successful durable append, including reserved appends.
 A refused or failed append cannot create a source.
 
+During saved-history projection, `ManagedReference` reuses up to 128 exact
+dependency hashes and `ManagedLineage` reuses the encoded sizes of unchanged
+capacity fields, retaining at most 64 field signatures and 4 MiB of signature
+bytes. The scratch caches are local to one replay and cleared on
+return or failure. Exact term bytes distinguish values before reuse, and the
+same serialized byte and entry limits still apply. These caches neither retain
+source leases nor attest current permission: `StoredSources` must still check
+the original journal and current owners for each protected use.
+
 Session remains the conversation and permission owner. Only that owner can install
 or query the writer cache. Native model reads additionally require the exact active
 task PID, job reference, phase, selected source tool and original arguments. Public
@@ -82,8 +91,8 @@ review of the complete proposed facts. The internal
 [`Runner.Review`](../../lib/ipse/runner/review.ex) primitive supplies that native
 observation and a one-use permit. It has no worker/SDK endpoint and does not
 implement a knowledge-management command or grant ordinary effect permission.
-The eventual typed storage adapter must establish current target and policy
-authority separately.
+The calling storage adapter must establish current target and policy authority
+separately.
 
 The trusted caller first reads its target, policy and proposed change, then
 releases all locks before terminal IO. `with_review/3` displays the complete

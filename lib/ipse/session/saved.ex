@@ -288,6 +288,14 @@ defmodule Ipse.Session.Saved do
   end
 
   defp project_with_lineage(events, question_mode, id) do
+    Ipse.Session.ManagedReference.with_digest_cache(fn ->
+      Ipse.Session.ManagedLineage.with_capacity_cache(fn ->
+        project_with_cached_lineage(events, question_mode, id)
+      end)
+    end)
+  end
+
+  defp project_with_cached_lineage(events, question_mode, id) do
     occurrences = Ipse.Session.Reference.occurrences(events)
     policy = draft_native_policy(events)
 
