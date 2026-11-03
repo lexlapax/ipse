@@ -973,6 +973,8 @@ was not retained; fitting-set recall and the host failure remain open.
 reduces repeated pure encoding and hashing without caching source authority;
 the native 32-note control still ends before provider dispatch, so it does not
 resolve the recall gate.
+An exploratory [batched-read prototype](archive/2026-10-26-p30-p31-implementation/recall-batched-read-20261102.md)
+also failed the native control and was not retained; the protected handoff remains open.
 
 | Package | Output and prerequisites |
 | --- | --- |

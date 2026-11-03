@@ -1,0 +1,264 @@
+diff --git a/extensions/knowledge/src/knowledge.ex b/extensions/knowledge/src/knowledge.ex
+index 783d4301..41c28ecf 100644
+--- a/extensions/knowledge/src/knowledge.ex
++++ b/extensions/knowledge/src/knowledge.ex
+@@ -109,6 +109,16 @@ defmodule IpseKnowledge.Knowledge do
+   def handle("host.actions", %{"outcome" => _}, %{phase: :recall_read} = state),
+     do: recall_next(%{state | ctx: Map.update!(state.ctx, :unavailable, &(&1 + 1))})
+
++  def handle(
++        "host.actions",
++        %{"outcome" => %{"status" => "failed"}},
++        %{phase: :recall_scan} = state
++      ),
++      do: recall_get_next(state)
++
++  def handle("host.actions", %{"outcome" => _}, %{phase: :recall_scan} = state),
++    do: recall_unavailable(state)
++
+   def handle("host.actions", %{"outcome" => _}, %{phase: :recall_verify} = state),
+     do: recall_unavailable(state)
+
+@@ -282,18 +292,40 @@ defmodule IpseKnowledge.Knowledge do
+
+   defp advance(:recall_read, %{"generation" => _, "record" => record}, state) do
+     ctx =
+-      if is_map(record) and record["key"] === state.ctx.expected["key"] and
+-           record["revision"] === state.ctx.expected["revision"] and
+-           is_binary(record["sha256"]) and record["sha256"] === state.ctx.expected["sha256"] and
+-           is_integer(record["bytes"]) and record["bytes"] === state.ctx.expected["bytes"] and
+-           (IpseKnowledge.Notes.valid?(record["value"]) or
+-              match?({:ok, _}, Records.accepted_projection(record["key"], record["value"]))),
+-         do: %{state.ctx | notes: state.ctx.notes ++ [{record, state.ctx.operation_id}]},
+-         else: %{state.ctx | unavailable: state.ctx.unavailable + 1}
++      if recall_record?(record, state.ctx.expected),
++        do: %{state.ctx | notes: state.ctx.notes ++ [{record, state.ctx.operation_id}]},
++        else: %{state.ctx | unavailable: state.ctx.unavailable + 1}
+
+     recall_next(%{state | ctx: ctx})
+   end
+
++  defp advance(:recall_scan, %{"generation" => generation}, state)
++       when generation !== state.ctx.generation,
++       do: recall_unavailable(state)
++
++  defp advance(:recall_scan, %{"generation" => _, "records" => records}, state)
++       when is_list(records) do
++    expected = Enum.take(state.ctx.candidates, length(records))
++
++    if length(records) in 1..4 and length(expected) == length(records) and
++         Enum.all?(Enum.zip(records, expected), fn {record, row} ->
++           recall_record?(record, row)
++         end) do
++      ctx = %{
++        state.ctx
++        | candidates: Enum.drop(state.ctx.candidates, length(records)),
++          notes: state.ctx.notes ++ Enum.map(records, &{&1, state.ctx.operation_id}),
++          read: state.ctx.read + length(records)
++      }
++
++      recall_next(%{state | ctx: ctx})
++    else
++      recall_get_next(state)
++    end
++  end
++
++  defp advance(:recall_scan, _, state), do: recall_get_next(state)
++
+   defp advance(:recall_verify, value, state) do
+     if is_map(value) and value["generation"] === state.ctx.generation and
+          value["count"] === state.ctx.total do
+@@ -394,6 +426,15 @@ defmodule IpseKnowledge.Knowledge do
+
+   defp advance(_, _, state), do: refused(state, :invalid_host_response)
+
++  defp recall_record?(record, expected) do
++    is_map(record) and record["key"] === expected["key"] and
++      record["revision"] === expected["revision"] and
++      is_binary(record["sha256"]) and record["sha256"] === expected["sha256"] and
++      is_integer(record["bytes"]) and record["bytes"] === expected["bytes"] and
++      (IpseKnowledge.Notes.valid?(record["value"]) or
++         match?({:ok, _}, Records.accepted_projection(record["key"], record["value"])))
++  end
++
+   defp commit(generation, state) do
+     kind = if String.starts_with?(state.ctx.key, "pending."), do: "pending", else: "note"
+     {:ok, recipe_sha256} = Ipse.Extension.canonical_digest([Contracts.recipe(kind)])
+@@ -446,14 +487,26 @@ defmodule IpseKnowledge.Knowledge do
+       index_cursors: []
+     }
+
+-  defp recall_next(%{ctx: %{candidates: [row | rest]}} = state) do
+-    collection(%{"op" => "get", "key" => row["key"]}, %{
+-      state
+-      | phase: :recall_read,
+-        ctx: %{state.ctx | candidates: rest, read: state.ctx.read + 1, expected: row}
+-    })
++  defp recall_next(%{ctx: %{mode: :seed, candidates: [row, _ | _]}} = state) do
++    key = row["key"]
++
++    if is_binary(key) and Regex.match?(~r/\Anote\.[0-9a-f]{64}\z/, key) do
++      collection(
++        %{
++          "op" => "scan",
++          "after" => binary_part(key, 0, byte_size(key) - 1),
++          "generation" => state.ctx.generation,
++          "limit" => min(4, length(state.ctx.candidates))
++        },
++        %{state | phase: :recall_scan}
++      )
++    else
++      recall_get_next(state)
++    end
+   end
+
++  defp recall_next(%{ctx: %{candidates: [_ | _]}} = state), do: recall_get_next(state)
++
+   defp recall_next(%{ctx: %{verified: false, coverage: coverage}} = state)
+        when coverage != "unavailable" do
+     collection(%{"op" => "index", "prefix" => "note.", "cursor" => nil, "limit" => 1}, %{
+@@ -491,6 +544,14 @@ defmodule IpseKnowledge.Knowledge do
+
+   defp recall_next(state), do: recall_publish(state)
+
++  defp recall_get_next(%{ctx: %{candidates: [row | rest]}} = state) do
++    collection(%{"op" => "get", "key" => row["key"]}, %{
++      state
++      | phase: :recall_read,
++        ctx: %{state.ctx | candidates: rest, read: state.ctx.read + 1, expected: row}
++    })
++  end
++
+   defp recall_unavailable(state) do
+     ctx = %{
+       state.ctx
+diff --git a/test/extensions/knowledge/knowledge_recall_test.exs b/test/extensions/knowledge/knowledge_recall_test.exs
+index f41b06f5..31d80b0d 100644
+--- a/test/extensions/knowledge/knowledge_recall_test.exs
++++ b/test/extensions/knowledge/knowledge_recall_test.exs
+@@ -91,12 +91,31 @@ defmodule IpseKnowledge.KnowledgeRecallTest do
+           else
+             offset = if Keyword.has_key?(opts, :page_size) and is_binary(cursor), do: String.to_integer(String.replace_prefix(cursor, "page:", "")), else: 0
+             page_size = min(limit, Keyword.get(opts, :page_size, limit))
+-            rows = records |> Enum.drop(offset) |> Enum.take(page_size) |> Enum.map(&Map.take(&1, ~w(key revision bytes sha256)))
++            ordered = if state.ctx.mode == :seed, do: Enum.sort_by(records, & &1["key"]), else: records
++            rows = ordered |> Enum.drop(offset) |> Enum.take(page_size) |> Enum.map(&Map.take(&1, ~w(key revision bytes sha256)))
+             next_offset = offset + length(rows)
+             next = if next_offset < length(records), do: if(Keyword.has_key?(opts, :page_size), do: "page:#{next_offset}", else: "opaque-next")
+             {%{"status" => "ok", "value" => %{"records" => rows,
+               "generation" => if(state.phase == :recall_verify, do: Keyword.get(opts, :verify_generation, 1), else: 1), "count" => length(records), "next" => next}}, items}
+           end
++        %{"op" => "collection.call", "request" => %{"op" => "scan", "after" => cursor, "limit" => limit}} ->
++          rows = records |> Enum.sort_by(& &1["key"]) |> Enum.filter(&(&1["key"] > cursor)) |> Enum.take(min(limit, Keyword.get(opts, :scan_page_size, limit)))
++          keys = Enum.map(rows, & &1["key"])
++          if Keyword.get(opts, :scan_unknown, false) do
++            {%{"status" => "unknown"}, items}
++          else
++          if Keyword.get(opts, :unavailable, false) or Enum.any?(keys, &(&1 in Keyword.get(opts, :unavailable_keys, []))) do
++            {%{"status" => "failed", "value" => %{"code" => "collection_source_refused"}}, items}
++          else
++            generation = if Enum.any?(keys, &(&1 in Keyword.get(opts, :changed_generation_keys, []))), do: 2, else: 1
++            rows = Enum.map(rows, fn row ->
++              key = row["key"]
++              row = if key in Keyword.get(opts, :changed_keys, []), do: Map.update!(row, "revision", &(&1 + 1)), else: row
++              if replacement = opts[:replacement], do: if(key == replacement["key"], do: replacement, else: row), else: row
++            end)
++            {%{"status" => "ok", "value" => %{"generation" => generation, "records" => rows}}, items}
++          end
++          end
+         %{"op" => "collection.call", "request" => %{"op" => "get", "key" => key}} ->
+           if Keyword.get(opts, :unavailable, false) or key in Keyword.get(opts, :unavailable_keys, []),
+             do: {%{"status" => "failed", "value" => %{"code" => "collection_source_refused"}}, items},
+@@ -116,7 +135,8 @@ defmodule IpseKnowledge.KnowledgeRecallTest do
+       assert result == %{"status" => "recalled", "included" => 3,
+         "candidates" => 3, "unavailable" => 0, "coverage" => "complete"}
+       assert hd(calls) == %{"op" => "context.publish", "items" => []}
+-      assert Enum.count(calls, &(get_in(&1, ["request", "op"]) == "get")) == 3
++      assert Enum.count(calls, &(get_in(&1, ["request", "op"]) == "scan")) == 1
++      refute Enum.any?(calls, &(get_in(&1, ["request", "op"]) == "get"))
+       assert Enum.all?(calls, &(&1["op"] in ~w(context.publish context.available collection.call)))
+       assert Enum.all?(items, &(get_in(&1, ["source", "kind"]) == "assertion"))
+       assert decoded_notes(items) == Map.new(records, &{&1["key"], &1["value"]["text"]})
+@@ -124,6 +144,27 @@ defmodule IpseKnowledge.KnowledgeRecallTest do
+       assert Ipse.Extension.Context.validate(%{"op" => "context.publish", "items" => items}) == :ok
+     end
+
++    test "batched recall advances on short pages, isolates refused sources and withholds unknown batches" do
++      records = for n <- 1..8, do: record(n, "short note #{n}")
++      {complete, _, calls, items} = drive(start(), records, scan_page_size: 2)
++      assert complete["coverage"] == "complete" and complete["included"] == 8
++      assert Enum.count(calls, &(get_in(&1, ["request", "op"]) == "scan")) == 4
++      assert decoded_notes(items) == Map.new(records, &{&1["key"], &1["value"]["text"]})
++
++      missing = Enum.at(records, 3)["key"]
++      {partial, _, calls, items} = drive(start(), records, unavailable_keys: [missing])
++      assert partial["coverage"] == "partial" and partial["unavailable"] == 1
++      assert Map.keys(decoded_notes(items)) |> MapSet.new() ==
++        records |> Enum.reject(&(&1["key"] == missing)) |> Enum.map(& &1["key"]) |> MapSet.new()
++      assert Enum.any?(calls, &(get_in(&1, ["request", "op"]) == "scan"))
++      assert Enum.any?(calls, &(get_in(&1, ["request", "op"]) == "get"))
++
++      {unknown, _, calls, items} = drive(start(), records, scan_unknown: true)
++      assert unknown["coverage"] == "unavailable" and unknown["included"] == 0
++      refute Enum.any?(calls, &(get_in(&1, ["request", "op"]) == "get"))
++      refute String.contains?(IO.iodata_to_binary(JSON.encode!(items)), "short note")
++    end
++
+     test "mixed recall labels accepted decisions separately and preserves complete UTF8 spans" do
+       records = [record(1, "literal reference"), accepted_record(String.duplicate("café 日本語 ", 125))]
+       {result, _, _, items} = drive(start(), records)
+@@ -336,7 +377,7 @@ defmodule IpseKnowledge.KnowledgeRecallTest do
+                       %{"status" => "failed", "value" => %{"code" => "collection_source_refused"}}
+                   end
+                   {outcome, [request["cursor"] | cursors]}
+-                "get" ->
++                op when op in ["get", "scan"] ->
+                   assert {:ok, observation} = Ipse.Extension.Collection.ObservedRead.read(root, namespace, request)
+                   {%{"status" => "ok", "value" => observation["value"]}, cursors}
+               end
+@@ -508,7 +549,7 @@ defmodule IpseKnowledge.KnowledgeRecallTest do
+       assert result["candidates"] == 80
+       assert result["included"] in 1..31
+       assert length(calls) <= 37
+-      assert Enum.count(calls, &(get_in(&1, ["request", "op"]) == "get")) == 32
++      assert Enum.count(calls, &(get_in(&1, ["request", "op"]) == "scan")) == 8
+       assert Ipse.Extension.context_rendered_bytes(items, "knowledge") <= 8192
+       assert Enum.any?(items, &(&1["id"] == "note_index" and &1["text"] =~ "remaining_pages"))
+       for {key, text} <- decoded_notes(items),
+@@ -758,7 +799,7 @@ defmodule IpseKnowledge.KnowledgeRecallTest do
+       )
+
+     assert status == 0, output
+-    assert output =~ "21 passed"
++    assert output =~ "22 passed"
+     refute :code.is_loaded(IpseKnowledge.Knowledge)
+   end
+ end
+diff --git a/test/support/native_note_recall_many.exs b/test/support/native_note_recall_many.exs
+index 736c5e4d..5e1c1e85 100644
+--- a/test/support/native_note_recall_many.exs
++++ b/test/support/native_note_recall_many.exs
+@@ -200,11 +200,21 @@ reads =
+   Enum.filter(events, fn event ->
+     event["type"] == "extension_action_result" and
+       get_in(event, ["request", "op"]) == "collection.call" and
+-      get_in(event, ["request", "request", "op"]) == "get" and
++      get_in(event, ["request", "request", "op"]) in ["get", "scan"] and
+       get_in(event, ["outcome", "status"]) == "ok"
+   end)
+
+-assert length(reads) == if(baseline, do: 32, else: 33)
++read_count =
++  Enum.reduce(reads, 0, fn event, count ->
++    value = get_in(event, ["outcome", "value"])
++
++    count +
++      if get_in(event, ["request", "request", "op"]) == "scan",
++        do: length(value["records"]),
++        else: if(is_map(value["record"]), do: 1, else: 0)
++  end)
++
++assert read_count == if(baseline, do: 32, else: 33)
+
+ coverage =
+   events
