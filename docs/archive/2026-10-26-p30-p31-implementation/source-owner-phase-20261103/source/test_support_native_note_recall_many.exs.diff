@@ -1,0 +1,244 @@
+--- a/test/support/native_note_recall_many.exs
++++ b/test/support/native_note_recall_many.exs
+@@ -7,11 +7,15 @@
+ sparse = System.get_env("IPSE_TEST_RECALL_SPARSE") == "1"
+ reappear = System.get_env("IPSE_TEST_RECALL_REAPPEAR") == "1"
+ assert not reappear or sparse
++phase_probe = System.get_env("IPSE_TEST_SOURCE_PHASE_PROBE") == "1"
++phase_mode = System.get_env("IPSE_TEST_SOURCE_PHASE_MODE")
++if phase_probe, do: assert(phase_mode in ["single", "split8"] and not sparse and not reappear)
+ 
+ provider_timeout =
+   System.get_env("IPSE_TEST_RECALL_PROVIDER_TIMEOUT_MS", "5000") |> String.to_integer()
+ 
+ assert provider_timeout in 1..100_000
++if phase_probe, do: assert(provider_timeout == 5000)
+ home = Path.join(root, "home")
+ cwd = Path.join(root, "work")
+ 
+@@ -29,51 +33,6 @@
+ {:ok, {_, port}} = :inet.sockname(listener)
+ base = "http://127.0.0.1:#{port}"
+ 
+-server =
+-  Task.async(fn ->
+-    try do
+-      {:ok, socket} = :gen_tcp.accept(listener, 180_000)
+-
+-      try do
+-        request =
+-          case :gen_tcp.recv(socket, 0, provider_timeout + 1_000) do
+-            {:ok, first} -> {:ok, Ipse.Test.ProviderFixture.request(socket, first)}
+-            {:error, :closed} -> :closed
+-            other -> flunk("Synthetic provider initial read failed: #{inspect(other)}")
+-          end
+-
+-        case request do
+-          {:ok, {_, bytes}} ->
+-            send(owner, {:recall_many_request, Jason.decode!(bytes)})
+-
+-            body =
+-              Jason.encode!(%{
+-                "model" => "synthetic",
+-                "message" => %{"role" => "assistant", "content" => "Synthetic answer."},
+-                "done" => true,
+-                "prompt_eval_count" => 1,
+-                "eval_count" => 1
+-              }) <> "\n"
+-
+-            :ok =
+-              :gen_tcp.send(
+-                socket,
+-                "HTTP/1.1 200 Fixture\r\ncontent-type: application/x-ndjson\r\ncontent-length: #{byte_size(body)}\r\nconnection: close\r\n\r\n" <>
+-                  body
+-              )
+-
+-          :closed ->
+-            send(owner, :recall_provider_closed_without_request)
+-            :closed
+-        end
+-      after
+-        :gen_tcp.close(socket)
+-      end
+-    after
+-      :gen_tcp.close(listener)
+-    end
+-  end)
+-
+ config_path = Path.join(home, "config.json")
+ 
+ File.write!(
+@@ -132,10 +91,10 @@
+ assert {:ok, channel} = Ipse.Session.open_input_channel(source, self())
+ 
+ {texts, source, source_ids} =
+-  Enum.reduce(1..33, {[], source, channel, [source_id]}, fn step,
++  Enum.reduce(1..if(phase_probe, do: 8, else: 33), {[], source, channel, [source_id]}, fn step,
+                                                             {texts, current, channel, ids} ->
+     {current, channel, ids} =
+-      if sparse and step == 2 do
++      if (phase_probe and phase_mode == "split8" and step > 1) or (sparse and step == 2) do
+         assert :ok = Ipse.Session.close_confirmed(current)
+         assert {:ok, other} = DynamicSupervisor.start_child(Ipse.Sessions, {Ipse.Session, opts})
+         assert {:ok, next_channel} = Ipse.Session.open_input_channel(other, self())
+@@ -201,7 +160,7 @@
+ end
+ 
+ assert Enum.count(source_events, &(&1["type"] == "operator_assertion")) ==
+-         if(sparse, do: 1, else: 33)
++         if(sparse or (phase_probe and phase_mode == "split8"), do: 1, else: if(phase_probe, do: 8, else: 33))
+ 
+ refute Enum.any?(source_events, &(&1["type"] == "inference_dispatch_intent"))
+ 
+@@ -285,6 +244,74 @@
+   assert :ok = :sys.install(session, {hook, false})
+ end
+ 
++phase_fingerprints = fn ->
++  Enum.map(source_ids, fn id ->
++    journal = Path.join(dir, id <> ".jsonl")
++    lock = Path.join(dir, id <> ".lock")
++    journal_stat = File.lstat!(journal)
++    lock_stat = File.lstat!(lock)
++    assert journal_stat.type == :regular and lock_stat.type == :regular
++    %{
++      "id" => id,
++      "journal_identity" => [journal_stat.major_device, journal_stat.minor_device, journal_stat.inode, journal_stat.uid],
++      "journal_sha256" => Ipse.JSON.sha256(File.read!(journal)),
++      "lock_identity" => [lock_stat.major_device, lock_stat.minor_device, lock_stat.inode, lock_stat.uid]
++    }
++  end)
++end
++phase_before = if phase_probe do
++  assert length(source_ids) == if(phase_mode == "single", do: 1, else: 8)
++  fingerprints = phase_fingerprints.()
++  File.write!(Path.join(root, "phase-before.json"), Jason.encode!(fingerprints), [:exclusive])
++  fingerprints
++end
++sink = if phase_probe, do: Ipse.Test.SourceTiming.start(Path.join(root, "source-timing.jsonl"))
++server =
++  Task.async(fn ->
++    try do
++      {:ok, socket} = :gen_tcp.accept(listener, 180_000)
++
++      try do
++        request =
++          case :gen_tcp.recv(socket, 0, provider_timeout + 1_000) do
++            {:ok, first} -> {:ok, Ipse.Test.ProviderFixture.request(socket, first)}
++            {:error, :closed} -> :closed
++            other -> flunk("Synthetic provider initial read failed: #{inspect(other)}")
++          end
++
++        case request do
++          {:ok, {_, bytes}} ->
++            send(owner, {:recall_many_request, Jason.decode!(bytes)})
++
++            body =
++              Jason.encode!(%{
++                "model" => "synthetic",
++                "message" => %{"role" => "assistant", "content" => "Synthetic answer."},
++                "done" => true,
++                "prompt_eval_count" => 1,
++                "eval_count" => 1
++              }) <> "\n"
++
++            :ok =
++              :gen_tcp.send(
++                socket,
++                "HTTP/1.1 200 Fixture\r\ncontent-type: application/x-ndjson\r\ncontent-length: #{byte_size(body)}\r\nconnection: close\r\n\r\n" <>
++                  body
++              )
++
++          :closed ->
++            send(owner, :recall_provider_closed_without_request)
++            :closed
++        end
++      after
++        :gen_tcp.close(socket)
++      end
++    after
++      :gen_tcp.close(listener)
++    end
++  end)
++
++
+ assert :ok = Ipse.Session.prompt(session, "Which synthetic notes are available?")
+ 
+ request =
+@@ -329,6 +356,7 @@
+ 
+ included = Enum.count(texts, &String.contains?(wire, &1))
+ assert_receive {:ipse, ^session, {:done, :ok}}, 30_000
++if phase_probe, do: Ipse.Test.SourceTiming.stop(sink)
+ assert :ok = Task.await(server, 5_000)
+ 
+ assert {:ok, events} = Ipse.Journal.load(dir, session_id)
+@@ -354,6 +382,57 @@
+       get_in(event, ["outcome", "status"]) == "ok"
+   end)
+ 
++if phase_probe do
++  # Validate the exact structured user-role reference and its committed reads.
++  prefix = Ipse.Extension.render_context(%{"knowledge" => []}) |> String.replace_suffix("[]", "")
++  items = Enum.flat_map(request["messages"], fn
++    %{"role" => "user"} = message ->
++      case Ipse.Session.Reference.selected_publishers(message) do
++        {:ok, %{"extensions" => text}} when is_binary(text) ->
++          if String.starts_with?(text, prefix) do
++            {:ok, parsed} = Jason.decode(String.replace_prefix(text, prefix, ""))
++            assert is_list(parsed)
++            parsed
++          else
++            []
++          end
++        _ -> []
++      end
++    _ -> []
++  end)
++  parts = items
++    |> Enum.filter(fn item -> get_in(item, ["provenance", "instance"]) == "knowledge" and is_binary(item["id"]) and String.starts_with?(item["id"], "note_text_") end)
++    |> Enum.flat_map(fn item ->
++      {:ok, group} = Jason.decode(item["text"])
++      assert group["format"] == "note_parts_v1"
++      assert group["fields"] == ~w(key revision read_operation_id offset_bytes total_bytes text)
++      assert Enum.all?(group["records"], &(is_list(&1) and length(&1) == 6))
++      Enum.map(group["records"], &Map.new(Enum.zip(group["fields"], &1)))
++    end)
++  expected = Map.new(reads, fn event ->
++    record = get_in(event, ["outcome", "value", "record"])
++    assert is_map(record) and get_in(event, ["request", "request", "key"]) == record["key"]
++    {record["key"], %{revision: record["revision"], text: get_in(record, ["value", "text"]), operation: event["operation_id"]}}
++  end)
++  assert map_size(expected) == 8
++  assert MapSet.new(Enum.map(expected, fn {_, item} -> item.text end)) == MapSet.new(texts)
++  assert MapSet.new(Enum.map(parts, & &1["key"])) == MapSet.new(Map.keys(expected))
++  for {key, item} <- expected do
++    selected = Enum.filter(parts, &(&1["key"] == key))
++    assert selected != []
++    {text, offset} = Enum.reduce(selected, {"", 0}, fn part, {text, offset} ->
++      assert part["revision"] == item.revision and part["read_operation_id"] == item.operation
++      assert part["offset_bytes"] == offset and part["total_bytes"] == byte_size(item.text)
++      assert is_binary(part["text"]) and String.valid?(part["text"])
++      {text <> part["text"], offset + byte_size(part["text"])}
++    end)
++    assert text == item.text and offset == byte_size(item.text)
++  end
++  pairs = expected |> Enum.map(fn {key, item} -> [key, item.revision] end) |> Enum.sort()
++  shape = %{"key_revision_sha256" => Ipse.JSON.digest([pairs]), "record_count" => map_size(expected), "source_sessions" => length(source_ids), "text_byte_sizes" => Enum.sort(Enum.map(expected, fn {_, item} -> byte_size(item.text) end))}
++  File.write!(Path.join(root, "phase-fixture-shape.json"), Jason.encode!(shape), [:exclusive])
++end
++
+ coverage =
+   events
+   |> Enum.flat_map(fn event ->
+@@ -384,6 +463,10 @@
+ assert coverage["coverage"] == if(sparse, do: "partial", else: "complete")
+ assert coverage["included"] == included
+ assert :ok = Ipse.Session.close_confirmed(session)
++if phase_probe do
++  assert phase_fingerprints.() == phase_before
++  File.write!(Path.join(root, "phase-sources-unchanged"), "confirmed\n", [:exclusive])
++end
+ 
+ if held_journal && File.exists?(held_journal <> ".held"),
+   do: File.rename!(held_journal <> ".held", held_journal)

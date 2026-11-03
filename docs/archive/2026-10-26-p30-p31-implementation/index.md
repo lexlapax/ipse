@@ -75,6 +75,7 @@ nor resource/offline qualification. No daemon configuration or existing model wa
 
 ## P31A contracts and evidence
 
+- [Source-owner phase comparison](source-owner-phase-20261103.md) records two fresh eight-note Sessions with one or eight original owners; its cache-inclusive timings are directional and do not establish the 33-note failure cause.
 - [Synthetic egress diagnostic](egress-diagnostic-dcbb-20261103.md) records a validated small marker control and an inconclusive fresh 33-note failure during managed-current use.
 - [Combined-source 33-note failure](recall33-combined-dcbb-20261103.md) preserves the fresh attempt, its unchanged source identities and the unknown pre-request failure.
 - [Generic current-use v4 batching](generic-v4-batching-dcbb-20261103.md) records focused controls and the candidate's withdrawal after another failed 33-note attempt; populated recall remains open.

@@ -1,0 +1,33 @@
+--- a/test/ipse/session/native_note_recall_test.exs
++++ b/test/ipse/session/native_note_recall_test.exs
+@@ -44,11 +44,19 @@
+     run("recall-many", sparse: true, reappear: true)
+   end
+ 
++  @tag timeout: 300_000
++  @tag :source_phase_probe
++  @tag skip: if(System.get_env("IPSE_TEST_SOURCE_PHASE_PROBE") == "1", do: false, else: "source timing probe disabled")
++  test "fresh native source ownership phase comparison" do
++    run("recall-many", phase_probe: true)
++  end
++
+   defp run(mode, opts \\ []) do
+     root = Path.join(System.tmp_dir!(), "ipse-native-recall-" <> Ipse.Usage.id())
+     File.mkdir!(root)
+     File.chmod!(root, 0o700)
+-    on_exit(fn -> File.rm_rf!(root) end)
++    if opts[:phase_probe], do: IO.puts("SOURCE_TIMING_FIXTURE_ROOT=" <> root)
++    on_exit(fn -> unless opts[:phase_probe], do: File.rm_rf!(root) end)
+     driver = Path.join(root, "pty")
+ 
+     assert {"", 0} =
+@@ -84,7 +92,8 @@
+         stderr_to_stdout: true,
+         env: [
+           {"IPSE_TEST_RECALL_SPARSE", if(opts[:sparse], do: "1", else: "0")},
+-          {"IPSE_TEST_RECALL_REAPPEAR", if(opts[:reappear], do: "1", else: "0")}
++          {"IPSE_TEST_RECALL_REAPPEAR", if(opts[:reappear], do: "1", else: "0")},
++          {"IPSE_TEST_SOURCE_PHASE_PROBE", if(opts[:phase_probe], do: "1", else: "0")}
+         ]
+       )
+ 

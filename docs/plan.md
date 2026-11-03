@@ -156,7 +156,10 @@ following limits until the end-to-end paths are qualified:
    succeed; it was withdrawn from current source. The 33-note journey and
    populated recall remain unqualified. A [fresh egress diagnostic](archive/2026-10-26-p30-p31-implementation/egress-diagnostic-dcbb-20261103.md)
    reached managed-current use after a successful gate, but missing terminal
-   markers leave its failure cause inconclusive. A
+   markers leave its failure cause inconclusive. A [small source-owner comparison](archive/2026-10-26-p30-p31-implementation/source-owner-phase-20261103.md)
+   measured cache-inclusive source-index and source-lock costs in one fresh
+   eight-note run per case. Different source journals and unobserved cache hits
+   limit the comparison; it does not identify the 33-note failure cause. A
    [local pilot launcher preflight](archive/2026-10-26-p30-p31-implementation/pilot-local-preflight-20261103.md)
    passed 27 synthetic controls without model calls; live results and independent
    semantic labels are still missing. Its first local launch

@@ -1,0 +1,84 @@
+--- a/lib/ipse/session/stored_sources.ex
++++ b/lib/ipse/session/stored_sources.ex
+@@ -404,7 +404,7 @@
+          true <- protected?(before_lock),
+          {:ok, journal} <- File.lstat(path),
+          true <- protected?(journal) and journal.uid == before_lock.uid,
+-         {:ok, lock} <- source_lock(c, lock_path) do
++         {:ok, lock} <- Ipse.Test.SourceTiming.timed(:source_lock, fn -> source_lock(c, lock_path) end) do
+       monitor = :erlang.monitor(:port, lock)
+ 
+       result =
+@@ -416,23 +416,24 @@
+             try do
+               with {:ok, info} <- :file.read_file_info(file),
+                    {:ok, budgeted} <- budget(c, info),
+-                   {:ok, stats} <- Journal.scan_file(file, c.config[:journal], :load),
++                   {:ok, stats} <- Ipse.Test.SourceTiming.timed(:source_scan, fn -> Journal.scan_file(file, c.config[:journal], :load) end),
++                   :ok <- Ipse.Test.SourceTiming.journal(File.Stat.from_record(info).size, length(stats.events)),
+                    true <- stats.tail == :none,
+                    metadata = (List.first(stats.events) || %{})["metadata"],
+                    {:ok, origin} when is_map(origin) <- SourceOrigin.recorded(metadata, id),
+                    :ok <- SourceOrigin.check(file, path, id, metadata),
+                    true <- project?(metadata, c),
+-                   {:ok, index} <- source_index(stats.events, id),
+-                   :ok <- SourceWindow.validate_sources(c.history_dir, id, stats.events),
++                   {:ok, index} <- Ipse.Test.SourceTiming.timed(:source_index, fn -> source_index(stats.events, id) end),
++                   :ok <- Ipse.Test.SourceTiming.timed(:source_validate, fn -> SourceWindow.validate_sources(c.history_dir, id, stats.events) end),
+                    {:ok, current} <-
+-                     resolve(index, proofs, c[:stored_source_resolution]),
++                     Ipse.Test.SourceTiming.timed(:source_resolve, fn -> resolve(index, proofs, c[:stored_source_resolution]) end),
+                    true <- lock_live?(lock, monitor) do
+                 result = with_sessions(rest, budgeted, i, current ++ verified, fun)
+ 
+-                with :ok <- SourceOrigin.check(file, path, id, metadata),
+-                     true <- unchanged?(file, info),
+-                     true <- same_lock?(lock_path, before_lock),
+-                     true <- lock_live?(lock, monitor) do
++                with :ok <- Ipse.Test.SourceTiming.timed(:source_origin_final, fn -> SourceOrigin.check(file, path, id, metadata) end),
++                     true <- Ipse.Test.SourceTiming.timed(:source_unchanged, fn -> unchanged?(file, info) end),
++                     true <- Ipse.Test.SourceTiming.timed(:source_lock_final, fn -> same_lock?(lock_path, before_lock) end),
++                     true <- Ipse.Test.SourceTiming.timed(:source_live_final, fn -> lock_live?(lock, monitor) end) do
+                   result
+                 else
+                   _ -> @error
+@@ -441,7 +442,7 @@
+                 _ -> @error
+               end
+             after
+-              :file.close(file)
++              Ipse.Test.SourceTiming.timed(:source_file_close, fn -> :file.close(file) end)
+             end
+           else
+             _ -> @error
+@@ -467,9 +468,11 @@
+         end
+ 
+         unlocked =
+-          if c[:shareable_source],
+-            do: Runner.unlock_export_candidate(lock),
+-            else: Runner.unlock(lock)
++          Ipse.Test.SourceTiming.timed(:source_unlock, fn ->
++            if c[:shareable_source],
++              do: Runner.unlock_export_candidate(lock),
++              else: Runner.unlock(lock)
++          end)
+ 
+         case unlocked do
+           :ok when live and share_ok -> result
+@@ -579,12 +582,15 @@
+   defp source_index(events, id) do
+     case Ipse.Session.Resources.source_replay_cache() do
+       :none ->
++        Ipse.Test.SourceTiming.cache(:none)
+         with {:ok, saved} <- Saved.restore(events, id), do: {:ok, saved.source_window.index}
+ 
+       {:ok, cache} ->
++        Ipse.Test.SourceTiming.cache(:scoped)
+         Ipse.Session.SourceReplayCache.restore(cache, events, id)
+ 
+       _ ->
++        Ipse.Test.SourceTiming.cache(:unavailable)
+         @error
+     end
+   end

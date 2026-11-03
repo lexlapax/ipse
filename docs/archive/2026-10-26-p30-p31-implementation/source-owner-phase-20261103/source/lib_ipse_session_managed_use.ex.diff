@@ -1,0 +1,21 @@
+--- a/lib/ipse/session/managed_use.ex
++++ b/lib/ipse/session/managed_use.ex
+@@ -270,15 +270,16 @@
+   defp with_dependencies_owned(context, dependencies, fun, journals) do
+     with {:ok, first} <-
+            protected(context, dependencies, fn cap, catalog, _ ->
+-             observe(context, dependencies, cap, catalog, journals)
++             Ipse.Test.SourceTiming.timed(:observe_first, fn -> observe(context, dependencies, cap, catalog, journals) end)
+            end),
+          true <- length(first.proofs) <= @max_sources do
++      Ipse.Test.SourceTiming.shape(dependencies, first.proofs)
+       use = fn _ ->
+         protected(context, dependencies, fn cap, catalog, policy ->
+           checked_observation(
+             use_deadline(policy, first.current),
+             fn ->
+-              with {:ok, ^first} <- observe(context, dependencies, cap, catalog, journals),
++              with {:ok, ^first} <- Ipse.Test.SourceTiming.timed(:observe_second, fn -> observe(context, dependencies, cap, catalog, journals) end),
+                    true <-
+                      Enum.all?(Enum.zip(dependencies, first.current), fn {old, current} ->
+                        ManagedReference.current?(old, current, System.system_time(:millisecond))

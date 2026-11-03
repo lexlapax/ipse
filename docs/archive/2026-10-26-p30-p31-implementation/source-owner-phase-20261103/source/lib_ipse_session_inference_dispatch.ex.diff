@@ -1,0 +1,19 @@
+--- a/lib/ipse/session/inference_dispatch.ex
++++ b/lib/ipse/session/inference_dispatch.ex
+@@ -120,10 +120,12 @@
+ 
+   @doc false
+   def send(data, facts, continuation) do
+-    with_current(data, fn ->
+-      with :ok <- current_wire(data, facts),
+-           true <- experiment_current?(data),
+-           do: continuation.()
++    Ipse.Test.SourceTiming.scope(data.phase, fn ->
++      with_current(data, fn ->
++        with :ok <- current_wire(data, facts),
++             true <- experiment_current?(data),
++             do: continuation.()
++      end)
+     end)
+   end
+ 
