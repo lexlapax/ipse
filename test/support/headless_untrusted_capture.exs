@@ -30,7 +30,11 @@ server =
   Task.async(fn ->
     try do
       for number <-
-            1..if(scenario in ~w(assistant_model assistant_model_bad_quote), do: 6, else: 2) do
+            1..if(
+              scenario in ~w(assistant_model assistant_model_bad_quote assistant_model_review),
+              do: 6,
+              else: 2
+            ) do
         {:ok, socket} = :gen_tcp.accept(listener, 30_000)
 
         try do
@@ -223,12 +227,13 @@ origin =
     "content" ->
       "attributed_reference"
 
-    scenario when scenario in ~w(assistant assistant_model assistant_model_bad_quote) ->
+    scenario
+    when scenario in ~w(assistant assistant_model assistant_model_bad_quote assistant_model_review) ->
       "assistant_proposal"
   end
 
 text =
-  if scenario in ~w(assistant_model assistant_model_bad_quote) do
+  if scenario in ~w(assistant_model assistant_model_bad_quote assistant_model_review) do
     assert :ok = Ipse.Session.prompt(session, "Record the suggestion from your previous reply.")
     "Synthetic fixture done."
   else
@@ -305,7 +310,7 @@ if scenario == "assistant_model_bad_quote" do
   IO.puts("ASSISTANT_PROPOSAL_BAD_QUOTE_REFUSED")
 end
 
-if scenario in ~w(assistant assistant_model) do
+if scenario in ~w(assistant assistant_model assistant_model_review) do
   assert outcome == :ok
   assert [record] = page["records"]
   assert record["value"]["state"] == "pending"
@@ -344,7 +349,7 @@ if scenario in ~w(assistant assistant_model) do
 
   assert checked["proof"] == proof
 
-  if scenario == "assistant_model" do
+  if scenario in ~w(assistant_model assistant_model_review) do
     calls =
       for event <- events,
           event["type"] == "message",
@@ -383,4 +388,79 @@ end
 refute File.exists?(Path.join(cwd, "forbidden.txt"))
 refute File.exists?(Path.join(cwd, "forbidden-shell"))
 assert :ok = Ipse.Session.close_confirmed(session)
+
+if scenario == "assistant_model_review" do
+  [pending] = page["records"]
+  [original_proof] = pending["value"]["evidence"]["sources"]
+  management = Path.join(home, "knowledge-management")
+  before = MapSet.new(Path.wildcard(Path.join(management, "*.jsonl")))
+
+  paths =
+    :code.get_path()
+    |> Enum.map(&List.to_string/1)
+    |> Enum.reject(&(&1 == "."))
+    |> Enum.map(&Path.expand/1)
+    |> Enum.reverse()
+    |> Enum.flat_map(&["-pa", &1])
+
+  {output, status} =
+    System.cmd(
+      Path.join(root, "pty"),
+      ["--management-review", System.find_executable("elixir"), "--erl", "+S 2:2"] ++
+        paths ++ [Path.expand("headless_assistant_review.exs", __DIR__), root, pending["key"]],
+      stderr_to_stdout: true
+    )
+
+  assert status == 0, output
+  assert output =~ "ASSISTANT_NATIVE_REVIEW_PASSED"
+
+  [journal_path] =
+    management
+    |> Path.join("*.jsonl")
+    |> Path.wildcard()
+    |> Enum.reject(&MapSet.member?(before, &1))
+
+  journal_id = Path.basename(journal_path, ".jsonl")
+  assert {:ok, review_events} = Ipse.Journal.load(management, journal_id)
+  [event] = Enum.filter(review_events, &(&1["type"] == "pending_proposal_accepted"))
+  assert event["facts"]["source_proof"] === original_proof
+  assert event["facts"]["session_id"] == nil
+
+  assert {:ok, resolved} =
+           Ipse.Session.PendingAcceptance.resolve_committed(
+             review_events,
+             journal_id,
+             Ipse.JSON.digest([event])
+           )
+
+  [_, note, link] = resolved.intent["request"]["changes"]
+  assert note["value"]["text"] == "Synthetic fixture done."
+  assert note["value"]["source_proof"] === original_proof
+  assert link["value"]["journal_id"] == journal_id
+  assert link["value"]["journal_kind"] == "knowledge_management"
+
+  for change <- [note, link] do
+    assert {:ok, stored} =
+             Ipse.Extension.Collection.execute(
+               collection,
+               namespace,
+               %{"op" => "get", "key" => change["key"]},
+               Ipse.Usage.id()
+             )
+
+    assert stored["record"]["value"] === change["value"]
+  end
+
+  assert {:ok, removed} =
+           Ipse.Extension.Collection.execute(
+             collection,
+             namespace,
+             %{"op" => "get", "key" => pending["key"]},
+             Ipse.Usage.id()
+           )
+
+  assert removed["record"] == nil
+  IO.puts("ASSISTANT_PROPOSAL_PUBLIC_REVIEW_PASSED")
+end
+
 IO.puts("UNTRUSTED_CAPTURE_#{String.upcase(scenario)}_PASSED")

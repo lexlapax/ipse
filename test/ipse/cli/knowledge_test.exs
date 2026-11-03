@@ -40,6 +40,12 @@ defmodule Ipse.CLI.KnowledgeTest do
              "ASSISTANT_PROPOSAL_BAD_QUOTE_REFUSED"
   end
 
+  @tag timeout: 120_000, assistant_pending_public_review: true
+  test "a model-selected assistant proposal can be reviewed with its original attribution" do
+    assert scenario("assistant_model_review", "--knowledge", "headless_untrusted_capture.exs") =~
+             "ASSISTANT_PROPOSAL_PUBLIC_REVIEW_PASSED"
+  end
+
   @tag knowledge_readiness: true
   test "saved native permission distinguishes activation matching from unavailable capture" do
     output = scenario("readiness", "--knowledge")

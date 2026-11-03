@@ -952,8 +952,9 @@ and an available Qwen3.5 9B comparison. Model details and contracts live in the
 A [current direct-client control](archive/2026-10-26-p30-p31-implementation/assistant-proposal-current-20261102.md)
 now saves a synthetic completed assistant reply as signed pending material with
 its original source attribution. A synthetic main model can select that reply
-on an explicitly requested later turn; a fabricated quotation is refused.
-Automatic same-reply capture and in-chat acceptance remain open.
+on an explicitly requested later turn; a fabricated quotation is refused, and
+separate native review preserves that attribution on acceptance. Automatic
+same-reply capture and in-chat acceptance remain open.
 The [chat-card consistency check](archive/2026-10-26-p30-p31-implementation/pending-chat-journal-binding-20261102.md)
 now refuses different Session and journal IDs before review; it does not create
 an in-chat review or effect path.
