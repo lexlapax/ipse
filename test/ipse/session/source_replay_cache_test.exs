@@ -116,6 +116,33 @@ defmodule Ipse.Session.SourceReplayCacheTest do
     assert map_size(:sys.get_state(cache.pid).entries) == 0
   end
 
+  test "a killed cache caller cannot strand later source reconstruction" do
+    assert {:ok, cache} = SourceReplayCache.start(self())
+    :ok = :sys.suspend(cache.pid)
+    caller = spawn(fn -> SourceReplayCache.restore(cache, events(), @id) end)
+    monitor = Process.monitor(caller)
+
+    try do
+      held =
+        Enum.reduce_while(1..500, false, fn _, _ ->
+          if :atomics.get(cache.gate, 1) == 1 do
+            {:halt, true}
+          else
+            Process.sleep(5)
+            {:cont, false}
+          end
+        end)
+
+      assert held
+      Process.exit(caller, :kill)
+      assert_receive {:DOWN, ^monitor, :process, ^caller, :killed}
+      assert {:ok, %{session_id: @id}} = SourceReplayCache.restore(cache, events(), @id)
+      assert :atomics.get(cache.gate, 1) == 1
+    after
+      :sys.resume(cache.pid)
+    end
+  end
+
   test "cached source text does not retain the journal's larger backing binary" do
     assert {:ok, cache} = SourceReplayCache.start(self())
     text = :binary.part(:binary.copy("x", 16_384), 0, 128)
