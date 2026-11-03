@@ -61,6 +61,7 @@ nor resource/offline qualification. No daemon configuration or existing model wa
 
 ## P31A contracts and evidence
 
+- [Full-cohort integrated-day preflight](integrated-full-day-preflight-20261102.md) records the provisional 57-effect schedule, restart guards and bounded calendar size check; the populated initializer and day were not run in that preflight.
 - [Bounded paged recall and missing-original classification](recall-paging-20261102.md) records isolated paging, inode-swap and actual Session controls; reappearance, host limits and final integrated verification remain open.
 - [Integrated synthetic Session smoke](integrated-final-smoke-20261102.md) records 40 actual turns interleaved with four native effects, a read-only audit and replay refusal, with retained synthetic receipts; it is not a 2,000-note or annual qualification.
 - [Frozen native population seed runner](native-notes-seed-20261102.md) preserves actual statement/category/pin input, 100 operations/day, fresh-process clocks, original sources and separate control/journal costs; its two-day smoke precedes the full 2,000-record population and annual workload.
