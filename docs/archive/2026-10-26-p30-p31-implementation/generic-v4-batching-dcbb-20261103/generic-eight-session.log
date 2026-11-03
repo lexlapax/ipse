@@ -1,0 +1,8 @@
+Running ExUnit with seed: 0, max_cases: 4
+Excluding tags: [:test, :native_sandbox, :macos_sandbox, :macos_filesystem, :memory_scope, :controlled_tty_bridge, :controlled_tty_loss]
+Including tags: [:managed_pack_actual_overflow]
+
+.
+Finished in 38.8 seconds (0.00s async, 38.8s sync)
+
+Result: 1 passed, 201 excluded

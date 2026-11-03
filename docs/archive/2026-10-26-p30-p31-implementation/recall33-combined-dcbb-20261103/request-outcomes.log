@@ -1,0 +1,33 @@
+%{
+  "duration_ms" => 16388,
+  "kind" => "model",
+  "outcome" => "failed",
+  "type" => "request_measured"
+}
+%{
+  "duration_ms" => 16389,
+  "finality" => "partial",
+  "outcome" => "failed",
+  "reported_model" => nil,
+  "type" => "request_finished",
+  "usage" => %{
+    "counts" => %{
+      "input_cache_write_1h_tokens" => nil,
+      "input_cache_write_5m_tokens" => nil,
+      "input_cache_write_tokens" => nil,
+      "input_cached_tokens" => nil,
+      "input_tokens" => nil,
+      "input_uncached_tokens" => nil,
+      "output_reasoning_tokens" => nil,
+      "output_tokens" => nil,
+      "provider_duration_ns" => nil,
+      "provider_web_fetch_requests" => nil,
+      "provider_web_search_requests" => nil,
+      "total_tokens" => nil
+    },
+    "derived_fields" => [],
+    "issues" => [],
+    "quality" => "unavailable",
+    "version" => 1
+  }
+}

@@ -73,6 +73,8 @@ nor resource/offline qualification. No daemon configuration or existing model wa
 
 ## P31A contracts and evidence
 
+- [Combined-source 33-note failure](recall33-combined-dcbb-20261103.md) preserves the fresh attempt, its unchanged source identities and the unknown pre-request failure.
+- [Generic current-use v4 batching](generic-v4-batching-dcbb-20261103.md) records focused controls and the candidate's withdrawal after another failed 33-note attempt; populated recall remains open.
 - [Recorded managed-read replay containment](managed-read-replay-containment-20261103.md) checks a genuine old synthetic receipt against the baseline and repaired reconstruction paths, with an intentional fail-closed compatibility change.
 - [Strict 33-note recall attempt](recall33-one-shot-20261103.md) delivered all recorded Worker inputs and proposed 32 available notes, but failed before the loopback provider received a request; the cause remains unknown.
 - [Combined Worker v4 coalescing](worker-v4-coalescing-bde96-20261103.md) records focused v4 batching and v7 compatibility controls, not a completed populated recall journey.

@@ -1,0 +1,869 @@
+Choose the knowledge identity for /dev/shm/ipse-generic-eight-dcaba-20261103-01/project.
+Repository shares only with reciprocally verified worktrees; folder means only this canonical folder.
+Type one exact choice: folder eeadf8bf2bdc436e
+> folder eeadf8bf2bdc436e
+Enable native notes for /dev/shm/ipse-generic-eight-dcaba-20261103-01/project (folder).
+This selection takes effect in the next new session, including headless run.
+Broad protected note saving is not ready. A new statement may be saved through separate native review when permission is active; saved permission is retained.
+Literal notes require a separate native statement/category review or a typed host outcome; other inputs remain pending.
+Ordinary notes: 90 days; pending proposals: 7 days. Current/preferences may persist.
+No secondary model calls are authorized. Ordinary tool approvals remain separate.
+Exact permission, route, retention, artifact and daily limits:
+{
+  "artifact_sha256": "d13c4f2bbce2e02e716e0254bf0ad679381b10033e5c35ddedf83cea1ae2afdf",
+  "expires_at_ms": 1825273410111,
+  "headless": true,
+  "limits": {
+    "cost_nanos": 0,
+    "download_bytes": 0,
+    "input_bytes": 2097152,
+    "model_calls": 0,
+    "operations": 100,
+    "output_bytes": 4194304
+  },
+  "operations": [
+    "notes.capture",
+    "notes.propose",
+    "notes.recall"
+  ],
+  "period_ms": 86400000,
+  "project": "487fdca7ae502c863dfeaec20066de18ce18dffeb47776f97762e94ba435cf18",
+  "settings": {
+    "activation": {
+      "allow_children": false,
+      "artifact": "d13c4f2bbce2e02e716e0254bf0ad679381b10033e5c35ddedf83cea1ae2afdf",
+      "artifact_sha256": "d13c4f2bbce2e02e716e0254bf0ad679381b10033e5c35ddedf83cea1ae2afdf",
+      "capabilities": [
+        "event.job",
+        "host.actions",
+        "host.actions.mixed",
+        "host.collection.managed",
+        "host.collection.read",
+        "host.context",
+        "host.sources",
+        "invoke.command",
+        "invoke.result.pages",
+        "invoke.tool"
+      ],
+      "instance": "knowledge",
+      "kind": "reviewed.bundle",
+      "lifetime": "session",
+      "main_timeout_ms": 90000,
+      "options": {
+        "embedding": {},
+        "extraction": {},
+        "fetch": {},
+        "rerank": {},
+        "retrieval": {},
+        "search": {},
+        "stores": {},
+        "version": 1
+      },
+      "order": 100,
+      "service_refs": [
+        {
+          "operation": "main",
+          "profile": null,
+          "service_id": "demo"
+        }
+      ],
+      "sidecar_sha256": "6add073e340583f2debc3a59475298ccb2359bc1aab7f77b65f704fbb9553549",
+      "version": 1
+    },
+    "constraints": {
+      "78b6d7943b3430f0225a3ee45cc4cffc27de14ddd97c39f8e38c9f8fb85ca68e": {
+        "allow_delete": false,
+        "evidence_path": [
+          "evidence",
+          "sources"
+        ],
+        "key_prefix": "pending.",
+        "source_categories": [
+          "assistant_proposal",
+          "interactive_operator",
+          "native_operator_answer",
+          "native_operator_assertion",
+          "typed_host_outcome",
+          "unattended_input"
+        ],
+        "value_schema": {
+          "additionalProperties": false,
+          "properties": {
+            "assigned_category": {
+              "enum": [
+                "ordinary",
+                "preference",
+                "current"
+              ],
+              "type": "string"
+            },
+            "created_at_ms": {
+              "maximum": 9007199254740991,
+              "minimum": 0,
+              "type": "integer"
+            },
+            "event_at_ms": {
+              "maximum": 9007199254740991,
+              "minimum": 0,
+              "type": [
+                "integer",
+                "null"
+              ]
+            },
+            "evidence": {
+              "additionalProperties": false,
+              "properties": {
+                "sources": {
+                  "items": {
+                    "additionalProperties": false,
+                    "properties": {
+                      "content_sha256": {
+                        "maxLength": 64,
+                        "minLength": 64,
+                        "type": "string"
+                      },
+                      "coverage": {
+                        "enum": [
+                          "available",
+                          "partial"
+                        ],
+                        "type": "string"
+                      },
+                      "end_byte": {
+                        "maximum": 9007199254740991,
+                        "minimum": 0,
+                        "type": "integer"
+                      },
+                      "kind": {
+                        "enum": [
+                          "input.original",
+                          "input.operator_answer",
+                          "answer.original",
+                          "tool.outcome",
+                          "input.assertion.ordinary",
+                          "input.assertion.preference",
+                          "input.assertion.current"
+                        ],
+                        "type": "string"
+                      },
+                      "occurrence_id": {
+                        "maxLength": 32,
+                        "minLength": 32,
+                        "type": "string"
+                      },
+                      "origin": {
+                        "enum": [
+                          "assistant_proposal",
+                          "interactive_operator",
+                          "native_operator_answer",
+                          "native_operator_assertion",
+                          "typed_host_outcome",
+                          "unattended_input"
+                        ],
+                        "type": "string"
+                      },
+                      "path": {
+                        "type": "null"
+                      },
+                      "quote": {
+                        "maxLength": 1024,
+                        "minLength": 1,
+                        "type": "string"
+                      },
+                      "quote_sha256": {
+                        "maxLength": 64,
+                        "minLength": 64,
+                        "type": "string"
+                      },
+                      "receipt_sha256": {
+                        "maxLength": 64,
+                        "minLength": 64,
+                        "type": "string"
+                      },
+                      "session_id": {
+                        "maxLength": 32,
+                        "minLength": 32,
+                        "type": "string"
+                      },
+                      "start_byte": {
+                        "maximum": 9007199254740991,
+                        "minimum": 0,
+                        "type": "integer"
+                      },
+                      "version": {
+                        "enum": [
+                          1
+                        ],
+                        "type": "integer"
+                      },
+                      "version_id": {
+                        "maxLength": 32,
+                        "minLength": 32,
+                        "type": "string"
+                      }
+                    },
+                    "required": [
+                      "content_sha256",
+                      "coverage",
+                      "end_byte",
+                      "kind",
+                      "occurrence_id",
+                      "origin",
+                      "path",
+                      "quote",
+                      "quote_sha256",
+                      "receipt_sha256",
+                      "session_id",
+                      "start_byte",
+                      "version",
+                      "version_id"
+                    ],
+                    "type": "object"
+                  },
+                  "maxItems": 1,
+                  "minItems": 1,
+                  "type": "array"
+                }
+              },
+              "required": [
+                "sources"
+              ],
+              "type": "object"
+            },
+            "expires_at_ms": {
+              "maximum": 9007199254740991,
+              "minimum": 0,
+              "type": "integer"
+            },
+            "id": {
+              "maxLength": 64,
+              "minLength": 64,
+              "type": "string"
+            },
+            "kind": {
+              "enum": [
+                "proposal"
+              ],
+              "type": "string"
+            },
+            "lineage": {
+              "maxLength": 64,
+              "minLength": 64,
+              "type": "string"
+            },
+            "reason": {
+              "maxLength": 256,
+              "minLength": 1,
+              "type": "string"
+            },
+            "state": {
+              "enum": [
+                "pending"
+              ],
+              "type": "string"
+            },
+            "text": {
+              "maxLength": 2048,
+              "minLength": 1,
+              "type": "string"
+            },
+            "version": {
+              "enum": [
+                1
+              ],
+              "type": "integer"
+            }
+          },
+          "required": [
+            "assigned_category",
+            "created_at_ms",
+            "event_at_ms",
+            "evidence",
+            "expires_at_ms",
+            "id",
+            "kind",
+            "lineage",
+            "reason",
+            "state",
+            "text",
+            "version"
+          ],
+          "type": "object"
+        },
+        "version": 1
+      },
+      "d709745ab18405dff572c41053eda5cbe12c350ebbabdcd0d52ea1e80962368a": {
+        "allow_delete": false,
+        "evidence_path": [
+          "evidence",
+          "sources"
+        ],
+        "key_prefix": "note.",
+        "source_categories": [
+          "native_operator_assertion",
+          "typed_host_outcome"
+        ],
+        "value_schema": {
+          "additionalProperties": false,
+          "properties": {
+            "category": {
+              "enum": [
+                "ordinary",
+                "preference",
+                "current"
+              ],
+              "type": "string"
+            },
+            "created_at_ms": {
+              "maximum": 9007199254740991,
+              "minimum": 0,
+              "type": "integer"
+            },
+            "event_at_ms": {
+              "maximum": 9007199254740991,
+              "minimum": 0,
+              "type": [
+                "integer",
+                "null"
+              ]
+            },
+            "evidence": {
+              "additionalProperties": false,
+              "properties": {
+                "sources": {
+                  "items": {
+                    "additionalProperties": false,
+                    "properties": {
+                      "content_sha256": {
+                        "maxLength": 64,
+                        "minLength": 64,
+                        "type": "string"
+                      },
+                      "coverage": {
+                        "enum": [
+                          "available",
+                          "partial"
+                        ],
+                        "type": "string"
+                      },
+                      "end_byte": {
+                        "maximum": 9007199254740991,
+                        "minimum": 0,
+                        "type": "integer"
+                      },
+                      "kind": {
+                        "enum": [
+                          "input.original",
+                          "input.operator_answer",
+                          "answer.original",
+                          "tool.outcome",
+                          "input.assertion.ordinary",
+                          "input.assertion.preference",
+                          "input.assertion.current"
+                        ],
+                        "type": "string"
+                      },
+                      "occurrence_id": {
+                        "maxLength": 32,
+                        "minLength": 32,
+                        "type": "string"
+                      },
+                      "origin": {
+                        "enum": [
+                          "assistant_proposal",
+                          "interactive_operator",
+                          "native_operator_answer",
+                          "native_operator_assertion",
+                          "typed_host_outcome",
+                          "unattended_input"
+                        ],
+                        "type": "string"
+                      },
+                      "path": {
+                        "type": "null"
+                      },
+                      "quote": {
+                        "maxLength": 1024,
+                        "minLength": 1,
+                        "type": "string"
+                      },
+                      "quote_sha256": {
+                        "maxLength": 64,
+                        "minLength": 64,
+                        "type": "string"
+                      },
+                      "receipt_sha256": {
+                        "maxLength": 64,
+                        "minLength": 64,
+                        "type": "string"
+                      },
+                      "session_id": {
+                        "maxLength": 32,
+                        "minLength": 32,
+                        "type": "string"
+                      },
+                      "start_byte": {
+                        "maximum": 9007199254740991,
+                        "minimum": 0,
+                        "type": "integer"
+                      },
+                      "version": {
+                        "enum": [
+                          1
+                        ],
+                        "type": "integer"
+                      },
+                      "version_id": {
+                        "maxLength": 32,
+                        "minLength": 32,
+                        "type": "string"
+                      }
+                    },
+                    "required": [
+                      "content_sha256",
+                      "coverage",
+                      "end_byte",
+                      "kind",
+                      "occurrence_id",
+                      "origin",
+                      "path",
+                      "quote",
+                      "quote_sha256",
+                      "receipt_sha256",
+                      "session_id",
+                      "start_byte",
+                      "version",
+                      "version_id"
+                    ],
+                    "type": "object"
+                  },
+                  "maxItems": 1,
+                  "minItems": 1,
+                  "type": "array"
+                }
+              },
+              "required": [
+                "sources"
+              ],
+              "type": "object"
+            },
+            "expires_at_ms": {
+              "maximum": 9007199254740991,
+              "minimum": 0,
+              "type": [
+                "integer",
+                "null"
+              ]
+            },
+            "id": {
+              "maxLength": 64,
+              "minLength": 64,
+              "type": "string"
+            },
+            "lineage": {
+              "maxLength": 64,
+              "minLength": 64,
+              "type": "string"
+            },
+            "metadata_reserve": {
+              "enum": [
+                "",
+                "0000000000000000000000000000000000000000000000000000000000000000"
+              ],
+              "type": "string"
+            },
+            "observed_at_ms": {
+              "maximum": 9007199254740991,
+              "minimum": 0,
+              "type": "integer"
+            },
+            "previous_category": {
+              "type": "null"
+            },
+            "reason": {
+              "maxLength": 256,
+              "minLength": 1,
+              "type": "string"
+            },
+            "superseded_at_ms": {
+              "type": "null"
+            },
+            "text": {
+              "maxLength": 2048,
+              "minLength": 1,
+              "type": "string"
+            },
+            "version": {
+              "enum": [
+                1
+              ],
+              "type": "integer"
+            }
+          },
+          "required": [
+            "category",
+            "created_at_ms",
+            "event_at_ms",
+            "evidence",
+            "expires_at_ms",
+            "id",
+            "lineage",
+            "metadata_reserve",
+            "observed_at_ms",
+            "previous_category",
+            "reason",
+            "superseded_at_ms",
+            "text",
+            "version"
+          ],
+          "type": "object"
+        },
+        "version": 1
+      }
+    },
+    "domain": "knowledge",
+    "effects": [
+      {
+        "class": "collection.publish",
+        "constraints_sha256": "d709745ab18405dff572c41053eda5cbe12c350ebbabdcd0d52ea1e80962368a",
+        "inner_op": "collection.managed",
+        "operation": "notes.capture",
+        "outer_sha256": "cf9f0a54e5190bc3b41039899bcd6c0eee9ffa2367dfa15b2d8b1e55ffd16e53",
+        "recipe_sha256": "818634825cb494606d25195a6601971a17542ed2caa22f28d1e18b1971b18cf7"
+      },
+      {
+        "class": "collection.publish",
+        "constraints_sha256": "d709745ab18405dff572c41053eda5cbe12c350ebbabdcd0d52ea1e80962368a",
+        "inner_op": "collection.managed",
+        "operation": "notes.capture",
+        "outer_sha256": "f5a509bff213a11a6b58186e73da0ba7e08017d4a89c4b959e683f9f6433e91a",
+        "recipe_sha256": "818634825cb494606d25195a6601971a17542ed2caa22f28d1e18b1971b18cf7"
+      },
+      {
+        "class": "collection.publish",
+        "constraints_sha256": "78b6d7943b3430f0225a3ee45cc4cffc27de14ddd97c39f8e38c9f8fb85ca68e",
+        "inner_op": "collection.managed",
+        "operation": "notes.propose",
+        "outer_sha256": "cf9f0a54e5190bc3b41039899bcd6c0eee9ffa2367dfa15b2d8b1e55ffd16e53",
+        "recipe_sha256": "d2622a1dd0ede7863d677e7ba76ef22f29509f5fc19fb72096c1b5ff70e7505d"
+      },
+      {
+        "class": "collection.publish",
+        "constraints_sha256": "78b6d7943b3430f0225a3ee45cc4cffc27de14ddd97c39f8e38c9f8fb85ca68e",
+        "inner_op": "collection.managed",
+        "operation": "notes.propose",
+        "outer_sha256": "f5a509bff213a11a6b58186e73da0ba7e08017d4a89c4b959e683f9f6433e91a",
+        "recipe_sha256": "d2622a1dd0ede7863d677e7ba76ef22f29509f5fc19fb72096c1b5ff70e7505d"
+      },
+      {
+        "class": "collection.read",
+        "inner_op": "collection.call",
+        "managed_read": [
+          "818634825cb494606d25195a6601971a17542ed2caa22f28d1e18b1971b18cf7",
+          "d2622a1dd0ede7863d677e7ba76ef22f29509f5fc19fb72096c1b5ff70e7505d"
+        ],
+        "operation": "notes.recall",
+        "outer_sha256": "5853488b301eebd88d26683849d9a4aee30db0ce9aa68a93d6f8a1736ff9b694"
+      },
+      {
+        "class": "collection.read",
+        "inner_op": "collection.call",
+        "managed_read": [
+          "818634825cb494606d25195a6601971a17542ed2caa22f28d1e18b1971b18cf7",
+          "d2622a1dd0ede7863d677e7ba76ef22f29509f5fc19fb72096c1b5ff70e7505d"
+        ],
+        "operation": "notes.recall",
+        "outer_sha256": "bb98a46f483a56058075dccd8fef4654b50bb290c717ee218f4bacb021039697"
+      },
+      {
+        "class": "collection.read",
+        "inner_op": "collection.call",
+        "managed_read": [
+          "818634825cb494606d25195a6601971a17542ed2caa22f28d1e18b1971b18cf7",
+          "d2622a1dd0ede7863d677e7ba76ef22f29509f5fc19fb72096c1b5ff70e7505d"
+        ],
+        "operation": "notes.recall",
+        "outer_sha256": "cf9f0a54e5190bc3b41039899bcd6c0eee9ffa2367dfa15b2d8b1e55ffd16e53"
+      },
+      {
+        "class": "collection.read",
+        "inner_op": "collection.call",
+        "managed_read": [
+          "818634825cb494606d25195a6601971a17542ed2caa22f28d1e18b1971b18cf7",
+          "d2622a1dd0ede7863d677e7ba76ef22f29509f5fc19fb72096c1b5ff70e7505d"
+        ],
+        "operation": "notes.recall",
+        "outer_sha256": "ed389dd91a2ffacc289b2d9193e3c26bff237c46793a7becc1e0cf5f0559c413"
+      },
+      {
+        "class": "collection.read",
+        "inner_op": "collection.call",
+        "managed_read": [
+          "818634825cb494606d25195a6601971a17542ed2caa22f28d1e18b1971b18cf7",
+          "d2622a1dd0ede7863d677e7ba76ef22f29509f5fc19fb72096c1b5ff70e7505d"
+        ],
+        "operation": "notes.recall",
+        "outer_sha256": "f548bb5ce92246f7c3913b4156d07a9790bcfb858c8f1f7520ab195fe32d70cf"
+      },
+      {
+        "class": "collection.read",
+        "inner_op": "collection.call",
+        "managed_read": [
+          "818634825cb494606d25195a6601971a17542ed2caa22f28d1e18b1971b18cf7",
+          "d2622a1dd0ede7863d677e7ba76ef22f29509f5fc19fb72096c1b5ff70e7505d"
+        ],
+        "operation": "notes.recall",
+        "outer_sha256": "f5a509bff213a11a6b58186e73da0ba7e08017d4a89c4b959e683f9f6433e91a"
+      }
+    ],
+    "identity_sha256": "9f4fb37e1fa235f8d5eabec3d43f929fcdd813c2c9b8a3b4df80ebfda9b667da",
+    "instance": "knowledge",
+    "namespace": "73fa5be3ebc96671a94791affc62e84bb4a726ebfd0c181b05d8af114d726c38",
+    "recipes": {
+      "818634825cb494606d25195a6601971a17542ed2caa22f28d1e18b1971b18cf7": {
+        "category_path": [
+          "category"
+        ],
+        "constraints_sha256": "d709745ab18405dff572c41053eda5cbe12c350ebbabdcd0d52ea1e80962368a",
+        "evidence_path": [
+          "evidence",
+          "sources"
+        ],
+        "key_prefix": "note.",
+        "kind": "literal_source",
+        "lineage_path": [
+          "lineage"
+        ],
+        "override_prefix": "override.",
+        "rules": [
+          {
+            "category": "current",
+            "max_age_ms": null,
+            "origins": [
+              "native_operator_assertion"
+            ]
+          },
+          {
+            "category": "ordinary",
+            "max_age_ms": 7776000000,
+            "origins": [
+              "native_operator_assertion",
+              "typed_host_outcome"
+            ]
+          },
+          {
+            "category": "preference",
+            "max_age_ms": null,
+            "origins": [
+              "native_operator_assertion"
+            ]
+          }
+        ],
+        "text_path": [
+          "text"
+        ],
+        "version": 1
+      },
+      "d2622a1dd0ede7863d677e7ba76ef22f29509f5fc19fb72096c1b5ff70e7505d": {
+        "category_path": [
+          "assigned_category"
+        ],
+        "constraints_sha256": "78b6d7943b3430f0225a3ee45cc4cffc27de14ddd97c39f8e38c9f8fb85ca68e",
+        "evidence_path": [
+          "evidence",
+          "sources"
+        ],
+        "key_prefix": "pending.",
+        "kind": "proposal",
+        "lineage_path": [
+          "lineage"
+        ],
+        "override_prefix": "override.",
+        "rules": [
+          {
+            "category": "current",
+            "max_age_ms": 604800000,
+            "origins": [
+              "assistant_proposal",
+              "interactive_operator",
+              "native_operator_answer",
+              "native_operator_assertion",
+              "typed_host_outcome",
+              "unattended_input"
+            ]
+          },
+          {
+            "category": "ordinary",
+            "max_age_ms": 604800000,
+            "origins": [
+              "assistant_proposal",
+              "interactive_operator",
+              "native_operator_answer",
+              "native_operator_assertion",
+              "typed_host_outcome",
+              "unattended_input"
+            ]
+          },
+          {
+            "category": "preference",
+            "max_age_ms": 604800000,
+            "origins": [
+              "assistant_proposal",
+              "interactive_operator",
+              "native_operator_answer",
+              "native_operator_assertion",
+              "typed_host_outcome",
+              "unattended_input"
+            ]
+          }
+        ],
+        "text_path": [
+          "text"
+        ],
+        "version": 1
+      }
+    },
+    "retention": {
+      "automatic": 90,
+      "manual": 3650
+    },
+    "routes": [
+      {
+        "account_controls": null,
+        "billing_mode": "none",
+        "cache_retention": null,
+        "endpoint": "demo://local",
+        "model": "scripted",
+        "operation": "main",
+        "processing_region": null,
+        "profile": null,
+        "provider": "demo",
+        "service_id": "demo",
+        "storage_region": null
+      }
+    ],
+    "scope": {
+      "kind": "project",
+      "worktree_id": null
+    },
+    "sources": {
+      "categories": [
+        "assistant_proposal",
+        "interactive_operator",
+        "native_operator_answer",
+        "native_operator_assertion",
+        "typed_host_outcome",
+        "unattended_input"
+      ],
+      "exclusions": []
+    },
+    "storage": {
+      "collection": "knowledge",
+      "kind": "local_collection"
+    },
+    "version": 2
+  },
+  "source_sha256": "098be7eda6b0f8e8efb36093fb7cc6cdde8bb55bc60f9e43567576c0d88fdd77",
+  "version": 1
+}
+Type enable 182cce43d4a68949 to confirm this exact review, or anything else to cancel.
+> enable 182cce43d4a68949
+Saved knowledge permission. Start a new chat or run to adopt this selection.
+Broad protected note saving is not ready. A new statement may be saved through separate native review when permission is active; saved permission is retained.
+IPSE_SUPERSESSION_READ_1> you> /remember ordinary SYNTHETIC_WIDE_NOTE_1_aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+Remember this exact statement as your own ordinary note?
+Statement: "SYNTHETIC_WIDE_NOTE_1_aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+Retention: at most 90 days.
+Workspace: "/dev/shm/ipse-generic-eight-dcaba-20261103-01/project"
+Project: 487fdca7ae502c863dfeaec20066de18ce18dffeb47776f97762e94ba435cf18
+Collection: 73fa5be3ebc96671a94791affc62e84bb4a726ebfd0c181b05d8af114d726c38
+Artifact: d13c4f2bbce2e02e716e0254bf0ad679381b10033e5c35ddedf83cea1ae2afdf
+Permission: e7fcc5a1f716301ca37831f4ce59cedd1b0e5d9c23d787e02b69344e78bc9951
+This confirms the statement and category; other effects keep their own approvals.
+Type remember c9d7584533f1ce17d1f7eb7fee7f2dec to confirm. Anything else cancels.
+remember> remember c9d7584533f1ce17d1f7eb7fee7f2dec
+IPSE_SUPERSESSION_READ_2> you> /remember ordinary SYNTHETIC_WIDE_NOTE_2_bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb
+Remember this exact statement as your own ordinary note?
+Statement: "SYNTHETIC_WIDE_NOTE_2_bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+Retention: at most 90 days.
+Workspace: "/dev/shm/ipse-generic-eight-dcaba-20261103-01/project"
+Project: 487fdca7ae502c863dfeaec20066de18ce18dffeb47776f97762e94ba435cf18
+Collection: 73fa5be3ebc96671a94791affc62e84bb4a726ebfd0c181b05d8af114d726c38
+Artifact: d13c4f2bbce2e02e716e0254bf0ad679381b10033e5c35ddedf83cea1ae2afdf
+Permission: e7fcc5a1f716301ca37831f4ce59cedd1b0e5d9c23d787e02b69344e78bc9951
+This confirms the statement and category; other effects keep their own approvals.
+Type remember 7b06da9a9ec39ab501b77721a97bcb21 to confirm. Anything else cancels.
+remember> remember 7b06da9a9ec39ab501b77721a97bcb21
+IPSE_SUPERSESSION_READ_3> you> /remember ordinary SYNTHETIC_WIDE_NOTE_3_cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc
+Remember this exact statement as your own ordinary note?
+Statement: "SYNTHETIC_WIDE_NOTE_3_cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc"
+Retention: at most 90 days.
+Workspace: "/dev/shm/ipse-generic-eight-dcaba-20261103-01/project"
+Project: 487fdca7ae502c863dfeaec20066de18ce18dffeb47776f97762e94ba435cf18
+Collection: 73fa5be3ebc96671a94791affc62e84bb4a726ebfd0c181b05d8af114d726c38
+Artifact: d13c4f2bbce2e02e716e0254bf0ad679381b10033e5c35ddedf83cea1ae2afdf
+Permission: e7fcc5a1f716301ca37831f4ce59cedd1b0e5d9c23d787e02b69344e78bc9951
+This confirms the statement and category; other effects keep their own approvals.
+Type remember 5a2d606b784b4074e669afa6b5da48bd to confirm. Anything else cancels.
+remember> remember 5a2d606b784b4074e669afa6b5da48bd
+IPSE_SUPERSESSION_READ_4> you> /remember ordinary SYNTHETIC_WIDE_NOTE_4_dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd
+Remember this exact statement as your own ordinary note?
+Statement: "SYNTHETIC_WIDE_NOTE_4_dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd"
+Retention: at most 90 days.
+Workspace: "/dev/shm/ipse-generic-eight-dcaba-20261103-01/project"
+Project: 487fdca7ae502c863dfeaec20066de18ce18dffeb47776f97762e94ba435cf18
+Collection: 73fa5be3ebc96671a94791affc62e84bb4a726ebfd0c181b05d8af114d726c38
+Artifact: d13c4f2bbce2e02e716e0254bf0ad679381b10033e5c35ddedf83cea1ae2afdf
+Permission: e7fcc5a1f716301ca37831f4ce59cedd1b0e5d9c23d787e02b69344e78bc9951
+This confirms the statement and category; other effects keep their own approvals.
+Type remember 78eddbdc64e97b71ccb4e7c6fbe23269 to confirm. Anything else cancels.
+remember> remember 78eddbdc64e97b71ccb4e7c6fbe23269
+IPSE_SUPERSESSION_READ_5> you> /remember ordinary SYNTHETIC_WIDE_NOTE_5_eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee
+Remember this exact statement as your own ordinary note?
+Statement: "SYNTHETIC_WIDE_NOTE_5_eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee"
+Retention: at most 90 days.
+Workspace: "/dev/shm/ipse-generic-eight-dcaba-20261103-01/project"
+Project: 487fdca7ae502c863dfeaec20066de18ce18dffeb47776f97762e94ba435cf18
+Collection: 73fa5be3ebc96671a94791affc62e84bb4a726ebfd0c181b05d8af114d726c38
+Artifact: d13c4f2bbce2e02e716e0254bf0ad679381b10033e5c35ddedf83cea1ae2afdf
+Permission: e7fcc5a1f716301ca37831f4ce59cedd1b0e5d9c23d787e02b69344e78bc9951
+This confirms the statement and category; other effects keep their own approvals.
+Type remember 25d74fee1953528386af8a52f3c8e7dd to confirm. Anything else cancels.
+remember> remember 25d74fee1953528386af8a52f3c8e7dd
+IPSE_SUPERSESSION_READ_6> you> /remember ordinary SYNTHETIC_WIDE_NOTE_6_ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff
+Remember this exact statement as your own ordinary note?
+Statement: "SYNTHETIC_WIDE_NOTE_6_ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff"
+Retention: at most 90 days.
+Workspace: "/dev/shm/ipse-generic-eight-dcaba-20261103-01/project"
+Project: 487fdca7ae502c863dfeaec20066de18ce18dffeb47776f97762e94ba435cf18
+Collection: 73fa5be3ebc96671a94791affc62e84bb4a726ebfd0c181b05d8af114d726c38
+Artifact: d13c4f2bbce2e02e716e0254bf0ad679381b10033e5c35ddedf83cea1ae2afdf
+Permission: e7fcc5a1f716301ca37831f4ce59cedd1b0e5d9c23d787e02b69344e78bc9951
+This confirms the statement and category; other effects keep their own approvals.
+Type remember 59b1a30c034527541816748dbbbfb7da to confirm. Anything else cancels.
+remember> remember 59b1a30c034527541816748dbbbfb7da
+IPSE_SUPERSESSION_READ_7> you> /remember ordinary SYNTHETIC_WIDE_NOTE_7_gggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggg
+Remember this exact statement as your own ordinary note?
+Statement: "SYNTHETIC_WIDE_NOTE_7_gggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggg"
+Retention: at most 90 days.
+Workspace: "/dev/shm/ipse-generic-eight-dcaba-20261103-01/project"
+Project: 487fdca7ae502c863dfeaec20066de18ce18dffeb47776f97762e94ba435cf18
+Collection: 73fa5be3ebc96671a94791affc62e84bb4a726ebfd0c181b05d8af114d726c38
+Artifact: d13c4f2bbce2e02e716e0254bf0ad679381b10033e5c35ddedf83cea1ae2afdf
+Permission: e7fcc5a1f716301ca37831f4ce59cedd1b0e5d9c23d787e02b69344e78bc9951
+This confirms the statement and category; other effects keep their own approvals.
+Type remember d98bc642612f19a7642c5fefd9b43976 to confirm. Anything else cancels.
+remember> remember d98bc642612f19a7642c5fefd9b43976
+IPSE_SUPERSESSION_READ_8> you> /remember ordinary SYNTHETIC_WIDE_NOTE_8_hhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhh
+Remember this exact statement as your own ordinary note?
+Statement: "SYNTHETIC_WIDE_NOTE_8_hhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhh"
+Retention: at most 90 days.
+Workspace: "/dev/shm/ipse-generic-eight-dcaba-20261103-01/project"
+Project: 487fdca7ae502c863dfeaec20066de18ce18dffeb47776f97762e94ba435cf18
+Collection: 73fa5be3ebc96671a94791affc62e84bb4a726ebfd0c181b05d8af114d726c38
+Artifact: d13c4f2bbce2e02e716e0254bf0ad679381b10033e5c35ddedf83cea1ae2afdf
+Permission: e7fcc5a1f716301ca37831f4ce59cedd1b0e5d9c23d787e02b69344e78bc9951
+This confirms the statement and category; other effects keep their own approvals.
+Type remember 6e68b1e374d40c730ace7f881cf7d28a to confirm. Anything else cancels.
+remember> remember 6e68b1e374d40c730ace7f881cf7d28a
+GENUINE_LITERAL_AB_HISTORICAL_SEED_PASSED consent_future_at_shutdown=true generation=8

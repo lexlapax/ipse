@@ -149,9 +149,12 @@ following limits until the end-to-end paths are qualified:
    passes focused signed-batch, source-owner and P30 compatibility controls;
    a subsequent [real synthetic 33-note Session](archive/2026-10-26-p30-p31-implementation/recall33-one-shot-20261103.md)
    delivered all 37 Worker inputs and recorded 32 included notes with partial
-   coverage, but failed before the loopback provider received a request. The
-   failure reason is unknown; neither the 33-note journey nor current-runtime
-   populated recall is qualified. A
+   coverage, but failed before the loopback provider received a request. Its
+   failure reason is unknown. A later [generic-use batching candidate](archive/2026-10-26-p30-p31-implementation/generic-v4-batching-dcbb-20261103.md)
+   passed smaller controls without raising deadlines but did not make a
+   [fresh combined-source 33-note attempt](archive/2026-10-26-p30-p31-implementation/recall33-combined-dcbb-20261103.md)
+   succeed; it was withdrawn from current source. The 33-note journey and
+   populated recall remain unqualified. A
    [local pilot launcher preflight](archive/2026-10-26-p30-p31-implementation/pilot-local-preflight-20261103.md)
    passed 27 synthetic controls without model calls; live results and independent
    semantic labels are still missing. Its first local launch

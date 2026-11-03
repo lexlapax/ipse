@@ -1,0 +1,273 @@
+--- a/lib/ipse/session/managed_use.ex
++++ b/lib/ipse/session/managed_use.ex
+@@ -270,7 +270,7 @@
+   defp with_dependencies_owned(context, dependencies, fun, journals) do
+     with {:ok, first} <-
+            protected(context, dependencies, fn cap, catalog, _ ->
+-             observe(context, dependencies, cap, catalog, journals)
++             observe(context, dependencies, cap, catalog, journals, true)
+            end),
+          true <- length(first.proofs) <= @max_sources do
+       use = fn _ ->
+@@ -278,7 +278,7 @@
+           checked_observation(
+             use_deadline(policy, first.current),
+             fn ->
+-              with {:ok, ^first} <- observe(context, dependencies, cap, catalog, journals),
++              with {:ok, ^first} <- observe(context, dependencies, cap, catalog, journals, true),
+                    true <-
+                      Enum.all?(Enum.zip(dependencies, first.current), fn {old, current} ->
+                        ManagedReference.current?(old, current, System.system_time(:millisecond))
+@@ -989,7 +989,7 @@
+   defp observe(c, dependencies, cap, catalog, journals, batch_v4 \\ false) do
+     observed =
+       if batch_v4,
+-        do: observe_all_worker(c, dependencies, cap, catalog, journals),
++        do: observe_all_batched(c, dependencies, cap, catalog, journals),
+         else: observe_all(c, dependencies, cap, catalog, journals)
+ 
+     with {:ok, results} <- observed do
+@@ -1007,12 +1007,12 @@
+     end
+   end
+ 
+-  # Worker input is all-or-nothing. Only this path coalesces v4 records across
+-  # other dependency versions; other consumers retain per-dependency verdicts.
++  # Worker input and generic retained use are all-or-nothing. Their observations
++  # coalesce v4 records across versions; verdicts still use per-item reads.
+   # This changes internal observation and failure order: v4 reads run before
+   # v3/v5/v6/v7 reads. Each view closes before those other observations and no
+   # authority or results are shared between the two independent passes.
+-  defp observe_all_worker(c, dependencies, cap, catalog, journals) do
++  defp observe_all_batched(c, dependencies, cap, catalog, journals) do
+     pin = c.config[:semantic_admission]["pin"]
+     root = SemanticAdmission.collection_root(c.config[:home])
+ 
+--- a/test/ipse/extension/managed_collection_call_session_test.exs
++++ b/test/ipse/extension/managed_collection_call_session_test.exs
+@@ -8803,6 +8803,22 @@
+       assert_receive {:trace_delivered, :all, ^delivered}, 5_000
+       send(counter, {:count, self()})
+       assert_receive {:managed_batch_calls, 2}, 5_000
++
++      # The generic all-or-nothing path must independently run one v4 batch
++      # per protected observation and preserve the original ordered values.
++      assert 1 == :erlang.trace(self(), true, [:call, :arity, :set_on_spawn, {:tracer, counter}])
++      expected_current = expected.current
++
++      assert {:ok, ^expected_current} =
++               ManagedUse.with_dependencies(context, dependencies, fn current ->
++                 {:ok, current}
++               end)
++
++      assert 1 == :erlang.trace(self(), false, [:call, :arity, :set_on_spawn])
++      delivered = :erlang.trace_delivered(:all)
++      assert_receive {:trace_delivered, :all, ^delivered}, 5_000
++      send(counter, {:count, self()})
++      assert_receive {:managed_batch_calls, 4}, 5_000
+     after
+       :erlang.trace(self(), false, [:call, :arity, :set_on_spawn])
+       :erlang.trace_pattern({ObservedRead, :managed_records, 5}, false, [])
+@@ -8836,6 +8852,18 @@
+ 
+     refute_received :coalesced_input_delivered
+ 
++    generic_refused = fn _ ->
++      send(owner, :coalesced_generic_delivered)
++      {:ok, :unexpected}
++    end
++
++    refute match?(
++             {:ok, _},
++             ManagedUse.with_dependencies(context, duplicate_key_dependencies, generic_refused)
++           )
++
++    refute_received :coalesced_generic_delivered
++
+     # An unavailable original source must withhold the entire input, and its
+     # synthetic fixture is restored even when an assertion fails.
+     original_source = hd(seed["source_journals"])
+@@ -8849,6 +8877,13 @@
+     try do
+       refute match?({:ok, _}, ManagedUse.with_worker_dependencies(context, dependencies, refused))
+       refute_received :coalesced_input_delivered
++
++      refute match?(
++               {:ok, _},
++               ManagedUse.with_dependencies(context, dependencies, generic_refused)
++             )
++
++      refute_received :coalesced_generic_delivered
+     after
+       refute File.exists?(source_path), "original source path was unexpectedly recreated"
+       File.rename!(held_path, source_path)
+@@ -8868,10 +8903,19 @@
+ 
+     refute_received :coalesced_input_delivered
+ 
++    refute match?(
++             {:ok, _},
++             ManagedUse.with_dependencies(context, expired_dependencies, generic_refused)
++           )
++
++    refute_received :coalesced_generic_delivered
++
+     assert {:ok, policy} = Consent.snapshot(c.control, c.binding["project_id"])
+     assert {:ok, _} = Consent.revoke(c.control, c.binding["project_id"], policy["epoch"])
+     refute match?({:ok, _}, ManagedUse.with_worker_dependencies(context, dependencies, refused))
+     refute_received :coalesced_input_delivered
++    refute match?({:ok, _}, ManagedUse.with_dependencies(context, dependencies, generic_refused))
++    refute_received :coalesced_generic_delivered
+ 
+     assert Enum.any?(
+              events,
+--- a/test/support/shadow_pending_candidate_cli.exs
++++ b/test/support/shadow_pending_candidate_cli.exs
+@@ -584,6 +584,11 @@
+   capture = fn current, held -> {:ok, %{current: current, proofs: held.source_proofs}} end
+   assert {:ok, expected} = ManagedUse.with_approval_dependencies(context, dependencies, capture)
+   assert {:ok, ^expected} = ManagedUse.with_worker_dependencies(context, dependencies, capture)
++  expected_current = expected.current
++
++  assert {:ok, ^expected_current} =
++           ManagedUse.with_dependencies(context, dependencies, fn current -> {:ok, current} end)
++
+   assert Enum.map(expected.current, & &1["version"]) == Enum.map(dependencies, & &1["version"])
+   assert length(expected.proofs) == 2
+ 
+@@ -594,6 +599,11 @@
+     {:ok, :unexpected}
+   end
+ 
++  generic_refused = fn _ ->
++    send(owner, :mixed_generic_delivered)
++    {:ok, :unexpected}
++  end
++
+   for source_id <- [mixed_literal.session_id, seed_id] do
+     journal = Path.join(dir, source_id <> ".jsonl")
+     held = journal <> ".mixed-test-held"
+@@ -605,6 +615,13 @@
+     try do
+       refute match?({:ok, _}, ManagedUse.with_worker_dependencies(context, dependencies, refused))
+       refute_received :mixed_input_delivered
++
++      refute match?(
++               {:ok, _},
++               ManagedUse.with_dependencies(context, dependencies, generic_refused)
++             )
++
++      refute_received :mixed_generic_delivered
+     after
+       refute File.exists?(journal), "source journal path was unexpectedly recreated"
+       File.rename!(held, journal)
+--- a/test/support/native_note_recall.exs
++++ b/test/support/native_note_recall.exs
+@@ -75,6 +75,90 @@
+     end
+   end
+ 
++  # Verify actual model egress, not marker presence elsewhere in the request.
++  def exact_notes(request, records) do
++    prefix =
++      Ipse.Extension.render_context(%{"knowledge" => []})
++      |> String.replace_suffix("[]", "")
++
++    items =
++      Enum.flat_map(request["messages"], fn
++        %{"role" => "user"} = message ->
++          case Ipse.Session.Reference.selected_publishers(message) do
++            {:ok, %{"extensions" => text}} when is_binary(text) ->
++              if String.starts_with?(text, prefix) do
++                assert {:ok, items} = Jason.decode(String.replace_prefix(text, prefix, ""))
++                assert is_list(items)
++                items
++              else
++                []
++              end
++
++            _ ->
++              []
++          end
++
++        _ ->
++          []
++      end)
++
++    parts =
++      items
++      |> Enum.filter(fn item ->
++        get_in(item, ["provenance", "instance"]) == "knowledge" and
++          is_binary(item["id"]) and String.starts_with?(item["id"], "note_text_")
++      end)
++      |> Enum.flat_map(fn item ->
++        assert {:ok, group} = Jason.decode(item["text"])
++        assert group["format"] == "note_parts_v1"
++        assert group["fields"] == ~w(key revision read_operation_id offset_bytes total_bytes text)
++        assert Enum.all?(group["records"], &(is_list(&1) and length(&1) == 6))
++        Enum.map(group["records"], &Map.new(Enum.zip(group["fields"], &1)))
++      end)
++
++    assert MapSet.new(Enum.map(parts, & &1["key"])) == MapSet.new(Enum.map(records, & &1["key"]))
++
++    for record <- records do
++      text = record["value"]["text"]
++      selected = Enum.filter(parts, &(&1["key"] == record["key"]))
++      assert selected != []
++
++      {reconstructed, offset} =
++        Enum.reduce(selected, {"", 0}, fn part, {acc, offset} ->
++          assert part["revision"] == record["revision"]
++          assert part["offset_bytes"] == offset
++          assert part["total_bytes"] == byte_size(text)
++          assert is_binary(part["read_operation_id"])
++          assert is_binary(part["text"]) and String.valid?(part["text"])
++          {acc <> part["text"], offset + byte_size(part["text"])}
++        end)
++
++      assert reconstructed == text and offset == byte_size(text)
++    end
++
++    parts
++  end
++
++  def assert_receipts(events, parts, records) do
++    expected = Map.new(records, &{&1["key"], &1["value"]["text"]})
++
++    for part <- parts do
++      assert Enum.any?(events, fn event ->
++               record = get_in(event, ["outcome", "value", "record"])
++
++               event["type"] == "extension_action_result" and
++                 event["operation_id"] == part["read_operation_id"] and
++                 get_in(event, ["request", "op"]) == "collection.call" and
++                 get_in(event, ["request", "request", "op"]) == "get" and
++                 get_in(event, ["request", "request", "key"]) == part["key"] and
++                 get_in(event, ["outcome", "status"]) == "ok" and
++                 is_map(record) and record["key"] == part["key"] and
++                 record["revision"] == part["revision"] and
++                 get_in(record, ["value", "text"]) == expected[part["key"]]
++             end)
++    end
++  end
++
+   def diagnostics(events),
+     do:
+       Enum.map(events, fn e ->
+@@ -243,7 +327,7 @@
+ id = Ipse.Session.info(session).id
+ assert :ok = Ipse.Session.prompt(session, "What current references are available?")
+ {_, first} = NativeNoteRecall.body(session, 1, dir)
+-for row <- page["records"], do: assert(Jason.encode!(first) =~ row["value"]["text"])
++parts = NativeNoteRecall.exact_notes(first, page["records"])
+ assert_receive {:ipse, ^session, {:done, :ok}}, 15_000
+ 
+ assert {:ok, consumer_sources} =
+@@ -251,6 +335,7 @@
+ 
+ refute Enum.any?(consumer_sources["sources"], &(&1["origin"] == "native_operator_assertion"))
+ assert {:ok, first_events} = Ipse.Journal.load(dir, id)
++NativeNoteRecall.assert_receipts(first_events, parts, page["records"])
+ NativeNoteRecall.chronology(first_events, 1)
+ NativeNoteRecall.recall_reads(first_events)
+ refute Enum.any?(first_events, &(&1["type"] in ~w(extension_inference_intent decision_intent)))

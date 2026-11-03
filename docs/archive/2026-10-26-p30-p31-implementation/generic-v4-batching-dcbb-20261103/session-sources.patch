@@ -1,0 +1,22 @@
+--- a/docs/developer/session-sources.md
++++ b/docs/developer/session-sources.md
+@@ -491,8 +491,17 @@
+ read still checks the exact current native root and each record's signed metadata,
+ recipe and source policy. The second observation reacquires current authority
+ and must reproduce the first; the final retained Collection owner must match
+-every observed root before the input can be delivered. Other managed-use paths
+-retain their per-dependency observations.
++every observed root before the input can be delivered.
++
++The generic all-or-nothing `ManagedUse.with_dependencies/3` path also groups v4
++literals in each independent observation and reconstructs the original result
++order. It retains any accepted-decision management journals and, when present,
++the original source owners through the second observation and use callback. It
++requires the second observation to reproduce the first and rechecks each
++current dependency and deadline. Its selected reads retain their existing exact
++native root checks; this generic path does not itself hold the Worker's final
++Collection witness. Each caller must retain its own effect-specific final gates.
++Historical per-dependency verdicts remain individually observed.
+ 
+ Grouping changes internal read and failure order, not the authority or resource
+ limits. Each view retains its 512-read and 512-observation-unit ceilings. The
