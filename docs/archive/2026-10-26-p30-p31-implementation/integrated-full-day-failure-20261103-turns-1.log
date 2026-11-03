@@ -1,0 +1,24 @@
+
+22:37:02.263 [error] Task #PID<0.181.0> started from #PID<0.95.0> terminating
+** (MatchError) no match of right hand side value:
+
+    {:error, :timeout}
+
+    /tmp/ipse-native-seed-integrated-full-520e8f45f283205ed1d526e3669abdde/integrated-full/provider.exs:16: anonymous fn/3 in Ipse.Development.SyntheticOllama.start/4
+    (elixir 1.20.4) lib/enum.ex:4636: Enum.map/2
+    /tmp/ipse-native-seed-integrated-full-520e8f45f283205ed1d526e3669abdde/integrated-full/provider.exs:15: anonymous fn/4 in Ipse.Development.SyntheticOllama.start/4
+    (elixir 1.20.4) lib/task/supervised.ex:105: Task.Supervised.invoke_mfa/2
+    (elixir 1.20.4) lib/task/supervised.ex:40: Task.Supervised.reply/4
+Function: #Function<0.126833797/0 in Ipse.Development.SyntheticOllama.start/4>
+    Args: []
+** (EXIT from #PID<0.95.0>) an exception was raised:
+    ** (MatchError) no match of right hand side value:
+
+    {:error, :timeout}
+
+        /tmp/ipse-native-seed-integrated-full-520e8f45f283205ed1d526e3669abdde/integrated-full/provider.exs:16: anonymous fn/3 in Ipse.Development.SyntheticOllama.start/4
+        (elixir 1.20.4) lib/enum.ex:4636: Enum.map/2
+        /tmp/ipse-native-seed-integrated-full-520e8f45f283205ed1d526e3669abdde/integrated-full/provider.exs:15: anonymous fn/4 in Ipse.Development.SyntheticOllama.start/4
+        (elixir 1.20.4) lib/task/supervised.ex:105: Task.Supervised.invoke_mfa/2
+        (elixir 1.20.4) lib/task/supervised.ex:40: Task.Supervised.reply/4
+

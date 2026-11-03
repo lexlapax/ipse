@@ -1,0 +1,23 @@
+Running ExUnit with seed: 791957, max_cases: 1
+Excluding tags: [:test, :native_sandbox, :macos_sandbox, :macos_filesystem, :memory_scope, :controlled_tty_bridge, :controlled_tty_loss]
+Including tags: [:native_integrated_full]
+
+NATIVE_INTEGRATED_FULL_ROOT=/tmp/ipse-native-seed-integrated-full-520e8f45f283205ed1d526e3669abdde
+
+
+  1) test a fresh full cohort runs one provisional day and retains its evidence (Ipse.Development.NativeNotesIntegratedFullTest)
+     test/dev/knowledge/native_notes_integrated_full_test.exs:71
+     ** (MatchError) no match of right hand side value:
+
+         {"** (ExUnit.AssertionError) \n\nintegrated child failed; inspect /tmp/ipse-native-seed-integrated-full-520e8f45f283205ed1d526e3669abdde/integrated-full/turns-1.log; never replay an unknown effect or turn\n\n    (ex_unit 1.20.4) lib/ex_unit/assertions.ex:460: ExUnit.Assertions.assert/2\n    dev/knowledge/native_notes_integrated_full.ex:110: anonymous fn/6 in Ipse.Development.NativeNotesIntegratedFull.main/1\n    (elixir 1.20.4) lib/enum.ex:2622: Enum.\"-reduce/3-lists^foldl/2-0-\"/3\n    dev/knowledge/native_notes_integrated_full.ex:44: Ipse.Development.NativeNotesIntegratedFull.main/1\n    dev/knowledge/native_notes_integrated_full.exs:3: (file)\n",
+          1}
+
+     code: {completed, 0} = run.(["--run", root])
+     stacktrace:
+       test/dev/knowledge/native_notes_integrated_full_test.exs:98: (test)
+
+
+Finished in 8957.1 seconds (0.00s async, 8957.1s sync)
+
+Result: 0/1 passed, 2 excluded
+Failed: 1 test

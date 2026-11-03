@@ -99,6 +99,10 @@ time estimates only after measuring the integrated workload and available capaci
    A [separate full-day runner preflight](archive/2026-10-26-p30-p31-implementation/integrated-full-day-preflight-20261102.md)
    checks the provisional calendar and restart guards; it does not establish a
    populated seed, integrated day or representative intake.
+   A [fresh populated run](archive/2026-10-26-p30-p31-implementation/integrated-full-day-failure-20261103.md)
+   seeded and audited 2,000 notes, then closed 14 ordinary day effects before
+   its first turn failed during recall. It completed zero day turns and remains
+   a separate incomplete run, not an additional annual-acceptance result.
    Workload tooling can advance alongside the notes journey; the completed
    integrated workload depends on the Session and recall behavior it exercises.
 3. **Documents and local retrieval — P31C1b/D1/F.** Independently finish document
