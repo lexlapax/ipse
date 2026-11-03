@@ -72,6 +72,7 @@ nor resource/offline qualification. No daemon configuration or existing model wa
 
 ## P31A contracts and evidence
 
+- [Traced retained-cohort handoff](retained-worker-trace-20261103.md) records two slow protected observations in a distinct unresolved synthetic Session; the timeout handler did not establish the initiating cause, and original evidence was preserved.
 - [Same-source recapture preflight refusal](same-source-recapture-refusal-20261103.md) records a post-rejection turn stopped before inference; its exact failed predicate and recapture outcome remain unknown.
 - [Native recapture controls after containment](native-recapture-after-containment-20261103.md) verifies signed forget and rejection at the native publication boundary with trusted synthetic sources; bundled-worker and legacy override behavior remain separate.
 - [Eight-owner handoff attempt](worker-handoff-eight-owner-20261103.md) seeded eight separate source owners but stopped on a disposable tracer syntax error before measuring a handoff; no scaling conclusion follows.

@@ -133,7 +133,10 @@ following limits until the end-to-end paths are qualified:
    a separate incomplete run, not an additional annual-acceptance result.
    A [separate read-only diagnostic](archive/2026-10-26-p30-p31-implementation/retained-probe-20261103.md)
    also stopped before inference with an unknown Worker-input outcome; its
-   cause remains unproven and neither failed turn is replayed. A
+   cause remains unproven and neither failed turn is replayed. A later
+   [traced distinct Session](archive/2026-10-26-p30-p31-implementation/retained-worker-trace-20261103.md)
+   measured two slow protected observations before another unresolved handoff;
+   it did not establish the earlier failures' cause. A
    [local pilot launcher preflight](archive/2026-10-26-p30-p31-implementation/pilot-local-preflight-20261103.md)
    passed 27 synthetic controls without model calls; live results and independent
    semantic labels are still missing. Its first local launch
