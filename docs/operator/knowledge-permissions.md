@@ -662,7 +662,8 @@ source; acceptance does not establish that the source's premises are true.
 They can join the bounded pass on the supported Linux native path. Each read and
 later use checks the signed record, immutable acceptance link, original committed
 management journal, original Session source and current permission. Worker
-delivery retains both original journals through its native write and settlement.
+delivery checks the selected records and final collection root again while
+retaining both original journals through its native write and settlement.
 Keep both journals available; missing or changed originals withhold the decision
 text. The registered provider route remains required for managed context; the
 credential-free demo does not qualify this delivery path. A later ordinary tool

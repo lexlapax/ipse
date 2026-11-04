@@ -1,0 +1,424 @@
+--- a/lib/ipse/extension/collection/observed_read.ex
++++ b/lib/ipse/extension/collection/observed_read.ex
+@@ -506,6 +506,69 @@
+ 
+   def managed_records(_, _, _, _, _), do: @error
+ 
++  @doc false
++  # Host worker batches keep no ReadView cache. Each pair owns a real notes
++  # Collection scope: two literals use at most 26 of its unchanged 32 units.
++  # Each read checks that owner, and each callback closes before the next pair.
++  # Root v4/v5, native index/value/reply bounds and exact pair roots remain;
++  # the ReadView-specific 4 MiB cache envelope does not apply to this route.
++  def managed_record_pairs(root, namespace, requests, cap, catalog)
++      when is_list(requests) and length(requests) in 1..32 do
++    with {:ok, entries} <- managed_record_specs(namespace, requests, catalog) do
++      entries
++      |> Enum.chunk_every(2)
++      |> Enum.reduce_while({:ok, nil, []}, fn pair, {:ok, prior_root, records} ->
++        result =
++          Collection.with_managed_read(root, namespace, fn witness, read ->
++            with "present" <- witness["root_state"],
++                 {:ok, pointer} <- JSON.decode_bounded(witness["root_bytes"], 1024),
++                 normalized =
++                   witness
++                   |> Map.take(~w(version root_state root_sha256 manifest_sha256))
++                   |> Map.put("root", pointer),
++                 {:ok, current_root} <- root_identity(normalized, namespace),
++                 true <- is_nil(prior_root) or current_root === prior_root do
++              values = fn selected -> held_values(witness, read, selected) end
++              neighbors = fn selected -> read.(%{"op" => "neighbors", "request" => selected}) end
++
++              Enum.reduce_while(pair, {:ok, []}, fn {request, recipe, lineage}, {:ok, acc} ->
++                case managed_record_read(values, neighbors, request, cap, lineage, recipe) do
++                  {:ok, record} -> {:cont, {:ok, [record | acc]}}
++                  _ -> {:halt, @error}
++                end
++              end)
++              |> case do
++                {:ok, selected} -> {:ok, {current_root, Enum.reverse(selected)}}
++                _ -> @error
++              end
++            else
++              _ -> @error
++            end
++          end)
++
++        case result do
++          {:ok, {current_root, selected}} ->
++            {:cont, {:ok, current_root, records ++ selected}}
++
++          _ ->
++            {:halt, @error}
++        end
++      end)
++      |> case do
++        {:ok, _root, records} -> {:ok, records}
++        _ -> @error
++      end
++    else
++      _ -> @error
++    end
++  rescue
++    _ -> @error
++  catch
++    _, _ -> @error
++  end
++
++  def managed_record_pairs(_, _, _, _, _), do: @error
++
+   defp managed_record_specs(namespace, requests, catalog) do
+     Enum.reduce_while(requests, {:ok, []}, fn
+       {request, recipe}, {:ok, entries} ->
+--- a/lib/ipse/session/managed_use.ex
++++ b/lib/ipse/session/managed_use.ex
+@@ -1177,8 +1177,9 @@
+   # Worker input is all-or-nothing. Only this path coalesces v4 records across
+   # other dependency versions; other consumers retain per-dependency verdicts.
+   # This changes internal observation and failure order: v4 reads run before
+-  # v3/v5/v6/v7 reads. Each view closes before those other observations and no
+-  # authority or results are shared between the two independent passes.
++  # v3/v5/v6/v7 reads. Their current root identity can satisfy v3 comparisons in
++  # this same pass. Each collection scope closes before other observations;
++  # no authority or results are shared between the two independent passes.
+   defp observe_all_worker(c, dependencies, cap, catalog, journals) do
+     pin = c.config[:semantic_admission]["pin"]
+     root = SemanticAdmission.collection_root(c.config[:home])
+@@ -1220,7 +1221,7 @@
+     else
+       with {:ok, specs} <- v4_specs(c, pending),
+            {:ok, records} <-
+-             ObservedRead.managed_records(
++             ObservedRead.managed_record_pairs(
+                root,
+                pin["namespace"],
+                Enum.map(specs, fn {_dependency, request, recipe} -> {request, recipe} end),
+@@ -1232,8 +1233,24 @@
+         |> Enum.reduce_while({:ok, cache}, fn {{dependency, request, recipe}, record},
+                                               {:ok, acc} ->
+           case finish_v4_observation(c, pin, request, recipe, record) do
+-            {:ok, _, _} = result ->
+-              {:cont, {:ok, Map.put(acc, observation_key(dependency), result)}}
++            {:ok, current, _} = result ->
++              # This native-checked batch already observed this exact root in
++              # the current pass. Reuse only its identity, never its authority.
++              # Conflicting batch roots refuse; the next protected pass starts
++              # with a new cache and the final native owner rechecks the root.
++              root = {:ok, current["collection"]}
++
++              case Map.get(acc, :root, root) do
++                ^root ->
++                  {:cont,
++                   {:ok,
++                    acc
++                    |> Map.put(:root, root)
++                    |> Map.put(observation_key(dependency), result)}}
++
++                _ ->
++                  {:halt, @error}
++              end
+ 
+             _ ->
+               {:halt, @error}
+--- a/test/ipse/extension/collection_normalizer_v3_integration_test.exs
++++ b/test/ipse/extension/collection_normalizer_v3_integration_test.exs
+@@ -4519,6 +4519,129 @@
+     assert {:error, :collection_observation_refused} = invoke.(opts.recipe)
+   end
+ 
++  @tag :managed_v4_held_pairs
++  test "paired native owners preserve exact literal observations with one quota inventory per pair",
++       c do
++    opts =
++      for n <- 1..3 do
++        value = options(n, n - 1)
++        assert {:ok, _} = publish(c, value, scope(c, n == 1), first: n == 1)
++        value
++      end
++
++    requests =
++      Enum.map(opts, fn value ->
++        {%{"op" => "get_record", "key" => hd(value.request["changes"])["key"]}, value.recipe}
++      end)
++
++    domain = Map.take(scope(c, false), [:namespace, :format])
++
++    assert {:ok, %{view: expected, pairs: actual, view_quota: 16, pair_quota: 2}} =
++             Identity.with_existing_domain_auth(c.home, c.cwd, c.binding, domain, fn cap,
++                                                                                     catalog ->
++               {view_result, view_quota} =
++                 count_quota_calls(fn ->
++                   ObservedRead.managed_records(c.root, c.namespace, requests, cap, catalog)
++                 end)
++
++               {pair_result, pair_quota} =
++                 count_quota_calls(fn ->
++                   ObservedRead.managed_record_pairs(c.root, c.namespace, requests, cap, catalog)
++                 end)
++
++               assert {:ok, expected} = view_result
++               assert {:ok, ^expected} = pair_result
++
++               for {{request, recipe}, expected} <- Enum.zip(requests, expected) do
++                 assert {:ok, ^expected} =
++                          ObservedRead.managed_record(
++                            c.root,
++                            c.namespace,
++                            request,
++                            cap,
++                            catalog,
++                            recipe
++                          )
++               end
++
++               assert {:error, :collection_observation_refused} =
++                        ObservedRead.managed_record_pairs(
++                          c.root,
++                          c.namespace,
++                          List.duplicate(hd(requests), 33),
++                          cap,
++                          catalog
++                        )
++
++               assert {:error, :collection_observation_refused} =
++                        ObservedRead.managed_record_pairs(
++                          c.root,
++                          c.namespace,
++                          [
++                            hd(requests),
++                            {%{"op" => "get_record", "key" => "pending.bad"}, hd(opts).recipe}
++                          ],
++                          cap,
++                          catalog
++                        )
++
++               IO.puts(
++                 "MANAGED_PAIR_QUOTA_COUNTS " <>
++                   Jason.encode!(%{view: view_quota, pairs: pair_quota, literals: 3})
++               )
++
++               {:ok,
++                %{view: expected, pairs: expected, view_quota: view_quota, pair_quota: pair_quota}}
++             end)
++
++    assert actual === expected
++    assert length(actual) == 3
++    assert [] == Registry.lookup(Ipse.Registry, {C.ReadView, self()})
++  end
++
++  defp count_quota_calls(fun) do
++    owner = self()
++
++    collector =
++      spawn(fn ->
++        loop = fn loop, count ->
++          receive do
++            {:trace, _, :call, {Ipse.Runner.Transaction, :quota, 3}} ->
++              loop.(loop, count + 1)
++
++            {:count, caller} ->
++              send(caller, {:quota_count, count})
++              loop.(loop, count)
++
++            :stop ->
++              :ok
++
++            _ ->
++              loop.(loop, count)
++          end
++        end
++
++        loop.(loop, 0)
++      end)
++
++    session = :trace.session_create(:managed_pair_quota_counter, collector, [])
++
++    try do
++      assert 1 == :trace.function(session, {Ipse.Runner.Transaction, :quota, 3}, true, [:local])
++      assert 1 == :trace.process(session, owner, true, [:call, :arity, :set_on_spawn])
++      result = fun.()
++      assert 1 == :trace.process(session, owner, false, [:call, :arity, :set_on_spawn])
++      delivered = :trace.delivered(session, :all)
++      assert_receive {:trace_delivered, :all, ^delivered}, 5_000
++      send(collector, {:count, owner})
++      assert_receive {:quota_count, count}, 5_000
++      {result, count}
++    after
++      :trace.session_destroy(session)
++      send(collector, :stop)
++    end
++  end
++
+   @tag :held_target_regression
+   @tag :managed_v4_batch
+   test "distinct signed literals share a view without changing their observations", c do
+@@ -4617,6 +4740,61 @@
+            |> Enum.map(&get_in(&1, ["observation", "witness"]))
+            |> Enum.uniq()
+            |> length() == 1
++
++    assert {:ok, paired} =
++             Identity.with_existing_domain_auth(c.home, c.cwd, c.binding, domain, fn cap,
++                                                                                     catalog ->
++               {{:ok, first}, first_quota} =
++                 count_quota_calls(fn ->
++                   ObservedRead.managed_record_pairs(
++                     c.root,
++                     c.namespace,
++                     Enum.take(requests, 32),
++                     cap,
++                     catalog
++                   )
++                 end)
++
++               {{:ok, last}, tail_quota} =
++                 count_quota_calls(fn ->
++                   ObservedRead.managed_record_pairs(
++                     c.root,
++                     c.namespace,
++                     Enum.drop(requests, 32),
++                     cap,
++                     catalog
++                   )
++                 end)
++
++               assert first_quota == 16 and tail_quota == 1
++
++               assert {{:error, :collection_observation_refused}, 0} =
++                        count_quota_calls(fn ->
++                          ObservedRead.managed_record_pairs(
++                            c.root,
++                            c.namespace,
++                            requests,
++                            cap,
++                            catalog
++                          )
++                        end)
++
++               IO.puts(
++                 "MANAGED_PAIR_DISTINCT33 " <>
++                   Jason.encode!(%{
++                     distinct: 33,
++                     first: length(first),
++                     tail: length(last),
++                     first_quota: first_quota,
++                     tail_quota: tail_quota,
++                     direct33_refused_before_inventory: true
++                   })
++               )
++
++               {:ok, first ++ last}
++             end)
++
++    assert paired === observations
+   end
+ 
+   @tag :managed_v4_batch_fence
+--- a/test/ipse/extension/managed_collection_call_session_test.exs
++++ b/test/ipse/extension/managed_collection_call_session_test.exs
+@@ -8842,19 +8842,26 @@
+ 
+     assert {:ok, expected} = ManagedUse.with_approval_dependencies(context, dependencies, capture)
+ 
+-    # Count the exported batch entry only in descendants of this synthetic test.
+-    # The arity-only assertion counts batch calls without note arguments.
++    # Count arity-only calls in this synthetic test's descendants. Both
++    # independent v4 passes remain; neither reopens a root-only snapshot view.
+     counter =
+       spawn(fn ->
+         collect = fn collect, count ->
+           receive do
+-            {:trace, _, :call, {ObservedRead, :managed_records, _}} ->
+-              collect.(collect, count + 1)
++            {:trace, _, :call, {ObservedRead, :managed_record_pairs, _}} ->
++              collect.(collect, Map.update!(count, :batches, &(&1 + 1)))
++
++            {:trace, _, :call, {ObservedRead, :read, _}} ->
++              collect.(collect, Map.update!(count, :root_reads, &(&1 + 1)))
+ 
+             {:count, caller} ->
+               send(caller, {:managed_batch_calls, count})
+               collect.(collect, count)
+ 
++            {:reset, caller} ->
++              send(caller, :managed_batch_counter_reset)
++              collect.(collect, %{batches: 0, root_reads: 0})
++
+             :stop ->
+               :ok
+ 
+@@ -8863,11 +8870,12 @@
+           end
+         end
+ 
+-        collect.(collect, 0)
++        collect.(collect, %{batches: 0, root_reads: 0})
+       end)
+ 
+     try do
+-      assert 1 == :erlang.trace_pattern({ObservedRead, :managed_records, 5}, true, [])
++      assert 1 == :erlang.trace_pattern({ObservedRead, :managed_record_pairs, 5}, true, [])
++      assert 1 == :erlang.trace_pattern({ObservedRead, :read, 3}, true, [])
+       assert 1 == :erlang.trace(self(), true, [:call, :arity, :set_on_spawn, {:tracer, counter}])
+ 
+       assert {:ok, ^expected} =
+@@ -8877,10 +8885,26 @@
+       delivered = :erlang.trace_delivered(:all)
+       assert_receive {:trace_delivered, :all, ^delivered}, 5_000
+       send(counter, {:count, self()})
+-      assert_receive {:managed_batch_calls, 2}, 5_000
++      assert_receive {:managed_batch_calls, %{batches: 2, root_reads: 0}}, 5_000
++
++      # Without a v4 witness, each pass must still obtain its own current root.
++      send(counter, {:reset, self()})
++      assert_receive :managed_batch_counter_reset, 5_000
++      assert {:ok, roots_only} = ManagedReference.union([roots])
++      assert 1 == :erlang.trace(self(), true, [:call, :arity, :set_on_spawn, {:tracer, counter}])
++
++      assert {:ok, %{current: ^roots_only, proofs: []}} =
++               ManagedUse.with_worker_dependencies(context, roots_only, capture)
++
++      assert 1 == :erlang.trace(self(), false, [:call, :arity, :set_on_spawn])
++      delivered = :erlang.trace_delivered(:all)
++      assert_receive {:trace_delivered, :all, ^delivered}, 5_000
++      send(counter, {:count, self()})
++      assert_receive {:managed_batch_calls, %{batches: 0, root_reads: 2}}, 5_000
+     after
+       :erlang.trace(self(), false, [:call, :arity, :set_on_spawn])
+-      :erlang.trace_pattern({ObservedRead, :managed_records, 5}, false, [])
++      :erlang.trace_pattern({ObservedRead, :managed_record_pairs, 5}, false, [])
++      :erlang.trace_pattern({ObservedRead, :read, 3}, false, [])
+       send(counter, :stop)
+     end
+ 
+@@ -8910,6 +8934,30 @@
+            )
+ 
+     refute_received :coalesced_input_delivered
++
++    # A valid v4 observation must never launder a different v3 claimed root.
++    stale_root = put_in(hd(roots), ["collection", "root_sha256"], JSON.sha256("other root"))
++    assert ManagedReference.dependency?(stale_root)
++    assert {:ok, mixed_stale_root} = ManagedReference.union([literals, [stale_root]])
++
++    refute match?(
++             {:ok, _},
++             ManagedUse.with_worker_dependencies(context, mixed_stale_root, refused)
++           )
++
++    refute_received :coalesced_input_delivered
++
++    # The v4 claim itself cannot replace the root of the authenticated batch.
++    stale_literal = put_in(original, ["collection", "root_sha256"], JSON.sha256("other root"))
++    assert ManagedReference.dependency?(stale_literal)
++    assert {:ok, mixed_stale_literal} = ManagedReference.union([[stale_literal], roots])
++
++    refute match?(
++             {:ok, _},
++             ManagedUse.with_worker_dependencies(context, mixed_stale_literal, refused)
++           )
++
++    refute_received :coalesced_input_delivered
+ 
+     # An unavailable original source must withhold the entire input, and its
+     # synthetic fixture is restored even when an assertion fails.

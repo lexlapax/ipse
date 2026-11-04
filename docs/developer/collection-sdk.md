@@ -951,6 +951,28 @@ selected root/literal observations and checks policy/literal deadlines after the
 last observation. Unchanged signed literals can refresh at newer unrelated roots
 without renewing their lifetimes; an exact-root selection cannot.
 
+Worker delivery makes two independent protected observations: one discovers
+the required originals, and another reproduces the same records and proofs
+after their owners have been acquired. Within either pass, a batch of
+authenticated version-4 literals can supply its exact native-checked root
+identity for version-3 root comparisons. All batches must agree on that
+identity; each root-only dependency must still match it exactly. A pass
+without literals reads the root separately. No observation cache crosses
+between these passes. After the second pass, the final native Collection
+owner must still match every current dependency's root before the delivery
+callback can run. Reusing an identity supplies neither a retained lock nor
+permission, and does not remove source, policy or deadline checks.
+
+The worker's literal observations use the existing held notes reader in
+pairs. A pair consumes 26 of its 32 observation units under one actual
+Collection owner, which releases before original-source IO. Reconstruction
+retains the eight-MiB decoded block bound and 8,192-record index ceiling,
+plus selected value/reply bounds. The separate four-MiB encoded ReadView
+cache limit applies to ReadView callers; the paired reader creates no such
+cache. Its observations require actual version-4 or version-5 roots. Each pair
+performs its own native quota inventory and full index validation. Measure the
+complete populated turn: fewer inventories alone do not establish throughput.
+
 The native registered transport applies that current authority to Mint's one-use
 exact request-body continuation. No authority lock is held while awaiting model
 generation. The host buffers managed text, confirms native parsing/socket and

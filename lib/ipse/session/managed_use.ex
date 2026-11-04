@@ -1177,8 +1177,9 @@ defmodule Ipse.Session.ManagedUse do
   # Worker input is all-or-nothing. Only this path coalesces v4 records across
   # other dependency versions; other consumers retain per-dependency verdicts.
   # This changes internal observation and failure order: v4 reads run before
-  # v3/v5/v6/v7 reads. Each view closes before those other observations and no
-  # authority or results are shared between the two independent passes.
+  # v3/v5/v6/v7 reads. Their current root identity can satisfy v3 comparisons in
+  # this same pass. Each collection scope closes before other observations;
+  # no authority or results are shared between the two independent passes.
   defp observe_all_worker(c, dependencies, cap, catalog, journals) do
     pin = c.config[:semantic_admission]["pin"]
     root = SemanticAdmission.collection_root(c.config[:home])
@@ -1220,7 +1221,7 @@ defmodule Ipse.Session.ManagedUse do
     else
       with {:ok, specs} <- v4_specs(c, pending),
            {:ok, records} <-
-             ObservedRead.managed_records(
+             ObservedRead.managed_record_pairs(
                root,
                pin["namespace"],
                Enum.map(specs, fn {_dependency, request, recipe} -> {request, recipe} end),
@@ -1232,8 +1233,24 @@ defmodule Ipse.Session.ManagedUse do
         |> Enum.reduce_while({:ok, cache}, fn {{dependency, request, recipe}, record},
                                               {:ok, acc} ->
           case finish_v4_observation(c, pin, request, recipe, record) do
-            {:ok, _, _} = result ->
-              {:cont, {:ok, Map.put(acc, observation_key(dependency), result)}}
+            {:ok, current, _} = result ->
+              # This native-checked batch already observed this exact root in
+              # the current pass. Reuse only its identity, never its authority.
+              # Conflicting batch roots refuse; the next protected pass starts
+              # with a new cache and the final native owner rechecks the root.
+              root = {:ok, current["collection"]}
+
+              case Map.get(acc, :root, root) do
+                ^root ->
+                  {:cont,
+                   {:ok,
+                    acc
+                    |> Map.put(:root, root)
+                    |> Map.put(observation_key(dependency), result)}}
+
+                _ ->
+                  {:halt, @error}
+              end
 
             _ ->
               {:halt, @error}

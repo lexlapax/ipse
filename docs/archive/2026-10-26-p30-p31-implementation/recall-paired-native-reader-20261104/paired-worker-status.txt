@@ -1,0 +1,7 @@
+seed_exit=0
+test_exit=0
+private_post=0
+drivers_post=0
+pathset_post=0
+frozen_post=0
+operator_fuser_exit=1

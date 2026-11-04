@@ -1,0 +1,38 @@
+{
+  "format_exit": 0,
+  "source_base": "3226aab59dc8d1889cef734f2e5b7c2c5c22019a",
+  "source_overlay_sha256": "57d411afed6313cfc8241a360bd41905bda01fe341b4d581479b026afc01cd5c",
+  "formatted_four_file_ast_equal": true,
+  "source_input_count": 291,
+  "source_inputs_post": 0,
+  "strict_test_compile": {
+    "exit": 0,
+    "source_files": 197
+  },
+  "complete_source_build": {
+    "exit": 0,
+    "source_files": 197,
+    "pdf_build_requested": false,
+    "normal_bundles": 4,
+    "regenerated_bundle_files": 9,
+    "host_test_application_files_changed": 0,
+    "fresh_post_build_inventory_check": 0
+  },
+  "focused_main": {
+    "exit": 0,
+    "seconds": 17.1,
+    "passed": 14,
+    "excluded": 49,
+    "runtime_post_before_rebuild": 0,
+    "helper_post": 0
+  },
+  "isolated_demo": {
+    "first_exit": 1,
+    "first_failure": "missing isolated Mix archive before application startup",
+    "fresh_second_exit": 0,
+    "dependencies_installed": false,
+    "model_services_used": false
+  },
+  "final_combined_regression": "OPEN",
+  "ordinary_retained_2000_recall": "NOT RUN"
+}

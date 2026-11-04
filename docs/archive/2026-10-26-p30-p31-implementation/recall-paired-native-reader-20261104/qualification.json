@@ -1,0 +1,14 @@
+{
+  "annual_14600_turns": "NOT RUN",
+  "complete_populated_day": "NOT RUN",
+  "distinct33_storage": "PASS: one executed, 54 excluded",
+  "final_combined_source_regression": "NOT RUN",
+  "fresh_paired_split8_worker": "PASS: one executed, 201 excluded; all postchecks zero",
+  "full_notes_acceptance": false,
+  "integrated_main_strict_and_focused": "PASS: full 197-source compile/build, 241 modules/2564 imports/four bundles, 14 focused passes/49 excluded, format and demo; final full regression open",
+  "new_ordinary_retained_2000_read": "NOT RUN",
+  "paired_components": "PASS: five executed, 50 excluded",
+  "root_reuse_split8_worker": "PASS: one executed case, 201 excluded",
+  "source_base": "3226aab59dc8d1889cef734f2e5b7c2c5c22019a",
+  "source_patch_sha256": "57d411afed6313cfc8241a360bd41905bda01fe341b4d581479b026afc01cd5c"
+}

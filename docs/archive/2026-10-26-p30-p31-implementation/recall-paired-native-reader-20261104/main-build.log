@@ -1,0 +1,28 @@
+Resolving Hex dependencies...
+Resolution completed in 0.018s
+Unchanged:
+  elixir_uuid 1.2.1
+  ex_json_pointer 0.8.0
+  finch 0.24.0
+  hpax 1.1.0
+  jsonschex 0.10.0
+  mcp_elixir_sdk 1.1.0
+  mime 2.0.7
+  mint 1.11.0
+  nimble_options 1.1.1
+  nimble_pool 1.1.0
+  plug 1.20.3
+  plug_crypto 2.2.1
+  req 0.7.5
+  telemetry 1.4.2
+All dependencies have been fetched
+Compiling 197 files (.ex)
+Compiling lib/ipse/provider.ex (it's taking more than 10s)
+Compiling lib/ipse/journal/writer.ex (it's taking more than 10s)
+Compiling lib/ipse/session.ex (it's taking more than 10s)
+Generated ipse app
+Built corpus/collection-documents. Import, trust and enable it explicitly.
+Built corpus/state-documents. Import, trust and enable it explicitly.
+Built knowledge/native. Import, trust and enable it explicitly.
+Built knowledge/decision-shadow. Import, trust and enable it explicitly.
+Built inert extension bundle catalog; artifacts remain disabled until operator setup.

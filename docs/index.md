@@ -39,7 +39,7 @@ quick start. Try the demo before configuring a model account.
 | Find why a command failed | [Troubleshoot](operator/recovery.md) |
 | Understand which process owns an operation | [Follow a turn](developer/architecture.md) |
 | Add a domain tool without changing the host | [Build an extension](developer/extensions.md) |
-| Bind original source proofs and protected saved consent to local publication | [Study the collection SDK](developer/collection-sdk.md) |
+| Bind original sources, saved consent and current-use owners to publication and delivery | [Study the collection SDK](developer/collection-sdk.md) |
 | Change source retrieval, graph or investigation behavior | [Study knowledge packages](developer/knowledge-extensions.md) |
 | Follow acquired document bytes through extraction, storage and citation | [Study document ingestion](developer/knowledge-extensions.md#follow-acquired-document-bytes-into-cited-storage) |
 | Admit typed advisory effects and validate native results | [Study decisions](developer/decisions.md) |

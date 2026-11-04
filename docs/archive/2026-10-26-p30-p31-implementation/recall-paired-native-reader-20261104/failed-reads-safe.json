@@ -1,0 +1,80 @@
+{
+  "original": {
+    "affected_input": 22,
+    "cause_unresolved": true,
+    "cleanup_confirmed": false,
+    "inner_preservation_verifier": 0,
+    "no_replay": true,
+    "outer_post": 1,
+    "provider_admissions": 0,
+    "public_error": {
+      "branch": "owned_task_cleanup_failed",
+      "sha256": "be6041fc51631ed09afc0c3ec5c39681d89390e80130b8e4268a5766d49194a1",
+      "source": "lib/ipse/session.ex:6117"
+    },
+    "source_receipt_sha256": "905c7b43ee28185ae35deb1994da9d2060b1d3ebb1d6558c7832eea517336ace",
+    "worker_delivered": 21,
+    "worker_unknown": 1
+  },
+  "traced": {
+    "all_original_bytes_identities_and_other_metadata_preserved": true,
+    "capture": {
+      "byte_limit": 2097152,
+      "complete": false,
+      "dropped_count_lower_bound": 0,
+      "duration_limit_ms": 180000,
+      "event_limit": 4096,
+      "events": 1788,
+      "identities": 236,
+      "overflow": false,
+      "raw_arguments": false,
+      "raw_messages": false,
+      "raw_returns": false,
+      "reason": "stopped"
+    },
+    "child_exit": 1,
+    "cleanup_confirmed": true,
+    "control_unchanged": true,
+    "delivered": 29,
+    "diagnosed_current_run_boundary": "Host.continue read_deadline 120000ms",
+    "eligible_notes": 27,
+    "external_exact": true,
+    "historical_cleanup_failure_cause_remains_unresolved": true,
+    "host_deadline_ms": 120000,
+    "independent_verify": 0,
+    "ordinary_recall_qualified": false,
+    "outcome": "unknown",
+    "outer_post": 0,
+    "performance_qualified": false,
+    "phase_counts": {
+      "await_input": 29,
+      "bind_stdin": 29,
+      "cleanup_receipt": 1,
+      "export_stdin": 29,
+      "native_cleanup_status": 173,
+      "native_close_stdio": 146,
+      "prepare_input": 29,
+      "resource_closed": 582,
+      "resource_down": 61,
+      "resource_register_attempt": 582,
+      "scope_attach": 1,
+      "scope_close": 1,
+      "scope_finish": 1,
+      "settle_stdin": 29,
+      "worker_close": 1,
+      "worker_close_helper": 1,
+      "worker_fail_pending": 2,
+      "worker_input_deliver": 29,
+      "worker_input_finish": 29,
+      "worker_pending_timer": 33
+    },
+    "public_error_match": {
+      "bytes": 85,
+      "sha256": "8c3ebdc46261adbcae7572a1f169e61a612613be97fd41301530683cdd0a421f",
+      "source": "lib/ipse/extension/host.ex:350"
+    },
+    "retry_performed": false,
+    "source_receipt_sha256": "986be371dd8990f3ee53daf14e96dd99185d2d08188a5845ce0834146656afb1",
+    "worker_close_elapsed_us": 122856654
+  }
+}

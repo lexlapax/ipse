@@ -219,8 +219,15 @@ following limits until the end-to-end paths are qualified:
    2,000-note cohort, then one complete populated day before the annual workload.
    A [native renewed-recall control](archive/2026-10-26-p30-p31-implementation/authenticated-expired-recall-20261104.md)
    now passes after narrowly classifying authenticated expired ordinary neighbors,
-   preserving current permission and original-source gates. The retained cohort
-   remains untouched pending renewal against the final combined host identity.
+   preserving current permission and original-source gates. Two later retained-cohort reads on c8245f87 remain failed: the first
+   has unconfirmed cleanup at its 22nd Worker input; a separate traced read
+   confirms cleanup but reaches the unchanged 120-second Host deadline. The
+   [paired native reader checkpoint](archive/2026-10-26-p30-p31-implementation/recall-paired-native-reader-20261104.md)
+   preserves both outcomes, qualifies bounded root-identity reuse and paired
+   storage observations, and records an instrumented private storage improvement.
+   A fresh paired-worker check passes on eight original sources. A new ordinary
+   retained read, complete populated day, annual throughput and full notes
+   acceptance remain open.
    Workload tooling can advance alongside the notes journey; the completed
    integrated workload depends on the Session and recall behavior it exercises.
 3. **Documents and local retrieval — P31C1b/D1/F.** Independently finish document

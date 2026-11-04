@@ -1,0 +1,7 @@
+{
+  "kind": "error",
+  "passed": false,
+  "phase": "preflight",
+  "exception_class": null,
+  "private_reason_sha256": "26e848daa096aa5e632291cb304f2949cec5aebb0d94e51ecf014176c15204df"
+}

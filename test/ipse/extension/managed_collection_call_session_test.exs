@@ -8842,18 +8842,25 @@ defmodule Ipse.Extension.ManagedCollectionCallSessionTest do
 
     assert {:ok, expected} = ManagedUse.with_approval_dependencies(context, dependencies, capture)
 
-    # Count the exported batch entry only in descendants of this synthetic test.
-    # The arity-only assertion counts batch calls without note arguments.
+    # Count arity-only calls in this synthetic test's descendants. Both
+    # independent v4 passes remain; neither reopens a root-only snapshot view.
     counter =
       spawn(fn ->
         collect = fn collect, count ->
           receive do
-            {:trace, _, :call, {ObservedRead, :managed_records, _}} ->
-              collect.(collect, count + 1)
+            {:trace, _, :call, {ObservedRead, :managed_record_pairs, _}} ->
+              collect.(collect, Map.update!(count, :batches, &(&1 + 1)))
+
+            {:trace, _, :call, {ObservedRead, :read, _}} ->
+              collect.(collect, Map.update!(count, :root_reads, &(&1 + 1)))
 
             {:count, caller} ->
               send(caller, {:managed_batch_calls, count})
               collect.(collect, count)
+
+            {:reset, caller} ->
+              send(caller, :managed_batch_counter_reset)
+              collect.(collect, %{batches: 0, root_reads: 0})
 
             :stop ->
               :ok
@@ -8863,11 +8870,12 @@ defmodule Ipse.Extension.ManagedCollectionCallSessionTest do
           end
         end
 
-        collect.(collect, 0)
+        collect.(collect, %{batches: 0, root_reads: 0})
       end)
 
     try do
-      assert 1 == :erlang.trace_pattern({ObservedRead, :managed_records, 5}, true, [])
+      assert 1 == :erlang.trace_pattern({ObservedRead, :managed_record_pairs, 5}, true, [])
+      assert 1 == :erlang.trace_pattern({ObservedRead, :read, 3}, true, [])
       assert 1 == :erlang.trace(self(), true, [:call, :arity, :set_on_spawn, {:tracer, counter}])
 
       assert {:ok, ^expected} =
@@ -8877,10 +8885,26 @@ defmodule Ipse.Extension.ManagedCollectionCallSessionTest do
       delivered = :erlang.trace_delivered(:all)
       assert_receive {:trace_delivered, :all, ^delivered}, 5_000
       send(counter, {:count, self()})
-      assert_receive {:managed_batch_calls, 2}, 5_000
+      assert_receive {:managed_batch_calls, %{batches: 2, root_reads: 0}}, 5_000
+
+      # Without a v4 witness, each pass must still obtain its own current root.
+      send(counter, {:reset, self()})
+      assert_receive :managed_batch_counter_reset, 5_000
+      assert {:ok, roots_only} = ManagedReference.union([roots])
+      assert 1 == :erlang.trace(self(), true, [:call, :arity, :set_on_spawn, {:tracer, counter}])
+
+      assert {:ok, %{current: ^roots_only, proofs: []}} =
+               ManagedUse.with_worker_dependencies(context, roots_only, capture)
+
+      assert 1 == :erlang.trace(self(), false, [:call, :arity, :set_on_spawn])
+      delivered = :erlang.trace_delivered(:all)
+      assert_receive {:trace_delivered, :all, ^delivered}, 5_000
+      send(counter, {:count, self()})
+      assert_receive {:managed_batch_calls, %{batches: 0, root_reads: 2}}, 5_000
     after
       :erlang.trace(self(), false, [:call, :arity, :set_on_spawn])
-      :erlang.trace_pattern({ObservedRead, :managed_records, 5}, false, [])
+      :erlang.trace_pattern({ObservedRead, :managed_record_pairs, 5}, false, [])
+      :erlang.trace_pattern({ObservedRead, :read, 3}, false, [])
       send(counter, :stop)
     end
 
@@ -8907,6 +8931,30 @@ defmodule Ipse.Extension.ManagedCollectionCallSessionTest do
     refute match?(
              {:ok, _},
              ManagedUse.with_worker_dependencies(context, duplicate_key_dependencies, refused)
+           )
+
+    refute_received :coalesced_input_delivered
+
+    # A valid v4 observation must never launder a different v3 claimed root.
+    stale_root = put_in(hd(roots), ["collection", "root_sha256"], JSON.sha256("other root"))
+    assert ManagedReference.dependency?(stale_root)
+    assert {:ok, mixed_stale_root} = ManagedReference.union([literals, [stale_root]])
+
+    refute match?(
+             {:ok, _},
+             ManagedUse.with_worker_dependencies(context, mixed_stale_root, refused)
+           )
+
+    refute_received :coalesced_input_delivered
+
+    # The v4 claim itself cannot replace the root of the authenticated batch.
+    stale_literal = put_in(original, ["collection", "root_sha256"], JSON.sha256("other root"))
+    assert ManagedReference.dependency?(stale_literal)
+    assert {:ok, mixed_stale_literal} = ManagedReference.union([[stale_literal], roots])
+
+    refute match?(
+             {:ok, _},
+             ManagedUse.with_worker_dependencies(context, mixed_stale_literal, refused)
            )
 
     refute_received :coalesced_input_delivered

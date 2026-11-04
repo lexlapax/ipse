@@ -1,0 +1,29 @@
+{
+  "bundles": [
+    {
+      "id": "corpus-collection-documents",
+      "digest": "1771c524aa1078b706a6f6f33f3e7c87dac40e1316ee699b143aade28b9b4866",
+      "payload_files": 27
+    },
+    {
+      "id": "corpus-state-documents",
+      "digest": "e048da4ec9b9e65be6d24612b6b3a66094efc50c418a2e899f8cbc13c80c2b4f",
+      "payload_files": 27
+    },
+    {
+      "id": "knowledge",
+      "digest": "fb95f8407b38fbce06e448b14b927bdeebfb0a42df0fb010b764848d1045f9db",
+      "payload_files": 9
+    },
+    {
+      "id": "knowledge-decision-shadow",
+      "digest": "46b41a73d3c10b93a59efc4e137ce4b462e35244fa7d2a8e70faafb7c754c0c5",
+      "payload_files": 9
+    }
+  ],
+  "module_count": 241,
+  "unique_host_imports": 2564,
+  "unresolved_host_imports": 0,
+  "bootstrap_within_application": true,
+  "app_started": false
+}

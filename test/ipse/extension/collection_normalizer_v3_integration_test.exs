@@ -4519,6 +4519,129 @@ defmodule Ipse.Extension.CollectionNormalizerV3IntegrationTest do
     assert {:error, :collection_observation_refused} = invoke.(opts.recipe)
   end
 
+  @tag :managed_v4_held_pairs
+  test "paired native owners preserve exact literal observations with one quota inventory per pair",
+       c do
+    opts =
+      for n <- 1..3 do
+        value = options(n, n - 1)
+        assert {:ok, _} = publish(c, value, scope(c, n == 1), first: n == 1)
+        value
+      end
+
+    requests =
+      Enum.map(opts, fn value ->
+        {%{"op" => "get_record", "key" => hd(value.request["changes"])["key"]}, value.recipe}
+      end)
+
+    domain = Map.take(scope(c, false), [:namespace, :format])
+
+    assert {:ok, %{view: expected, pairs: actual, view_quota: 16, pair_quota: 2}} =
+             Identity.with_existing_domain_auth(c.home, c.cwd, c.binding, domain, fn cap,
+                                                                                     catalog ->
+               {view_result, view_quota} =
+                 count_quota_calls(fn ->
+                   ObservedRead.managed_records(c.root, c.namespace, requests, cap, catalog)
+                 end)
+
+               {pair_result, pair_quota} =
+                 count_quota_calls(fn ->
+                   ObservedRead.managed_record_pairs(c.root, c.namespace, requests, cap, catalog)
+                 end)
+
+               assert {:ok, expected} = view_result
+               assert {:ok, ^expected} = pair_result
+
+               for {{request, recipe}, expected} <- Enum.zip(requests, expected) do
+                 assert {:ok, ^expected} =
+                          ObservedRead.managed_record(
+                            c.root,
+                            c.namespace,
+                            request,
+                            cap,
+                            catalog,
+                            recipe
+                          )
+               end
+
+               assert {:error, :collection_observation_refused} =
+                        ObservedRead.managed_record_pairs(
+                          c.root,
+                          c.namespace,
+                          List.duplicate(hd(requests), 33),
+                          cap,
+                          catalog
+                        )
+
+               assert {:error, :collection_observation_refused} =
+                        ObservedRead.managed_record_pairs(
+                          c.root,
+                          c.namespace,
+                          [
+                            hd(requests),
+                            {%{"op" => "get_record", "key" => "pending.bad"}, hd(opts).recipe}
+                          ],
+                          cap,
+                          catalog
+                        )
+
+               IO.puts(
+                 "MANAGED_PAIR_QUOTA_COUNTS " <>
+                   Jason.encode!(%{view: view_quota, pairs: pair_quota, literals: 3})
+               )
+
+               {:ok,
+                %{view: expected, pairs: expected, view_quota: view_quota, pair_quota: pair_quota}}
+             end)
+
+    assert actual === expected
+    assert length(actual) == 3
+    assert [] == Registry.lookup(Ipse.Registry, {C.ReadView, self()})
+  end
+
+  defp count_quota_calls(fun) do
+    owner = self()
+
+    collector =
+      spawn(fn ->
+        loop = fn loop, count ->
+          receive do
+            {:trace, _, :call, {Ipse.Runner.Transaction, :quota, 3}} ->
+              loop.(loop, count + 1)
+
+            {:count, caller} ->
+              send(caller, {:quota_count, count})
+              loop.(loop, count)
+
+            :stop ->
+              :ok
+
+            _ ->
+              loop.(loop, count)
+          end
+        end
+
+        loop.(loop, 0)
+      end)
+
+    session = :trace.session_create(:managed_pair_quota_counter, collector, [])
+
+    try do
+      assert 1 == :trace.function(session, {Ipse.Runner.Transaction, :quota, 3}, true, [:local])
+      assert 1 == :trace.process(session, owner, true, [:call, :arity, :set_on_spawn])
+      result = fun.()
+      assert 1 == :trace.process(session, owner, false, [:call, :arity, :set_on_spawn])
+      delivered = :trace.delivered(session, :all)
+      assert_receive {:trace_delivered, :all, ^delivered}, 5_000
+      send(collector, {:count, owner})
+      assert_receive {:quota_count, count}, 5_000
+      {result, count}
+    after
+      :trace.session_destroy(session)
+      send(collector, :stop)
+    end
+  end
+
   @tag :held_target_regression
   @tag :managed_v4_batch
   test "distinct signed literals share a view without changing their observations", c do
@@ -4617,6 +4740,61 @@ defmodule Ipse.Extension.CollectionNormalizerV3IntegrationTest do
            |> Enum.map(&get_in(&1, ["observation", "witness"]))
            |> Enum.uniq()
            |> length() == 1
+
+    assert {:ok, paired} =
+             Identity.with_existing_domain_auth(c.home, c.cwd, c.binding, domain, fn cap,
+                                                                                     catalog ->
+               {{:ok, first}, first_quota} =
+                 count_quota_calls(fn ->
+                   ObservedRead.managed_record_pairs(
+                     c.root,
+                     c.namespace,
+                     Enum.take(requests, 32),
+                     cap,
+                     catalog
+                   )
+                 end)
+
+               {{:ok, last}, tail_quota} =
+                 count_quota_calls(fn ->
+                   ObservedRead.managed_record_pairs(
+                     c.root,
+                     c.namespace,
+                     Enum.drop(requests, 32),
+                     cap,
+                     catalog
+                   )
+                 end)
+
+               assert first_quota == 16 and tail_quota == 1
+
+               assert {{:error, :collection_observation_refused}, 0} =
+                        count_quota_calls(fn ->
+                          ObservedRead.managed_record_pairs(
+                            c.root,
+                            c.namespace,
+                            requests,
+                            cap,
+                            catalog
+                          )
+                        end)
+
+               IO.puts(
+                 "MANAGED_PAIR_DISTINCT33 " <>
+                   Jason.encode!(%{
+                     distinct: 33,
+                     first: length(first),
+                     tail: length(last),
+                     first_quota: first_quota,
+                     tail_quota: tail_quota,
+                     direct33_refused_before_inventory: true
+                   })
+               )
+
+               {:ok, first ++ last}
+             end)
+
+    assert paired === observations
   end
 
   @tag :managed_v4_batch_fence

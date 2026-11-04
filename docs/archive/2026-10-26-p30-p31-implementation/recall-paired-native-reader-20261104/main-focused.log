@@ -1,0 +1,10 @@
+Running ExUnit with seed: 0, max_cases: 1
+Excluding tags: [:test, :native_sandbox, :macos_sandbox, :macos_filesystem, :memory_scope, :workspace_word_native, :controlled_tty_bridge, :controlled_tty_loss]
+Including tags: [:managed_v4_held_pairs, :managed_v4_33_distinct, :managed_v4_batch, :managed_v4_batch_fence, :collection_held_read]
+
+........MANAGED_PAIR_QUOTA_COUNTS {"literals":3,"pairs":2,"view":16}
+..MANAGED_PAIR_DISTINCT33 {"first":32,"tail":1,"first_quota":16,"tail_quota":1,"distinct":33,"direct33_refused_before_inventory":true}
+....
+Finished in 17.1 seconds (0.00s async, 17.1s sync)
+
+Result: 14 passed, 49 excluded

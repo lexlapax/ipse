@@ -1,0 +1,143 @@
+{
+  "application_started": false,
+  "kind": "private_populated_collection_storage_only",
+  "results": [
+    {
+      "literals": 8,
+      "view": {
+        "functions": {
+          "load_pointer": {
+            "calls": 1,
+            "timing": "calls_only"
+          },
+          "native_read": {
+            "calls": 74,
+            "elapsed_us": 16844,
+            "timing": "instrumented_elapsed"
+          },
+          "quota": {
+            "calls": 41,
+            "elapsed_us": 287956,
+            "timing": "instrumented_elapsed"
+          },
+          "view_borrow": {
+            "calls": 40,
+            "elapsed_us": 85636,
+            "timing": "instrumented_elapsed"
+          },
+          "view_install": {
+            "calls": 1,
+            "elapsed_us": 40803,
+            "timing": "instrumented_elapsed"
+          }
+        },
+        "elapsed_us": 1134198
+      },
+      "observations_equal": true,
+      "observation_sha256": "82300c0014c74dcacec8d978195fd4a8ae093fd5d23fa3f053883abc110481fe",
+      "held_pairs": {
+        "functions": {
+          "load_pointer": {
+            "calls": 4,
+            "timing": "calls_only"
+          },
+          "native_read": {
+            "calls": 200,
+            "elapsed_us": 44181,
+            "timing": "instrumented_elapsed"
+          },
+          "quota": {
+            "calls": 4,
+            "elapsed_us": 26798,
+            "timing": "instrumented_elapsed"
+          },
+          "view_borrow": {
+            "calls": 0,
+            "elapsed_us": 0,
+            "timing": "instrumented_elapsed"
+          },
+          "view_install": {
+            "calls": 0,
+            "elapsed_us": 0,
+            "timing": "instrumented_elapsed"
+          }
+        },
+        "elapsed_us": 631510
+      }
+    },
+    {
+      "literals": 32,
+      "view": {
+        "functions": {
+          "load_pointer": {
+            "calls": 1,
+            "timing": "calls_only"
+          },
+          "native_read": {
+            "calls": 170,
+            "elapsed_us": 31410,
+            "timing": "instrumented_elapsed"
+          },
+          "quota": {
+            "calls": 161,
+            "elapsed_us": 1192354,
+            "timing": "instrumented_elapsed"
+          },
+          "view_borrow": {
+            "calls": 160,
+            "elapsed_us": 382183,
+            "timing": "instrumented_elapsed"
+          },
+          "view_install": {
+            "calls": 1,
+            "elapsed_us": 40531,
+            "timing": "instrumented_elapsed"
+          }
+        },
+        "elapsed_us": 4137636
+      },
+      "observations_equal": true,
+      "observation_sha256": "90d6d5b3b02841a37c26a7838c14dbd698ad6b6be54f675c40d869c736a02fe0",
+      "held_pairs": {
+        "functions": {
+          "load_pointer": {
+            "calls": 16,
+            "timing": "calls_only"
+          },
+          "native_read": {
+            "calls": 800,
+            "elapsed_us": 159737,
+            "timing": "instrumented_elapsed"
+          },
+          "quota": {
+            "calls": 16,
+            "elapsed_us": 93757,
+            "timing": "instrumented_elapsed"
+          },
+          "view_borrow": {
+            "calls": 0,
+            "elapsed_us": 0,
+            "timing": "instrumented_elapsed"
+          },
+          "view_install": {
+            "calls": 0,
+            "elapsed_us": 0,
+            "timing": "instrumented_elapsed"
+          }
+        },
+        "elapsed_us": 2498113
+      }
+    }
+  ],
+  "passed": true,
+  "identity_or_consent_copied": false,
+  "original_native_lock_acquired": false,
+  "session_provider_input_calls": 0,
+  "original_bytes_identity_unchanged": true,
+  "private_collection_payload_unchanged": true,
+  "private_copy_payload_equal_original": true,
+  "original_entries": 2197,
+  "original_regular_bytes": 7523976,
+  "runtime_manifest_sha256": "598fc7ce9b24eebbf06d7d10445afdbe0b04394adf07c73af528c31faf32693d",
+  "instrumented_component_only": true
+}

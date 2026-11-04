@@ -506,6 +506,69 @@ defmodule Ipse.Extension.Collection.ObservedRead do
 
   def managed_records(_, _, _, _, _), do: @error
 
+  @doc false
+  # Host worker batches keep no ReadView cache. Each pair owns a real notes
+  # Collection scope: two literals use at most 26 of its unchanged 32 units.
+  # Each read checks that owner, and each callback closes before the next pair.
+  # Root v4/v5, native index/value/reply bounds and exact pair roots remain;
+  # the ReadView-specific 4 MiB cache envelope does not apply to this route.
+  def managed_record_pairs(root, namespace, requests, cap, catalog)
+      when is_list(requests) and length(requests) in 1..32 do
+    with {:ok, entries} <- managed_record_specs(namespace, requests, catalog) do
+      entries
+      |> Enum.chunk_every(2)
+      |> Enum.reduce_while({:ok, nil, []}, fn pair, {:ok, prior_root, records} ->
+        result =
+          Collection.with_managed_read(root, namespace, fn witness, read ->
+            with "present" <- witness["root_state"],
+                 {:ok, pointer} <- JSON.decode_bounded(witness["root_bytes"], 1024),
+                 normalized =
+                   witness
+                   |> Map.take(~w(version root_state root_sha256 manifest_sha256))
+                   |> Map.put("root", pointer),
+                 {:ok, current_root} <- root_identity(normalized, namespace),
+                 true <- is_nil(prior_root) or current_root === prior_root do
+              values = fn selected -> held_values(witness, read, selected) end
+              neighbors = fn selected -> read.(%{"op" => "neighbors", "request" => selected}) end
+
+              Enum.reduce_while(pair, {:ok, []}, fn {request, recipe, lineage}, {:ok, acc} ->
+                case managed_record_read(values, neighbors, request, cap, lineage, recipe) do
+                  {:ok, record} -> {:cont, {:ok, [record | acc]}}
+                  _ -> {:halt, @error}
+                end
+              end)
+              |> case do
+                {:ok, selected} -> {:ok, {current_root, Enum.reverse(selected)}}
+                _ -> @error
+              end
+            else
+              _ -> @error
+            end
+          end)
+
+        case result do
+          {:ok, {current_root, selected}} ->
+            {:cont, {:ok, current_root, records ++ selected}}
+
+          _ ->
+            {:halt, @error}
+        end
+      end)
+      |> case do
+        {:ok, _root, records} -> {:ok, records}
+        _ -> @error
+      end
+    else
+      _ -> @error
+    end
+  rescue
+    _ -> @error
+  catch
+    _, _ -> @error
+  end
+
+  def managed_record_pairs(_, _, _, _, _), do: @error
+
   defp managed_record_specs(namespace, requests, catalog) do
     Enum.reduce_while(requests, {:ok, []}, fn
       {request, recipe}, {:ok, entries} ->

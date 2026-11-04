@@ -1,0 +1,52 @@
+{
+  "changed": [
+    {
+      "path": "priv/extension-bundles/catalog.json",
+      "before_sha256": "3a83d961782fb8c4cae8e9f9e644575fd9861b195c3f60645bacb5b1b7d0f371",
+      "after_sha256": "9588d4b3c726c3059ce116d970584db7ba1feb895ba155aede31bd375be51610"
+    },
+    {
+      "path": "priv/extension-bundles/corpus-collection-documents/ebin/Elixir.IpseKnowledge.Corpus.beam",
+      "before_sha256": "3c058021ebc720fe1646f89eb24bbce14a5334f835bf6408fe92f88b95bdcf21",
+      "after_sha256": "021160227e9010603f25a538a3474eedddb26e9cb4f7ff30298817b49a914dca"
+    },
+    {
+      "path": "priv/extension-bundles/corpus-collection-documents/extension.json",
+      "before_sha256": "041a7e2552c427d4f9309c853ef22c8120c0cb3c3f6632fcec9b2c9e9c3583ce",
+      "after_sha256": "1771c524aa1078b706a6f6f33f3e7c87dac40e1316ee699b143aade28b9b4866"
+    },
+    {
+      "path": "priv/extension-bundles/corpus-state-documents/ebin/Elixir.IpseKnowledge.Corpus.beam",
+      "before_sha256": "d538cadd01524e93bca5f4520281d41bf79a360399ad7f0c592c9d5feab2e244",
+      "after_sha256": "8830d3b06ada2bf226f38c81bb36c95c137a42ff39ba55ea6f0b83edec2dfc56"
+    },
+    {
+      "path": "priv/extension-bundles/corpus-state-documents/extension.json",
+      "before_sha256": "c75d0571768b1b04534c9a6e8e342bd087df98c0592e9e20bb6302d221cf93cd",
+      "after_sha256": "e048da4ec9b9e65be6d24612b6b3a66094efc50c418a2e899f8cbc13c80c2b4f"
+    },
+    {
+      "path": "priv/extension-bundles/knowledge-decision-shadow/ebin/Elixir.IpseKnowledge.Knowledge.beam",
+      "before_sha256": "12118072f7aa57034e356269c15f7f4a0ba2f21ad06b65baa7fe0bfeda77dd2e",
+      "after_sha256": "78fc52409b60a0dc66a1bf38f386cd2b9fb6472112f22a107feccd362cc4c57b"
+    },
+    {
+      "path": "priv/extension-bundles/knowledge-decision-shadow/extension.json",
+      "before_sha256": "ab00520fd379ff22efcefa38afd9546c304d67662e3ce7399621ba25266bd2e4",
+      "after_sha256": "46b41a73d3c10b93a59efc4e137ce4b462e35244fa7d2a8e70faafb7c754c0c5"
+    },
+    {
+      "path": "priv/extension-bundles/knowledge/ebin/Elixir.IpseKnowledge.Knowledge.beam",
+      "before_sha256": "349576b247d2b29377b5363b3eb6db2f8699115b942dc802c7e49b57221e5523",
+      "after_sha256": "eb6c42e5a69f00e7df2abf4e196f230936030e0d2a3436bb0ef29f7724ef380a"
+    },
+    {
+      "path": "priv/extension-bundles/knowledge/extension.json",
+      "before_sha256": "082610d9b92fe2988e41d82f0d2b8ffd5181f290ef0e96221d733d1605111eb7",
+      "after_sha256": "fb95f8407b38fbce06e448b14b927bdeebfb0a42df0fb010b764848d1045f9db"
+    }
+  ],
+  "phase": "intentional normal bundle rebuild after focused test postchecks",
+  "changed_count": 9,
+  "host_application_files_changed_after_focused": 0
+}
