@@ -1,0 +1,8 @@
+Running ExUnit with seed: 0, max_cases: 4
+Excluding tags: [:test]
+Including tags: [test: :"test actual bundled shadow Session is deferred candidate"]
+
+.
+Finished in 14.1 seconds (0.00s async, 14.1s sync)
+
+Result: 1 passed, 10 excluded

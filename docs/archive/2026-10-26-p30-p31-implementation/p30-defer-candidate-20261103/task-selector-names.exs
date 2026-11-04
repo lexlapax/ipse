@@ -1,0 +1,10 @@
+ExUnit.start(autorun: false)
+Code.require_file("test/extensions/knowledge/shadow_pending_candidate_session_test.exs")
+names =
+  IpseKnowledge.ShadowPendingCandidateSessionTest.__info__(:functions)
+  |> Enum.filter(fn {name, arity} -> arity == 1 and String.starts_with?(Atom.to_string(name), "test ") end)
+  |> Enum.map(&elem(&1, 0))
+11 = length(names)
+1 = Enum.count(names, &(&1 == :"test actual bundled shadow Session is deferred candidate"))
+IO.puts("actual_generated_tests=11")
+IO.puts("exact_deferred_target_count=1")

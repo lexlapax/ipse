@@ -1,0 +1,20 @@
+Running ExUnit with seed: 0, max_cases: 4
+Excluding tags: [test: true]
+Including tags: [shadow_case: "deferred candidate"]
+
+...........
+Finished in 199.6 seconds (0.00s async, 199.6s sync)
+
+Result: 11 passed
+** (MatchError) no match of right hand side value:
+
+    %{total: 11, excluded: 0, skipped: 0, failures: 0}
+
+    task-direct-exunit.exs:12: (file)
+    (elixir 1.20.4) lib/code.ex:1639: Code.require_file/2
+    (mix 1.20.4) lib/mix/tasks/run.ex:167: Mix.Tasks.Run.run/5
+    (mix 1.20.4) lib/mix/tasks/run.ex:106: Mix.Tasks.Run.run/1
+    (mix 1.20.4) lib/mix/task.ex:502: anonymous fn/3 in Mix.Task.run_task/5
+    (mix 1.20.4) lib/mix/cli.ex:129: Mix.CLI.run_task/2
+    /usr/bin/mix:7: (file)
+    (elixir 1.20.4) lib/code.ex:1639: Code.require_file/2

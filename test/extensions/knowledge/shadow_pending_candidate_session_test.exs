@@ -3,6 +3,7 @@ defmodule IpseKnowledge.ShadowPendingCandidateSessionTest do
 
   for {name, scenario} <- [
         {"approved", "save_managed_approval_root_shadow"},
+        {"deferred candidate", "save_managed_approval_defer_candidate"},
         {"mixed literal and pending sources", "save_managed_approval_mixed_v4_v7"},
         {"low confidence", "save_managed_approval_low_confidence"},
         {"unknown decision remains charged and is not replayed", "save_managed_approval_unknown"},

@@ -14,6 +14,7 @@ expiry? = preflight_expiry? or release_expiry?
 denied? = scenario == "save_managed_approval_deny"
 revoked? = scenario == "save_managed_approval_revoked_grant"
 low_confidence? = scenario == "save_managed_approval_low_confidence"
+deferred? = scenario == "save_managed_approval_defer_candidate"
 output_source_lost? = scenario == "save_managed_approval_output_source_lost"
 input_source_lost? = scenario == "save_managed_approval_input_source_lost"
 unknown? = scenario == "save_managed_approval_unknown"
@@ -48,17 +49,18 @@ server =
           {response, next} =
             if decision? do
               probability = if low_confidence?, do: 0.6, else: 0.9
+              choice = if deferred?, do: "defer_candidate", else: "keep_baseline"
 
               {%{
                  "model" => "synthetic",
                  "answers" => %{
                    "candidate" => %{
                      "type" => "choice",
-                     "choice" => "keep_baseline",
+                     "choice" => choice,
                      "confidence" => probability,
                      "probabilities" => %{
-                       "keep_baseline" => probability,
-                       "defer_candidate" => 1 - probability
+                       "keep_baseline" => if(deferred?, do: 1 - probability, else: probability),
+                       "defer_candidate" => if(deferred?, do: probability, else: 1 - probability)
                      }
                    }
                  },
@@ -325,6 +327,25 @@ assert {:ok, before_assessment} =
            %{"op" => "snapshot"},
            Ipse.Usage.id()
          )
+
+# This trusted test-side read compares the stored record, including revision;
+# it is not a Worker read grant.
+before_pending =
+  if deferred? do
+    assert {:ok, %{"record" => record}} =
+             Ipse.Extension.Collection.execute(
+               collection,
+               namespace,
+               %{"op" => "get", "key" => key},
+               Ipse.Usage.id()
+             )
+
+    assert record["key"] == key
+    assert record["value"]["id"] == proposed["id"]
+    assert record["value"]["text"] == proposed["text"]
+    assert record["value"]["state"] == "pending"
+    record
+  end
 
 if revoked? do
   {:ok, current} = Ipse.Extension.Consent.existing_snapshot(control, binding["project_id"])
@@ -737,11 +758,14 @@ cond do
              "advice" => advice
            } = Jason.decode!(output["content"])
 
-    assert advice ==
-             if(low_confidence?,
-               do: %{"choice" => nil, "reason" => "low_probability"},
-               else: %{"choice" => "keep_baseline", "reason" => "selected"}
-             )
+    expected_advice =
+      cond do
+        low_confidence? -> %{"choice" => nil, "reason" => "low_probability"}
+        deferred? -> %{"choice" => "defer_candidate", "reason" => "selected"}
+        true -> %{"choice" => "keep_baseline", "reason" => "selected"}
+      end
+
+    assert advice == expected_advice
 
     assert Enum.any?(
              events,
@@ -763,12 +787,29 @@ assert {:ok, after_assessment} =
          )
 
 assert after_assessment == before_assessment
+
+if deferred? do
+  assert {:ok, %{"record" => ^before_pending}} =
+           Ipse.Extension.Collection.execute(
+             collection,
+             namespace,
+             %{"op" => "get", "key" => key},
+             Ipse.Usage.id()
+           )
+end
+
 assert {:ok, _} = Ipse.Session.Saved.restore(events, id)
 
 assert :ok = Ipse.Session.close_confirmed(pid)
 
 unless denied? or expiry? do
   prior_calls = Agent.get(calls, & &1)
+  assert {:ok, closed_events} = Ipse.Journal.load(dir, id)
+
+  intent_types =
+    ~w(extension_invocation_intent extension_action_intent inference_dispatch_intent request_admitted)
+
+  prior_intents = Enum.filter(closed_events, &(&1["type"] in intent_types))
 
   assert {:ok, resumed} =
            DynamicSupervisor.start_child(
@@ -779,6 +820,20 @@ unless denied? or expiry? do
   assert Ipse.Session.info(resumed).phase == :idle
   assert Agent.get(calls, & &1) == prior_calls
   assert :ok = Ipse.Session.close_confirmed(resumed)
+
+  if deferred? do
+    assert {:ok, reopened_events} = Ipse.Journal.load(dir, id)
+    assert Enum.filter(reopened_events, &(&1["type"] in intent_types)) == prior_intents
+    assert Agent.get(calls, & &1) == prior_calls
+
+    assert {:ok, %{"record" => ^before_pending}} =
+             Ipse.Extension.Collection.execute(
+               collection,
+               namespace,
+               %{"op" => "get", "key" => key},
+               Ipse.Usage.id()
+             )
+  end
 end
 
 :gen_tcp.close(listener)

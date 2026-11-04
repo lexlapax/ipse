@@ -1,0 +1,6 @@
+synthetic_fixture_roots=11
+roots_with_unmatched_extension_action_intents=0
+roots_with_unknown_consent_operations=2
+defer_candidate_selected_results=1
+keep_baseline_selected_results=3
+low_probability_results=1
