@@ -16,6 +16,7 @@ defmodule Ipse.Extension.Collection.DocumentStage do
   @parts 10
   @inline_bytes 8192
   @publish_deadline_key {__MODULE__, :publish_before_ms}
+  @publication_guard_key {__MODULE__, :publication_guard}
   @slots 16
   @ttl_ms 3_600_000
   @error {:error, :document_store_refused}
@@ -154,6 +155,21 @@ defmodule Ipse.Extension.Collection.DocumentStage do
 
   def read_value(_, _), do: @error
 
+  @doc false
+  def decode_packed(value) when is_map(value) do
+    with true <- packed?(value),
+         bytes = IO.iodata_to_binary(value["parts"]),
+         {:ok, decoded} <- ResultDocument.decode(bytes, %{"type" => "object"}) do
+      {:ok, decoded}
+    else
+      _ -> @error
+    end
+  rescue
+    _ -> @error
+  end
+
+  def decode_packed(_), do: @error
+
   @doc "Inspect sealed stage values under a retained reader; this does not grant publication."
   def prepared_values(read, request, owner, now) when is_function(read, 1) do
     with true <- request?(request) and request["op"] === "commit" and owner?(owner),
@@ -207,10 +223,15 @@ defmodule Ipse.Extension.Collection.DocumentStage do
   @doc "Trusted host deadline only; never accepts deadline or authority fields in worker JSON."
   def execute(root, namespace, request, operation_id, owner, opts) do
     previous = Process.get(@publish_deadline_key)
+    previous_guard = Process.get(@publication_guard_key)
 
     with true <-
            is_list(opts) and Keyword.keyword?(opts) and
-             Keyword.keys(opts) in [[], [:publish_before_ms]],
+             length(Keyword.keys(opts)) == length(Enum.uniq(Keyword.keys(opts))) and
+             Enum.all?(Keyword.keys(opts), &(&1 in [:publish_before_ms, :publication_guard])),
+         guard = Keyword.get(opts, :publication_guard),
+         true <- is_nil(guard) or is_function(guard, 2),
+         true <- is_nil(previous_guard),
          deadline = Keyword.get(opts, :publish_before_ms),
          true <- is_nil(deadline) or (JSON.safe_uint?(deadline) and deadline > 0),
          true <- is_nil(previous) or (JSON.safe_uint?(previous) and previous > 0),
@@ -222,10 +243,13 @@ defmodule Ipse.Extension.Collection.DocumentStage do
             end),
          true <- is_nil(deadline) or System.system_time(:millisecond) < deadline do
       Process.put(@publish_deadline_key, deadline)
+      Process.put(@publication_guard_key, guard)
 
       try do
         execute_current(root, namespace, request, operation_id, owner)
       after
+        Process.delete(@publication_guard_key)
+
         if is_nil(previous),
           do: Process.delete(@publish_deadline_key),
           else: Process.put(@publish_deadline_key, previous)
@@ -825,18 +849,37 @@ defmodule Ipse.Extension.Collection.DocumentStage do
     deadline = if deadlines == [], do: nil, else: Enum.min(deadlines)
 
     if is_nil(deadline) or System.system_time(:millisecond) < deadline do
-      request = %{
-        "op" => "commit",
-        "expected_generation" => s["generation"],
-        "advance_floor" =>
-          Enum.any?(changes, &(is_nil(&1["value"]) or &1["expected_revision"] > 0)),
-        "changes" => changes
-      }
+      guard = Process.get(@publication_guard_key)
+      checked = if is_function(guard, 2), do: guard.(changes, &record(root, ns, &1, s)), else: :ok
 
-      if is_nil(deadline),
-        do: Collection.execute_profile(root, ns, request, id, Profile.documents()),
-        else:
-          Collection.execute_profile_before(root, ns, request, id, Profile.documents(), deadline)
+      case checked do
+        :ok ->
+          request = %{
+            "op" => "commit",
+            "expected_generation" => s["generation"],
+            "advance_floor" =>
+              Enum.any?(changes, &(is_nil(&1["value"]) or &1["expected_revision"] > 0)),
+            "changes" => changes
+          }
+
+          if is_nil(deadline),
+            do: Collection.execute_profile(root, ns, request, id, Profile.documents()),
+            else:
+              Collection.execute_profile_before(
+                root,
+                ns,
+                request,
+                id,
+                Profile.documents(),
+                deadline
+              )
+
+        {:unknown, _} = unknown ->
+          unknown
+
+        _ ->
+          @error
+      end
     else
       @error
     end

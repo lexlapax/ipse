@@ -111,6 +111,18 @@ defmodule Ipse.Session.Resources do
   def authorized_effect?(_, _), do: false
 
   @doc false
+  def authorized_task?(worker, caller) when is_pid(worker) and is_pid(caller) do
+    case Registry.lookup(Ipse.Registry, {__MODULE__, worker}) do
+      [{scope, _}] -> GenServer.call(scope, {:authorized_task, worker, caller})
+      _ -> false
+    end
+  catch
+    :exit, _ -> false
+  end
+
+  def authorized_task?(_, _), do: false
+
+  @doc false
   def resource_effect?(%{scope: scope, id: id}, worker, caller)
       when is_pid(scope) and is_pid(worker) and is_pid(caller) do
     GenServer.call(scope, {:resource_effect, id, worker, caller})
@@ -252,6 +264,24 @@ defmodule Ipse.Session.Resources do
     end
   end
 
+  # Register and start the already Session-bound dormant document effect in one
+  # scope transition, so cancellation cannot leave it waiting for a start signal.
+  def handle_call(
+        {:track_document_effect, pid},
+        {worker, _},
+        %{closed: false, worker: worker} = state
+      )
+      when is_pid(pid) and map_size(state.effects) < 32 do
+    if Process.alive?(pid) and Process.alive?(worker) and Process.alive?(state.owner) do
+      :ok = Ipse.Session.Lock.track_in(state.lock_guard, pid, :peer)
+      effects = Map.put(state.effects, pid, Process.monitor(pid))
+      send(pid, {:begin_file_effect, worker})
+      {:reply, :ok, %{state | effects: effects}}
+    else
+      {:reply, {:error, :cleanup_scope_closed}, state}
+    end
+  end
+
   def handle_call({:track_effect, pid}, {caller, _}, %{closed: false} = state)
       when is_pid(pid) and map_size(state.effects) < 32 do
     if caller in [state.owner, state.worker] or Map.has_key?(state.tasks, caller) do
@@ -369,6 +399,18 @@ defmodule Ipse.Session.Resources do
   end
 
   def handle_call({:authorized_effect, _, _}, _, state), do: {:reply, false, state}
+
+  def handle_call(
+        {:authorized_task, worker, task},
+        {owner, _},
+        %{owner: owner, worker: worker, closed: false} = state
+      ) do
+    {:reply,
+     Process.alive?(owner) and Process.alive?(worker) and Process.alive?(task) and
+       Map.has_key?(state.tasks, task), state}
+  end
+
+  def handle_call({:authorized_task, _, _}, _, state), do: {:reply, false, state}
 
   # A host Worker can query only its own registered extension resource. This
   # does not broaden the owner-only Session query above or admit another task.
@@ -1261,6 +1303,29 @@ defmodule Ipse.Session.Resources do
     end
   end
 
+  @doc false
+  def document_file_effect(fun, bind) when is_function(fun, 0) and is_function(bind, 1) do
+    if Process.get(@effect_key) do
+      {:unknown, :nested_effect_unconfirmed}
+    else
+      owner = self()
+      scope = current()
+      {pid, ref} = spawn_monitor(fn -> execute_file_effect(owner, scope, fun, true) end)
+
+      try do
+        :ok = bind.(pid)
+        true = is_pid(scope)
+        :ok = GenServer.call(scope, {:track_document_effect, pid})
+        await_file_effect(pid, ref)
+      catch
+        kind, reason ->
+          Process.exit(pid, :kill)
+          Process.demonitor(ref, [:flush])
+          :erlang.raise(kind, reason, __STACKTRACE__)
+      end
+    end
+  end
+
   defp perform_file_effect(fun, guard) do
     owner = self()
     scope = current()
@@ -1279,7 +1344,10 @@ defmodule Ipse.Session.Resources do
     end
 
     send(pid, {:begin_file_effect, owner})
+    await_file_effect(pid, ref)
+  end
 
+  defp await_file_effect(pid, ref) do
     receive do
       {^pid, {:returned, value}} ->
         Process.demonitor(ref, [:flush])
@@ -1294,7 +1362,9 @@ defmodule Ipse.Session.Resources do
     end
   end
 
-  defp execute_file_effect(owner, scope, fun) do
+  defp execute_file_effect(owner, scope, fun), do: execute_file_effect(owner, scope, fun, false)
+
+  defp execute_file_effect(owner, scope, fun, require_live) do
     ref = Process.monitor(owner)
 
     receive do
@@ -1304,10 +1374,14 @@ defmodule Ipse.Session.Resources do
         Process.put(@effect_owner_key, owner)
 
         result =
-          try do
-            {:returned, fun.()}
-          catch
-            kind, reason -> {:raised, kind, reason, __STACKTRACE__}
+          if require_live and (not Process.alive?(owner) or not active?()) do
+            {:returned, {:unknown, :document_effect_owner_unconfirmed}}
+          else
+            try do
+              {:returned, fun.()}
+            catch
+              kind, reason -> {:raised, kind, reason, __STACKTRACE__}
+            end
           end
 
         send(owner, {self(), result})

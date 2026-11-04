@@ -11,6 +11,7 @@ defmodule Ipse.Session.SourceWindow do
     :effective_source,
     :historical_window,
     :draft_id,
+    workspace_acquisitions: %Ipse.Session.WorkspaceAcquisition{},
     admitted: false,
     pending: %{},
     pending_bytes: 0,
@@ -77,6 +78,7 @@ defmodule Ipse.Session.SourceWindow do
          {:ok, index} <- SourceIndex.new(session, 1, if(origin, do: JSON.digest([origin]))) do
       window = %__MODULE__{
         index: index,
+        workspace_acquisitions: Ipse.Session.WorkspaceAcquisition.new(metadata),
         admitted: metadata["source_layout"] == @layout,
         coverage:
           Map.new(
@@ -101,6 +103,30 @@ defmodule Ipse.Session.SourceWindow do
       "source.quote" -> SourceIndex.quote(w.index, request)
       _ -> {:error, :source_index_refused}
     end
+  end
+
+  @doc false
+  def legacy_workspace_acquisition(%__MODULE__{} = w, parent, identity, path, sha) do
+    Ipse.Session.WorkspaceAcquisition.legacy_lookup(
+      w.workspace_acquisitions,
+      parent,
+      w.index.session_id,
+      w.index.origin_sha256,
+      identity,
+      path,
+      sha
+    )
+  end
+
+  @doc false
+  def workspace_acquisition(%__MODULE__{} = w, operation, identity) do
+    Ipse.Session.WorkspaceAcquisition.lookup(
+      w.workspace_acquisitions,
+      operation,
+      w.index.session_id,
+      w.index.origin_sha256,
+      identity
+    )
   end
 
   @doc false
@@ -158,7 +184,26 @@ defmodule Ipse.Session.SourceWindow do
   def advance(nil, _, _), do: nil
 
   def advance(w, event, source) do
-    next = do_advance(w, event, source)
+    parent_id =
+      event["parent_invocation_id"] ||
+        if(event["type"] == "extension_invocation_result", do: event["invocation_id"])
+
+    parent = w.pending[{:parent, parent_id}]
+
+    acquisitions =
+      if is_nil(w.draft_id) and Ipse.JSON.sha256?(w.index.origin_sha256) do
+        Ipse.Session.WorkspaceAcquisition.advance(
+          w.workspace_acquisitions,
+          event,
+          parent,
+          w.index.session_id,
+          w.index.origin_sha256
+        )
+      else
+        w.workspace_acquisitions
+      end
+
+    next = do_advance(%{w | workspace_acquisitions: acquisitions}, event, source)
     {:ok, index} = SourceIndex.coverage(next.index, next.coverage)
     %{next | index: index}
   end

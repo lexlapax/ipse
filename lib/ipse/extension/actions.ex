@@ -66,6 +66,9 @@ defmodule Ipse.Extension.Actions do
 
   def allowed?(_, _, _), do: false
 
+  defp read?(%{"op" => "tool.call"} = request),
+    do: Ipse.Extension.WorkspaceSnapshot.page_request?(request)
+
   defp read?(%{"op" => "collection.call"} = request), do: not CollectionCall.mutating?(request)
 
   defp read?(%{"op" => "collection.store"} = request),
@@ -251,7 +254,7 @@ defmodule Ipse.Extension.Actions do
              else: is_nil(event["service"])
            ),
          true <-
-           if(tool?(request),
+           if(workspace_context?(request),
              do: Ipse.JSON.sha256?(event["context_sha256"]),
              else: is_nil(event["context_sha256"])
            ),
@@ -692,7 +695,8 @@ defmodule Ipse.Extension.Actions do
          not MapSet.member?(state.seen, event["operation_id"]) and
          valid_intent?(event, state.parent, cwd) and
          allowed?(state.parent["identity"], event["request"], state.results_rev) do
-      if (not tool?(event["request"]) or event["context_sha256"] == state.context_sha256) and
+      if (not workspace_context?(event["request"]) or
+            event["context_sha256"] == state.context_sha256) and
            service_source?(event, state) and
            effect_binding?(event, state.parent["identity"], state.metadata) and
            readable?(event["request"], state.effect_sources, state.results_rev) do
@@ -1222,6 +1226,11 @@ defmodule Ipse.Extension.Actions do
   def validate_operation(request), do: State.validate(request)
   def question?(request), do: is_map(request) and request["op"] == "operator.question"
   def tool?(request), do: is_map(request) and request["op"] == "tool.call"
+
+  def workspace_context?(request),
+    do:
+      tool?(request) or Ipse.Extension.Collection.WorkspaceDocumentGuard.guarded_request?(request)
+
   def service?(request), do: is_map(request) and request["op"] == "service.call"
   def model?(request), do: Ipse.Extension.ModelCall.operation?(request)
   def embedding?(request), do: Ipse.Extension.EmbeddingCall.operation?(request)

@@ -1,0 +1,6 @@
+lib/ipse/extension/collection/workspace_document_guard.ex
+lib/ipse/extension/workspace_snapshot.ex
+lib/ipse/session/workspace_acquisition.ex
+test/ipse/session/workspace_acquisition_test.exs
+test/ipse/extension/collection/workspace_document_guard_test.exs
+test/ipse/session/workspace_snapshot_binding_test.exs

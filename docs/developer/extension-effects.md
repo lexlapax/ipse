@@ -102,6 +102,8 @@ calls, 528 total, under each operation's own grants. Denials count. Questions,
 publications, services and inference are other calls. The read set is state
 get/list/scan, history read, usage read/children/child-read, effect-result read and
 source list/read/quote and collection status/snapshot/get/inspect/scan.
+It also includes pages of an already opened workspace snapshot; opening the
+snapshot is an other call. Both retain the ordinary workspace read grant.
 Host, Session and recovery each derive these counters from the committed chain.
 
 ## Reuse file and shell ownership
@@ -143,6 +145,20 @@ text. Write and edit failures remain conservatively unknown.
 Child mutations relay approval through the parent and claim the whole workspace
 conservatively. A helper inference approval does not release an enclosing file
 mutation lease or grant another mutation.
+
+For the shipped Collection Word path, follow `WorkspaceSnapshot` beside
+`Session.WorkspaceAcquisition` and `Collection.WorkspaceDocumentGuard`. The
+opening action admits an owned, bounded snapshot of the original file; its
+ordered pages are journaled as separate read results. A volatile handle is not
+replayed after interruption. A continuation carries the original receipt and
+staged plan, and the final source-head publication checks those against the live
+Session, selected shipped artifact and current workspace file. The Worker
+prepares the bounded recheck under its resource scope; Session binds its exact
+reader and publication peer before the effect starts. Refusal, cancellation or
+unconfirmed cleanup cannot authorize a publication. The file check is a
+point-in-time observation, so another trusted writer can still change the file
+or shared Collection afterward. Test actual Session and owner-loss paths in
+addition to the pure receipt and action controls.
 
 ## Bind and call an external MCP item
 

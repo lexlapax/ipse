@@ -1,0 +1,55 @@
+SHIPPED_CORPUS_SHA256=ed677246b7125f97a95b2060ecf9973d79e304c7f0387e8cac8fb18717b0e705
+Running ExUnit with seed: 0, max_cases: 4
+Excluding tags: [:test]
+Including tags: [test: :"test diagnostic fresh small guarded Word publication"]
+
+WORD_DIAG guard start <0.391.0> -576460740347112
+WORD_DIAG guard ok <0.391.0> -576460740347080
+WORD_DIAG native_commit start <0.391.0> -576460740347068
+WORD_DIAG native_commit ok <0.391.0> -576460740338724
+WORD_DIAG guard start <0.450.0> -576460739900711
+WORD_DIAG guard ok <0.450.0> -576460739900575
+WORD_DIAG native_commit start <0.450.0> -576460739900532
+WORD_DIAG native_commit ok <0.450.0> -576460739890421
+WORD_DIAG guard start <0.517.0> -576460739311974
+WORD_DIAG guard ok <0.517.0> -576460739311938
+WORD_DIAG native_commit start <0.517.0> -576460739311925
+WORD_DIAG native_commit ok <0.517.0> -576460739306205
+WORD_DIAG guard start <0.588.0> -576460738545893
+WORD_DIAG guard ok <0.588.0> -576460738545832
+WORD_DIAG native_commit start <0.588.0> -576460738545809
+WORD_DIAG native_commit ok <0.588.0> -576460738539247
+WORD_DIAG guard start <0.663.0> -576460737561601
+WORD_DIAG guard ok <0.663.0> -576460737561531
+WORD_DIAG native_commit start <0.663.0> -576460737561512
+WORD_DIAG native_commit ok <0.663.0> -576460737552366
+WORD_DIAG guard start <0.738.0> -576460736790061
+WORD_DIAG catalog start <0.738.0> -576460736790019
+WORD_DIAG catalog selected <0.738.0> -576460736782108
+WORD_DIAG inspect start <0.738.0> -576460736782080
+WORD_DIAG inspect ok <0.738.0> -576460736771336
+WORD_DIAG documents start <0.738.0> -576460736771290
+WORD_DIAG authorize start <0.738.0> -576460736771276
+WORD_DIAG authorize workspace <0.738.0> -576460736770594
+WORD_DIAG fresh_file start <0.738.0> -576460736770580
+WORD_DIAG fresh_file raised <0.738.0> -576460736768785
+WORD_DIAG documents raised <0.738.0> -576460736768766
+WORD_DIAG guard unknown <0.738.0> -576460736768756
+
+
+  1) test diagnostic fresh small guarded Word publication (Ipse.KnowledgeDocumentAcquisitionSessionTest)
+     test/extensions/knowledge/document_acquisition_session_test.exs:2032
+     document command error: "Extension outcome unknown after refusal, failure or interruption. Inspect its receipt before retrying; no callback was replayed." [{"extension_action_intent", "collection.store", nil, "not_required", nil, nil}, {"extension_action_result", "collection.store", nil, "not_required", "ok", nil}, {"extension_action_intent", "collection.store", nil, "not_required", nil, nil}, {"extension_action_result", "collection.store", nil, "not_required", "ok", nil}, {"extension_action_intent", "collection.store", nil, "approved", nil, nil}, {"extension_action_result", "collection.store", nil, "approved", "unknown", nil}]
+     code: Enum.reduce_while(1..40, opened, fn _, current ->
+     stacktrace:
+       test/extensions/knowledge/document_acquisition_session_test.exs:2042: anonymous fn/3 in Ipse.KnowledgeDocumentAcquisitionSessionTest."test diagnostic fresh small guarded Word publication"/1
+       (elixir 1.20.4) lib/enum.ex:5191: Enumerable.Range.reduce/5
+       (elixir 1.20.4) lib/enum.ex:2676: Enum.reduce_while/3
+       test/extensions/knowledge/document_acquisition_session_test.exs:2040: (test)
+
+
+Finished in 13.8 seconds (0.00s async, 13.8s sync)
+
+Result: 0/1 passed, 28 excluded
+Failed: 1 test
+unexpected test result: %{total: 29, excluded: 28, failures: 1, skipped: 0}

@@ -447,6 +447,18 @@ defmodule Ipse.Journal.Writer do
         :effective_source ->
           {:ok, window.effective_source}
 
+        {:legacy_workspace_acquisition, parent, identity, path, sha} ->
+          Ipse.Session.SourceWindow.legacy_workspace_acquisition(
+            window,
+            parent,
+            identity,
+            path,
+            sha
+          )
+
+        {:workspace_acquisition, operation, identity} ->
+          Ipse.Session.SourceWindow.workspace_acquisition(window, operation, identity)
+
         {:proof, request} ->
           Ipse.Session.SourceIndex.resolve_proof(window.index, request)
 

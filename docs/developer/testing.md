@@ -1330,6 +1330,21 @@ Its child VM uses the selected SDK and dependency paths rather than inheriting
 unrelated parent code paths. The fixture checks synthetic documents and does
 not replace real-Word fidelity or installed-user qualification.
 
+For the Collection workspace snapshot and publication boundary, first run
+`./dev/build.sh` to refresh the shipped artifact catalog, then run:
+
+```sh
+mix test test/ipse/session/workspace_acquisition_test.exs test/ipse/session/workspace_snapshot_binding_test.exs test/ipse/extension/collection/workspace_document_guard_test.exs
+mix test test/extensions/knowledge/document_acquisition_session_test.exs --only workspace_word_native --max-cases 1
+```
+
+The native cases use synthetic files and include changed-file publication
+refusal, owner loss and reopen without replay. Cancellation may report cleanup
+unconfirmed; inspect that result rather than treating it as a confirmed close.
+The fixture verifies the shipped catalog and imported artifact, but the catalog
+alone cannot establish that it was freshly built from current source. The
+installed package and independent document-fidelity checks remain separate.
+
 Probe macOS enforcement separately with a disposable workspace:
 
 ```sh

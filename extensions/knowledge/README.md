@@ -96,8 +96,11 @@ declarations; an SDK-1 artifact needs a new build rather than an options change.
 Corpus checks acquired workspace documents again before returning their evidence
 and claims. Presets without `host.tools` refuse those acquired sources rather than
 adding file access. Supplied-byte documents remain snapshots. Follow the
-[Word procedure](../../docs/operator/corpus.md#acquire-a-small-word-document-from-the-workspace)
-for changed-file recovery and the separate producer limits.
+[State Word procedure](../../docs/operator/corpus.md#acquire-a-small-word-document-from-the-workspace)
+or the [packaged Collection procedure](../../docs/operator/corpus.md#query-a-document-collection)
+for their distinct acquisition limits and changed-file recovery. Workspace Word
+publication on Collection requires the exact catalog-matched shipped artifact;
+an independently built artifact can have a different digest.
 
 Every options file contains version 1 and all seven registries, including empty
 registries. The supplied files cover lexical Corpus, offline Research and

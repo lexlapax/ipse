@@ -1,0 +1,23 @@
+SHIPPED_CORPUS_SHA256=ed677246b7125f97a95b2060ecf9973d79e304c7f0387e8cac8fb18717b0e705
+Running ExUnit with seed: 0, max_cases: 4
+Excluding tags: [:test]
+Including tags: [test: :"test large workspace Word survives staged publication and rechecks the original on citation"]
+
+
+
+  1) test large workspace Word survives staged publication and rechecks the original on citation (Ipse.KnowledgeDocumentAcquisitionSessionTest)
+     test/extensions/knowledge/document_acquisition_session_test.exs:2032
+     document command error: "Extension outcome unknown after refusal, failure or interruption. Inspect its receipt before retrying; no callback was replayed." [{"extension_action_intent", "collection.store", nil, "not_required", nil, nil}, {"extension_action_result", "collection.store", nil, "not_required", "ok", nil}, {"extension_action_intent", "collection.store", nil, "not_required", nil, nil}, {"extension_action_result", "collection.store", nil, "not_required", "ok", nil}, {"extension_action_intent", "collection.store", nil, "approved", nil, nil}, {"extension_action_result", "collection.store", nil, "approved", "unknown", nil}]
+     code: Enum.reduce_while(1..40, opened, fn _, current ->
+     stacktrace:
+       test/extensions/knowledge/document_acquisition_session_test.exs:2055: anonymous fn/3 in Ipse.KnowledgeDocumentAcquisitionSessionTest."test large workspace Word survives staged publication and rechecks the original on citation"/1
+       (elixir 1.20.4) lib/enum.ex:5191: Enumerable.Range.reduce/5
+       (elixir 1.20.4) lib/enum.ex:2676: Enum.reduce_while/3
+       test/extensions/knowledge/document_acquisition_session_test.exs:2053: (test)
+
+
+Finished in 15.0 seconds (0.00s async, 15.0s sync)
+
+Result: 0/1 passed, 27 excluded
+Failed: 1 test
+unexpected test result: %{total: 28, excluded: 27, failures: 1, skipped: 0}

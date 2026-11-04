@@ -1,0 +1,24 @@
+SHIPPED_CORPUS_SHA256=ed677246b7125f97a95b2060ecf9973d79e304c7f0387e8cac8fb18717b0e705
+Running ExUnit with seed: 0, max_cases: 4
+Excluding tags: [:test]
+Including tags: [test: :"test cancellation during dormant document-effect registration withholds publication"]
+
+
+
+  1) test cancellation during dormant document-effect registration withholds publication (Ipse.KnowledgeDocumentAcquisitionSessionTest)
+     /dev/shm/ipse-word-larger-proof-20261103-01/peer-cancel-fixture.exs:2032
+     match (=) failed
+     code:  assert {:current_function, {Ipse.Session.Resources, :execute_file_effect, 3}} =
+              Process.info(peer, :current_function)
+     left:  {:current_function, {Ipse.Session.Resources, :execute_file_effect, 3}}
+     right: {:current_function,
+             {Ipse.Session.Resources, :execute_file_effect, 4}}
+     stacktrace:
+       /dev/shm/ipse-word-larger-proof-20261103-01/peer-cancel-fixture.exs:2104: (test)
+
+
+Finished in 19.6 seconds (0.00s async, 19.6s sync)
+
+Result: 0/1 passed, 28 excluded
+Failed: 1 test
+unexpected test result: %{total: 29, excluded: 28, failures: 1, skipped: 0}

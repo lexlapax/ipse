@@ -1,0 +1,3649 @@
+--- a/lib/ipse/tools.ex
++++ b/lib/ipse/tools.ex
+@@ -284,6 +284,52 @@
+     end
+   end
+ 
++  @doc false
++  def workspace_binary_snapshot(path, expected_sha256, context)
++      when is_binary(path) and is_map(context) do
++    with true <- is_nil(expected_sha256) or Ipse.JSON.sha256?(expected_sha256),
++         {:ok, resolved} <- checked_path(path, context, false),
++         {:ok, before} <- File.lstat(resolved, time: :posix),
++         true <- before.type == :regular and before.links == 1 and before.size in 1..@file_limit,
++         true <- Ipse.Session.Resources.active?(),
++         {:ok, file} <- :file.open(String.to_charlist(resolved), [:read, :binary, :raw]) do
++      result =
++        try do
++          with {:ok, info} <- :file.read_file_info(file, time: :posix),
++               true <- binary_identity(before) == binary_identity(File.Stat.from_record(info)),
++               {:ok, bytes} <- binary_bytes(file, @file_limit),
++               true <- byte_size(bytes) == before.size,
++               {:ok, ^bytes} <- binary_bytes(file, @file_limit),
++               {:ok, after_info} <- :file.read_file_info(file, time: :posix),
++               true <-
++                 binary_identity(before) == binary_identity(File.Stat.from_record(after_info)),
++               {:ok, ^resolved} <- checked_path(path, context, false),
++               {:ok, after_path} <- File.lstat(resolved, time: :posix),
++               true <- binary_identity(before) == binary_identity(after_path),
++               sha = Ipse.JSON.sha256(bytes),
++               true <- is_nil(expected_sha256) or expected_sha256 == sha,
++               true <- Ipse.Session.Resources.active?() do
++            {:ok, bytes, %{"path" => path, "byte_count" => byte_size(bytes), "sha256" => sha}}
++          else
++            _ -> {:error, :workspace_snapshot_refused}
++          end
++        rescue
++          _ -> {:error, :workspace_snapshot_refused}
++        catch
++          _, _ -> {:error, :workspace_snapshot_refused}
++        end
++
++      case :file.close(file) do
++        :ok -> result
++        _ -> {:unknown, :workspace_snapshot_cleanup_unconfirmed}
++      end
++    else
++      _ -> {:error, :workspace_snapshot_refused}
++    end
++  end
++
++  def workspace_binary_snapshot(_, _, _), do: {:error, :workspace_snapshot_refused}
++
+   defp binary_bytes(file, limit) do
+     case :file.pread(file, 0, limit + 1) do
+       {:ok, bytes} when byte_size(bytes) <= limit -> {:ok, bytes}
+--- a/lib/ipse/extension/host.ex
++++ b/lib/ipse/extension/host.ex
+@@ -451,10 +451,24 @@
+   end
+ 
+   def resume_export(entry, parent, result, owner, job_ref, actions) do
+-    execute_export(entry, parent, "host.actions", Actions.resume(result), owner, job_ref, actions)
++    if Ipse.Extension.WorkspaceSnapshot.retained_request?(result["request"]) or
++         Enum.any?(actions, &Ipse.Extension.WorkspaceSnapshot.retained_request?(&1["request"])) do
++      invocation_unknown()
++    else
++      execute_export(
++        entry,
++        parent,
++        "host.actions",
++        Actions.resume(result),
++        owner,
++        job_ref,
++        actions
++      )
++    end
+   end
+ 
+   defp execute_export(entry, intent, stage, payload, owner, job_ref, prior_actions) do
++    Ipse.Extension.WorkspaceSnapshot.clear()
+     entry = Map.put(entry, :worker_input_context, {owner, job_ref})
+ 
+     entry =
+@@ -537,6 +551,7 @@
+           _ -> invocation_unknown()
+         end
+       after
++        Ipse.Extension.WorkspaceSnapshot.clear()
+         if Process.alive?(worker), do: Worker.close(worker)
+       end
+     else
+@@ -752,8 +767,11 @@
+   defp execute_action(context, intent, %{"op" => "effect.result.read"}),
+     do: Ipse.Extension.EffectResult.execute(context, intent)
+ 
+-  defp execute_action(context, _intent, %{"op" => "tool.call"} = request),
+-    do: Ipse.Extension.ToolAction.execute(request, context)
++  defp execute_action(context, intent, %{"op" => "tool.call"} = request) do
++    if Ipse.Extension.WorkspaceSnapshot.request?(request),
++      do: Ipse.Extension.WorkspaceSnapshot.execute(context, intent),
++      else: Ipse.Extension.ToolAction.execute(request, context)
++  end
+ 
+   defp execute_action(context, intent, %{"op" => "service.call"}),
+     do: execute_service(context, intent)
+@@ -823,6 +841,18 @@
+     end
+   end
+ 
++  defp tool_context(owner, job_ref, %{"op" => "collection.store"} = request) do
++    case Ipse.Extension.Collection.WorkspaceDocumentGuard.preflight_read(request) do
++      {:ok, read} ->
++        tool_context(owner, job_ref, read)
++
++      _ ->
++        if Map.has_key?(request, "workspace_guard"),
++          do: {:error, :document_store_refused},
++          else: :ok
++    end
++  end
++
+   defp tool_context(_, _, _), do: :ok
+ 
+   defp mcp_context(owner, ref, %{"op" => "mcp.call"} = request) do
+--- a/lib/ipse/extension/external_calls.ex
++++ b/lib/ipse/extension/external_calls.ex
+@@ -407,6 +407,12 @@
+   @limit 4096
+ 
+   def validate(request) do
++    if Ipse.Extension.WorkspaceSnapshot.request?(request),
++      do: :ok,
++      else: validate_ordinary(request)
++  end
++
++  defp validate_ordinary(request) do
+     with :ok <- Ipse.Extension.validate(request),
+          true <- Enum.sort(Map.keys(request)) == ~w(arguments name op timeout_ms),
+          true <- request["op"] == "tool.call" and request["name"] in @names,
+@@ -528,6 +534,17 @@
+   end
+ 
+   def valid_outcome?(request, "ok", value) do
++    if Ipse.Extension.WorkspaceSnapshot.request?(request) do
++      is_map(value) and Map.keys(value) == ["text"] and
++        Ipse.Extension.WorkspaceSnapshot.valid_result?(request, value["text"])
++    else
++      valid_ordinary_outcome?(request, value)
++    end
++  end
++
++  def valid_outcome?(_, _, _), do: false
++
++  defp valid_ordinary_outcome?(request, value) do
+     keys =
+       if request["name"] == "shell",
+         do: ~w(text exit_code output_bytes output_truncated),
+@@ -547,8 +564,6 @@
+     _ -> false
+   end
+ 
+-  def valid_outcome?(_, _, _), do: false
+-
+   defp binary_read?(request),
+     do: request["name"] == "read" and get_in(request, ["arguments", "encoding"]) == "base64"
+ 
+--- a/lib/ipse/extension/actions.ex
++++ b/lib/ipse/extension/actions.ex
+@@ -66,6 +66,9 @@
+ 
+   def allowed?(_, _, _), do: false
+ 
++  defp read?(%{"op" => "tool.call"} = request),
++    do: Ipse.Extension.WorkspaceSnapshot.page_request?(request)
++
+   defp read?(%{"op" => "collection.call"} = request), do: not CollectionCall.mutating?(request)
+ 
+   defp read?(%{"op" => "collection.store"} = request),
+@@ -251,7 +254,7 @@
+              else: is_nil(event["service"])
+            ),
+          true <-
+-           if(tool?(request),
++           if(workspace_context?(request),
+              do: Ipse.JSON.sha256?(event["context_sha256"]),
+              else: is_nil(event["context_sha256"])
+            ),
+@@ -692,7 +695,8 @@
+          not MapSet.member?(state.seen, event["operation_id"]) and
+          valid_intent?(event, state.parent, cwd) and
+          allowed?(state.parent["identity"], event["request"], state.results_rev) do
+-      if (not tool?(event["request"]) or event["context_sha256"] == state.context_sha256) and
++      if (not workspace_context?(event["request"]) or
++            event["context_sha256"] == state.context_sha256) and
+            service_source?(event, state) and
+            effect_binding?(event, state.parent["identity"], state.metadata) and
+            readable?(event["request"], state.effect_sources, state.results_rev) do
+@@ -1222,6 +1226,11 @@
+   def validate_operation(request), do: State.validate(request)
+   def question?(request), do: is_map(request) and request["op"] == "operator.question"
+   def tool?(request), do: is_map(request) and request["op"] == "tool.call"
++
++  def workspace_context?(request),
++    do:
++      tool?(request) or Ipse.Extension.Collection.WorkspaceDocumentGuard.guarded_request?(request)
++
+   def service?(request), do: is_map(request) and request["op"] == "service.call"
+   def model?(request), do: Ipse.Extension.ModelCall.operation?(request)
+   def embedding?(request), do: Ipse.Extension.EmbeddingCall.operation?(request)
+--- a/lib/ipse/extension/collection_store.ex
++++ b/lib/ipse/extension/collection_store.ex
+@@ -13,6 +13,7 @@
+   def validate(r) do
+     shape =
+       exact?(r, ~w(op scope request)) or
++        Ipse.Extension.Collection.WorkspaceDocumentGuard.guarded_request?(r) or
+         (exact?(r, ~w(op scope request source_guard)) and
+            is_map(r["request"]) and
+            ((r["source_guard"] === "explicit_fact_projection_v1" and
+@@ -156,48 +157,67 @@
+          true <- Registry.live?(context.identity),
+          :ok <-
+            GenServer.call(context.owner, {:extension_document_current, context.job_ref, intent}) do
+-      Ipse.Session.Resources.file_effect(fn ->
+-        Ipse.Session.ManagedToolUse.with_effect(
+-          context.managed_tool,
+-          Ipse.Session.ManagedToolUse.document_binding(intent),
+-          fn deadline ->
+-            if mutating?(intent["request"]) and not is_nil(deadline) do
+-              @error
+-            else
+-              binding_use =
+-                if is_nil(deadline),
+-                  do: &ProjectIdentity.with_existing_binding/4,
+-                  else: &ProjectIdentity.with_held_binding/4
+-
+-              binding_use.(context.config[:home], context.cwd, b["project"], fn _ ->
+-                with :ok <-
+-                       GenServer.call(
+-                         context.owner,
+-                         {:extension_document_current, context.job_ref, intent}
+-                       ),
+-                     :ok <- observe_inline_claim(context, intent),
+-                     {:ok, deadline} <- projection_deadline(context, intent, deadline) do
+-                  DocumentStage.execute(
+-                    root(context.config[:home]),
+-                    b["namespace"],
+-                    intent["request"]["request"],
+-                    intent["operation_id"],
+-                    %{
+-                      "project_id" => b["project"]["project_id"],
+-                      "session_id" => context.session_id,
+-                      "identity_sha256" => JSON.digest([context.identity]),
+-                      "invocation_id" => intent["parent_invocation_id"]
+-                    },
+-                    if(is_nil(deadline), do: [], else: [publish_before_ms: deadline])
+-                  )
+-                else
+-                  _ -> @error
++      Ipse.Extension.Collection.WorkspaceDocumentGuard.with_snapshot_reader(
++        context,
++        intent,
++        fn context ->
++          Ipse.Extension.Collection.WorkspaceDocumentGuard.run_document_effect(
++            context,
++            intent,
++            fn ->
++              Ipse.Session.ManagedToolUse.with_effect(
++                context.managed_tool,
++                Ipse.Session.ManagedToolUse.document_binding(intent),
++                fn deadline ->
++                  if mutating?(intent["request"]) and not is_nil(deadline) do
++                    @error
++                  else
++                    binding_use =
++                      if is_nil(deadline),
++                        do: &ProjectIdentity.with_existing_binding/4,
++                        else: &ProjectIdentity.with_held_binding/4
++
++                    binding_use.(context.config[:home], context.cwd, b["project"], fn _ ->
++                      with :ok <-
++                             GenServer.call(
++                               context.owner,
++                               {:extension_document_current, context.job_ref, intent}
++                             ),
++                           :ok <- observe_inline_claim(context, intent),
++                           {:ok, deadline} <- projection_deadline(context, intent, deadline) do
++                        DocumentStage.execute(
++                          root(context.config[:home]),
++                          b["namespace"],
++                          intent["request"]["request"],
++                          intent["operation_id"],
++                          %{
++                            "project_id" => b["project"]["project_id"],
++                            "session_id" => context.session_id,
++                            "identity_sha256" => JSON.digest([context.identity]),
++                            "invocation_id" => intent["parent_invocation_id"]
++                          },
++                          [
++                            publication_guard: fn changes, read ->
++                              Ipse.Extension.Collection.WorkspaceDocumentGuard.check(
++                                context,
++                                intent,
++                                changes,
++                                read
++                              )
++                            end
++                          ] ++ if(is_nil(deadline), do: [], else: [publish_before_ms: deadline])
++                        )
++                      else
++                        _ -> @error
++                      end
++                    end)
++                  end
+                 end
+-              end)
++              )
+             end
+-          end
+-        )
+-      end)
++          )
++        end
++      )
+       |> normalize(intent)
+     else
+       _ -> failed()
+--- a/lib/ipse/extension/collection/document_stage.ex
++++ b/lib/ipse/extension/collection/document_stage.ex
+@@ -16,6 +16,7 @@
+   @parts 10
+   @inline_bytes 8192
+   @publish_deadline_key {__MODULE__, :publish_before_ms}
++  @publication_guard_key {__MODULE__, :publication_guard}
+   @slots 16
+   @ttl_ms 3_600_000
+   @error {:error, :document_store_refused}
+@@ -154,6 +155,21 @@
+ 
+   def read_value(_, _), do: @error
+ 
++  @doc false
++  def decode_packed(value) when is_map(value) do
++    with true <- packed?(value),
++         bytes = IO.iodata_to_binary(value["parts"]),
++         {:ok, decoded} <- ResultDocument.decode(bytes, %{"type" => "object"}) do
++      {:ok, decoded}
++    else
++      _ -> @error
++    end
++  rescue
++    _ -> @error
++  end
++
++  def decode_packed(_), do: @error
++
+   @doc "Inspect sealed stage values under a retained reader; this does not grant publication."
+   def prepared_values(read, request, owner, now) when is_function(read, 1) do
+     with true <- request?(request) and request["op"] === "commit" and owner?(owner),
+@@ -207,10 +223,15 @@
+   @doc "Trusted host deadline only; never accepts deadline or authority fields in worker JSON."
+   def execute(root, namespace, request, operation_id, owner, opts) do
+     previous = Process.get(@publish_deadline_key)
++    previous_guard = Process.get(@publication_guard_key)
+ 
+     with true <-
+            is_list(opts) and Keyword.keyword?(opts) and
+-             Keyword.keys(opts) in [[], [:publish_before_ms]],
++             length(Keyword.keys(opts)) == length(Enum.uniq(Keyword.keys(opts))) and
++             Enum.all?(Keyword.keys(opts), &(&1 in [:publish_before_ms, :publication_guard])),
++         guard = Keyword.get(opts, :publication_guard),
++         true <- is_nil(guard) or is_function(guard, 2),
++         true <- is_nil(previous_guard),
+          deadline = Keyword.get(opts, :publish_before_ms),
+          true <- is_nil(deadline) or (JSON.safe_uint?(deadline) and deadline > 0),
+          true <- is_nil(previous) or (JSON.safe_uint?(previous) and previous > 0),
+@@ -222,10 +243,13 @@
+             end),
+          true <- is_nil(deadline) or System.system_time(:millisecond) < deadline do
+       Process.put(@publish_deadline_key, deadline)
++      Process.put(@publication_guard_key, guard)
+ 
+       try do
+         execute_current(root, namespace, request, operation_id, owner)
+       after
++        Process.delete(@publication_guard_key)
++
+         if is_nil(previous),
+           do: Process.delete(@publish_deadline_key),
+           else: Process.put(@publish_deadline_key, previous)
+@@ -825,18 +849,37 @@
+     deadline = if deadlines == [], do: nil, else: Enum.min(deadlines)
+ 
+     if is_nil(deadline) or System.system_time(:millisecond) < deadline do
+-      request = %{
+-        "op" => "commit",
+-        "expected_generation" => s["generation"],
+-        "advance_floor" =>
+-          Enum.any?(changes, &(is_nil(&1["value"]) or &1["expected_revision"] > 0)),
+-        "changes" => changes
+-      }
++      guard = Process.get(@publication_guard_key)
++      checked = if is_function(guard, 2), do: guard.(changes, &record(root, ns, &1, s)), else: :ok
++
++      case checked do
++        :ok ->
++          request = %{
++            "op" => "commit",
++            "expected_generation" => s["generation"],
++            "advance_floor" =>
++              Enum.any?(changes, &(is_nil(&1["value"]) or &1["expected_revision"] > 0)),
++            "changes" => changes
++          }
++
++          if is_nil(deadline),
++            do: Collection.execute_profile(root, ns, request, id, Profile.documents()),
++            else:
++              Collection.execute_profile_before(
++                root,
++                ns,
++                request,
++                id,
++                Profile.documents(),
++                deadline
++              )
++
++        {:unknown, _} = unknown ->
++          unknown
+ 
+-      if is_nil(deadline),
+-        do: Collection.execute_profile(root, ns, request, id, Profile.documents()),
+-        else:
+-          Collection.execute_profile_before(root, ns, request, id, Profile.documents(), deadline)
++        _ ->
++          @error
++      end
+     else
+       @error
+     end
+--- a/lib/ipse/extension/collection/document_source_use.ex
++++ b/lib/ipse/extension/collection/document_source_use.ex
+@@ -90,6 +90,59 @@
+   def authenticate(_, _, _, _), do: @error
+ 
+   @doc """
++  Inspect a proposed source head and its existing blocks under one retained
++  document read. This returns no file, Session, consent or publication authority.
++  """
++  def inspect_workspace_document(read, key, head) when is_function(read, 1) do
++    with [_, partition, source_key] <-
++           Regex.run(~r/\Asource\.([a-z][a-z0-9_-]{0,15})\.([0-9a-f]{64})\z/, key),
++         true <- is_map(head) and is_integer(head["ordinal"]) and head["ordinal"] >= 0,
++         true <- head?(head, source_key, div(head["ordinal"], 16)),
++         {bytes, _} <-
++           bundle!(read, partition, head, %{reads: 0, logical_bytes: 0, bundle_bytes: 0}),
++         {:ok, decoded} <- J.decode_unique(bytes),
++         source = source!(decoded, partition, head) do
++      case get_in(source, ["origin", "receipt"]) do
++        %{"kind" => "document_extraction"} = receipt ->
++          body = document_body!(receipt, source)
++          acquisition = body["acquisition"]
++
++          with true <- body["kind"] === "document_extraction" and body["format"] === "docx",
++               true <- J.sha256?(body["original_sha256"]),
++               count when is_integer(count) and count > 0 <- body["original_bytes"],
++               true <- J.safe_uint?(count),
++               true <- is_nil(acquisition) or is_map(acquisition),
++               path = if(acquisition, do: acquisition["path"]),
++               operation = if(acquisition, do: acquisition["operation_id"]),
++               true <- is_nil(path) or is_binary(path),
++               true <- is_nil(operation) or is_binary(operation) do
++            {:ok,
++             %{
++               "path" => path,
++               "original_sha256" => body["original_sha256"],
++               "original_bytes" => count,
++               "acquisition_operation_id" => operation,
++               "source_id" => source["source_id"],
++               "generation" => source["generation"],
++               "bundle_sha256" => head["bundle_sha256"]
++             }}
++          else
++            _ -> @error
++          end
++
++        _ ->
++          {:ok, :not_workspace_document}
++      end
++    else
++      _ -> @error
++    end
++  rescue
++    _ -> @error
++  end
++
++  def inspect_workspace_document(_, _, _), do: @error
++
++  @doc """
+   Authenticate one projection source under a retained document read owner.
+ 
+   The returned times and digest describe stored bytes only. Callers must bind
+--- a/lib/ipse/extension/collection/workspace_document_guard.ex
++++ b/lib/ipse/extension/collection/workspace_document_guard.ex
+@@ -0,0 +1,508 @@
++defmodule Ipse.Extension.Collection.WorkspaceDocumentGuard do
++  @moduledoc false
++  alias Ipse.Extension.Collection.{DocumentSourceUse, DocumentStage}
++
++  def guarded_request?(request) when is_map(request) do
++    guard = request["workspace_guard"]
++
++    Enum.sort(Map.keys(request)) == ~w(op request scope workspace_guard) and
++      request["op"] === "collection.store" and request["scope"] === "project" and
++      is_map(request["request"]) and
++      (request["request"]["op"] in ~w(commit value.put_inline) or
++         (request["request"]["op"] === "value.write_parts" and
++            request["request"]["publish"] === true)) and is_map(guard) and
++      Enum.sort(Map.keys(guard)) ==
++        ~w(bundle_sha256 generation opening_operation_id original_sha256 path source_id) and
++      is_binary(guard["path"]) and String.valid?(guard["path"]) and
++      byte_size(guard["path"]) in 1..1024 and
++      is_binary(guard["source_id"]) and String.valid?(guard["source_id"]) and
++      byte_size(guard["source_id"]) in 1..256 and
++      is_integer(guard["generation"]) and guard["generation"] > 0 and
++      Ipse.JSON.safe_uint?(guard["generation"]) and
++      Ipse.JSON.sha256?(guard["original_sha256"]) and
++      Ipse.JSON.sha256?(guard["bundle_sha256"]) and
++      is_binary(guard["opening_operation_id"]) and
++      Regex.match?(~r/\A[0-9a-f]{32}\z/, guard["opening_operation_id"])
++  rescue
++    _ -> false
++  end
++
++  def guarded_request?(_), do: false
++
++  def preflight_read(request) do
++    if guarded_request?(request) do
++      guard = request["workspace_guard"]
++
++      {:ok,
++       %{
++         "op" => "tool.call",
++         "name" => "read",
++         "timeout_ms" => 5000,
++         "arguments" => %{
++           "snapshot" => "start",
++           "path" => guard["path"],
++           "expected_sha256" => guard["original_sha256"]
++         }
++       }}
++    else
++      {:error, :document_store_refused}
++    end
++  end
++
++  # Called only by the actual Session while the exact document action is live.
++  # It returns an internal classification, never an extension-facing grant.
++  def authorize(session, intent, :not_workspace_document) do
++    parent = session.invocation.parent
++    outer = get_in(parent, ["payload", "arguments"])
++    action = if is_map(outer), do: outer["action"]
++    args = if is_map(outer), do: outer["args"]
++
++    document_invocation =
++      get_in(parent, ["descriptor", "id"]) === "source" and
++        (action in ~w(read_document continue_collection_document put_document) or
++           (action === "continue_collection_source" and is_map(args) and
++              args["input_action"] === "put_document"))
++
++    if document_invocation or guarded_request?(intent["request"]),
++      do: {:error, :document_store_refused},
++      else: {:ok, :other_source}
++  rescue
++    _ -> {:error, :document_store_refused}
++  end
++
++  def authorize(session, intent, document) do
++    parent = session.invocation.parent
++    identity = parent["identity"]
++    descriptor = parent["descriptor"]
++    outer = parent["payload"]["arguments"]
++
++    with true <- is_map(document) and is_map(outer),
++         true <- descriptor["id"] === "source" and descriptor["stage"] === "invoke.command",
++         {:ok, entry, ^descriptor} <-
++           Ipse.Extension.Catalog.lookup(session.config, descriptor["stage"], descriptor["name"]),
++         true <- entry.identity === identity and Ipse.Extension.Registry.live?(identity),
++         {:ok, kind, args} <- source_args(outer),
++         true <-
++           args["source_id"] === document["source_id"] and
++             args["generation"] === document["generation"] do
++      case kind do
++        :supplied -> supplied(intent, args, document)
++        :workspace -> workspace(session, intent, parent, identity, document)
++      end
++    else
++      _ -> {:error, :document_store_refused}
++    end
++  rescue
++    _ -> {:error, :document_store_refused}
++  end
++
++  defp source_args(%{"action" => "put_document", "args" => args}) when is_map(args),
++    do: {:ok, :supplied, args}
++
++  defp source_args(%{"action" => "continue_collection_source", "args" => args})
++       when is_map(args) do
++    if args["input_action"] === "put_document" and is_map(args["input_args"]),
++      do: {:ok, :supplied, args["input_args"]},
++      else: {:error, :document_store_refused}
++  end
++
++  defp source_args(%{"action" => action, "args" => args})
++       when action in ~w(read_document continue_collection_document) and is_map(args),
++       do: {:ok, :workspace, args}
++
++  defp source_args(_), do: {:error, :document_store_refused}
++
++  defp supplied(intent, args, document) do
++    with false <- guarded_request?(intent["request"]),
++         true <- is_nil(document["path"]) and is_nil(document["acquisition_operation_id"]),
++         encoded when is_binary(encoded) and byte_size(encoded) <= 8192 <- args["bytes_base64"],
++         {:ok, bytes} <- Base.decode64(encoded),
++         true <- byte_size(bytes) === document["original_bytes"],
++         true <- Ipse.JSON.sha256(bytes) === document["original_sha256"] do
++      {:ok, :supplied}
++    else
++      _ -> {:error, :document_store_refused}
++    end
++  end
++
++  defp workspace(session, intent, parent, identity, document) do
++    outer = parent["payload"]["arguments"]
++    args = outer["args"]
++    identity_sha = Ipse.JSON.digest([identity])
++
++    with true <- guarded_request?(intent["request"]),
++         path when is_binary(path) <- document["path"],
++         true <- args["path"] === path,
++         sha when is_binary(sha) <- document["original_sha256"],
++         true <- is_nil(args["expected_sha256"]) or args["expected_sha256"] === sha,
++         guard = intent["request"]["workspace_guard"],
++         expected = %{
++           "path" => path,
++           "original_sha256" => sha,
++           "opening_operation_id" => document["acquisition_operation_id"],
++           "source_id" => document["source_id"],
++           "generation" => document["generation"],
++           "bundle_sha256" => document["bundle_sha256"]
++         },
++         true <- guard === expected do
++      case Ipse.Journal.Writer.source_query(
++             session.journal_writer,
++             {:workspace_acquisition, guard["opening_operation_id"], identity_sha}
++           ) do
++        {:ok, receipt} ->
++          binding = Ipse.Session.WorkspaceAcquisition.source_binding(outer)
++
++          if receipt["path"] === path and receipt["sha256"] === sha and
++               receipt["byte_count"] === document["original_bytes"] and
++               receipt["artifact_sha256"] === identity["artifact_sha256"] and
++               Ipse.JSON.sha256?(binding) and binding === receipt["source_binding_sha256"] and
++               (receipt["parent_invocation_id"] === parent["invocation_id"] or
++                  receipt["plan_sha256"] === document["bundle_sha256"]) do
++            {:ok, :workspace}
++          else
++            {:error, :document_store_refused}
++          end
++
++        _ ->
++          with {:ok, receipt} <-
++                 Ipse.Journal.Writer.source_query(
++                   session.journal_writer,
++                   {:legacy_workspace_acquisition, parent["invocation_id"], identity_sha, path,
++                    sha}
++                 ),
++               true <- receipt["operation_id"] === guard["opening_operation_id"],
++               true <- receipt["byte_count"] === document["original_bytes"] do
++            {:ok, :legacy_workspace}
++          else
++            _ -> {:error, :document_store_refused}
++          end
++      end
++    else
++      _ -> {:error, :document_store_refused}
++    end
++  end
++
++  def check(context, intent, changes, read) do
++    guarded = guarded_request?(intent["request"])
++
++    source_write =
++      Enum.any?(changes, fn change ->
++        is_binary(change["key"]) and String.starts_with?(change["key"], "source.") and
++          not is_nil(change["value"])
++      end)
++
++    if guarded or source_write do
++      case pinned_corpus(context) do
++        {:ok, true} -> check_corpus(context, intent, changes, read)
++        {:ok, false} when guarded -> {:error, :document_store_refused}
++        {:ok, false} -> :ok
++        _ -> {:unknown, :document_guard_unconfirmed}
++      end
++    else
++      :ok
++    end
++  rescue
++    _ -> {:unknown, :document_guard_unconfirmed}
++  catch
++    :exit, _ -> {:unknown, :document_guard_unconfirmed}
++  end
++
++  # Catalog entries are host-shipped metadata, not values supplied by a Worker.
++  def selected_bundle?(identity, bundles) when is_map(identity) and is_list(bundles) do
++    Enum.any?(bundles, fn bundle ->
++      bundle.id === "corpus-collection-documents" and
++        bundle.digest === identity["artifact_sha256"]
++    end)
++  rescue
++    _ -> false
++  end
++
++  def selected_bundle?(_, _), do: false
++
++  @doc false
++  def bundle_selection(identity, "ipse-knowledge/corpus", {:ok, bundles})
++      when is_map(identity) and is_list(bundles) do
++    case Enum.filter(bundles, &(&1.id === "corpus-collection-documents")) do
++      [bundle] -> {:ok, bundle.digest === identity["artifact_sha256"]}
++      _ -> {:error, :document_guard_unconfirmed}
++    end
++  rescue
++    _ -> {:error, :document_guard_unconfirmed}
++  end
++
++  def bundle_selection(_identity, "ipse-knowledge/corpus", _),
++    do: {:error, :document_guard_unconfirmed}
++
++  def bundle_selection(_identity, _other_id, _inventory), do: {:ok, false}
++
++  defp pinned_corpus(context) do
++    identity = context.identity
++    parent = context.parent
++    entry = Enum.find(context.config[:extensions] || [], &(&1.identity === identity))
++
++    with true <- is_map(entry) and parent["identity"] === identity,
++         true <- Ipse.Extension.Registry.live?(identity),
++         {:ok, artifact} <- Ipse.Extension.Registry.lookup(entry.store, identity["artifact"]),
++         true <- artifact.digest === identity["artifact_sha256"] do
++      bundle_selection(identity, artifact.manifest["id"], Ipse.Extension.Bundles.inventory())
++    else
++      _ -> {:error, :document_store_refused}
++    end
++  end
++
++  defp check_corpus(context, intent, changes, read) do
++    with {:ok, documents} <- inspect_changes(changes, read, intent["operation_id"]),
++         :ok <- check_documents(context, intent, documents),
++         :ok <-
++           GenServer.call(
++             context.owner,
++             {:extension_document_current, context.job_ref, intent}
++           ),
++         true <- Ipse.Session.Resources.active?() do
++      :ok
++    else
++      {:unknown, _} = unknown -> unknown
++      _ -> {:error, :document_store_refused}
++    end
++  end
++
++  defp check_documents(context, intent, documents) do
++    Enum.reduce_while(documents, :ok, fn document, :ok ->
++      case GenServer.call(
++             context.owner,
++             {:extension_workspace_document_authorize, context.job_ref, intent, document}
++           ) do
++        {:ok, kind} when kind in [:supplied, :other_source] ->
++          {:cont, :ok}
++
++        {:ok, kind} when kind in [:workspace, :legacy_workspace] ->
++          case current_file(context, document) do
++            :ok -> {:cont, :ok}
++            other -> {:halt, other}
++          end
++
++        _ ->
++          {:halt, {:error, :document_store_refused}}
++      end
++    end)
++  end
++
++  # The Session Worker starts this task before entering its tracked file effect.
++  # The task waits until the authenticated publication callback asks it to read.
++  def with_snapshot_reader(context, intent, fun) when is_function(fun, 1) do
++    if guarded_request?(intent["request"]) do
++      guard = intent["request"]["workspace_guard"]
++      token = make_ref()
++
++      task =
++        Ipse.Session.Resources.async(fn -> snapshot_reader(context, intent, guard, token) end)
++
++      Process.unlink(task.pid)
++      reader = %{pid: task.pid, token: token, path: guard["path"], sha: guard["original_sha256"]}
++
++      result =
++        try do
++          fun.(
++            context
++            |> Map.put(:workspace_snapshot_reader, reader)
++            |> Map.put(:snapshot_intent, intent)
++          )
++        catch
++          _, _ -> {:unknown, :workspace_check_unconfirmed}
++        end
++
++      cleanup = Task.yield(task, 0) || Task.shutdown(task, :brutal_kill)
++
++      case cleanup do
++        {:ok, :reader_finished} -> result
++        nil -> result
++        _ -> {:unknown, :workspace_check_unconfirmed}
++      end
++    else
++      fun.(context)
++    end
++  end
++
++  def run_document_effect(context, intent, fun) when is_function(fun, 0) do
++    case context[:workspace_snapshot_reader] do
++      %{pid: reader, token: token} ->
++        Ipse.Session.Resources.document_file_effect(fun, fn peer ->
++          GenServer.call(
++            context.owner,
++            {:extension_workspace_snapshot_register, context.job_ref, intent, reader, peer, token}
++          )
++        end)
++
++      _ ->
++        Ipse.Session.Resources.file_effect(fun)
++    end
++  end
++
++  defp snapshot_reader(context, intent, guard, token) do
++    receive do
++      {:workspace_snapshot_read, ^token, peer} when is_pid(peer) ->
++        allowed =
++          try do
++            GenServer.call(
++              context.owner,
++              {:extension_workspace_snapshot_peer, context.job_ref, intent, peer, token}
++            ) == :ok
++          catch
++            :exit, _ -> false
++          end
++
++        result =
++          if allowed do
++            Ipse.Session.Resources.file_effect(fn ->
++              Ipse.Tools.workspace_binary_snapshot(
++                guard["path"],
++                guard["original_sha256"],
++                context
++              )
++            end)
++          else
++            {:error, :workspace_snapshot_refused}
++          end
++
++        send(peer, {:workspace_snapshot_result, token, result})
++        :reader_finished
++    after
++      30_000 -> :reader_expired
++    end
++  end
++
++  defp current_file(context, document) do
++    deadline = System.monotonic_time(:millisecond) + 5_000
++
++    with %{pid: pid, token: token, path: path, sha: sha} <- context[:workspace_snapshot_reader],
++         true <- document["path"] === path and document["original_sha256"] === sha,
++         :ok <-
++           GenServer.call(
++             context.owner,
++             {:extension_workspace_snapshot_bind, context.job_ref, context.snapshot_intent, pid,
++              token},
++             max(deadline - System.monotonic_time(:millisecond), 1)
++           ),
++         true <- System.monotonic_time(:millisecond) < deadline do
++      ref = Process.monitor(pid)
++      send(pid, {:workspace_snapshot_read, token, self()})
++
++      result = await_snapshot_reader(pid, token, ref, deadline)
++
++      case result do
++        {:ok, _bytes, metadata} ->
++          if metadata["path"] === path and metadata["byte_count"] === document["original_bytes"] and
++               metadata["sha256"] === sha,
++             do: :ok,
++             else: {:error, :document_store_refused}
++
++        {:error, _} ->
++          {:error, :document_store_refused}
++
++        _ ->
++          {:unknown, :workspace_check_unconfirmed}
++      end
++    else
++      _ -> {:error, :document_store_refused}
++    end
++  end
++
++  @doc false
++  def await_snapshot_reader(pid, token, ref, deadline) do
++    result =
++      receive do
++        {:workspace_snapshot_result, ^token, value} ->
++          receive do
++            {:DOWN, ^ref, :process, ^pid, :normal} -> value
++            {:DOWN, ^ref, :process, ^pid, _} -> {:unknown, :workspace_check_unconfirmed}
++          after
++            max(deadline - System.monotonic_time(:millisecond), 0) ->
++              {:unknown, :workspace_check_unconfirmed}
++          end
++
++        {:DOWN, ^ref, :process, ^pid, _} ->
++          {:unknown, :workspace_check_unconfirmed}
++      after
++        max(deadline - System.monotonic_time(:millisecond), 0) ->
++          {:unknown, :workspace_check_unconfirmed}
++      end
++
++    Process.demonitor(ref, [:flush])
++    result
++  end
++
++  # Inspect the exact proposed source heads, including blocks changed in the
++  # same commit. This is source-data identification, not an authority grant.
++  def inspect_changes(changes, read, operation) when is_list(changes) and is_function(read, 1) do
++    with true <- length(changes) <= 32,
++         true <- Enum.all?(changes, &valid_change?/1),
++         true <- length(Enum.uniq_by(changes, & &1["key"])) == length(changes) do
++      overlay =
++        Map.new(changes, fn change ->
++          row =
++            if is_nil(change["value"]) do
++              nil
++            else
++              %{
++                "value" => change["value"],
++                "revision" => change["expected_revision"] + 1,
++                "operation_id" => operation
++              }
++            end
++
++          {change["key"], row}
++        end)
++
++      proposed_read = fn key ->
++        case Map.fetch(overlay, key) do
++          {:ok, row} -> {:ok, row}
++          :error -> read.(key)
++        end
++      end
++
++      Enum.reduce_while(changes, {:ok, []}, fn change, {:ok, found} ->
++        if String.starts_with?(change["key"], "source.") and not is_nil(change["value"]) do
++          with {:ok, head} <- DocumentStage.decode_packed(change["value"]) do
++            if head["kind"] === "source_head" do
++              case DocumentSourceUse.inspect_workspace_document(
++                     proposed_read,
++                     change["key"],
++                     head
++                   ) do
++                {:ok, :not_workspace_document} ->
++                  {:cont, {:ok, [:not_workspace_document | found]}}
++
++                {:ok, document} when is_map(document) ->
++                  {:cont, {:ok, [document | found]}}
++
++                _ ->
++                  {:halt, {:error, :document_store_refused}}
++              end
++            else
++              {:cont, {:ok, [:not_workspace_document | found]}}
++            end
++          else
++            _ -> {:halt, {:error, :document_store_refused}}
++          end
++        else
++          {:cont, {:ok, found}}
++        end
++      end)
++      |> case do
++        {:ok, documents} -> {:ok, Enum.reverse(documents)}
++        other -> other
++      end
++    else
++      _ -> {:error, :document_store_refused}
++    end
++  rescue
++    _ -> {:error, :document_store_refused}
++  end
++
++  def inspect_changes(_, _, _), do: {:error, :document_store_refused}
++
++  defp valid_change?(change) do
++    is_map(change) and Enum.sort(Map.keys(change)) == ~w(expected_revision key value) and
++      is_binary(change["key"]) and Ipse.JSON.safe_uint?(change["expected_revision"])
++  end
++end
+--- a/extensions/knowledge/src/corpus.ex
++++ b/extensions/knowledge/src/corpus.ex
+@@ -61,6 +61,15 @@
+   def handle("host.actions", payload, %{phase: phase} = state)
+       when phase in [:document_read, :document_check], do: document_read(payload, state)
+ 
++  def handle("host.actions", payload, %{phase: :document_snapshot_open} = state),
++    do: document_snapshot_open(payload, state)
++
++  def handle("host.actions", payload, %{phase: :document_snapshot_page} = state),
++    do: document_snapshot_page(payload, state)
++
++  def handle("host.actions", payload, %{phase: :document_use_verify} = state),
++    do: document_use_verified(payload, state)
++
+   def handle("host.actions", payload, %{phase: :document_use_check} = state),
+     do: document_use_checked(payload, state)
+ 
+@@ -187,9 +196,16 @@
+              (action == "read_document" and is_nil(args["expected_sha256"]) and
+                 args["expected_revision"] == 0 and
+                 args["generation"] == 1) do
+-      call(document_request(args["path"], args["expected_sha256"]), %{
++      collection = profile["kind"] == "collection"
++
++      request =
++        if collection,
++          do: snapshot_request("start", args["path"], args["expected_sha256"]),
++          else: document_request(args["path"], args["expected_sha256"])
++
++      call(request, %{
+         state
+-        | phase: :document_read,
++        | phase: if(collection, do: :document_snapshot_open, else: :document_read),
+           ctx: %{
+             store: store,
+             profile: profile,
+@@ -199,7 +215,8 @@
+             offset: 0,
+             sha256: args["expected_sha256"],
+             total: nil,
+-            effects_used: 1
++            effects_used: 1,
++            reads_used: 0
+           }
+       })
+     else
+@@ -220,6 +237,99 @@
+     %{"op" => "tool.call", "name" => "read", "timeout_ms" => 5000, "arguments" => arguments}
+   end
+ 
++  defp snapshot_request(kind, path, expected, handle \\ nil, offset \\ nil) do
++    arguments = %{"snapshot" => kind, "path" => path}
++    arguments = if expected, do: Map.put(arguments, "expected_sha256", expected), else: arguments
++
++    arguments =
++      if handle,
++        do: Map.merge(arguments, %{"snapshot_handle" => handle, "byte_offset" => offset}),
++        else: arguments
++
++    %{"op" => "tool.call", "name" => "read", "timeout_ms" => 5000, "arguments" => arguments}
++  end
++
++  defp document_snapshot_open(
++         %{
++           "operation_id" => operation,
++           "outcome" => %{"status" => "ok", "value" => %{"text" => text}}
++         },
++         state
++       ) do
++    with true <- is_binary(operation) and Regex.match?(~r/\A[0-9a-f]{32}\z/, operation),
++         true <- text?(text, 8192),
++         value when is_map(value) <- JSON.decode!(text),
++         true <- exact?(value, ~w(byte_count handle path sha256)),
++         true <- value["path"] === state.ctx.args["path"],
++         count when is_integer(count) and count in 1..1_048_576 <- value["byte_count"],
++         true <- Evidence.sha256?(value["sha256"]),
++         true <- is_nil(state.ctx.sha256) or state.ctx.sha256 === value["sha256"],
++         handle when is_binary(handle) <- value["handle"],
++         true <- Regex.match?(~r/\A[0-9a-f]{32}\z/, handle) do
++      ctx =
++        Map.merge(state.ctx, %{
++          snapshot_handle: handle,
++          opening_operation: operation,
++          sha256: value["sha256"],
++          total: count
++        })
++
++      request = snapshot_request("page", value["path"], value["sha256"], handle, 0)
++      call(request, %{state | phase: :document_snapshot_page, ctx: ctx})
++    else
++      _ -> finish(state, refused(:document_acquisition_refused))
++    end
++  rescue
++    _ -> finish(state, refused(:document_acquisition_refused))
++  end
++
++  defp document_snapshot_open(_, state), do: finish(state, refused(:document_acquisition_refused))
++
++  defp document_snapshot_page(
++         %{
++           "operation_id" => operation,
++           "outcome" => %{"status" => "ok", "value" => %{"text" => text}}
++         },
++         state
++       ) do
++    with true <- is_binary(operation) and Regex.match?(~r/\A[0-9a-f]{32}\z/, operation),
++         true <- text?(text, 8192),
++         value when is_map(value) <- JSON.decode!(text),
++         true <- exact?(value, ~w(byte_count data handle next offset page_sha256 path sha256)),
++         true <- value["path"] === state.ctx.args["path"] and value["sha256"] === state.ctx.sha256,
++         true <-
++           value["handle"] === state.ctx.snapshot_handle and
++             value["byte_count"] === state.ctx.total,
++         true <- value["offset"] === state.ctx.offset and state.ctx.offset < state.ctx.total,
++         {:ok, bytes} <- Base.decode64(value["data"]),
++         true <- byte_size(bytes) == min(4096, state.ctx.total - state.ctx.offset),
++         true <- value["page_sha256"] === Evidence.sha256(bytes),
++         finish = state.ctx.offset + byte_size(bytes),
++         true <- value["next"] === if(finish < state.ctx.total, do: finish, else: nil) do
++      ctx = %{
++        state.ctx
++        | pieces: [bytes | state.ctx.pieces],
++          offset: finish,
++          reads_used: state.ctx.reads_used + 1
++      }
++
++      if value["next"] do
++        request =
++          snapshot_request("page", value["path"], value["sha256"], value["handle"], finish)
++
++        call(request, %{state | ctx: ctx})
++      else
++        complete_document_read(%{state | ctx: ctx})
++      end
++    else
++      _ -> finish(state, refused(:document_acquisition_refused))
++    end
++  rescue
++    _ -> finish(state, refused(:document_acquisition_refused))
++  end
++
++  defp document_snapshot_page(_, state), do: finish(state, refused(:document_acquisition_refused))
++
+   defp document_read(
+          %{
+            "outcome" => %{"status" => "ok", "value" => %{"text" => text}},
+@@ -311,11 +421,24 @@
+           first_page: binary_part(bytes, 0, min(4096, byte_size(bytes)))
+         })
+ 
+-      call(document_request(state.ctx.args["path"], state.ctx.sha256), %{
+-        state
+-        | phase: :document_check,
+-          ctx: ctx
+-      })
++      if Map.has_key?(ctx, :snapshot_handle) do
++        receipt =
++          payload["document"]
++          |> Map.put("version", 2)
++          |> Map.put("acquisition", %{
++            "kind" => "workspace.read",
++            "path" => ctx.args["path"],
++            "operation_id" => ctx.opening_operation
++          })
++
++        store_document(%{state | ctx: ctx}, receipt)
++      else
++        call(document_request(state.ctx.args["path"], state.ctx.sha256), %{
++          state
++          | phase: :document_check,
++            ctx: ctx
++        })
++      end
+     else
+       {:error, code} -> finish(state, refused(code))
+       _ -> finish(state, refused(:document_source_changed))
+@@ -446,12 +569,18 @@
+           "source" => attrs,
+           "expected_revision" => ctx.args["expected_revision"],
+           "continuation" => ctx.args["collection_state"],
+-          "effects_used" => ctx.effects_used
++          "effects_used" => ctx.effects_used,
++          "reads_used" => ctx.reads_used
+         }),
+         %{
+           state
+           | phase: :collection_source,
+-            ctx: %{store: ctx.store, document_args: original, opening_acquisition: opening}
++            ctx: %{
++              store: ctx.store,
++              document_args: original,
++              opening_acquisition: opening,
++              workspace_snapshot: Map.has_key?(ctx, :snapshot_handle)
++            }
+         }
+       )
+     else
+@@ -937,6 +1066,30 @@
+   end
+ 
+   defp advance({:call, request, cont}, state) do
++    request =
++      if state.phase == :collection_source and state.ctx[:workspace_snapshot] == true and
++           request["op"] === "collection.store" and request["request"]["op"] === "commit" and
++           cont[:phase] === :published do
++        args = state.ctx.document_args
++        opening = state.ctx.opening_acquisition
++
++        Map.put(request, "workspace_guard", %{
++          "path" => args["path"],
++          "original_sha256" => args["expected_sha256"],
++          "opening_operation_id" => opening["operation_id"],
++          "source_id" => args["source_id"],
++          "generation" => args["generation"],
++          "bundle_sha256" => cont.checkpoint["plan_sha256"]
++        })
++      else
++        request
++      end
++
++    cont =
++      if Map.has_key?(request, "workspace_guard"),
++        do: Map.put(cont, :request, request),
++        else: cont
++
+     state =
+       if state.phase == :collection_semantic_embed do
+         count = Map.get(state.ctx, :embedding_result_reads, 0)
+@@ -2392,12 +2545,28 @@
+   defp string(max), do: %{"type" => "string", "minLength" => 1, "maxLength" => max}
+   defp integer(min, max), do: %{"type" => "integer", "minimum" => min, "maximum" => max}
+ 
++  defp snapshot_page_request?(request) do
++    args = request["arguments"]
++
++    exact?(request, ~w(op name timeout_ms arguments)) and request["op"] === "tool.call" and
++      request["name"] === "read" and request["timeout_ms"] === 5_000 and
++      exact?(args, ~w(snapshot path expected_sha256 snapshot_handle byte_offset)) and
++      args["snapshot"] === "page" and text?(args["path"], 4096) and
++      Evidence.sha256?(args["expected_sha256"]) and
++      is_binary(args["snapshot_handle"]) and
++      Regex.match?(~r/\A[0-9a-f]{32}\z/, args["snapshot_handle"]) and
++      is_integer(args["byte_offset"]) and args["byte_offset"] in 0..1_048_575
++  rescue
++    _ -> false
++  end
++
+   defp call(request, state) do
+     budget = Map.get(state, :document_budget, %{effects: 0, reads: 0, guarded: false})
+ 
+     read =
+       request["op"] in ~w(state.get state.list state.scan effect.result.read embedding.profile) or
+-        (request["op"] == "collection.store" and CollectionStore.read_request?(request))
++        (request["op"] == "collection.store" and CollectionStore.read_request?(request)) or
++        snapshot_page_request?(request)
+ 
+     budget =
+       if read,
+@@ -2467,7 +2636,7 @@
+     case receipt do
+       %{"acquisition" => %{"kind" => "workspace.read", "path" => path}} ->
+         if workspace_path?(path) and Evidence.sha256?(receipt["original_sha256"]) and
+-             is_integer(receipt["original_bytes"]) and receipt["original_bytes"] in 1..32768 do
++             is_integer(receipt["original_bytes"]) and receipt["original_bytes"] in 1..1_048_576 do
+           Map.take(receipt, ~w(original_sha256 original_bytes)) |> Map.put("path", path)
+         else
+           :invalid
+@@ -2482,10 +2651,16 @@
+   end
+ 
+   defp next_document_use(%{ctx: %{document_use: %{remaining: [ref | tail]} = guard}} = state) do
+-    request = document_request(ref["path"], ref["original_sha256"])
+-    request = put_in(request, ["arguments", "max_bytes"], 1)
++    {request, phase} =
++      if ref["original_bytes"] > 32_768 do
++        {snapshot_request("verify", ref["path"], ref["original_sha256"]), :document_use_verify}
++      else
++        request = document_request(ref["path"], ref["original_sha256"])
++        {put_in(request, ["arguments", "max_bytes"], 1), :document_use_check}
++      end
++
+     guard = Map.merge(guard, %{remaining: tail, current: ref})
+-    call(request, %{state | phase: :document_use_check, ctx: %{state.ctx | document_use: guard}})
++    call(request, %{state | phase: phase, ctx: %{state.ctx | document_use: guard}})
+   end
+ 
+   defp next_document_use(%{ctx: %{document_use: %{remaining: []} = guard}} = state) do
+@@ -2497,6 +2672,35 @@
+     )
+   end
+ 
++  defp document_use_verified(
++         %{
++           "operation_id" => operation,
++           "outcome" => %{"status" => "ok", "value" => %{"text" => text}}
++         },
++         state
++       ) do
++    ref = state.ctx.document_use.current
++
++    with true <- is_binary(operation) and Regex.match?(~r/\A[0-9a-f]{32}\z/, operation),
++         true <- text?(text, 8192),
++         value when is_map(value) <- JSON.decode!(text),
++         true <- exact?(value, ~w(byte_count path sha256)),
++         true <- value["path"] === ref["path"] and value["sha256"] === ref["original_sha256"],
++         true <- value["byte_count"] === ref["original_bytes"] do
++      checked = Map.put(ref, "operation_id", operation)
++      guard = state.ctx.document_use
++      guard = %{guard | checked: [checked | guard.checked]}
++      next_document_use(%{state | ctx: %{state.ctx | document_use: guard}})
++    else
++      _ -> publish_result(state, refused(:document_source_changed_or_unavailable))
++    end
++  rescue
++    _ -> publish_result(state, refused(:document_source_changed_or_unavailable))
++  end
++
++  defp document_use_verified(_, state),
++    do: publish_result(state, refused(:document_source_changed_or_unavailable))
++
+   defp document_use_checked(
+          %{
+            "operation_id" => operation,
+--- a/lib/ipse/session/source_window.ex
++++ b/lib/ipse/session/source_window.ex
+@@ -11,6 +11,7 @@
+     :effective_source,
+     :historical_window,
+     :draft_id,
++    workspace_acquisitions: %Ipse.Session.WorkspaceAcquisition{},
+     admitted: false,
+     pending: %{},
+     pending_bytes: 0,
+@@ -77,6 +78,7 @@
+          {:ok, index} <- SourceIndex.new(session, 1, if(origin, do: JSON.digest([origin]))) do
+       window = %__MODULE__{
+         index: index,
++        workspace_acquisitions: Ipse.Session.WorkspaceAcquisition.new(metadata),
+         admitted: metadata["source_layout"] == @layout,
+         coverage:
+           Map.new(
+@@ -104,6 +106,30 @@
+   end
+ 
+   @doc false
++  def legacy_workspace_acquisition(%__MODULE__{} = w, parent, identity, path, sha) do
++    Ipse.Session.WorkspaceAcquisition.legacy_lookup(
++      w.workspace_acquisitions,
++      parent,
++      w.index.session_id,
++      w.index.origin_sha256,
++      identity,
++      path,
++      sha
++    )
++  end
++
++  @doc false
++  def workspace_acquisition(%__MODULE__{} = w, operation, identity) do
++    Ipse.Session.WorkspaceAcquisition.lookup(
++      w.workspace_acquisitions,
++      operation,
++      w.index.session_id,
++      w.index.origin_sha256,
++      identity
++    )
++  end
++
++  @doc false
+   def tool_result_provenances(%__MODULE__{} = w, call_id, message) do
+     with %{"op" => operation} = request <- w.pending[{:source_call, call_id}],
+          true <- get_in(message, ["tool_call_id"]) === call_id,
+@@ -158,7 +184,26 @@
+   def advance(nil, _, _), do: nil
+ 
+   def advance(w, event, source) do
+-    next = do_advance(w, event, source)
++    parent_id =
++      event["parent_invocation_id"] ||
++        if(event["type"] == "extension_invocation_result", do: event["invocation_id"])
++
++    parent = w.pending[{:parent, parent_id}]
++
++    acquisitions =
++      if is_nil(w.draft_id) and Ipse.JSON.sha256?(w.index.origin_sha256) do
++        Ipse.Session.WorkspaceAcquisition.advance(
++          w.workspace_acquisitions,
++          event,
++          parent,
++          w.index.session_id,
++          w.index.origin_sha256
++        )
++      else
++        w.workspace_acquisitions
++      end
++
++    next = do_advance(%{w | workspace_acquisitions: acquisitions}, event, source)
+     {:ok, index} = SourceIndex.coverage(next.index, next.coverage)
+     %{next | index: index}
+   end
+--- a/lib/ipse/journal/writer.ex
++++ b/lib/ipse/journal/writer.ex
+@@ -447,6 +447,18 @@
+         :effective_source ->
+           {:ok, window.effective_source}
+ 
++        {:legacy_workspace_acquisition, parent, identity, path, sha} ->
++          Ipse.Session.SourceWindow.legacy_workspace_acquisition(
++            window,
++            parent,
++            identity,
++            path,
++            sha
++          )
++
++        {:workspace_acquisition, operation, identity} ->
++          Ipse.Session.SourceWindow.workspace_acquisition(window, operation, identity)
++
+         {:proof, request} ->
+           Ipse.Session.SourceIndex.resolve_proof(window.index, request)
+ 
+--- a/lib/ipse/extension/workspace_snapshot.ex
++++ b/lib/ipse/extension/workspace_snapshot.ex
+@@ -0,0 +1,358 @@
++defmodule Ipse.Extension.WorkspaceSnapshot do
++  @moduledoc false
++
++  # This private slot lives only in the Host task that owns the Worker.  Its
++  # opaque handle is not authority outside that task and invocation.
++  @key {__MODULE__, :snapshot}
++  @max_bytes 1_048_576
++  @page_bytes 4096
++  @error {:error, :workspace_snapshot_refused}
++
++  def request?(request) when is_map(request) do
++    args = request["arguments"]
++
++    with true <- Enum.sort(Map.keys(request)) == ~w(arguments name op timeout_ms),
++         true <- request["op"] === "tool.call" and request["name"] === "read",
++         true <- request["timeout_ms"] === 5_000 and is_map(args),
++         true <- is_binary(args["path"]) and byte_size(args["path"]) in 1..4096,
++         :ok <- Ipse.Extension.validate(request) do
++      case args["snapshot"] do
++        "start" ->
++          keys = Enum.sort(Map.keys(args))
++
++          keys in [~w(path snapshot), ~w(expected_sha256 path snapshot)] and
++            (is_nil(args["expected_sha256"]) or Ipse.JSON.sha256?(args["expected_sha256"]))
++
++        "verify" ->
++          Enum.sort(Map.keys(args)) == ~w(expected_sha256 path snapshot) and
++            Ipse.JSON.sha256?(args["expected_sha256"])
++
++        "page" ->
++          Enum.sort(Map.keys(args)) ==
++            ~w(byte_offset expected_sha256 path snapshot snapshot_handle) and
++            is_integer(args["byte_offset"]) and args["byte_offset"] in 0..(@max_bytes - 1) and
++            Ipse.JSON.sha256?(args["expected_sha256"]) and
++            is_binary(args["snapshot_handle"]) and
++            Regex.match?(~r/\A[0-9a-f]{32}\z/, args["snapshot_handle"])
++
++        _ ->
++          false
++      end
++    else
++      _ -> false
++    end
++  rescue
++    _ -> false
++  end
++
++  def request?(_), do: false
++
++  def page_request?(request),
++    do: request?(request) and request["arguments"]["snapshot"] === "page"
++
++  def retained_request?(request),
++    do: request?(request) and request["arguments"]["snapshot"] in ~w(start page)
++
++  # The action has already passed Session tool-context admission. The file
++  # effect and managed current-use callback run in the existing owned scope.
++  def execute(context, intent) do
++    request = intent["request"]
++    args = request["arguments"]
++    deadline = System.monotonic_time(:millisecond) + request["timeout_ms"]
++
++    case args["snapshot"] do
++      "start" ->
++        case guarded(
++               context,
++               request,
++               fn ->
++                 Ipse.Tools.workspace_binary_snapshot(
++                   args["path"],
++                   args["expected_sha256"],
++                   context
++                 )
++               end,
++               deadline
++             ) do
++          {:ok, bytes, metadata} ->
++            with {:ok, value} <- retain(context, intent, bytes, metadata, deadline),
++                 do: result(request, value, deadline)
++
++          {:error, _} ->
++            {:failed, %{"reason" => "tool_failed"}}
++
++          _ ->
++            {:unknown, %{}}
++        end
++
++      "verify" ->
++        case guarded(
++               context,
++               request,
++               fn ->
++                 Ipse.Tools.workspace_binary_snapshot(
++                   args["path"],
++                   args["expected_sha256"],
++                   context
++                 )
++               end,
++               deadline
++             ) do
++          {:ok, _bytes, metadata} -> result(request, metadata, deadline)
++          {:error, _} -> {:failed, %{"reason" => "tool_failed"}}
++          _ -> {:unknown, %{}}
++        end
++
++      "page" ->
++        with {:ok, prepared} <-
++               prepare_page(
++                 context,
++                 intent,
++                 args["snapshot_handle"],
++                 args["byte_offset"],
++                 args["path"],
++                 args["expected_sha256"],
++                 deadline
++               ),
++             {:ok, ^prepared} <- guarded(context, request, fn -> {:ok, prepared} end, deadline),
++             :ok <-
++               commit_page(
++                 context,
++                 intent,
++                 args["snapshot_handle"],
++                 args["byte_offset"],
++                 args["path"],
++                 args["expected_sha256"],
++                 prepared,
++                 deadline
++               ),
++             {:ok, value} <- result(request, prepared, deadline) do
++          {:ok, value}
++        else
++          _ -> {:unknown, %{}}
++        end
++
++      _ ->
++        {:unknown, %{}}
++    end
++  rescue
++    _ -> {:unknown, %{}}
++  catch
++    _, _ -> {:unknown, %{}}
++  end
++
++  defp guarded(context, request, callback, deadline) do
++    if System.monotonic_time(:millisecond) >= deadline, do: throw(:workspace_snapshot_deadline)
++
++    task =
++      Ipse.Session.Resources.async(fn ->
++        Ipse.Session.Resources.file_effect(fn ->
++          Ipse.Session.ManagedToolUse.with_effect(
++            context.managed_tool,
++            Ipse.Session.ManagedToolUse.native_binding("read", request["arguments"]),
++            fn _deadline -> callback.() end
++          )
++        end)
++      end)
++
++    remaining = max(deadline - System.monotonic_time(:millisecond), 0)
++
++    case Task.yield(task, remaining) do
++      {:ok, result} ->
++        result
++
++      _ ->
++        Task.shutdown(task, :brutal_kill)
++        {:unknown, :workspace_snapshot_unconfirmed}
++    end
++  end
++
++  defp result(request, value, deadline) do
++    text = Jason.encode!(value)
++
++    if System.monotonic_time(:millisecond) < deadline and
++         byte_size(text) <= 8192 and valid_result?(request, text) and
++         Ipse.Extension.validate(%{
++           "api_version" => 1,
++           "invocation_id" => String.duplicate("0", 32),
++           "operation_id" => String.duplicate("0", 32),
++           "step" => 16,
++           "outcome" => %{"status" => "ok", "value" => %{"text" => text}}
++         }) == :ok and System.monotonic_time(:millisecond) < deadline,
++       do: {:ok, %{"text" => text}},
++       else: {:unknown, %{}}
++  end
++
++  def valid_result?(request, text) do
++    with true <- request?(request),
++         {:ok, value} <- Ipse.JSON.decode_bounded(text, 8192),
++         args = request["arguments"],
++         count when is_integer(count) and count in 1..@max_bytes <- value["byte_count"],
++         true <- value["path"] === args["path"],
++         true <- Ipse.JSON.sha256?(value["sha256"]),
++         true <- is_nil(args["expected_sha256"]) or args["expected_sha256"] === value["sha256"] do
++      case args["snapshot"] do
++        "verify" ->
++          Enum.sort(Map.keys(value)) == ~w(byte_count path sha256)
++
++        "start" ->
++          Enum.sort(Map.keys(value)) == ~w(byte_count handle path sha256) and
++            valid_handle?(value["handle"])
++
++        "page" ->
++          handle = value["handle"]
++
++          with true <- valid_handle?(handle),
++               true <-
++                 Enum.sort(Map.keys(value)) ==
++                   ~w(byte_count data handle next offset page_sha256 path sha256),
++               true <-
++                 handle === args["snapshot_handle"] and value["offset"] === args["byte_offset"],
++               offset when is_integer(offset) and offset >= 0 and offset < count <-
++                 value["offset"],
++               {:ok, bytes} <- Base.decode64(value["data"]),
++               true <- byte_size(bytes) === min(@page_bytes, count - offset),
++               true <- value["page_sha256"] === Ipse.JSON.sha256(bytes),
++               finish = offset + byte_size(bytes) do
++            value["next"] === if(finish < count, do: finish, else: nil)
++          else
++            _ -> false
++          end
++      end
++    else
++      _ -> false
++    end
++  rescue
++    _ -> false
++  end
++
++  defp valid_handle?(handle),
++    do: is_binary(handle) and Regex.match?(~r/\A[0-9a-f]{32}\z/, handle)
++
++  def retain(context, intent, bytes, metadata, deadline)
++      when is_binary(bytes) and is_map(metadata) do
++    with nil <- Process.get(@key),
++         true <-
++           request?(intent["request"]) and
++             get_in(intent, ["request", "arguments", "snapshot"]) === "start",
++         {:ok, binding} <- binding(context, intent),
++         true <- byte_size(bytes) in 1..@max_bytes,
++         true <- metadata["byte_count"] === byte_size(bytes),
++         true <- metadata["sha256"] === Ipse.JSON.sha256(bytes),
++         true <- Enum.sort(Map.keys(metadata)) == ~w(byte_count path sha256),
++         true <-
++           is_binary(metadata["path"]) and
++             metadata["path"] === get_in(intent, ["request", "arguments", "path"]),
++         expected = get_in(intent, ["request", "arguments", "expected_sha256"]),
++         true <- is_nil(expected) or expected === metadata["sha256"],
++         true <- active_before_deadline?(deadline) do
++      handle = :crypto.strong_rand_bytes(16) |> Base.encode16(case: :lower)
++      monitors = Enum.map([binding.worker, binding.owner, binding.scope], &Process.monitor/1)
++
++      state = %{
++        binding: binding,
++        bytes: bytes,
++        metadata: metadata,
++        handle: handle,
++        next: 0,
++        monitors: monitors
++      }
++
++      Process.put(@key, state)
++      {:ok, Map.put(metadata, "handle", handle)}
++    else
++      _ -> @error
++    end
++  rescue
++    _ -> @error
++  end
++
++  def retain(_, _, _, _, _), do: @error
++
++  def prepare_page(context, intent, handle, offset, path, sha256, deadline) do
++    with true <- page_request?(intent["request"]),
++         %{binding: binding, bytes: bytes, metadata: metadata, handle: ^handle, next: ^offset} <-
++           Process.get(@key),
++         {:ok, ^binding} <- binding(context, intent),
++         true <- metadata["path"] === path and metadata["sha256"] === sha256,
++         true <- get_in(intent, ["request", "arguments", "snapshot_handle"]) === handle,
++         true <- get_in(intent, ["request", "arguments", "byte_offset"]) === offset,
++         true <- get_in(intent, ["request", "arguments", "path"]) === path,
++         true <- get_in(intent, ["request", "arguments", "expected_sha256"]) === sha256,
++         true <- is_integer(offset) and offset >= 0 and offset < byte_size(bytes),
++         true <- active_before_deadline?(deadline) do
++      size = min(@page_bytes, byte_size(bytes) - offset)
++      part = binary_part(bytes, offset, size)
++      next = offset + size
++
++      {:ok,
++       metadata
++       |> Map.merge(%{
++         "handle" => handle,
++         "offset" => offset,
++         "data" => Base.encode64(part),
++         "page_sha256" => Ipse.JSON.sha256(part),
++         "next" => if(next < byte_size(bytes), do: next, else: nil)
++       })}
++    else
++      _ -> @error
++    end
++  rescue
++    _ -> @error
++  end
++
++  # The caller may advance only after the guarded callback and its cleanup
++  # return confirmed success. A failed journal or delivery ends the invocation.
++  def commit_page(context, intent, handle, offset, path, sha256, confirmed, deadline) do
++    with {:ok, ^confirmed} <-
++           prepare_page(context, intent, handle, offset, path, sha256, deadline),
++         %{next: ^offset} = state <- Process.get(@key),
++         {:ok, bytes} <- Base.decode64(confirmed["data"]) do
++      Process.put(@key, %{state | next: offset + byte_size(bytes)})
++      :ok
++    else
++      _ -> @error
++    end
++  rescue
++    _ -> @error
++  end
++
++  defp active_before_deadline?(deadline) do
++    remaining = deadline - System.monotonic_time(:millisecond)
++
++    remaining > 0 and Ipse.Session.Resources.active?(min(remaining, 5_000)) and
++      System.monotonic_time(:millisecond) < deadline
++  end
++
++  def clear do
++    case Process.delete(@key) do
++      %{monitors: monitors} -> Enum.each(monitors, &Process.demonitor(&1, [:flush]))
++      _ -> :ok
++    end
++
++    :ok
++  end
++
++  defp binding(context, intent) do
++    with %{worker: worker, managed_tool: %{owner: owner, job_ref: job}} <- context,
++         scope when is_pid(scope) <- Ipse.Session.Resources.current(),
++         true <- is_pid(worker) and is_pid(owner) and is_reference(job),
++         true <- Process.alive?(worker) and Process.alive?(owner) and Process.alive?(scope),
++         parent when is_binary(parent) <- intent["parent_invocation_id"],
++         identity when is_binary(identity) <- intent["identity_sha256"],
++         cwd when is_binary(cwd) <- context[:cwd] do
++      {:ok,
++       %{
++         worker: worker,
++         owner: owner,
++         job: job,
++         scope: scope,
++         parent: parent,
++         identity: identity,
++         cwd: cwd
++       }}
++    else
++      _ -> @error
++    end
++  end
++end
+--- a/lib/ipse/session/workspace_acquisition.ex
++++ b/lib/ipse/session/workspace_acquisition.ex
+@@ -0,0 +1,440 @@
++defmodule Ipse.Session.WorkspaceAcquisition do
++  @moduledoc false
++
++  # Private projection of confirmed action results. This does not authorize a
++  # file read, a staged value, or a publication; consumers must bind those to
++  # their live Session and Collection owners.
++  alias Ipse.Extension.WorkspaceSnapshot
++  alias Ipse.JSON
++
++  @limit 16
++  @operation_limit 8_192
++  @derive {Inspect, only: [:refused]}
++  defstruct metadata: nil,
++            cwd: nil,
++            identities: %{},
++            catalog: [],
++            active: %{},
++            completed: %{},
++            legacy: %{},
++            pending: nil,
++            seen: MapSet.new(),
++            refused: false
++
++  def new(metadata) when is_map(metadata) do
++    with cwd when is_binary(cwd) <- metadata["cwd"],
++         {:ok, catalog} <- Ipse.Extension.Catalog.from_metadata(metadata) do
++      %__MODULE__{
++        metadata: metadata,
++        cwd: cwd,
++        identities: Map.new(metadata["extensions"] || [], &{&1["instance"], &1}),
++        catalog: catalog["entries"]
++      }
++    else
++      _ -> %__MODULE__{refused: true}
++    end
++  end
++
++  def new(_), do: %__MODULE__{refused: true}
++
++  def advance(%__MODULE__{} = state, event, parent, session, origin) do
++    request = event["request"]
++
++    cond do
++      event["type"] === "extension_action_intent" and acquisition_request?(request) ->
++        admit_intent(state, event, parent, session, origin)
++
++      event["type"] === "extension_action_result" and acquisition_request?(request) ->
++        accept_result(state, event, parent, session, origin)
++
++      event["type"] in ~w(cancelled turn_finished) ->
++        %{state | active: %{}, legacy: %{}, pending: nil}
++
++      event["type"] === "extension_invocation_result" ->
++        state
++        |> bind_continuation(event, parent, session)
++        |> settle_completed(event, parent, session)
++        |> Map.put(:active, %{})
++        |> Map.update!(:legacy, &Map.delete(&1, event["invocation_id"]))
++        |> Map.put(:pending, nil)
++
++      true ->
++        state
++    end
++  rescue
++    _ -> %{state | active: %{}, pending: nil, refused: true}
++  end
++
++  def advance(state, _, _, _, _), do: state
++
++  defp admit_intent(state, event, parent, session, origin) do
++    id = event["operation_id"]
++
++    with false <- state.refused,
++         true <- is_nil(state.pending),
++         true <- MapSet.size(state.seen) < @operation_limit,
++         false <- MapSet.member?(state.seen, id),
++         true <- JSON.sha256?(origin),
++         true <- parent?(state, parent, event, session),
++         true <- Ipse.Extension.Actions.valid_intent?(event, parent, state.cwd) do
++      %{state | pending: event, seen: MapSet.put(state.seen, id)}
++    else
++      _ -> %{state | active: %{}, pending: nil, refused: true}
++    end
++  end
++
++  defp accept_result(state, event, parent, session, origin) do
++    request = event["request"]
++
++    with false <- state.refused,
++         pending when is_map(pending) <- state.pending,
++         true <- Ipse.Extension.Actions.result_intent(event) === pending,
++         true <- Ipse.Extension.Actions.valid_result?(event),
++         true <- parent?(state, parent, event, session),
++         true <- JSON.sha256?(origin) do
++      state = %{state | pending: nil}
++
++      kind = if legacy_read?(request), do: "legacy", else: request["arguments"]["snapshot"]
++
++      case {event["outcome"], kind} do
++        {%{"status" => "ok", "value" => %{"text" => text}}, "start"} ->
++          start(state, event, parent, session, origin, text)
++
++        {%{"status" => "ok", "value" => %{"text" => text}}, "page"} ->
++          page(state, event, parent, session, origin, text)
++
++        {%{"status" => "ok", "value" => %{"text" => text}}, "legacy"} ->
++          legacy(state, event, parent, session, origin, text)
++
++        _ ->
++          invalidate(state, request, event)
++      end
++    else
++      _ -> %{state | active: %{}, pending: nil, refused: true}
++    end
++  end
++
++  def lookup(%__MODULE__{refused: false} = state, operation, session, origin, identity) do
++    case state.completed[operation] do
++      %{"session_id" => ^session, "origin_sha256" => ^origin, "identity_sha256" => ^identity} =
++          receipt ->
++        {:ok, receipt}
++
++      _ ->
++        {:error, :workspace_acquisition_unavailable}
++    end
++  end
++
++  def lookup(_, _, _, _, _), do: {:error, :workspace_acquisition_unavailable}
++
++  def legacy_lookup(
++        %__MODULE__{refused: false} = state,
++        parent,
++        session,
++        origin,
++        identity,
++        path,
++        sha
++      ) do
++    case state.legacy[parent] do
++      %{
++        "session_id" => ^session,
++        "origin_sha256" => ^origin,
++        "identity_sha256" => ^identity,
++        "path" => ^path,
++        "sha256" => ^sha
++      } = receipt ->
++        {:ok, receipt}
++
++      _ ->
++        {:error, :workspace_acquisition_unavailable}
++    end
++  end
++
++  def legacy_lookup(_, _, _, _, _, _, _), do: {:error, :workspace_acquisition_unavailable}
++
++  defp acquisition_request?(request),
++    do: WorkspaceSnapshot.retained_request?(request) or legacy_read?(request)
++
++  defp legacy_read?(request) when is_map(request) do
++    args = request["arguments"]
++
++    is_map(args) and Enum.sort(Map.keys(request)) == ~w(arguments name op timeout_ms) and
++      request["op"] === "tool.call" and request["name"] === "read" and
++      request["timeout_ms"] === 5_000 and
++      Enum.sort(Map.keys(args)) ==
++        ~w(byte_offset encoding expected_sha256 file_max_bytes max_bytes path) and
++      args["encoding"] === "base64" and args["byte_offset"] === 0 and
++      args["max_bytes"] === 4096 and args["file_max_bytes"] === 32_768 and
++      JSON.sha256?(args["expected_sha256"]) and
++      Ipse.Extension.ToolAction.validate(request) === :ok
++  rescue
++    _ -> false
++  end
++
++  defp legacy_read?(_), do: false
++
++  defp legacy(state, event, parent, session, origin, text) do
++    request = event["request"]
++
++    with true <- parent?(state, parent, event, session),
++         true <- Ipse.Tools.binary_read_result?(text, request["arguments"]),
++         {:ok, value} <- JSON.decode_bounded(text, 8192),
++         count when is_integer(count) and count in 1..32_768 <- value["byte_count"],
++         true <-
++           map_size(state.legacy) < @limit or
++             Map.has_key?(state.legacy, event["parent_invocation_id"]) do
++      receipt = %{
++        "session_id" => session,
++        "origin_sha256" => origin,
++        "parent_invocation_id" => event["parent_invocation_id"],
++        "operation_id" => event["operation_id"],
++        "identity_sha256" => event["identity_sha256"],
++        "path" => value["path"],
++        "sha256" => value["sha256"],
++        "byte_count" => count
++      }
++
++      %{state | legacy: Map.put(state.legacy, event["parent_invocation_id"], receipt)}
++    else
++      _ ->
++        %{state | legacy: Map.delete(state.legacy, event["parent_invocation_id"]), refused: true}
++    end
++  end
++
++  defp start(state, event, parent, session, origin, text) do
++    request = event["request"]
++
++    with false <- state.refused,
++         true <- map_size(state.active) + map_size(state.completed) < @limit,
++         true <- WorkspaceSnapshot.valid_result?(request, text),
++         true <- parent?(state, parent, event, session) and JSON.sha256?(origin),
++         {:ok, metadata} <- JSON.decode_bounded(text, 8192),
++         handle = metadata["handle"],
++         false <- Map.has_key?(state.active, handle),
++         false <- Map.has_key?(state.completed, event["operation_id"]) do
++      receipt = %{
++        "version" => 1,
++        "session_id" => session,
++        "origin_sha256" => origin,
++        "parent_invocation_id" => event["parent_invocation_id"],
++        "operation_id" => event["operation_id"],
++        "identity_sha256" => event["identity_sha256"],
++        "artifact_sha256" => parent["identity"]["artifact_sha256"],
++        "arguments_sha256" => JSON.digest([parent["payload"]["arguments"]]),
++        "source_binding_sha256" => source_binding(parent["payload"]["arguments"]),
++        "path" => metadata["path"],
++        "byte_count" => metadata["byte_count"],
++        "sha256" => metadata["sha256"]
++      }
++
++      active = %{receipt: receipt, offset: 0, hash: :crypto.hash_init(:sha256)}
++      %{state | active: Map.put(state.active, handle, active)}
++    else
++      _ -> %{state | active: %{}, refused: true}
++    end
++  end
++
++  defp page(state, event, parent, session, origin, text) do
++    request = event["request"]
++    handle = request["arguments"]["snapshot_handle"]
++
++    with false <- state.refused,
++         true <- WorkspaceSnapshot.valid_result?(request, text),
++         true <- parent?(state, parent, event, session),
++         %{receipt: receipt, offset: offset, hash: hash} = active <- state.active[handle],
++         true <- receipt["session_id"] === session and receipt["origin_sha256"] === origin,
++         true <- receipt["parent_invocation_id"] === event["parent_invocation_id"],
++         true <- receipt["identity_sha256"] === event["identity_sha256"],
++         true <- receipt["path"] === request["arguments"]["path"],
++         true <- receipt["sha256"] === request["arguments"]["expected_sha256"],
++         true <- offset === request["arguments"]["byte_offset"],
++         {:ok, value} <- JSON.decode_bounded(text, 8192),
++         true <- value["byte_count"] === receipt["byte_count"],
++         {:ok, bytes} <- Base.decode64(value["data"]),
++         next = offset + byte_size(bytes),
++         hash = :crypto.hash_update(hash, bytes) do
++      if is_nil(value["next"]) do
++        digest = hash |> :crypto.hash_final() |> Base.encode16(case: :lower)
++
++        if next === receipt["byte_count"] and digest === receipt["sha256"] do
++          %{
++            state
++            | active: Map.delete(state.active, handle),
++              completed: Map.put(state.completed, receipt["operation_id"], receipt)
++          }
++        else
++          %{state | active: Map.delete(state.active, handle), refused: true}
++        end
++      else
++        %{state | active: Map.put(state.active, handle, %{active | offset: next, hash: hash})}
++      end
++    else
++      _ -> %{state | active: %{}, refused: true}
++    end
++  end
++
++  defp invalidate(state, request, event) do
++    handle = get_in(request, ["arguments", "snapshot_handle"])
++
++    %{
++      state
++      | active: if(is_binary(handle), do: Map.delete(state.active, handle), else: %{}),
++        legacy: Map.delete(state.legacy, event["parent_invocation_id"])
++    }
++  end
++
++  @doc false
++  def source_binding(outer) when is_map(outer) do
++    args = outer["args"]
++
++    if outer["action"] in ~w(read_document continue_collection_document) and
++         is_binary(outer["store"]) and is_map(args) and
++         is_binary(args["source_id"]) and is_binary(args["path"]) and
++         is_integer(args["generation"]) do
++      JSON.digest([
++        %{
++          "store" => outer["store"],
++          "args" => Map.drop(args, ~w(expected_sha256 collection_state opening_acquisition))
++        }
++      ])
++    end
++  rescue
++    _ -> nil
++  end
++
++  def source_binding(_), do: nil
++
++  defp bind_continuation(state, event, parent, session) do
++    continuation = get_in(event, ["value", "continuation"])
++    outer = if is_map(continuation), do: continuation["arguments"]
++    args = if is_map(outer), do: outer["args"]
++    opening = if is_map(args), do: args["opening_acquisition"]
++    operation = if is_map(opening), do: opening["operation_id"]
++    receipt = state.completed[operation]
++    plan = if is_map(args), do: get_in(args, ["collection_state", "plan_sha256"])
++
++    if is_map(parent) and parent["invocation_id"] === event["invocation_id"] and
++         parent["payload"]["session_id"] === session and
++         event["identity"] === parent["identity"] and event["descriptor"] === parent["descriptor"] and
++         confirmed_inline_result?(event, parent) and
++         state.identities[parent["identity"]["instance"]] === parent["identity"] and
++         parent["descriptor"] in state.catalog and
++         Ipse.Extension.Invocation.validate_intent(parent, state.metadata) === :ok and
++         get_in(event, ["value", "status"]) === "draft" and
++         continuation["id"] === "source" and outer["action"] === "continue_collection_document" and
++         is_map(receipt) and receipt["session_id"] === session and
++         receipt["identity_sha256"] === JSON.digest([parent["identity"]]) and
++         JSON.sha256?(receipt["source_binding_sha256"]) and
++         receipt["source_binding_sha256"] === source_binding(parent["payload"]["arguments"]) and
++         receipt["source_binding_sha256"] === source_binding(outer) and
++         opening["kind"] === "workspace.read" and opening["path"] === receipt["path"] and
++         args["expected_sha256"] === receipt["sha256"] and JSON.sha256?(plan) and
++         ((is_nil(receipt["plan_sha256"]) and
++             receipt["parent_invocation_id"] === parent["invocation_id"]) or
++            receipt["plan_sha256"] === plan) do
++      completed =
++        state.completed
++        |> Enum.reject(fn {id, candidate} ->
++          id != operation and candidate["parent_invocation_id"] === parent["invocation_id"] and
++            candidate["source_binding_sha256"] === receipt["source_binding_sha256"]
++        end)
++        |> Map.new()
++        |> put_in([operation, "plan_sha256"], plan)
++
++      %{state | completed: completed}
++    else
++      state
++    end
++  rescue
++    _ -> state
++  end
++
++  # A continuation may be explicitly resumed in a later turn. Reclaim its
++  # receipt only after the matching pinned invocation completes successfully.
++  defp settle_completed(state, event, parent, session) do
++    outer = get_in(parent || %{}, ["payload", "arguments"])
++    args = if is_map(outer), do: outer["args"]
++    action = if is_map(outer), do: outer["action"]
++
++    operation =
++      cond do
++        action === "continue_collection_document" and is_map(args) ->
++          get_in(args, ["opening_acquisition", "operation_id"])
++
++        action === "read_document" ->
++          Enum.find_value(state.completed, fn {operation, receipt} ->
++            if receipt["parent_invocation_id"] === parent["invocation_id"], do: operation
++          end)
++
++        true ->
++          nil
++      end
++
++    receipt = state.completed[operation]
++
++    if is_map(parent) and is_map(receipt) and
++         parent["invocation_id"] === event["invocation_id"] and
++         parent["payload"]["session_id"] === session and
++         event["identity"] === parent["identity"] and event["descriptor"] === parent["descriptor"] and
++         confirmed_inline_result?(event, parent) and
++         state.identities[parent["identity"]["instance"]] === parent["identity"] and
++         parent["descriptor"] in state.catalog and
++         Ipse.Extension.Invocation.validate_intent(parent, state.metadata) === :ok and
++         get_in(event, ["value", "status"]) === "ok" and
++         is_nil(get_in(event, ["value", "continuation"])) and
++         receipt["session_id"] === session and
++         receipt["identity_sha256"] === JSON.digest([parent["identity"]]) and
++         JSON.sha256?(receipt["source_binding_sha256"]) and
++         receipt["source_binding_sha256"] === source_binding(outer) do
++      completed =
++        state.completed
++        |> Enum.reject(fn {id, candidate} ->
++          id === operation or
++            (candidate["parent_invocation_id"] === parent["invocation_id"] and
++               candidate["source_binding_sha256"] === receipt["source_binding_sha256"])
++        end)
++        |> Map.new()
++
++      %{state | completed: completed}
++    else
++      state
++    end
++  rescue
++    _ -> state
++  end
++
++  defp confirmed_inline_result?(event, parent) do
++    with true <- event["type"] === "extension_invocation_result" and event["version"] in [1, 3],
++         true <- Ipse.Extension.Invocation.result_intent(event) === parent,
++         true <-
++           is_integer(event["action_count"]) and event["action_count"] >= 0 and
++             event["action_count"] <= Ipse.Extension.Actions.limit(parent["identity"]),
++         true <- JSON.sha256?(event["actions_sha256"]),
++         text when is_binary(text) <- event["text"],
++         true <- event["text_sha256"] === JSON.sha256(text),
++         {:ok, value} <- JSON.decode_bounded(text),
++         true <- value === event["value"],
++         {:ok, ^value} <-
++           Ipse.Extension.Catalog.validate_response(
++             parent["descriptor"],
++             %{"api_version" => 1, "kind" => "result", "value" => value}
++           ) do
++      true
++    else
++      _ -> false
++    end
++  rescue
++    _ -> false
++  end
++
++  defp parent?(state, parent, event, session) do
++    is_map(parent) and is_map(parent["identity"]) and
++      parent["invocation_id"] === event["parent_invocation_id"] and
++      parent["payload"]["session_id"] === session and
++      JSON.digest([parent["identity"]]) === event["identity_sha256"] and
++      state.identities[parent["identity"]["instance"]] === parent["identity"] and
++      parent["descriptor"] in state.catalog and
++      Ipse.Extension.Invocation.validate_intent(parent, state.metadata) === :ok
++  end
++end
+--- a/lib/ipse/session/invocation.ex
++++ b/lib/ipse/session/invocation.ex
+@@ -1508,9 +1508,17 @@
+   end
+ 
+   defp extension_action_context(s, request) do
+-    if Ipse.Extension.Actions.tool?(request) do
++    if Ipse.Extension.Actions.workspace_context?(request) do
++      checked_request =
++        if Ipse.Extension.Actions.tool?(request) do
++          request
++        else
++          {:ok, read} = Ipse.Extension.Collection.WorkspaceDocumentGuard.preflight_read(request)
++          read
++        end
++
+       expected = %{
+-        request: Ipse.JSON.digest([request]),
++        request: Ipse.JSON.digest([checked_request]),
+         context: Ipse.JSON.digest([s.context_snapshot]),
+         job: s.job_ref,
+         identity: Ipse.JSON.digest([s.invocation.parent["identity"]])
+--- a/lib/ipse/session.ex
++++ b/lib/ipse/session.ex
+@@ -3004,6 +3004,117 @@
+       else: {:reply, {:error, :document_store_refused}, s}
+   end
+ 
++  # The actual Worker registers one live reader for this exact action.
++  def handle_call(
++        {:extension_workspace_snapshot_register, ref, intent, reader, peer, token},
++        {worker, _},
++        %{job_ref: ref, task: %{pid: worker}, invocation: %{action: %{intent: intent} = action}} =
++          s
++      )
++      when ref != nil and is_pid(reader) and is_pid(peer) and is_reference(token) do
++    if is_nil(action[:workspace_snapshot_reader]) and
++         Ipse.Extension.Collection.WorkspaceDocumentGuard.guarded_request?(intent["request"]) and
++         Ipse.Session.Resources.authorized_task?(worker, reader) and
++         Process.alive?(peer) and peer != worker and
++         match?({:reply, :ok, ^s}, CurrentInvocation.document_current(s, intent)) do
++      bound = %{reader: reader, token: token, peer: peer, bound: false, used: false}
++
++      {:reply, :ok,
++       put_in(s.invocation.action, Map.put(action, :workspace_snapshot_reader, bound))}
++    else
++      {:reply, {:error, :document_store_refused}, s}
++    end
++  end
++
++  def handle_call({:extension_workspace_snapshot_register, _, _, _, _, _}, _, s),
++    do: {:reply, {:error, :document_store_refused}, s}
++
++  # Derive the peer from the actual caller, never from an embedded PID.
++  def handle_call(
++        {:extension_workspace_snapshot_bind, ref, intent, reader, token},
++        {peer, _},
++        %{
++          job_ref: ref,
++          task: %{pid: worker},
++          invocation: %{action: %{intent: intent, workspace_snapshot_reader: bound} = action}
++        } = s
++      )
++      when ref != nil and is_pid(reader) and is_reference(token) do
++    if bound === %{reader: reader, token: token, peer: peer, bound: false, used: false} and
++         Ipse.Session.Resources.authorized_task?(worker, reader) and
++         Ipse.Session.Resources.authorized_effect?(worker, peer) and
++         peer != worker and
++         match?({:reply, :ok, ^s}, CurrentInvocation.document_current(s, intent)) do
++      bound = %{bound | bound: true}
++
++      {:reply, :ok,
++       put_in(s.invocation.action, Map.put(action, :workspace_snapshot_reader, bound))}
++    else
++      {:reply, {:error, :document_store_refused}, s}
++    end
++  end
++
++  def handle_call({:extension_workspace_snapshot_bind, _, _, _, _}, _, s),
++    do: {:reply, {:error, :document_store_refused}, s}
++
++  # Only that registered reader can consume the request for the bound peer.
++  def handle_call(
++        {:extension_workspace_snapshot_peer, ref, intent, peer, token},
++        {reader, _},
++        %{
++          job_ref: ref,
++          task: %{pid: worker},
++          invocation: %{action: %{intent: intent, workspace_snapshot_reader: bound} = action}
++        } = s
++      )
++      when ref != nil and is_pid(peer) and is_reference(token) do
++    if bound === %{reader: reader, token: token, peer: peer, bound: true, used: false} and
++         Ipse.Session.Resources.authorized_task?(worker, reader) and
++         Ipse.Session.Resources.authorized_effect?(worker, peer) and
++         match?({:reply, :ok, ^s}, CurrentInvocation.document_current(s, intent)) do
++      bound = %{bound | used: true}
++
++      {:reply, :ok,
++       put_in(s.invocation.action, Map.put(action, :workspace_snapshot_reader, bound))}
++    else
++      {:reply, {:error, :document_store_refused}, s}
++    end
++  end
++
++  def handle_call({:extension_workspace_snapshot_peer, _, _, _, _}, _, s),
++    do: {:reply, {:error, :document_store_refused}, s}
++
++  def handle_call(
++        {:extension_workspace_document_authorize, ref, intent, document},
++        {caller, _},
++        %{
++          job_ref: ref,
++          task: %{pid: worker},
++          invocation: %{action: %{intent: intent}},
++          phase: phase
++        } = s
++      )
++      when ref != nil and
++             phase in [:tool, :extension_command, :extension_service, :extension_events] do
++    reply =
++      if caller == worker or Ipse.Session.Resources.authorized_effect?(worker, caller) do
++        case CurrentInvocation.document_current(s, intent) do
++          {:reply, :ok, ^s} ->
++            Ipse.Extension.Collection.WorkspaceDocumentGuard.authorize(s, intent, document)
++
++          _ ->
++            {:error, :document_store_refused}
++        end
++      else
++        {:error, :document_store_refused}
++      end
++
++    {:reply, reply, s}
++  end
++
++  def handle_call({:extension_workspace_document_authorize, _, _, _}, _, s),
++    do: {:reply, {:error, :document_store_refused}, s}
++
+   def handle_call({:extension_document_prepare, _, _}, _, s),
+     do: {:reply, {:error, :document_store_refused}, s}
+ 
+--- a/test/ipse/session/workspace_acquisition_test.exs
++++ b/test/ipse/session/workspace_acquisition_test.exs
+@@ -0,0 +1,436 @@
++defmodule Ipse.Session.WorkspaceAcquisitionTest do
++  use ExUnit.Case, async: true
++
++  alias Ipse.Extension.{Actions, Catalog, Invocation, Registry}
++  alias Ipse.Session.{SourceIndex, SourceWindow, WorkspaceAcquisition}
++
++  defp fixture do
++    schema = %{"type" => "object", "additionalProperties" => true}
++
++    descriptor = %{
++      "id" => "source",
++      "description" => "Synthetic acquisition",
++      "arguments_schema" => schema,
++      "result_schema" => schema
++    }
++
++    exports = Map.put(Catalog.empty(), "commands", [descriptor])
++    digest = String.duplicate("a", 64)
++
++    identity = %{
++      "instance" => "fixture",
++      "artifact" => digest,
++      "artifact_sha256" => digest,
++      "options_sha256" => digest,
++      "exports_sha256" => Catalog.digest(exports),
++      "requires_sha256" => digest,
++      "subscriptions_sha256" => digest,
++      "services" => [],
++      "scope" => "operator",
++      "source_sha256" => digest,
++      "sdk" => 1,
++      "protocol" => 1,
++      "capabilities" => ~w(invoke.command host.actions host.actions.mixed host.tools),
++      "order" => 1,
++      "lifetime" => "session",
++      "expires_at" => nil,
++      "runtime" => %{
++        "architecture" => "fixture",
++        "elixir" => "fixture",
++        "erts" => "fixture",
++        "otp" => "fixture"
++      },
++      "host_sha256" => digest,
++      "generation" => 1,
++      "allow_children" => false
++    }
++
++    assert Registry.valid_identity?(identity)
++    {:ok, catalog} = Catalog.snapshot(%{extensions: [%{identity: identity, exports: exports}]})
++    [export] = catalog["entries"]
++    session = String.duplicate("1", 32)
++    origin = String.duplicate("b", 64)
++    cwd = "/fixture/workspace"
++
++    outer = %{
++      "store" => "notes",
++      "action" => "read_document",
++      "args" => %{"source_id" => "fixture-source", "generation" => 1, "path" => "synthetic.docx"}
++    }
++
++    parent =
++      Invocation.intent(
++        identity,
++        export,
++        outer,
++        session,
++        String.duplicate("2", 32),
++        nil,
++        nil,
++        "operator_request"
++      )
++
++    metadata = %{"cwd" => cwd, "extensions" => [identity], "extension_catalog" => catalog}
++    assert Invocation.validate_intent(parent, metadata) == :ok
++
++    %{
++      session: session,
++      origin: origin,
++      cwd: cwd,
++      parent: parent,
++      identity_sha: Ipse.JSON.digest([identity]),
++      state: WorkspaceAcquisition.new(metadata)
++    }
++  end
++
++  defp start_request,
++    do: %{
++      "op" => "tool.call",
++      "name" => "read",
++      "timeout_ms" => 5000,
++      "arguments" => %{"snapshot" => "start", "path" => "synthetic.docx"}
++    }
++
++  defp action(ctx, request, step, value) do
++    {:ok, intent} =
++      Actions.intent(
++        ctx.parent,
++        request,
++        step,
++        "not_required",
++        ctx.cwd,
++        String.duplicate("c", 64)
++      )
++
++    {:ok, result} =
++      Actions.result(intent, %{"status" => "ok", "value" => %{"text" => Jason.encode!(value)}})
++
++    {intent, result}
++  end
++
++  defp advance(ctx, state, event, parent \\ nil),
++    do: WorkspaceAcquisition.advance(state, event, parent || ctx.parent, ctx.session, ctx.origin)
++
++  defp opening(ctx, bytes, handle) do
++    sha = Ipse.JSON.sha256(bytes)
++
++    {intent, result} =
++      action(ctx, start_request(), 1, %{
++        "path" => "synthetic.docx",
++        "byte_count" => byte_size(bytes),
++        "sha256" => sha,
++        "handle" => handle
++      })
++
++    state = ctx.state |> then(&advance(ctx, &1, intent)) |> then(&advance(ctx, &1, result))
++    {state, intent, result, sha}
++  end
++
++  defp page(ctx, bytes, handle, sha, ordinal) do
++    offset = ordinal * 4096
++    size = min(4096, byte_size(bytes) - offset)
++    chunk = binary_part(bytes, offset, size)
++    finish = offset + size
++
++    request = %{
++      "op" => "tool.call",
++      "name" => "read",
++      "timeout_ms" => 5000,
++      "arguments" => %{
++        "snapshot" => "page",
++        "path" => "synthetic.docx",
++        "expected_sha256" => sha,
++        "snapshot_handle" => handle,
++        "byte_offset" => offset
++      }
++    }
++
++    value = %{
++      "path" => "synthetic.docx",
++      "byte_count" => byte_size(bytes),
++      "sha256" => sha,
++      "handle" => handle,
++      "offset" => offset,
++      "data" => Base.encode64(chunk),
++      "page_sha256" => Ipse.JSON.sha256(chunk),
++      "next" => if(finish < byte_size(bytes), do: finish, else: nil)
++    }
++
++    action(ctx, request, ordinal + 2, value)
++  end
++
++  test "snapshot results inside a pending draft do not change source tracking" do
++    ctx = fixture()
++    {:ok, index} = SourceIndex.new(ctx.session, 1, ctx.origin)
++
++    coverage =
++      Map.new(
++        ~w(observed indexed unavailable capacity_refused legacy_unverified pending_gaps refused),
++        &{&1, 0}
++      )
++
++    window = %SourceWindow{
++      index: index,
++      draft_id: "draft",
++      coverage: coverage,
++      workspace_acquisitions: ctx.state
++    }
++
++    {intent, _} =
++      action(ctx, start_request(), 1, %{
++        "path" => "synthetic.docx",
++        "byte_count" => 1,
++        "sha256" => String.duplicate("b", 64),
++        "handle" => String.duplicate("c", 32)
++      })
++
++    assert advance(ctx, ctx.state, intent, %{}).refused
++    assert SourceWindow.advance(window, intent).workspace_acquisitions === ctx.state
++  end
++
++  test "the receipt requires paired ordered pages and exact Session, identity and origin" do
++    ctx = fixture()
++    bytes = :binary.copy("x", 32_769)
++    handle = String.duplicate("4", 32)
++    {state, intent, _, sha} = opening(ctx, bytes, handle)
++    operation = intent["operation_id"]
++
++    assert {:error, :workspace_acquisition_unavailable} =
++             WorkspaceAcquisition.lookup(
++               state,
++               operation,
++               ctx.session,
++               ctx.origin,
++               ctx.identity_sha
++             )
++
++    state =
++      Enum.reduce(0..8, state, fn ordinal, state ->
++        {intent, result} = page(ctx, bytes, handle, sha, ordinal)
++        state |> then(&advance(ctx, &1, intent)) |> then(&advance(ctx, &1, result))
++      end)
++
++    assert {:ok, receipt} =
++             WorkspaceAcquisition.lookup(
++               state,
++               operation,
++               ctx.session,
++               ctx.origin,
++               ctx.identity_sha
++             )
++
++    assert receipt["byte_count"] === byte_size(bytes) and receipt["sha256"] === sha
++    assert receipt["parent_invocation_id"] === ctx.parent["invocation_id"]
++    assert receipt["path"] === "synthetic.docx"
++
++    assert {:error, :workspace_acquisition_unavailable} =
++             WorkspaceAcquisition.lookup(
++               state,
++               operation,
++               ctx.session,
++               String.duplicate("d", 64),
++               ctx.identity_sha
++             )
++
++    assert {:error, :workspace_acquisition_unavailable} =
++             WorkspaceAcquisition.lookup(
++               state,
++               operation,
++               ctx.session,
++               ctx.origin,
++               String.duplicate("e", 64)
++             )
++  end
++
++  test "forged pairs, duplicate operations and interrupted pages cannot create a receipt" do
++    ctx = fixture()
++    bytes = :binary.copy("x", 32_769)
++    handle = String.duplicate("4", 32)
++    {state, opening, result, sha} = opening(ctx, bytes, handle)
++
++    forged_parent = put_in(ctx.parent, ["identity", "artifact_sha256"], String.duplicate("f", 64))
++    assert advance(ctx, ctx.state, opening, forged_parent).refused
++    pending = advance(ctx, ctx.state, opening)
++
++    assert advance(ctx, pending, Map.put(result, "operation_id", String.duplicate("6", 32))).refused
++
++    assert advance(ctx, state, opening).refused
++
++    {page_intent, page_result} = page(ctx, bytes, handle, sha, 0)
++    waiting = advance(ctx, state, page_intent)
++
++    interrupted =
++      WorkspaceAcquisition.advance(
++        waiting,
++        %{"type" => "cancelled"},
++        nil,
++        ctx.session,
++        ctx.origin
++      )
++
++    assert interrupted.pending == nil and interrupted.active == %{}
++    assert advance(ctx, interrupted, page_result).refused
++
++    assert {:error, :workspace_acquisition_unavailable} =
++             WorkspaceAcquisition.lookup(
++               interrupted,
++               opening["operation_id"],
++               ctx.session,
++               ctx.origin,
++               ctx.identity_sha
++             )
++  end
++
++  test "a matching staged continuation survives a turn and a forged result does not bind a plan" do
++    ctx = fixture()
++    bytes = "x"
++    handle = String.duplicate("4", 32)
++    {state, opening, start_result, sha} = opening(ctx, bytes, handle)
++    {page_intent, page_result} = page(ctx, bytes, handle, sha, 0)
++    state = state |> then(&advance(ctx, &1, page_intent)) |> then(&advance(ctx, &1, page_result))
++    operation = opening["operation_id"]
++    plan = String.duplicate("d", 64)
++    outer = ctx.parent["payload"]["arguments"]
++
++    args =
++      outer["args"]
++      |> Map.put("expected_sha256", sha)
++      |> Map.put("collection_state", %{"plan_sha256" => plan})
++      |> Map.put("opening_acquisition", %{
++        "kind" => "workspace.read",
++        "path" => "synthetic.docx",
++        "operation_id" => operation
++      })
++
++    continuation = %{
++      "id" => "source",
++      "arguments" => %{
++        "store" => outer["store"],
++        "action" => "continue_collection_document",
++        "args" => args
++      }
++    }
++
++    value = %{"status" => "draft", "continuation" => continuation}
++
++    {:ok, result} =
++      Invocation.build_result(
++        ctx.parent,
++        %{"api_version" => 1, "kind" => "result", "value" => value},
++        [start_result, page_result]
++      )
++
++    forged = Map.put(result, "text_sha256", String.duplicate("e", 64))
++    forged_state = advance(ctx, state, forged)
++
++    assert {:ok, unbound} =
++             WorkspaceAcquisition.lookup(
++               forged_state,
++               operation,
++               ctx.session,
++               ctx.origin,
++               ctx.identity_sha
++             )
++
++    refute Map.has_key?(unbound, "plan_sha256")
++
++    state = advance(ctx, state, result)
++
++    state =
++      WorkspaceAcquisition.advance(
++        state,
++        %{"type" => "turn_finished"},
++        nil,
++        ctx.session,
++        ctx.origin
++      )
++
++    assert {:ok, receipt} =
++             WorkspaceAcquisition.lookup(
++               state,
++               operation,
++               ctx.session,
++               ctx.origin,
++               ctx.identity_sha
++             )
++
++    assert receipt["plan_sha256"] === plan
++  end
++
++  test "sequential successful invocations reclaim receipt slots beyond sixteen acquisitions" do
++    base = fixture()
++
++    final =
++      Enum.reduce(1..17, base.state, fn _, state ->
++        parent =
++          Invocation.intent(
++            base.parent["identity"],
++            base.parent["descriptor"],
++            base.parent["payload"]["arguments"],
++            base.session,
++            Ipse.Usage.id(),
++            nil,
++            nil,
++            "operator_request"
++          )
++
++        ctx = %{base | parent: parent, state: state}
++        handle = Ipse.Usage.id()
++        {state, opening, start_result, sha} = opening(ctx, "x", handle)
++        {page_intent, page_result} = page(ctx, "x", handle, sha, 0)
++
++        state =
++          state |> then(&advance(ctx, &1, page_intent)) |> then(&advance(ctx, &1, page_result))
++
++        operation = opening["operation_id"]
++
++        assert {:ok, _} =
++                 WorkspaceAcquisition.lookup(
++                   state,
++                   operation,
++                   ctx.session,
++                   ctx.origin,
++                   ctx.identity_sha
++                 )
++
++        {:ok, result} =
++          Invocation.build_result(
++            parent,
++            %{
++              "api_version" => 1,
++              "kind" => "result",
++              "value" => %{"status" => "ok", "continuation" => nil}
++            },
++            [start_result, page_result]
++          )
++
++        forged = Map.put(result, "text_sha256", String.duplicate("e", 64))
++        forged_state = advance(ctx, state, forged)
++
++        assert {:ok, _} =
++                 WorkspaceAcquisition.lookup(
++                   forged_state,
++                   operation,
++                   ctx.session,
++                   ctx.origin,
++                   ctx.identity_sha
++                 )
++
++        state = advance(ctx, state, result)
++
++        assert {:error, :workspace_acquisition_unavailable} =
++                 WorkspaceAcquisition.lookup(
++                   state,
++                   operation,
++                   ctx.session,
++                   ctx.origin,
++                   ctx.identity_sha
++                 )
++
++        state
++      end)
++
++    assert final.completed == %{}
++    refute final.refused
++  end
++end
+--- a/test/ipse/extension/collection_document_stage_test.exs
++++ b/test/ipse/extension/collection_document_stage_test.exs
+@@ -948,4 +948,63 @@
+ 
+     assert {:ok, _} = call(fresh, %{"op" => "value.abort", "slot" => 2, "epoch" => next_epoch})
+   end
++
++  @tag :workspace_publication_guard
++  test "the trusted publication callback gates inline, fused and staged commits", c do
++    body = Jason.encode!(%{"kind" => "synthetic_source_head"})
++
++    guard = fn changes, _read ->
++      send(self(), {:publication_guard, Enum.map(changes, & &1["key"])})
++      {:error, :document_store_refused}
++    end
++
++    before = generation(c)
++    request = inline(body, "source.fixture.inline") |> Map.put("generation", before)
++
++    assert {:error, :document_store_refused} =
++             DocumentStage.execute(c.root, c.ns, request, Usage.id(), c.owner,
++               publication_guard: guard
++             )
++
++    assert_receive {:publication_guard, ["source.fixture.inline"]}
++    assert generation(c) == before
++    assert {:ok, %{"record" => nil}} = get(c, "source.fixture.inline")
++
++    ref = %{"slot" => 0, "epoch" => Usage.id()}
++
++    request =
++      fused(body, ref, 0, [body], true)
++      |> Map.put("key", "source.fixture.parts")
++      |> Map.put("generation", before)
++
++    assert {:error, :document_store_refused} =
++             DocumentStage.execute(c.root, c.ns, request, Usage.id(), c.owner,
++               publication_guard: guard
++             )
++
++    assert_receive {:publication_guard, keys}
++    assert "source.fixture.parts" in keys
++    assert generation(c) == before
++    assert {:ok, %{"record" => nil}} = get(c, "source.fixture.parts")
++
++    epoch = Usage.id()
++    stage(c, body, 1, epoch)
++    staged_generation = generation(c)
++
++    request = %{
++      "op" => "commit",
++      "stages" => [%{"slot" => 1, "epoch" => epoch}],
++      "generation" => staged_generation
++    }
++
++    assert {:error, :document_store_refused} =
++             DocumentStage.execute(c.root, c.ns, request, Usage.id(), c.owner,
++               publication_guard: guard
++             )
++
++    assert_receive {:publication_guard, keys}
++    assert "packed.block" in keys
++    assert generation(c) == staged_generation
++    assert {:ok, %{"record" => nil}} = get(c, "packed.block")
++  end
+ end
+--- a/test/ipse/extension/collection/workspace_document_guard_test.exs
++++ b/test/ipse/extension/collection/workspace_document_guard_test.exs
+@@ -0,0 +1,149 @@
++defmodule Ipse.Extension.Collection.WorkspaceDocumentGuardTest do
++  use ExUnit.Case, async: true
++  alias Ipse.Extension.Collection.WorkspaceDocumentGuard, as: Guard
++
++  defp guard do
++    %{
++      "path" => "source.docx",
++      "original_sha256" => String.duplicate("a", 64),
++      "opening_operation_id" => String.duplicate("b", 32),
++      "source_id" => "workspace:source",
++      "generation" => 1,
++      "bundle_sha256" => String.duplicate("c", 64)
++    }
++  end
++
++  defp request(inner),
++    do: %{
++      "op" => "collection.store",
++      "scope" => "project",
++      "request" => inner,
++      "workspace_guard" => guard()
++    }
++
++  test "each publication form requires one exact source binding for workspace preflight" do
++    for inner <- [
++          %{"op" => "commit"},
++          %{"op" => "value.put_inline"},
++          %{"op" => "value.write_parts", "publish" => true}
++        ] do
++      request = request(inner)
++      assert Guard.guarded_request?(request)
++      assert {:ok, read} = Guard.preflight_read(request)
++      assert read["arguments"]["path"] == "source.docx"
++      assert read["arguments"]["expected_sha256"] == String.duplicate("a", 64)
++      refute Guard.guarded_request?(Map.delete(request, "workspace_guard"))
++
++      refute Guard.guarded_request?(
++               put_in(request, ["workspace_guard", "opening_operation_id"], "forged")
++             )
++
++      refute Guard.guarded_request?(
++               put_in(request, ["workspace_guard", "original_sha256"], "wrong")
++             )
++    end
++
++    refute Guard.guarded_request?(request(%{"op" => "value.write_parts", "publish" => false}))
++  end
++
++  test "shipped bundle selection uses the exact host catalog digest" do
++    shipped = String.duplicate("a", 64)
++    other = String.duplicate("b", 64)
++    bundles = [%{id: "corpus-collection-documents", digest: shipped}]
++    assert Guard.selected_bundle?(%{"artifact_sha256" => shipped}, bundles)
++    refute Guard.selected_bundle?(%{"artifact_sha256" => other}, bundles)
++
++    refute Guard.selected_bundle?(%{"artifact_sha256" => shipped}, [
++             %{id: "other", digest: shipped}
++           ])
++  end
++
++  test "a Corpus source cannot fall back to generic behavior without the shipped catalog entry" do
++    sha = String.duplicate("a", 64)
++    identity = %{"artifact_sha256" => sha}
++
++    assert {:error, :document_guard_unconfirmed} =
++             Guard.bundle_selection(identity, "ipse-knowledge/corpus", {:error, :unavailable})
++
++    assert {:error, :document_guard_unconfirmed} =
++             Guard.bundle_selection(identity, "ipse-knowledge/corpus", {:ok, []})
++
++    entry = %{id: "corpus-collection-documents", digest: sha}
++    assert {:ok, true} = Guard.bundle_selection(identity, "ipse-knowledge/corpus", {:ok, [entry]})
++
++    assert {:ok, false} =
++             Guard.bundle_selection(
++               %{"artifact_sha256" => String.duplicate("b", 64)},
++               "ipse-knowledge/corpus",
++               {:ok, [entry]}
++             )
++
++    assert {:ok, false} =
++             Guard.bundle_selection(identity, "another-extension", {:error, :unavailable})
++  end
++
++  test "workspace and supplied-document invocations cannot relabel a source as ordinary" do
++    session = fn action, args ->
++      %{
++        invocation: %{
++          parent: %{
++            "descriptor" => %{"id" => "source"},
++            "payload" => %{"arguments" => %{"action" => action, "args" => args}}
++          }
++        }
++      }
++    end
++
++    for action <- ~w(read_document continue_collection_document put_document) do
++      assert {:error, :document_store_refused} =
++               Guard.authorize(
++                 session.(action, %{}),
++                 %{"request" => %{}},
++                 :not_workspace_document
++               )
++    end
++
++    assert {:error, :document_store_refused} =
++             Guard.authorize(
++               session.("continue_collection_source", %{"input_action" => "put_document"}),
++               %{"request" => %{}},
++               :not_workspace_document
++             )
++
++    assert {:ok, :other_source} =
++             Guard.authorize(session.("put", %{}), %{"request" => %{}}, :not_workspace_document)
++  end
++
++  test "a non-head source value is inspected and cannot bypass a workspace document invocation" do
++    bytes = Jason.encode!(%{"kind" => "not_a_source_head"})
++
++    packed = %{
++      "version" => 1,
++      "kind" => "document_value",
++      "byte_count" => byte_size(bytes),
++      "sha256" => Ipse.JSON.sha256(bytes),
++      "parts" => [bytes]
++    }
++
++    change = %{
++      "key" => "source.notes." <> String.duplicate("a", 64),
++      "expected_revision" => 0,
++      "value" => packed
++    }
++
++    assert {:ok, [:not_workspace_document]} =
++             Guard.inspect_changes([change], fn _ -> {:ok, nil} end, String.duplicate("b", 32))
++
++    session = %{
++      invocation: %{
++        parent: %{
++          "descriptor" => %{"id" => "source"},
++          "payload" => %{"arguments" => %{"action" => "read_document", "args" => %{}}}
++        }
++      }
++    }
++
++    assert {:error, :document_store_refused} =
++             Guard.authorize(session, %{"request" => %{}}, :not_workspace_document)
++  end
++end
+--- a/test/extensions/knowledge/document_acquisition_session_test.exs
++++ b/test/extensions/knowledge/document_acquisition_session_test.exs
+@@ -15,30 +15,36 @@
+ 
+     artifacts =
+       for preset <- ~w(state-documents state-lexical collection-documents), into: %{} do
+-        path = Path.join(root, preset)
++        if preset == "collection-documents" and System.get_env("IPSE_TEST_WORD_SHIPPED") == "1" do
++          {:ok, bundles} = Ipse.Extension.Bundles.inventory()
++          %{path: path} = Enum.find(bundles, &(&1.id == "corpus-collection-documents"))
++          {preset, path}
++        else
++          path = Path.join(root, preset)
+ 
+-        assert {output, 0} =
+-                 System.cmd(
+-                   System.find_executable("elixir"),
+-                   [
+-                     "extensions/knowledge/build.exs",
+-                     "--sdk",
+-                     Application.app_dir(:ipse, "ebin"),
+-                     "--output",
+-                     path,
+-                     "--package",
+-                     "corpus",
+-                     "--preset",
+-                     preset
+-                   ],
+-                   stderr_to_stdout: true
+-                 )
++          assert {output, 0} =
++                   System.cmd(
++                     System.find_executable("elixir"),
++                     [
++                       "extensions/knowledge/build.exs",
++                       "--sdk",
++                       Application.app_dir(:ipse, "ebin"),
++                       "--output",
++                       path,
++                       "--package",
++                       "corpus",
++                       "--preset",
++                       preset
++                     ],
++                     stderr_to_stdout: true
++                   )
+ 
+-        refute output =~ "warning:"
+-        {preset, path}
++          refute output =~ "warning:"
++          {preset, path}
++        end
+       end
+ 
+-    on_exit(fn -> File.rm_rf!(root) end)
++    if System.get_env("IPSE_TEST_WORD_KEEP") != "1", do: on_exit(fn -> File.rm_rf!(root) end)
+     %{root: root, artifacts: artifacts}
+   end
+ 
+@@ -48,7 +54,7 @@
+         native = System.get_env("IPSE_DOCUMENT_NATIVE_TMPDIR") || System.tmp_dir!()
+         base = Path.join(native, "ipse-public-collection-" <> Ipse.Usage.id())
+         File.mkdir!(base)
+-        on_exit(fn -> File.rm_rf!(base) end)
++        if System.get_env("IPSE_TEST_WORD_KEEP") != "1", do: on_exit(fn -> File.rm_rf!(base) end)
+         {Path.join(base, "workspace"), Path.join(base, "home")}
+       else
+         cwd = Path.join(c.root, Ipse.Usage.id())
+@@ -2020,4 +2026,150 @@
+     assert_idle_resume_journal(journal, before_bytes, id)
+     assert :ok = Session.close_confirmed(resumed)
+   end
++
++  @tag :workspace_word_large
++  @tag timeout: 300_000
++  test "large workspace Word survives staged publication and rechecks the original on citation",
++       c do
++    run = open(c, "collection-documents")
++
++    text =
++      "Orion launch is grounded in this original. " <> String.duplicate("stable detail ", 2800)
++
++    bytes = document(text, [{:compress, []}])
++    assert byte_size(bytes) > 32_768 and byte_size(bytes) <= 1_048_576
++    path = Path.join(run.cwd, "source.docx")
++    File.write!(path, bytes)
++
++    opened = run |> invoke("source", args()) |> then(&await_staged_collection(run, &1))
++    opening = get_in(opened, ["continuation", "arguments", "args", "opening_acquisition"])
++    assert %{"kind" => "workspace.read", "path" => "source.docx", "operation_id" => _} = opening
++
++    File.write!(path, document("A different synthetic original."))
++    assert continue(run, opened["continuation"])["status"] == "refused"
++    File.write!(path, bytes)
++
++    finished =
++      Enum.reduce_while(1..40, opened, fn _, current ->
++        if current["status"] == "draft",
++          do: {:cont, continue(run, current["continuation"])},
++          else: {:halt, current}
++      end)
++
++    assert finished["status"] == "ok", inspect(finished)
++
++    query_args = %{
++      "store" => "notes",
++      "retrieval" => "words",
++      "query" => "Orion launch",
++      "top_k" => 1,
++      "as_of_ms" => 20,
++      "source_ids" => ["workspace:source"]
++    }
++
++    result = invoke(run, "query_selected", query_args)
++    assert result["status"] in ~w(ok partial), inspect(result)
++
++    assert Enum.any?(result["evidence"], fn hit ->
++             get_in(hit, ["citation", "document", "original_sha256"]) == JSON.sha256(bytes) and
++               get_in(hit, ["citation", "document", "locator", "paragraph"]) == 1
++           end)
++
++    held = path <> ".held"
++    File.rename!(path, held)
++
++    try do
++      missing = invoke(run, "query_selected", query_args)
++      assert missing["status"] == "refused", inspect(missing)
++    after
++      if File.exists?(held) and not File.exists?(path), do: File.rename!(held, path)
++    end
++
++    restored = invoke(run, "query_selected", query_args)
++    assert restored["status"] in ~w(ok partial), inspect(restored)
++    assert File.read!(path) == bytes
++
++    id = Session.info(run.pid).id
++    {:ok, events} = Journal.load(run.dir, id)
++
++    assert Enum.any?(events, fn event ->
++             event["type"] == "extension_action_result" and
++               get_in(event, ["request", "arguments", "snapshot"]) == "page" and
++               get_in(event, ["outcome", "status"]) == "ok"
++           end)
++
++    assert Enum.any?(events, fn event ->
++             event["type"] == "extension_action_intent" and
++               get_in(event, ["request", "workspace_guard", "opening_operation_id"]) ==
++                 opening["operation_id"]
++           end)
++
++    assert {:ok, _} = Session.Saved.restore(events, id)
++    assert :ok = Session.close_confirmed(run.pid)
++    journal = Path.join(run.dir, id <> ".jsonl")
++    before = File.read!(journal)
++
++    assert {:ok, resumed} =
++             DynamicSupervisor.start_child(
++               Ipse.Sessions,
++               {Session, Keyword.put(run.opts, :id, id)}
++             )
++
++    assert_idle_resume_journal(journal, before, id)
++    assert :ok = Session.close_confirmed(resumed)
++    assert File.read!(path) == bytes
++  end
++
++  @tag :workspace_word_large_unknown
++  @tag timeout: 180_000
++  test "owner loss before a large Word page result stays unknown and is not replayed", c do
++    run = open(c, "collection-documents")
++    bytes = document("Orion " <> String.duplicate("source ", 5000), [{:compress, []}])
++    assert byte_size(bytes) > 32_768
++    path = Path.join(run.cwd, "source.docx")
++    File.write!(path, bytes)
++    id = Session.info(run.pid).id
++    lock = :sys.get_state(run.pid).lock_guard
++    lock_ref = Process.monitor(lock)
++    owner = self()
++
++    callback = fn
++      0,
++      {:in,
++       {:"$gen_call", _,
++        {:extension_action_commit, _,
++         %{"request" => %{"op" => "tool.call", "arguments" => %{"snapshot" => "page"}}} = event}}},
++      _ ->
++        send(owner, {:large_word_page_before_commit, event})
++        receive do: (:release_large_word_page -> :ok)
++        1
++
++      count, _, _ ->
++        count
++    end
++
++    assert :ok = :sys.install(run.pid, {callback, 0})
++    assert :ok = Session.invoke_export(run.pid, :command, "ext__corpus__source", args())
++    assert_receive {:large_word_page_before_commit, event}, 30_000
++    assert get_in(event, ["outcome", "status"]) == "ok"
++    monitor = Process.monitor(run.pid)
++    Process.exit(run.pid, :kill)
++    assert_receive {:DOWN, ^monitor, :process, _, :killed}, 5000
++    assert_receive {:DOWN, ^lock_ref, :process, ^lock, _}, 5000
++    {:ok, events} = Journal.load(run.dir, id)
++    assert List.last(events)["type"] == "extension_action_intent"
++    assert get_in(List.last(events), ["request", "arguments", "snapshot"]) == "page"
++    journal = Path.join(run.dir, id <> ".jsonl")
++    before = File.read!(journal)
++
++    assert {:ok, resumed} =
++             DynamicSupervisor.start_child(
++               Ipse.Sessions,
++               {Session, Keyword.put(run.opts, :id, id)}
++             )
++
++    assert_idle_resume_journal(journal, before, id)
++    assert :ok = Session.close_confirmed(resumed)
++    assert File.read!(path) == bytes
++  end
+ end
+--- a/lib/ipse/session/resources.ex
++++ b/lib/ipse/session/resources.ex
+@@ -111,6 +111,18 @@
+   def authorized_effect?(_, _), do: false
+ 
+   @doc false
++  def authorized_task?(worker, caller) when is_pid(worker) and is_pid(caller) do
++    case Registry.lookup(Ipse.Registry, {__MODULE__, worker}) do
++      [{scope, _}] -> GenServer.call(scope, {:authorized_task, worker, caller})
++      _ -> false
++    end
++  catch
++    :exit, _ -> false
++  end
++
++  def authorized_task?(_, _), do: false
++
++  @doc false
+   def resource_effect?(%{scope: scope, id: id}, worker, caller)
+       when is_pid(scope) and is_pid(worker) and is_pid(caller) do
+     GenServer.call(scope, {:resource_effect, id, worker, caller})
+@@ -252,6 +264,24 @@
+     end
+   end
+ 
++  # Register and start the already Session-bound dormant document effect in one
++  # scope transition, so cancellation cannot leave it waiting for a start signal.
++  def handle_call(
++        {:track_document_effect, pid},
++        {worker, _},
++        %{closed: false, worker: worker} = state
++      )
++      when is_pid(pid) and map_size(state.effects) < 32 do
++    if Process.alive?(pid) and Process.alive?(worker) and Process.alive?(state.owner) do
++      :ok = Ipse.Session.Lock.track_in(state.lock_guard, pid, :peer)
++      effects = Map.put(state.effects, pid, Process.monitor(pid))
++      send(pid, {:begin_file_effect, worker})
++      {:reply, :ok, %{state | effects: effects}}
++    else
++      {:reply, {:error, :cleanup_scope_closed}, state}
++    end
++  end
++
+   def handle_call({:track_effect, pid}, {caller, _}, %{closed: false} = state)
+       when is_pid(pid) and map_size(state.effects) < 32 do
+     if caller in [state.owner, state.worker] or Map.has_key?(state.tasks, caller) do
+@@ -370,6 +400,18 @@
+ 
+   def handle_call({:authorized_effect, _, _}, _, state), do: {:reply, false, state}
+ 
++  def handle_call(
++        {:authorized_task, worker, task},
++        {owner, _},
++        %{owner: owner, worker: worker, closed: false} = state
++      ) do
++    {:reply,
++     Process.alive?(owner) and Process.alive?(worker) and Process.alive?(task) and
++       Map.has_key?(state.tasks, task), state}
++  end
++
++  def handle_call({:authorized_task, _, _}, _, state), do: {:reply, false, state}
++
+   # A host Worker can query only its own registered extension resource. This
+   # does not broaden the owner-only Session query above or admit another task.
+   def handle_call(
+@@ -1261,6 +1303,29 @@
+     end
+   end
+ 
++  @doc false
++  def document_file_effect(fun, bind) when is_function(fun, 0) and is_function(bind, 1) do
++    if Process.get(@effect_key) do
++      {:unknown, :nested_effect_unconfirmed}
++    else
++      owner = self()
++      scope = current()
++      {pid, ref} = spawn_monitor(fn -> execute_file_effect(owner, scope, fun, true) end)
++
++      try do
++        :ok = bind.(pid)
++        true = is_pid(scope)
++        :ok = GenServer.call(scope, {:track_document_effect, pid})
++        await_file_effect(pid, ref)
++      catch
++        kind, reason ->
++          Process.exit(pid, :kill)
++          Process.demonitor(ref, [:flush])
++          :erlang.raise(kind, reason, __STACKTRACE__)
++      end
++    end
++  end
++
+   defp perform_file_effect(fun, guard) do
+     owner = self()
+     scope = current()
+@@ -1279,7 +1344,10 @@
+     end
+ 
+     send(pid, {:begin_file_effect, owner})
++    await_file_effect(pid, ref)
++  end
+ 
++  defp await_file_effect(pid, ref) do
+     receive do
+       {^pid, {:returned, value}} ->
+         Process.demonitor(ref, [:flush])
+@@ -1294,7 +1362,9 @@
+     end
+   end
+ 
+-  defp execute_file_effect(owner, scope, fun) do
++  defp execute_file_effect(owner, scope, fun), do: execute_file_effect(owner, scope, fun, false)
++
++  defp execute_file_effect(owner, scope, fun, require_live) do
+     ref = Process.monitor(owner)
+ 
+     receive do
+@@ -1304,10 +1374,14 @@
+         Process.put(@effect_owner_key, owner)
+ 
+         result =
+-          try do
+-            {:returned, fun.()}
+-          catch
+-            kind, reason -> {:raised, kind, reason, __STACKTRACE__}
++          if require_live and (not Process.alive?(owner) or not active?()) do
++            {:returned, {:unknown, :document_effect_owner_unconfirmed}}
++          else
++            try do
++              {:returned, fun.()}
++            catch
++              kind, reason -> {:raised, kind, reason, __STACKTRACE__}
++            end
+           end
+ 
+         send(owner, {self(), result})
+--- a/test/ipse/session/resources_authority_test.exs
++++ b/test/ipse/session/resources_authority_test.exs
+@@ -41,6 +41,10 @@
+     assert_receive {:effect, effect}
+     assert Resources.authorized_effect?(worker, worker)
+     assert Resources.authorized_effect?(worker, effect)
++    assert Resources.authorized_task?(worker, ordinary)
++    refute Resources.authorized_task?(worker, effect)
++    refute Resources.authorized_task?(worker, self())
++    refute Task.async(fn -> Resources.authorized_task?(worker, ordinary) end) |> Task.await()
+     refute Resources.authorized_effect?(worker, ordinary)
+     refute Resources.authorized_effect?(ordinary, effect)
+     refute Resources.authorized_effect?(worker, self())
+@@ -49,9 +53,121 @@
+     send(effect, :finish)
+     assert_receive :effect_finished
+     assert :ok = Resources.finish(scope)
++    refute Resources.authorized_task?(worker, ordinary)
+     refute Resources.authorized_effect?(worker, worker)
+     refute Resources.authorized_effect?(worker, effect)
+     assert :ok = Resources.close(scope)
+     refute Resources.authorized_effect?(worker, worker)
+   end
++
++  test "the owner scope terminates an unlinked tracked reader on owner loss" do
++    parent = self()
++
++    owner =
++      spawn(fn ->
++        {:ok, scope} = Resources.start(self())
++
++        worker =
++          spawn(fn ->
++            receive do: (:start -> :ok)
++            Resources.bind(scope)
++
++            task =
++              Resources.async(fn ->
++                send(parent, {:snapshot_reader, self()})
++                receive do: (:stop -> :ok)
++              end)
++
++            Process.unlink(task.pid)
++            receive do: (:stop -> :ok)
++          end)
++
++        :ok = Resources.attach(scope, worker)
++        send(worker, :start)
++        send(parent, {:snapshot_scope, self(), scope, worker})
++        receive do: (:stop -> :ok)
++      end)
++
++    assert_receive {:snapshot_scope, ^owner, scope, worker}
++    assert_receive {:snapshot_reader, reader}
++    reader_ref = Process.monitor(reader)
++    scope_ref = Process.monitor(scope)
++    Process.exit(owner, :kill)
++    assert_receive {:DOWN, ^reader_ref, :process, ^reader, _}, 5_000
++    assert_receive {:DOWN, ^scope_ref, :process, ^scope, _}, 5_000
++    refute Process.alive?(worker)
++  end
++
++  test "a document effect with a queued start refuses IO after its Worker dies" do
++    parent = self()
++    {:ok, scope} = Resources.start(parent)
++
++    worker =
++      spawn(fn ->
++        receive do: (:start -> :ok)
++        Resources.bind(scope)
++
++        Resources.document_file_effect(
++          fn ->
++            send(parent, :late_document_effect_started)
++            :ok
++          end,
++          fn peer ->
++            send(parent, {:dormant_document_peer, peer})
++            receive do: (:allow_document_registration -> :ok)
++            :ok
++          end
++        )
++      end)
++
++    on_exit(fn ->
++      if Process.alive?(worker), do: Process.exit(worker, :kill)
++      if Process.alive?(scope), do: Resources.close(scope)
++    end)
++
++    :ok = Resources.attach(scope, worker)
++    send(worker, :start)
++    assert_receive {:dormant_document_peer, peer}, 2_000
++
++    on_exit(fn ->
++      if Process.alive?(peer) do
++        try do
++          :erlang.resume_process(peer)
++        rescue
++          ArgumentError -> :ok
++        end
++
++        Process.exit(peer, :kill)
++      end
++    end)
++
++    peer_ref = Process.monitor(peer)
++    worker_ref = Process.monitor(worker)
++    true = :erlang.suspend_process(peer)
++    send(worker, :allow_document_registration)
++
++    queued =
++      Enum.reduce_while(1..200, false, fn _, _ ->
++        case Process.info(peer, :messages) do
++          {:messages, messages} ->
++            if Enum.any?(messages, &(&1 == {:begin_file_effect, worker})),
++              do: {:halt, true},
++              else:
++                (
++                  Process.sleep(10)
++                  {:cont, false}
++                )
++
++          _ ->
++            {:halt, false}
++        end
++      end)
++
++    assert queued
++    Process.exit(worker, :kill)
++    assert_receive {:DOWN, ^worker_ref, :process, ^worker, :killed}, 2_000
++    true = :erlang.resume_process(peer)
++    assert_receive {:DOWN, ^peer_ref, :process, ^peer, _}, 5_000
++    refute_received :late_document_effect_started
++  end
+ end
+--- a/test/ipse/session/workspace_snapshot_binding_test.exs
++++ b/test/ipse/session/workspace_snapshot_binding_test.exs
+@@ -0,0 +1,119 @@
++defmodule Ipse.Session.WorkspaceSnapshotBindingTest do
++  use ExUnit.Case, async: true
++  alias Ipse.Extension.Collection.WorkspaceDocumentGuard, as: Guard
++
++  test "the live action refuses a different effect, reader, or reused request" do
++    job = make_ref()
++    token = make_ref()
++    intent = %{"request" => %{}}
++    worker = self()
++    reader = spawn(fn -> receive do: (:stop -> :ok) end)
++    peer = spawn(fn -> receive do: (:stop -> :ok) end)
++    impostor = spawn(fn -> receive do: (:stop -> :ok) end)
++    on_exit(fn -> Enum.each([reader, peer, impostor], &Process.exit(&1, :kill)) end)
++
++    action = %{
++      intent: intent,
++      workspace_snapshot_reader: %{
++        reader: reader,
++        token: token,
++        peer: peer,
++        bound: false,
++        used: false
++      }
++    }
++
++    state = %{job_ref: job, task: %{pid: worker}, invocation: %{action: action}}
++    from = fn pid -> {pid, make_ref()} end
++    refused = {:error, :document_store_refused}
++
++    assert {:reply, ^refused, ^state} =
++             Ipse.Session.handle_call(
++               {:extension_workspace_snapshot_bind, job, intent, reader, token},
++               from.(impostor),
++               state
++             )
++
++    assert {:reply, ^refused, ^state} =
++             Ipse.Session.handle_call(
++               {:extension_workspace_snapshot_bind, job, intent, impostor, token},
++               from.(peer),
++               state
++             )
++
++    bound_action = put_in(action, [:workspace_snapshot_reader, :bound], true)
++    bound_state = put_in(state, [:invocation, :action], bound_action)
++
++    assert {:reply, ^refused, ^bound_state} =
++             Ipse.Session.handle_call(
++               {:extension_workspace_snapshot_peer, job, intent, peer, token},
++               from.(impostor),
++               bound_state
++             )
++
++    assert {:reply, ^refused, ^bound_state} =
++             Ipse.Session.handle_call(
++               {:extension_workspace_snapshot_peer, job, intent, impostor, token},
++               from.(reader),
++               bound_state
++             )
++
++    used_state =
++      put_in(bound_state, [:invocation, :action, :workspace_snapshot_reader, :used], true)
++
++    assert {:reply, ^refused, ^used_state} =
++             Ipse.Session.handle_call(
++               {:extension_workspace_snapshot_peer, job, intent, peer, token},
++               from.(reader),
++               used_state
++             )
++  end
++
++  test "the bounded reader wait withholds on timeout, missing termination, or owner loss" do
++    token = make_ref()
++    sleeper = spawn(fn -> receive do: (:stop -> :ok) end)
++    on_exit(fn -> if Process.alive?(sleeper), do: Process.exit(sleeper, :kill) end)
++    ref = Process.monitor(sleeper)
++    deadline = System.monotonic_time(:millisecond) + 30
++
++    assert {:unknown, :workspace_check_unconfirmed} =
++             Guard.await_snapshot_reader(sleeper, token, ref, deadline)
++
++    ref = Process.monitor(sleeper)
++    send(self(), {:workspace_snapshot_result, token, {:ok, :synthetic}})
++    deadline = System.monotonic_time(:millisecond) + 30
++
++    assert {:unknown, :workspace_check_unconfirmed} =
++             Guard.await_snapshot_reader(sleeper, token, ref, deadline)
++
++    dead = spawn(fn -> :ok end)
++    ref = Process.monitor(dead)
++    deadline = System.monotonic_time(:millisecond) + 1_000
++
++    assert {:unknown, :workspace_check_unconfirmed} =
++             Guard.await_snapshot_reader(dead, token, ref, deadline)
++  end
++
++  test "a reader result is accepted only after its producer terminates normally" do
++    parent = self()
++    token = make_ref()
++
++    reader =
++      spawn(fn ->
++        receive do
++          :go -> send(parent, {:workspace_snapshot_result, token, {:ok, :synthetic}})
++        end
++      end)
++
++    ref = Process.monitor(reader)
++    send(reader, :go)
++
++    assert {:ok, :synthetic} =
++             Guard.await_snapshot_reader(
++               reader,
++               token,
++               ref,
++               System.monotonic_time(:millisecond) + 1_000
++             )
++  end
++end

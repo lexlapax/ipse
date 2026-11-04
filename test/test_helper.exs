@@ -28,6 +28,7 @@ ExUnit.start(
     :macos_sandbox,
     :macos_filesystem,
     :memory_scope,
+    :workspace_word_native,
     :controlled_tty_bridge,
     :controlled_tty_loss
   ]

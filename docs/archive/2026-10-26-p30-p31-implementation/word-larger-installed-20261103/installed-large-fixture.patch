@@ -1,0 +1,146 @@
+--- a/test/support/documents_setup.exs
++++ b/test/support/documents_setup.exs
+@@ -5,7 +5,7 @@
+ defmodule DocumentSetupJourney do
+   import ExUnit.Assertions
+ 
+-  def document do
++  def document(extra \\ "") do
+     word = "http://schemas.openxmlformats.org/wordprocessingml/2006/main"
+     rel = "http://schemas.openxmlformats.org/package/2006/relationships"
+ 
+@@ -18,9 +18,10 @@
+           {~c"[Content_Types].xml",
+            "<Types xmlns=\"http://schemas.openxmlformats.org/package/2006/content-types\"><Default Extension=\"rels\" ContentType=\"application/vnd.openxmlformats-package.relationships+xml\"/><Override PartName=\"/word/document.xml\" ContentType=\"application/vnd.openxmlformats-officedocument.wordprocessingml.document.main+xml\"/></Types>"},
+           {~c"word/document.xml",
+-           "<w:document xmlns:w=\"#{word}\"><w:body><w:p><w:r><w:t>Nebula setup retains exact résumé evidence.</w:t></w:r></w:p></w:body></w:document>"}
++           "<w:document xmlns:w=\"#{word}\"><w:body><w:p><w:r><w:t>Nebula setup retains exact résumé evidence." <>
++             extra <> "</w:t></w:r></w:p></w:body></w:document>"}
+         ],
+-        [:memory]
++        [:memory, {:compress, []}]
+       )
+ 
+     bytes
+@@ -159,7 +160,7 @@
+   end)
+ end
+ 
+-profile = if scenario == "collection", do: "collection", else: "state"
++profile = if scenario in ~w(collection large), do: "collection", else: "state"
+ 
+ argv =
+   ["documents", "setup", "--cwd", cwd, "--profile", profile, "--write"] ++
+@@ -183,6 +184,14 @@
+   assert saved["profiles"] == Jason.decode!(original)["profiles"]
+   assert saved["roles"] == Jason.decode!(original)["roles"]
+   [instance] = saved["extensions"]
++
++  if scenario == "large" do
++    {:ok, bundles} = Ipse.Extension.Bundles.inventory()
++    %{digest: shipped} = Enum.find(bundles, &(&1.id == "corpus-collection-documents"))
++    assert instance["artifact"] == shipped
++    IO.puts("INSTALLED_SHIPPED_CORPUS_SHA256=" <> shipped)
++  end
++
+   [trust] = saved["extension_trust"]
+   assert instance["enabled"]
+   refute trust["allow_children"]
+@@ -220,7 +229,13 @@
+   ]
+ 
+   {:ok, pid} = DynamicSupervisor.start_child(Ipse.Sessions, {Ipse.Session, session_opts})
+-  bytes = DocumentSetupJourney.document()
++
++  bytes =
++    if scenario == "large",
++      do: DocumentSetupJourney.document(String.duplicate(" stable", 5_000)),
++      else: DocumentSetupJourney.document()
++
++  if scenario == "large", do: assert(byte_size(bytes) in 32_769..1_048_576)
+   File.write!(Path.join(cwd, "source.docx"), bytes)
+ 
+   acquired =
+@@ -306,6 +321,42 @@
+   assert DocumentSetupJourney.invoke(resumed, "query", query, instance["artifact"])["evidence"] ==
+            result["evidence"]
+ 
++  if scenario == "large" do
++    selected = query |> Map.delete("rerank") |> Map.put("source_ids", ["workspace:source"])
++    live = DocumentSetupJourney.invoke(resumed, "query_selected", selected, instance["artifact"])
++    assert live["status"] in ~w(ok partial)
++
++    assert Enum.any?(
++             live["evidence"],
++             &(get_in(&1, ["citation", "document", "original_sha256"]) == Ipse.JSON.sha256(bytes))
++           )
++
++    original_path = Path.join(cwd, "source.docx")
++    held = Path.join(cwd, "source-held.docx")
++    refute File.exists?(held)
++    assert :ok = File.rename(original_path, held)
++
++    missing =
++      DocumentSetupJourney.invoke(resumed, "query_selected", selected, instance["artifact"])
++
++    assert missing["status"] == "refused"
++    assert missing["evidence"] == []
++    assert :ok = File.rename(held, original_path)
++    assert File.read!(original_path) == bytes
++
++    recovered =
++      DocumentSetupJourney.invoke(resumed, "query_selected", selected, instance["artifact"])
++
++    assert recovered["status"] in ~w(ok partial)
++
++    assert Enum.any?(
++             recovered["evidence"],
++             &(get_in(&1, ["citation", "document", "original_sha256"]) == Ipse.JSON.sha256(bytes))
++           )
++
++    IO.puts("INSTALLED_LARGE_SOURCE_RECOVERY_PASSED")
++  end
++
+   numbered = DocumentSetupJourney.numbered_document()
+   numbered_path = Path.join(cwd, "numbered.docx")
+   File.write!(numbered_path, numbered)
+--- a/dev/verification/documents_setup_installed.exs
++++ b/dev/verification/documents_setup_installed.exs
+@@ -71,12 +71,7 @@
+ 
+ results =
+   for {scenario, mode} <- [
+-        {"state", "--knowledge"},
+-        {"collection", "--knowledge"},
+-        {"cancel", "--knowledge-cancel"},
+-        {"stale", "--knowledge-stale"},
+-        {"race", "--knowledge-config"},
+-        {"pipe", nil}
++        {"large", "--knowledge"}
+       ] do
+     journey = Path.join(root, scenario)
+     File.mkdir!(journey)
+@@ -102,12 +97,14 @@
+     File.write!(Path.join(root, scenario <> ".log"), output)
+ 
+     marker =
+-      if scenario in ~w(state collection),
++      if scenario in ~w(state collection large),
+         do: "DOCUMENT_SETUP_JOURNEY_PASSED",
+         else: "DOCUMENT_SETUP_REFUSAL_PASSED"
+ 
+-    unless status == 0 and String.contains?(output, marker),
+-      do: raise("Installed setup failed in #{scenario}; see private fixture log")
++    unless status == 0 and String.contains?(output, marker) and
++             String.contains?(output, "INSTALLED_LARGE_SOURCE_RECOVERY_PASSED") and
++             Regex.match?(~r/INSTALLED_SHIPPED_CORPUS_SHA256=[0-9a-f]{64}/, output),
++           do: raise("Installed setup failed in #{scenario}; see private fixture log")
+ 
+     IO.puts("PASS installed document setup: #{scenario}")
+ 
+@@ -136,4 +133,4 @@
+ }
+ 
+ File.write!(Path.join(root, "report.json"), :json.encode(report))
+-IO.puts("INSTALLED_DOCUMENT_SETUP_ALL_SIX_PASSED")
++IO.puts("INSTALLED_LARGE_DOCUMENT_PASSED")

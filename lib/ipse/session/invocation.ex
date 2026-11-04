@@ -1508,9 +1508,17 @@ defmodule Ipse.Session.Invocation do
   end
 
   defp extension_action_context(s, request) do
-    if Ipse.Extension.Actions.tool?(request) do
+    if Ipse.Extension.Actions.workspace_context?(request) do
+      checked_request =
+        if Ipse.Extension.Actions.tool?(request) do
+          request
+        else
+          {:ok, read} = Ipse.Extension.Collection.WorkspaceDocumentGuard.preflight_read(request)
+          read
+        end
+
       expected = %{
-        request: Ipse.JSON.digest([request]),
+        request: Ipse.JSON.digest([checked_request]),
         context: Ipse.JSON.digest([s.context_snapshot]),
         job: s.job_ref,
         identity: Ipse.JSON.digest([s.invocation.parent["identity"]])

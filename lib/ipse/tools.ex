@@ -284,6 +284,52 @@ defmodule Ipse.Tools do
     end
   end
 
+  @doc false
+  def workspace_binary_snapshot(path, expected_sha256, context)
+      when is_binary(path) and is_map(context) do
+    with true <- is_nil(expected_sha256) or Ipse.JSON.sha256?(expected_sha256),
+         {:ok, resolved} <- checked_path(path, context, false),
+         {:ok, before} <- File.lstat(resolved, time: :posix),
+         true <- before.type == :regular and before.links == 1 and before.size in 1..@file_limit,
+         true <- Ipse.Session.Resources.active?(),
+         {:ok, file} <- :file.open(String.to_charlist(resolved), [:read, :binary, :raw]) do
+      result =
+        try do
+          with {:ok, info} <- :file.read_file_info(file, time: :posix),
+               true <- binary_identity(before) == binary_identity(File.Stat.from_record(info)),
+               {:ok, bytes} <- binary_bytes(file, @file_limit),
+               true <- byte_size(bytes) == before.size,
+               {:ok, ^bytes} <- binary_bytes(file, @file_limit),
+               {:ok, after_info} <- :file.read_file_info(file, time: :posix),
+               true <-
+                 binary_identity(before) == binary_identity(File.Stat.from_record(after_info)),
+               {:ok, ^resolved} <- checked_path(path, context, false),
+               {:ok, after_path} <- File.lstat(resolved, time: :posix),
+               true <- binary_identity(before) == binary_identity(after_path),
+               sha = Ipse.JSON.sha256(bytes),
+               true <- is_nil(expected_sha256) or expected_sha256 == sha,
+               true <- Ipse.Session.Resources.active?() do
+            {:ok, bytes, %{"path" => path, "byte_count" => byte_size(bytes), "sha256" => sha}}
+          else
+            _ -> {:error, :workspace_snapshot_refused}
+          end
+        rescue
+          _ -> {:error, :workspace_snapshot_refused}
+        catch
+          _, _ -> {:error, :workspace_snapshot_refused}
+        end
+
+      case :file.close(file) do
+        :ok -> result
+        _ -> {:unknown, :workspace_snapshot_cleanup_unconfirmed}
+      end
+    else
+      _ -> {:error, :workspace_snapshot_refused}
+    end
+  end
+
+  def workspace_binary_snapshot(_, _, _), do: {:error, :workspace_snapshot_refused}
+
   defp binary_bytes(file, limit) do
     case :file.pread(file, 0, limit + 1) do
       {:ok, bytes} when byte_size(bytes) <= limit -> {:ok, bytes}

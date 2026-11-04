@@ -47,15 +47,16 @@ one command at a time, finish each approval and wait for `Finished.`:
 Use words present in your document. If acquisition returns `draft`, copy its
 complete continuation command and finish it before querying. Inspect the returned
 quotation, original-file hash, locator, status and coverage. The
-[acquisition limits](#acquire-a-small-word-document-from-the-workspace) apply to
-both packaged profiles. State retains the small-store ceilings described below.
+[State acquisition limits](#acquire-a-small-word-document-from-the-workspace)
+apply to the State profile. The Collection profile has a separate
+[larger-file path](#query-a-document-collection) and storage limits.
 
 For experimental native Collection storage, explicitly choose project identity
 scope in the same home:
 
 ```sh
-ipse documents setup --profile collection --scope folder --cwd /path/to/workspace
-ipse documents setup --profile collection --scope folder --cwd /path/to/workspace --write
+ipse documents setup --profile collection --scope folder --cwd /path/to/workspace --replace
+ipse documents setup --profile collection --scope folder --cwd /path/to/workspace --replace --write
 ```
 
 Use `--scope repository` at a canonical primary Git root to select repository
@@ -376,6 +377,30 @@ identity and selection together, or supply an identity **already admitted in the
 selected home** for the manual artifact procedure below. It requires a matching
 native helper and available protected-storage profile. Full-profile capacity,
 build/rebuild peaks and Word fidelity remain unqualified.
+
+The shipped Collection document artifact can acquire a workspace `.docx` larger
+than the State profile's 32,768-byte original limit. Its host-owned snapshot is
+bounded at 1 MiB, but the extraction, locator, journal, action and time limits
+can refuse a smaller file. Extracted text remains limited to 64 KiB and 32
+chunks. The snapshot bound is a ceiling, not a promise that every document
+within it can be extracted or stored. Finish each returned continuation and
+approval before the next one; an interrupted effect is unknown and is not
+automatically replayed.
+
+The shipped Collection path verifies the original's path, size and hash again
+before publishing its source, and checks it again before returning evidence.
+These are point-in-time checks, not a filesystem watch or a lock held after the
+check. Another separately trusted extension with Collection write authority can
+change the shared store. If the shipped artifact or its catalog cannot be
+verified, inspect the selection and the retained work before starting another
+explicit operation.
+
+For workspace Word acquisition, use the catalog-matched `documents` artifact
+selected by packaged setup. The separately built Collection and dense artifacts
+in the procedures below are not necessarily identical to that artifact; their
+workspace-document publication can refuse the guarded request. They can still
+operate on explicitly supplied text and previously stored sources within their
+own selected authority.
 
 For an existing admitted project, save these options as
 `$IPSE_CORPUS_ARTIFACTS/collection-options.json`:

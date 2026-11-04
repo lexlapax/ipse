@@ -407,6 +407,12 @@ defmodule Ipse.Extension.ToolAction do
   @limit 4096
 
   def validate(request) do
+    if Ipse.Extension.WorkspaceSnapshot.request?(request),
+      do: :ok,
+      else: validate_ordinary(request)
+  end
+
+  defp validate_ordinary(request) do
     with :ok <- Ipse.Extension.validate(request),
          true <- Enum.sort(Map.keys(request)) == ~w(arguments name op timeout_ms),
          true <- request["op"] == "tool.call" and request["name"] in @names,
@@ -528,6 +534,17 @@ defmodule Ipse.Extension.ToolAction do
   end
 
   def valid_outcome?(request, "ok", value) do
+    if Ipse.Extension.WorkspaceSnapshot.request?(request) do
+      is_map(value) and Map.keys(value) == ["text"] and
+        Ipse.Extension.WorkspaceSnapshot.valid_result?(request, value["text"])
+    else
+      valid_ordinary_outcome?(request, value)
+    end
+  end
+
+  def valid_outcome?(_, _, _), do: false
+
+  defp valid_ordinary_outcome?(request, value) do
     keys =
       if request["name"] == "shell",
         do: ~w(text exit_code output_bytes output_truncated),
@@ -546,8 +563,6 @@ defmodule Ipse.Extension.ToolAction do
   rescue
     _ -> false
   end
-
-  def valid_outcome?(_, _, _), do: false
 
   defp binary_read?(request),
     do: request["name"] == "read" and get_in(request, ["arguments", "encoding"]) == "base64"

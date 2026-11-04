@@ -3004,6 +3004,117 @@ defmodule Ipse.Session do
       else: {:reply, {:error, :document_store_refused}, s}
   end
 
+  # The actual Worker registers one live reader for this exact action.
+  def handle_call(
+        {:extension_workspace_snapshot_register, ref, intent, reader, peer, token},
+        {worker, _},
+        %{job_ref: ref, task: %{pid: worker}, invocation: %{action: %{intent: intent} = action}} =
+          s
+      )
+      when ref != nil and is_pid(reader) and is_pid(peer) and is_reference(token) do
+    if is_nil(action[:workspace_snapshot_reader]) and
+         Ipse.Extension.Collection.WorkspaceDocumentGuard.guarded_request?(intent["request"]) and
+         Ipse.Session.Resources.authorized_task?(worker, reader) and
+         Process.alive?(peer) and peer != worker and
+         match?({:reply, :ok, ^s}, CurrentInvocation.document_current(s, intent)) do
+      bound = %{reader: reader, token: token, peer: peer, bound: false, used: false}
+
+      {:reply, :ok,
+       put_in(s.invocation.action, Map.put(action, :workspace_snapshot_reader, bound))}
+    else
+      {:reply, {:error, :document_store_refused}, s}
+    end
+  end
+
+  def handle_call({:extension_workspace_snapshot_register, _, _, _, _, _}, _, s),
+    do: {:reply, {:error, :document_store_refused}, s}
+
+  # Derive the peer from the actual caller, never from an embedded PID.
+  def handle_call(
+        {:extension_workspace_snapshot_bind, ref, intent, reader, token},
+        {peer, _},
+        %{
+          job_ref: ref,
+          task: %{pid: worker},
+          invocation: %{action: %{intent: intent, workspace_snapshot_reader: bound} = action}
+        } = s
+      )
+      when ref != nil and is_pid(reader) and is_reference(token) do
+    if bound === %{reader: reader, token: token, peer: peer, bound: false, used: false} and
+         Ipse.Session.Resources.authorized_task?(worker, reader) and
+         Ipse.Session.Resources.authorized_effect?(worker, peer) and
+         peer != worker and
+         match?({:reply, :ok, ^s}, CurrentInvocation.document_current(s, intent)) do
+      bound = %{bound | bound: true}
+
+      {:reply, :ok,
+       put_in(s.invocation.action, Map.put(action, :workspace_snapshot_reader, bound))}
+    else
+      {:reply, {:error, :document_store_refused}, s}
+    end
+  end
+
+  def handle_call({:extension_workspace_snapshot_bind, _, _, _, _}, _, s),
+    do: {:reply, {:error, :document_store_refused}, s}
+
+  # Only that registered reader can consume the request for the bound peer.
+  def handle_call(
+        {:extension_workspace_snapshot_peer, ref, intent, peer, token},
+        {reader, _},
+        %{
+          job_ref: ref,
+          task: %{pid: worker},
+          invocation: %{action: %{intent: intent, workspace_snapshot_reader: bound} = action}
+        } = s
+      )
+      when ref != nil and is_pid(peer) and is_reference(token) do
+    if bound === %{reader: reader, token: token, peer: peer, bound: true, used: false} and
+         Ipse.Session.Resources.authorized_task?(worker, reader) and
+         Ipse.Session.Resources.authorized_effect?(worker, peer) and
+         match?({:reply, :ok, ^s}, CurrentInvocation.document_current(s, intent)) do
+      bound = %{bound | used: true}
+
+      {:reply, :ok,
+       put_in(s.invocation.action, Map.put(action, :workspace_snapshot_reader, bound))}
+    else
+      {:reply, {:error, :document_store_refused}, s}
+    end
+  end
+
+  def handle_call({:extension_workspace_snapshot_peer, _, _, _, _}, _, s),
+    do: {:reply, {:error, :document_store_refused}, s}
+
+  def handle_call(
+        {:extension_workspace_document_authorize, ref, intent, document},
+        {caller, _},
+        %{
+          job_ref: ref,
+          task: %{pid: worker},
+          invocation: %{action: %{intent: intent}},
+          phase: phase
+        } = s
+      )
+      when ref != nil and
+             phase in [:tool, :extension_command, :extension_service, :extension_events] do
+    reply =
+      if caller == worker or Ipse.Session.Resources.authorized_effect?(worker, caller) do
+        case CurrentInvocation.document_current(s, intent) do
+          {:reply, :ok, ^s} ->
+            Ipse.Extension.Collection.WorkspaceDocumentGuard.authorize(s, intent, document)
+
+          _ ->
+            {:error, :document_store_refused}
+        end
+      else
+        {:error, :document_store_refused}
+      end
+
+    {:reply, reply, s}
+  end
+
+  def handle_call({:extension_workspace_document_authorize, _, _, _}, _, s),
+    do: {:reply, {:error, :document_store_refused}, s}
+
   def handle_call({:extension_document_prepare, _, _}, _, s),
     do: {:reply, {:error, :document_store_refused}, s}
 

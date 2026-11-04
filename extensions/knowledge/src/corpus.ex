@@ -61,6 +61,15 @@ defmodule IpseKnowledge.Corpus do
   def handle("host.actions", payload, %{phase: phase} = state)
       when phase in [:document_read, :document_check], do: document_read(payload, state)
 
+  def handle("host.actions", payload, %{phase: :document_snapshot_open} = state),
+    do: document_snapshot_open(payload, state)
+
+  def handle("host.actions", payload, %{phase: :document_snapshot_page} = state),
+    do: document_snapshot_page(payload, state)
+
+  def handle("host.actions", payload, %{phase: :document_use_verify} = state),
+    do: document_use_verified(payload, state)
+
   def handle("host.actions", payload, %{phase: :document_use_check} = state),
     do: document_use_checked(payload, state)
 
@@ -187,9 +196,16 @@ defmodule IpseKnowledge.Corpus do
              (action == "read_document" and is_nil(args["expected_sha256"]) and
                 args["expected_revision"] == 0 and
                 args["generation"] == 1) do
-      call(document_request(args["path"], args["expected_sha256"]), %{
+      collection = profile["kind"] == "collection"
+
+      request =
+        if collection,
+          do: snapshot_request("start", args["path"], args["expected_sha256"]),
+          else: document_request(args["path"], args["expected_sha256"])
+
+      call(request, %{
         state
-        | phase: :document_read,
+        | phase: if(collection, do: :document_snapshot_open, else: :document_read),
           ctx: %{
             store: store,
             profile: profile,
@@ -199,7 +215,8 @@ defmodule IpseKnowledge.Corpus do
             offset: 0,
             sha256: args["expected_sha256"],
             total: nil,
-            effects_used: 1
+            effects_used: 1,
+            reads_used: 0
           }
       })
     else
@@ -219,6 +236,99 @@ defmodule IpseKnowledge.Corpus do
     arguments = if expected, do: Map.put(arguments, "expected_sha256", expected), else: arguments
     %{"op" => "tool.call", "name" => "read", "timeout_ms" => 5000, "arguments" => arguments}
   end
+
+  defp snapshot_request(kind, path, expected, handle \\ nil, offset \\ nil) do
+    arguments = %{"snapshot" => kind, "path" => path}
+    arguments = if expected, do: Map.put(arguments, "expected_sha256", expected), else: arguments
+
+    arguments =
+      if handle,
+        do: Map.merge(arguments, %{"snapshot_handle" => handle, "byte_offset" => offset}),
+        else: arguments
+
+    %{"op" => "tool.call", "name" => "read", "timeout_ms" => 5000, "arguments" => arguments}
+  end
+
+  defp document_snapshot_open(
+         %{
+           "operation_id" => operation,
+           "outcome" => %{"status" => "ok", "value" => %{"text" => text}}
+         },
+         state
+       ) do
+    with true <- is_binary(operation) and Regex.match?(~r/\A[0-9a-f]{32}\z/, operation),
+         true <- text?(text, 8192),
+         value when is_map(value) <- JSON.decode!(text),
+         true <- exact?(value, ~w(byte_count handle path sha256)),
+         true <- value["path"] === state.ctx.args["path"],
+         count when is_integer(count) and count in 1..1_048_576 <- value["byte_count"],
+         true <- Evidence.sha256?(value["sha256"]),
+         true <- is_nil(state.ctx.sha256) or state.ctx.sha256 === value["sha256"],
+         handle when is_binary(handle) <- value["handle"],
+         true <- Regex.match?(~r/\A[0-9a-f]{32}\z/, handle) do
+      ctx =
+        Map.merge(state.ctx, %{
+          snapshot_handle: handle,
+          opening_operation: operation,
+          sha256: value["sha256"],
+          total: count
+        })
+
+      request = snapshot_request("page", value["path"], value["sha256"], handle, 0)
+      call(request, %{state | phase: :document_snapshot_page, ctx: ctx})
+    else
+      _ -> finish(state, refused(:document_acquisition_refused))
+    end
+  rescue
+    _ -> finish(state, refused(:document_acquisition_refused))
+  end
+
+  defp document_snapshot_open(_, state), do: finish(state, refused(:document_acquisition_refused))
+
+  defp document_snapshot_page(
+         %{
+           "operation_id" => operation,
+           "outcome" => %{"status" => "ok", "value" => %{"text" => text}}
+         },
+         state
+       ) do
+    with true <- is_binary(operation) and Regex.match?(~r/\A[0-9a-f]{32}\z/, operation),
+         true <- text?(text, 8192),
+         value when is_map(value) <- JSON.decode!(text),
+         true <- exact?(value, ~w(byte_count data handle next offset page_sha256 path sha256)),
+         true <- value["path"] === state.ctx.args["path"] and value["sha256"] === state.ctx.sha256,
+         true <-
+           value["handle"] === state.ctx.snapshot_handle and
+             value["byte_count"] === state.ctx.total,
+         true <- value["offset"] === state.ctx.offset and state.ctx.offset < state.ctx.total,
+         {:ok, bytes} <- Base.decode64(value["data"]),
+         true <- byte_size(bytes) == min(4096, state.ctx.total - state.ctx.offset),
+         true <- value["page_sha256"] === Evidence.sha256(bytes),
+         finish = state.ctx.offset + byte_size(bytes),
+         true <- value["next"] === if(finish < state.ctx.total, do: finish, else: nil) do
+      ctx = %{
+        state.ctx
+        | pieces: [bytes | state.ctx.pieces],
+          offset: finish,
+          reads_used: state.ctx.reads_used + 1
+      }
+
+      if value["next"] do
+        request =
+          snapshot_request("page", value["path"], value["sha256"], value["handle"], finish)
+
+        call(request, %{state | ctx: ctx})
+      else
+        complete_document_read(%{state | ctx: ctx})
+      end
+    else
+      _ -> finish(state, refused(:document_acquisition_refused))
+    end
+  rescue
+    _ -> finish(state, refused(:document_acquisition_refused))
+  end
+
+  defp document_snapshot_page(_, state), do: finish(state, refused(:document_acquisition_refused))
 
   defp document_read(
          %{
@@ -311,11 +421,24 @@ defmodule IpseKnowledge.Corpus do
           first_page: binary_part(bytes, 0, min(4096, byte_size(bytes)))
         })
 
-      call(document_request(state.ctx.args["path"], state.ctx.sha256), %{
-        state
-        | phase: :document_check,
-          ctx: ctx
-      })
+      if Map.has_key?(ctx, :snapshot_handle) do
+        receipt =
+          payload["document"]
+          |> Map.put("version", 2)
+          |> Map.put("acquisition", %{
+            "kind" => "workspace.read",
+            "path" => ctx.args["path"],
+            "operation_id" => ctx.opening_operation
+          })
+
+        store_document(%{state | ctx: ctx}, receipt)
+      else
+        call(document_request(state.ctx.args["path"], state.ctx.sha256), %{
+          state
+          | phase: :document_check,
+            ctx: ctx
+        })
+      end
     else
       {:error, code} -> finish(state, refused(code))
       _ -> finish(state, refused(:document_source_changed))
@@ -446,12 +569,18 @@ defmodule IpseKnowledge.Corpus do
           "source" => attrs,
           "expected_revision" => ctx.args["expected_revision"],
           "continuation" => ctx.args["collection_state"],
-          "effects_used" => ctx.effects_used
+          "effects_used" => ctx.effects_used,
+          "reads_used" => ctx.reads_used
         }),
         %{
           state
           | phase: :collection_source,
-            ctx: %{store: ctx.store, document_args: original, opening_acquisition: opening}
+            ctx: %{
+              store: ctx.store,
+              document_args: original,
+              opening_acquisition: opening,
+              workspace_snapshot: Map.has_key?(ctx, :snapshot_handle)
+            }
         }
       )
     else
@@ -937,6 +1066,30 @@ defmodule IpseKnowledge.Corpus do
   end
 
   defp advance({:call, request, cont}, state) do
+    request =
+      if state.phase == :collection_source and state.ctx[:workspace_snapshot] == true and
+           request["op"] === "collection.store" and request["request"]["op"] === "commit" and
+           cont[:phase] === :published do
+        args = state.ctx.document_args
+        opening = state.ctx.opening_acquisition
+
+        Map.put(request, "workspace_guard", %{
+          "path" => args["path"],
+          "original_sha256" => args["expected_sha256"],
+          "opening_operation_id" => opening["operation_id"],
+          "source_id" => args["source_id"],
+          "generation" => args["generation"],
+          "bundle_sha256" => cont.checkpoint["plan_sha256"]
+        })
+      else
+        request
+      end
+
+    cont =
+      if Map.has_key?(request, "workspace_guard"),
+        do: Map.put(cont, :request, request),
+        else: cont
+
     state =
       if state.phase == :collection_semantic_embed do
         count = Map.get(state.ctx, :embedding_result_reads, 0)
@@ -2392,12 +2545,28 @@ defmodule IpseKnowledge.Corpus do
   defp string(max), do: %{"type" => "string", "minLength" => 1, "maxLength" => max}
   defp integer(min, max), do: %{"type" => "integer", "minimum" => min, "maximum" => max}
 
+  defp snapshot_page_request?(request) do
+    args = request["arguments"]
+
+    exact?(request, ~w(op name timeout_ms arguments)) and request["op"] === "tool.call" and
+      request["name"] === "read" and request["timeout_ms"] === 5_000 and
+      exact?(args, ~w(snapshot path expected_sha256 snapshot_handle byte_offset)) and
+      args["snapshot"] === "page" and text?(args["path"], 4096) and
+      Evidence.sha256?(args["expected_sha256"]) and
+      is_binary(args["snapshot_handle"]) and
+      Regex.match?(~r/\A[0-9a-f]{32}\z/, args["snapshot_handle"]) and
+      is_integer(args["byte_offset"]) and args["byte_offset"] in 0..1_048_575
+  rescue
+    _ -> false
+  end
+
   defp call(request, state) do
     budget = Map.get(state, :document_budget, %{effects: 0, reads: 0, guarded: false})
 
     read =
       request["op"] in ~w(state.get state.list state.scan effect.result.read embedding.profile) or
-        (request["op"] == "collection.store" and CollectionStore.read_request?(request))
+        (request["op"] == "collection.store" and CollectionStore.read_request?(request)) or
+        snapshot_page_request?(request)
 
     budget =
       if read,
@@ -2467,7 +2636,7 @@ defmodule IpseKnowledge.Corpus do
     case receipt do
       %{"acquisition" => %{"kind" => "workspace.read", "path" => path}} ->
         if workspace_path?(path) and Evidence.sha256?(receipt["original_sha256"]) and
-             is_integer(receipt["original_bytes"]) and receipt["original_bytes"] in 1..32768 do
+             is_integer(receipt["original_bytes"]) and receipt["original_bytes"] in 1..1_048_576 do
           Map.take(receipt, ~w(original_sha256 original_bytes)) |> Map.put("path", path)
         else
           :invalid
@@ -2482,10 +2651,16 @@ defmodule IpseKnowledge.Corpus do
   end
 
   defp next_document_use(%{ctx: %{document_use: %{remaining: [ref | tail]} = guard}} = state) do
-    request = document_request(ref["path"], ref["original_sha256"])
-    request = put_in(request, ["arguments", "max_bytes"], 1)
+    {request, phase} =
+      if ref["original_bytes"] > 32_768 do
+        {snapshot_request("verify", ref["path"], ref["original_sha256"]), :document_use_verify}
+      else
+        request = document_request(ref["path"], ref["original_sha256"])
+        {put_in(request, ["arguments", "max_bytes"], 1), :document_use_check}
+      end
+
     guard = Map.merge(guard, %{remaining: tail, current: ref})
-    call(request, %{state | phase: :document_use_check, ctx: %{state.ctx | document_use: guard}})
+    call(request, %{state | phase: phase, ctx: %{state.ctx | document_use: guard}})
   end
 
   defp next_document_use(%{ctx: %{document_use: %{remaining: []} = guard}} = state) do
@@ -2496,6 +2671,35 @@ defmodule IpseKnowledge.Corpus do
       Enum.reverse(guard.checked)
     )
   end
+
+  defp document_use_verified(
+         %{
+           "operation_id" => operation,
+           "outcome" => %{"status" => "ok", "value" => %{"text" => text}}
+         },
+         state
+       ) do
+    ref = state.ctx.document_use.current
+
+    with true <- is_binary(operation) and Regex.match?(~r/\A[0-9a-f]{32}\z/, operation),
+         true <- text?(text, 8192),
+         value when is_map(value) <- JSON.decode!(text),
+         true <- exact?(value, ~w(byte_count path sha256)),
+         true <- value["path"] === ref["path"] and value["sha256"] === ref["original_sha256"],
+         true <- value["byte_count"] === ref["original_bytes"] do
+      checked = Map.put(ref, "operation_id", operation)
+      guard = state.ctx.document_use
+      guard = %{guard | checked: [checked | guard.checked]}
+      next_document_use(%{state | ctx: %{state.ctx | document_use: guard}})
+    else
+      _ -> publish_result(state, refused(:document_source_changed_or_unavailable))
+    end
+  rescue
+    _ -> publish_result(state, refused(:document_source_changed_or_unavailable))
+  end
+
+  defp document_use_verified(_, state),
+    do: publish_result(state, refused(:document_source_changed_or_unavailable))
 
   defp document_use_checked(
          %{

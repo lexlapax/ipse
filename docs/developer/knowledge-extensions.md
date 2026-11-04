@@ -740,18 +740,27 @@ file. `read_document` accepts a workspace-relative `.docx` path and
 document Collection presets explicitly declare native `host.tools` authority
 for that path; options cannot upgrade an existing lexical artifact.
 
-Trace `Corpus.acquire_document/4` through a native `tool.call` to `read` with
-explicit `encoding: "base64"`, a 4096-byte page bound, `byte_offset: 0`, a
-32768-byte complete-file bound and an optional expected hash.
-The host checks the complete binary envelope, path, count, hash and current
-workspace/resource scope. Initial generation-one/revision-zero acquisition may
-omit the expected hash with explicit `null`; refresh requires a concrete hash.
-Later pages require that hash. Corpus validates exact offsets, page hashes,
-complete byte count and the reconstructed complete-file hash. After extraction,
-it requests another native page-zero read pinned to that hash; the host again
-hashes the whole bounded file. Only a matching result reaches Store. Every
-acquisition call counts against the existing action allowance before a State/MCP
-write plan. Worker code never opens paths or enlarges SDK/result envelopes.
+Trace `Corpus.acquire_document/5` through the selected store profile. Initial
+generation-one/revision-zero acquisition may omit `expected_sha256` with
+explicit `null`; refresh requires a concrete hash. State and MCP document
+presets use native base64 reads of at most 4096 bytes per page with a 32768-byte
+complete-file bound. Corpus validates the offsets, page hashes, complete byte
+count and reconstructed hash, then asks for a hash-pinned page-zero read before
+proposing the write plan.
+
+Collection acquisition instead opens a host-owned snapshot bounded at 1 MiB and
+reads ordered pages of at most 4096 bytes. `WorkspaceSnapshot` binds its volatile
+handle to the owning Worker and Session; the Writer's `WorkspaceAcquisition`
+projection verifies the actual opening and page results, full hash and
+continuation plan. A resumed invocation cannot replay the volatile handle. The
+shipped Collection artifact's source-head publication goes through
+`WorkspaceDocumentGuard`: it binds the actual invocation and receipt, then
+rechecks the original path, size and hash before the Collection commit. The
+guard recognizes the exact host catalog digest; an independently built artifact
+with a different digest cannot use its guarded workspace-document publication.
+The original-file observation is point-in-time, not a file lock through commit.
+Snapshot opening counts as an other call and pages count as mixed reads. Worker
+code never opens paths or enlarges SDK/result envelopes.
 
 `Documents.source_payload/1` converts the extraction into source text and typed
 segment metadata. Supplied `put_document` keeps its 8192-byte extracted-text
@@ -791,7 +800,9 @@ individual records, preserving SDK strings/depth and result limits. Single-envel
 import refuses Source version 2 until paged migration is implemented.
 
 Larger workspace text or metadata opens the existing source draft.
-`continue_document` reacquires the hash-pinned original and exact typed extraction,
+`continue_document` reacquires the hash-pinned original and exact typed extraction;
+`continue_collection_document` does the same with a new bounded snapshot while
+retaining the Writer-validated opening receipt and plan. The continuation
 rechecks draft/revision/text offset and metadata offset, then stages one metadata
 slice before text, appends one UTF-8-safe 4,096-byte part, or publishes the complete
 staged source. Ordinary `append` and
@@ -858,9 +869,10 @@ originals from returned evidence and each claim's complete citation basis, dedup
 path/hash/byte-count references and checks the compiled `host.tools` capability.
 Packed v3 and compact v4 receipts retain the acquisition identity. Provided-byte
 receipts have no workspace acquisition and trigger no fetch. For an acquired
-original, the existing native binary read hashes the complete bounded file and
-returns one byte plus its complete-file metadata. Corpus checks the exact envelope,
-host operation ID, path, hash, count and page position. A failure publishes neither
+original up to 32 KiB, the native binary read returns one byte plus complete-file
+metadata. For a larger original, snapshot verification returns metadata without
+retaining file bytes. Corpus checks the exact envelope, host operation ID, path,
+hash and count. A failure publishes neither
 evidence nor claims. Capability absence refuses rather than widening authority.
 
 The continuation then revalidates State/MCP source tokens or the captured Collection
@@ -870,10 +882,10 @@ retains original acquisition provenance separately from `workspace_file_checks`,
 `workspace_store_revalidation`, `workspace_invocation_effects` and
 `workspace_invocation_reads`.
 Corpus counts its emitted calls across adapters so added checks share the existing
-16-effect/512-read allowance; the host independently enforces that ceiling. Native
-workspace reads count as effects in this allowance even though they require no
-mutation approval. The private classifier covers only operations Corpus emits and
-reuses `Collection.read_request?/1`; it adds no generic host-call protocol.
+16-effect/512-read allowance; the host independently enforces that ceiling. Legacy
+workspace reads and snapshot openings/verifications count as other calls; snapshot
+pages count as reads. None gains mutation approval from the read. The private
+classifier covers only operations Corpus emits and reuses `Collection.read_request?/1`.
 
 The same guard runs before legacy document embedding, rerank input and vector commit.
 Model-only presets lack `host.tools`, so an acquired document cannot use those
@@ -899,8 +911,11 @@ forged metadata, changed-file refusal before writes and query return, exact read
 operation binding, revision change during a query check, and owner-loss/inert-resume
 behavior. State and Collection controls replace, rename, delete and redirect the
 original after acquisition, then explicitly restore it. They use synthetic Word packages
-and local State/CAS fixtures. They do not establish real Word fidelity,
-larger-document storage, installed qualification or retrieval quality. The
+and local State/CAS fixtures. The opt-in `workspace_word_native` controls add
+the Collection snapshot, source-change, owner-loss and cancellation boundaries;
+see the [testing manual](testing.md#exercise-actual-os-policy-and-native-protocols).
+They do not establish real Word fidelity, full document capacity or retrieval
+quality. The
 [operator procedure](../operator/corpus.md#acquire-a-small-word-document-from-the-workspace)
 shows explicit artifact selection and a complete command.
 

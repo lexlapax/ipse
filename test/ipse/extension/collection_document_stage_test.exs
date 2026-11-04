@@ -948,4 +948,63 @@ defmodule Ipse.Extension.Collection.DocumentStageTest do
 
     assert {:ok, _} = call(fresh, %{"op" => "value.abort", "slot" => 2, "epoch" => next_epoch})
   end
+
+  @tag :workspace_publication_guard
+  test "the trusted publication callback gates inline, fused and staged commits", c do
+    body = Jason.encode!(%{"kind" => "synthetic_source_head"})
+
+    guard = fn changes, _read ->
+      send(self(), {:publication_guard, Enum.map(changes, & &1["key"])})
+      {:error, :document_store_refused}
+    end
+
+    before = generation(c)
+    request = inline(body, "source.fixture.inline") |> Map.put("generation", before)
+
+    assert {:error, :document_store_refused} =
+             DocumentStage.execute(c.root, c.ns, request, Usage.id(), c.owner,
+               publication_guard: guard
+             )
+
+    assert_receive {:publication_guard, ["source.fixture.inline"]}
+    assert generation(c) == before
+    assert {:ok, %{"record" => nil}} = get(c, "source.fixture.inline")
+
+    ref = %{"slot" => 0, "epoch" => Usage.id()}
+
+    request =
+      fused(body, ref, 0, [body], true)
+      |> Map.put("key", "source.fixture.parts")
+      |> Map.put("generation", before)
+
+    assert {:error, :document_store_refused} =
+             DocumentStage.execute(c.root, c.ns, request, Usage.id(), c.owner,
+               publication_guard: guard
+             )
+
+    assert_receive {:publication_guard, keys}
+    assert "source.fixture.parts" in keys
+    assert generation(c) == before
+    assert {:ok, %{"record" => nil}} = get(c, "source.fixture.parts")
+
+    epoch = Usage.id()
+    stage(c, body, 1, epoch)
+    staged_generation = generation(c)
+
+    request = %{
+      "op" => "commit",
+      "stages" => [%{"slot" => 1, "epoch" => epoch}],
+      "generation" => staged_generation
+    }
+
+    assert {:error, :document_store_refused} =
+             DocumentStage.execute(c.root, c.ns, request, Usage.id(), c.owner,
+               publication_guard: guard
+             )
+
+    assert_receive {:publication_guard, keys}
+    assert "packed.block" in keys
+    assert generation(c) == staged_generation
+    assert {:ok, %{"record" => nil}} = get(c, "packed.block")
+  end
 end

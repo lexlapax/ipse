@@ -1,0 +1,187 @@
+--- a/lib/ipse/extension/collection/workspace_document_guard.ex
++++ b/lib/ipse/extension/collection/workspace_document_guard.ex
+@@ -192,7 +192,7 @@
+       end)
+ 
+     if guarded or source_write do
+-      case pinned_corpus(context) do
++      case diagnostic_phase(:catalog, fn -> pinned_corpus(context) end) do
+         {:ok, true} -> check_corpus(context, intent, changes, read)
+         {:ok, false} when guarded -> {:error, :document_store_refused}
+         {:ok, false} -> :ok
+@@ -251,14 +251,17 @@
+   end
+ 
+   defp check_corpus(context, intent, changes, read) do
+-    with {:ok, documents} <- inspect_changes(changes, read, intent["operation_id"]),
+-         :ok <- check_documents(context, intent, documents),
++    with {:ok, documents} <-
++           diagnostic_phase(:inspect, fn ->
++             inspect_changes(changes, read, intent["operation_id"])
++           end),
+          :ok <-
+-           GenServer.call(
+-             context.owner,
+-             {:extension_document_current, context.job_ref, intent}
+-           ),
+-         true <- Ipse.Session.Resources.active?() do
++           diagnostic_phase(:documents, fn -> check_documents(context, intent, documents) end),
++         :ok <-
++           diagnostic_phase(:final_owner, fn ->
++             GenServer.call(context.owner, {:extension_document_current, context.job_ref, intent})
++           end),
++         true <- diagnostic_phase(:active_scope, fn -> Ipse.Session.Resources.active?() end) do
+       :ok
+     else
+       {:unknown, _} = unknown -> unknown
+@@ -268,15 +271,17 @@
+ 
+   defp check_documents(context, intent, documents) do
+     Enum.reduce_while(documents, :ok, fn document, :ok ->
+-      case GenServer.call(
+-             context.owner,
+-             {:extension_workspace_document_authorize, context.job_ref, intent, document}
+-           ) do
++      case diagnostic_phase(:authorize, fn ->
++             GenServer.call(
++               context.owner,
++               {:extension_workspace_document_authorize, context.job_ref, intent, document}
++             )
++           end) do
+         {:ok, kind} when kind in [:supplied, :other_source] ->
+           {:cont, :ok}
+ 
+         {:ok, kind} when kind in [:workspace, :legacy_workspace] ->
+-          case current_file(context, document) do
++          case diagnostic_phase(:fresh_file, fn -> current_file(context, document) end) do
+             :ok -> {:cont, :ok}
+             other -> {:halt, other}
+           end
+@@ -319,6 +324,49 @@
+     end
+   end
+ 
++  @doc false
++  def diagnostic_phase(label, fun) do
++    pid = self() |> :erlang.pid_to_list() |> List.to_string()
++
++    mark = fn state ->
++      IO.puts("WORD_DIAG #{label} #{state} #{pid} #{System.monotonic_time(:microsecond)}")
++    end
++
++    mark.("start")
++
++    try do
++      result = fun.()
++
++      class =
++        case result do
++          :ok -> "ok"
++          true -> "true"
++          false -> "false"
++          {:ok, true} -> "selected"
++          {:ok, false} -> "different"
++          {:ok, :workspace} -> "workspace"
++          {:ok, :legacy_workspace} -> "legacy_workspace"
++          {:ok, :supplied} -> "supplied"
++          {:ok, :other_source} -> "other_source"
++          {:ok, _} -> "ok"
++          {:error, _} -> "error"
++          {:unknown, _} -> "unknown"
++          _ -> "other"
++        end
++
++      mark.(class)
++      result
++    rescue
++      error ->
++        mark.("raised")
++        reraise error, __STACKTRACE__
++    catch
++      kind, reason ->
++        mark.("caught")
++        :erlang.raise(kind, reason, __STACKTRACE__)
++    end
++  end
++
+   # Inspect the exact proposed source heads, including blocks changed in the
+   # same commit. This is source-data identification, not an authority grant.
+   def inspect_changes(changes, read, operation) when is_list(changes) and is_function(read, 1) do
+--- a/lib/ipse/extension/collection/document_stage.ex
++++ b/lib/ipse/extension/collection/document_stage.ex
+@@ -850,7 +850,14 @@
+ 
+     if is_nil(deadline) or System.system_time(:millisecond) < deadline do
+       guard = Process.get(@publication_guard_key)
+-      checked = if is_function(guard, 2), do: guard.(changes, &record(root, ns, &1, s)), else: :ok
++
++      checked =
++        if is_function(guard, 2),
++          do:
++            Ipse.Extension.Collection.WorkspaceDocumentGuard.diagnostic_phase(:guard, fn ->
++              guard.(changes, &record(root, ns, &1, s))
++            end),
++          else: :ok
+ 
+       case checked do
+         :ok ->
+@@ -862,17 +869,19 @@
+             "changes" => changes
+           }
+ 
+-          if is_nil(deadline),
+-            do: Collection.execute_profile(root, ns, request, id, Profile.documents()),
+-            else:
+-              Collection.execute_profile_before(
+-                root,
+-                ns,
+-                request,
+-                id,
+-                Profile.documents(),
+-                deadline
+-              )
++          Ipse.Extension.Collection.WorkspaceDocumentGuard.diagnostic_phase(:native_commit, fn ->
++            if is_nil(deadline),
++              do: Collection.execute_profile(root, ns, request, id, Profile.documents()),
++              else:
++                Collection.execute_profile_before(
++                  root,
++                  ns,
++                  request,
++                  id,
++                  Profile.documents(),
++                  deadline
++                )
++          end)
+ 
+         {:unknown, _} = unknown ->
+           unknown
+--- a/test/extensions/knowledge/document_acquisition_session_test.exs
++++ b/test/extensions/knowledge/document_acquisition_session_test.exs
+@@ -2027,6 +2027,26 @@
+     assert :ok = Session.close_confirmed(resumed)
+   end
+ 
++  @tag :workspace_word_guard_diagnostic
++  @tag timeout: 180_000
++  test "diagnostic fresh small guarded Word publication", c do
++    run = open(c, "collection-documents")
++    bytes = document("Orion synthetic diagnostic source.")
++    assert byte_size(bytes) < 32_768
++    File.write!(Path.join(run.cwd, "source.docx"), bytes)
++    opened = invoke(run, "source", args())
++
++    finished =
++      Enum.reduce_while(1..40, opened, fn _, current ->
++        if current["status"] == "draft",
++          do: {:cont, continue(run, current["continuation"])},
++          else: {:halt, current}
++      end)
++
++    assert finished["status"] == "ok", inspect(finished)
++    assert File.read!(Path.join(run.cwd, "source.docx")) == bytes
++  end
++
+   @tag :workspace_word_large
+   @tag timeout: 300_000
+   test "large workspace Word survives staged publication and rechecks the original on citation",

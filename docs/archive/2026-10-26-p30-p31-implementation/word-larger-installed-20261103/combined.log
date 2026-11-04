@@ -1,0 +1,10 @@
+SHIPPED_CORPUS_SHA256=ed677246b7125f97a95b2060ecf9973d79e304c7f0387e8cac8fb18717b0e705
+Running ExUnit with seed: 0, max_cases: 4
+Excluding tags: [:test]
+Including tags: [workspace_word_native: true]
+
+.DOCUMENT_CANCEL_CLEANUP_UNCONFIRMED
+...
+Finished in 33.2 seconds (0.00s async, 33.2s sync)
+
+Result: 4 passed, 26 excluded

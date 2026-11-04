@@ -15,30 +15,50 @@ defmodule Ipse.KnowledgeDocumentAcquisitionSessionTest do
 
     artifacts =
       for preset <- ~w(state-documents state-lexical collection-documents), into: %{} do
-        path = Path.join(root, preset)
+        if preset == "collection-documents" do
+          # The preceding ./dev/build.sh refreshes these bundles; this check
+          # verifies the catalog, not that it was built from the current source.
+          path =
+            case Ipse.Extension.Bundles.inventory() do
+              {:ok, bundles} ->
+                case Enum.find(bundles, &(&1.id == "corpus-collection-documents")) do
+                  %{path: path} -> path
+                  _ -> flunk("Shipped Corpus bundle missing; run ./dev/build.sh before tests")
+                end
 
-        assert {output, 0} =
-                 System.cmd(
-                   System.find_executable("elixir"),
-                   [
-                     "extensions/knowledge/build.exs",
-                     "--sdk",
-                     Application.app_dir(:ipse, "ebin"),
-                     "--output",
-                     path,
-                     "--package",
-                     "corpus",
-                     "--preset",
-                     preset
-                   ],
-                   stderr_to_stdout: true
-                 )
+              _ ->
+                flunk(
+                  "Shipped bundle catalog unavailable or invalid; run ./dev/build.sh before tests"
+                )
+            end
 
-        refute output =~ "warning:"
-        {preset, path}
+          {preset, path}
+        else
+          path = Path.join(root, preset)
+
+          assert {output, 0} =
+                   System.cmd(
+                     System.find_executable("elixir"),
+                     [
+                       "extensions/knowledge/build.exs",
+                       "--sdk",
+                       Application.app_dir(:ipse, "ebin"),
+                       "--output",
+                       path,
+                       "--package",
+                       "corpus",
+                       "--preset",
+                       preset
+                     ],
+                     stderr_to_stdout: true
+                   )
+
+          refute output =~ "warning:"
+          {preset, path}
+        end
       end
 
-    on_exit(fn -> File.rm_rf!(root) end)
+    if System.get_env("IPSE_TEST_WORD_KEEP") != "1", do: on_exit(fn -> File.rm_rf!(root) end)
     %{root: root, artifacts: artifacts}
   end
 
@@ -48,7 +68,7 @@ defmodule Ipse.KnowledgeDocumentAcquisitionSessionTest do
         native = System.get_env("IPSE_DOCUMENT_NATIVE_TMPDIR") || System.tmp_dir!()
         base = Path.join(native, "ipse-public-collection-" <> Ipse.Usage.id())
         File.mkdir!(base)
-        on_exit(fn -> File.rm_rf!(base) end)
+        if System.get_env("IPSE_TEST_WORD_KEEP") != "1", do: on_exit(fn -> File.rm_rf!(base) end)
         {Path.join(base, "workspace"), Path.join(base, "home")}
       else
         cwd = Path.join(c.root, Ipse.Usage.id())
@@ -59,8 +79,17 @@ defmodule Ipse.KnowledgeDocumentAcquisitionSessionTest do
     File.mkdir_p!(home)
     File.chmod!(home, 0o700)
 
-    {:ok, artifact} =
-      Artifact.import(c.artifacts[preset], Path.join(home, "extensions/artifacts"))
+    artifact =
+      case Artifact.import(c.artifacts[preset], Path.join(home, "extensions/artifacts")) do
+        {:ok, artifact} ->
+          artifact
+
+        _ when preset == "collection-documents" ->
+          flunk("Shipped Corpus artifact unavailable or invalid; run ./dev/build.sh before tests")
+
+        other ->
+          flunk("Unable to import synthetic artifact: #{inspect(other)}")
+      end
 
     options_file =
       if preset == "collection-documents",
@@ -2019,5 +2048,352 @@ defmodule Ipse.KnowledgeDocumentAcquisitionSessionTest do
 
     assert_idle_resume_journal(journal, before_bytes, id)
     assert :ok = Session.close_confirmed(resumed)
+  end
+
+  @tag :workspace_word_native
+  @tag :workspace_word_interpose
+  @tag timeout: 180_000
+  test "small workspace Word changed at publication is withheld", c do
+    run = open(c, "collection-documents")
+    bytes = document("Orion small source before publication.")
+    replacement = document("A different source at the publication boundary.")
+    path = Path.join(run.cwd, "source.docx")
+    File.write!(path, bytes)
+    owner = self()
+
+    callback = fn
+      0, {:in, {:"$gen_call", _, {:extension_workspace_document_authorize, _, _, _}}}, _ ->
+        File.write!(path, replacement)
+        send(owner, :small_source_interposed)
+        1
+
+      count, _, _ ->
+        count
+    end
+
+    assert :ok = :sys.install(run.pid, {callback, 0})
+    opened = invoke(run, "source", args())
+
+    finished =
+      Enum.reduce_while(1..40, opened, fn _, current ->
+        if current["status"] == "draft",
+          do: {:cont, continue(run, current["continuation"])},
+          else: {:halt, current}
+      end)
+
+    assert_receive :small_source_interposed, 5_000
+    assert finished["status"] == "refused", inspect(finished)
+    assert File.read!(path) == replacement
+    {:ok, events} = Journal.load(run.dir, Session.info(run.pid).id)
+
+    guarded =
+      Enum.filter(events, fn event ->
+        event["type"] == "extension_action_result" and
+          is_map(get_in(event, ["request", "workspace_guard"]))
+      end)
+
+    assert [_ | _] = guarded
+    assert List.last(guarded)["outcome"]["status"] == "failed"
+    refute Enum.any?(guarded, &(&1["outcome"]["status"] == "ok"))
+    home = Path.dirname(run.dir)
+    {:ok, binding} = Ipse.Extension.ProjectIdentity.existing(home, run.cwd)
+    namespace = Ipse.Extension.CollectionStore.namespace(binding["project_id"])
+    key = "source.notes." <> JSON.sha256("workspace:source")
+
+    assert {:ok, %{"record" => nil}} =
+             Ipse.Extension.Collection.execute_profile(
+               Ipse.Extension.CollectionStore.root(home),
+               namespace,
+               %{"op" => "get", "key" => key},
+               Ipse.Usage.id(),
+               Ipse.Extension.Collection.Profile.documents()
+             )
+
+    File.write!(path, bytes)
+    assert File.read!(path) == bytes
+  end
+
+  @tag :workspace_word_native
+  @tag :workspace_word_cancel_registration
+  @tag timeout: 180_000
+  test "cancellation during dormant document-effect registration withholds publication", c do
+    run = open(c, "collection-documents")
+    bytes = document("Orion synthetic cancellation boundary.")
+    path = Path.join(run.cwd, "source.docx")
+    File.write!(path, bytes)
+    owner = self()
+
+    callback = fn
+      0,
+      {:in, {:"$gen_call", _, {:extension_workspace_snapshot_register, _, _, _, peer, _}}},
+      _ ->
+        send(owner, {:document_registration_paused, peer})
+        receive do: (:release_document_registration -> :ok)
+        1
+
+      count, _, _ ->
+        count
+    end
+
+    on_exit(fn ->
+      if Process.alive?(run.pid), do: send(run.pid, :release_document_registration)
+    end)
+
+    assert :ok = :sys.install(run.pid, {callback, 0})
+
+    wait_step = fn wait_step, deadline ->
+      receive do
+        {:ipse, pid, {:approval, ref, "extension:collection.store", proposed}}
+        when pid == run.pid ->
+          assert proposed["artifact_sha256"] == run.artifact.digest
+          assert :ok = Ipse.Extension.CollectionStore.validate(proposed["request"])
+          assert :ok = Session.approve(pid, ref, true)
+          wait_step.(wait_step, deadline)
+
+        {:document_registration_paused, peer} ->
+          {:paused, peer}
+
+        {:ipse, pid, {:done, :ok}} when pid == run.pid ->
+          assert %{"value" => value} = Session.info(pid).extension_result
+          {:value, value}
+
+        {:ipse, pid, {:error, reason}} when pid == run.pid ->
+          flunk("unexpected synthetic Session error: #{inspect(reason)}")
+
+        {:ipse, pid, _} when pid == run.pid ->
+          wait_step.(wait_step, deadline)
+      after
+        max(deadline - System.monotonic_time(:millisecond), 0) ->
+          flunk("registration boundary was not reached")
+      end
+    end
+
+    step = fn id, arguments ->
+      assert :ok = Session.invoke_export(run.pid, :command, "ext__corpus__" <> id, arguments)
+      wait_step.(wait_step, System.monotonic_time(:millisecond) + 20_000)
+    end
+
+    first = step.("source", args())
+
+    boundary =
+      Enum.reduce_while(1..40, first, fn _, current ->
+        case current do
+          {:paused, _} ->
+            {:halt, current}
+
+          {:value,
+           %{"status" => "draft", "continuation" => %{"id" => id, "arguments" => arguments}}} ->
+            {:cont, step.(id, arguments)}
+
+          other ->
+            flunk("unexpected pre-registration outcome: #{inspect(other)}")
+        end
+      end)
+
+    assert {:paused, peer} = boundary
+
+    assert {:current_function, {Ipse.Session.Resources, :execute_file_effect, 4}} =
+             Process.info(peer, :current_function)
+
+    assert {:messages, []} = Process.info(peer, :messages)
+    peer_ref = Process.monitor(peer)
+    cancel_task = Task.async(fn -> Session.cancel(run.pid) end)
+
+    queued =
+      Enum.reduce_while(1..200, false, fn _, _ ->
+        case Process.info(run.pid, :messages) do
+          {:messages, messages} ->
+            if Enum.any?(messages, fn
+                 {:"$gen_call", _, :cancel} -> true
+                 _ -> false
+               end),
+               do: {:halt, true},
+               else:
+                 (
+                   Process.sleep(10)
+                   {:cont, false}
+                 )
+
+          _ ->
+            {:halt, false}
+        end
+      end)
+
+    assert queued
+    send(run.pid, :release_document_registration)
+    cancel = Task.await(cancel_task, 10_000)
+    assert cancel in [:ok, {:error, :cleanup_unconfirmed}]
+
+    IO.puts(
+      if(cancel == :ok,
+        do: "DOCUMENT_CANCEL_CONFIRMED",
+        else: "DOCUMENT_CANCEL_CLEANUP_UNCONFIRMED"
+      )
+    )
+
+    assert_receive {:DOWN, ^peer_ref, :process, ^peer, _}, 5_000
+    home = Path.dirname(run.dir)
+    {:ok, binding} = Ipse.Extension.ProjectIdentity.existing(home, run.cwd)
+    namespace = Ipse.Extension.CollectionStore.namespace(binding["project_id"])
+    key = "source.notes." <> JSON.sha256("workspace:source")
+
+    assert {:ok, %{"record" => nil}} =
+             Ipse.Extension.Collection.execute_profile(
+               Ipse.Extension.CollectionStore.root(home),
+               namespace,
+               %{"op" => "get", "key" => key},
+               Ipse.Usage.id(),
+               Ipse.Extension.Collection.Profile.documents()
+             )
+
+    assert File.read!(path) == bytes
+  end
+
+  @tag :workspace_word_native
+  @tag :workspace_word_large
+  @tag timeout: 300_000
+  test "large workspace Word survives staged publication and rechecks the original on citation",
+       c do
+    run = open(c, "collection-documents")
+
+    text =
+      "Orion launch is grounded in this original. " <> String.duplicate("stable detail ", 2800)
+
+    bytes = document(text, [{:compress, []}])
+    assert byte_size(bytes) > 32_768 and byte_size(bytes) <= 1_048_576
+    path = Path.join(run.cwd, "source.docx")
+    File.write!(path, bytes)
+
+    opened = run |> invoke("source", args()) |> then(&await_staged_collection(run, &1))
+    opening = get_in(opened, ["continuation", "arguments", "args", "opening_acquisition"])
+    assert %{"kind" => "workspace.read", "path" => "source.docx", "operation_id" => _} = opening
+
+    File.write!(path, document("A different synthetic original."))
+    assert continue(run, opened["continuation"])["status"] == "refused"
+    File.write!(path, bytes)
+
+    finished =
+      Enum.reduce_while(1..40, opened, fn _, current ->
+        if current["status"] == "draft",
+          do: {:cont, continue(run, current["continuation"])},
+          else: {:halt, current}
+      end)
+
+    assert finished["status"] == "ok", inspect(finished)
+
+    query_args = %{
+      "store" => "notes",
+      "retrieval" => "words",
+      "query" => "Orion launch",
+      "top_k" => 1,
+      "as_of_ms" => 20,
+      "source_ids" => ["workspace:source"]
+    }
+
+    result = invoke(run, "query_selected", query_args)
+    assert result["status"] in ~w(ok partial), inspect(result)
+
+    assert Enum.any?(result["evidence"], fn hit ->
+             get_in(hit, ["citation", "document", "original_sha256"]) == JSON.sha256(bytes) and
+               get_in(hit, ["citation", "document", "locator", "paragraph"]) == 1
+           end)
+
+    held = path <> ".held"
+    File.rename!(path, held)
+
+    try do
+      missing = invoke(run, "query_selected", query_args)
+      assert missing["status"] == "refused", inspect(missing)
+    after
+      if File.exists?(held) and not File.exists?(path), do: File.rename!(held, path)
+    end
+
+    restored = invoke(run, "query_selected", query_args)
+    assert restored["status"] in ~w(ok partial), inspect(restored)
+    assert File.read!(path) == bytes
+
+    id = Session.info(run.pid).id
+    {:ok, events} = Journal.load(run.dir, id)
+
+    assert Enum.any?(events, fn event ->
+             event["type"] == "extension_action_result" and
+               get_in(event, ["request", "arguments", "snapshot"]) == "page" and
+               get_in(event, ["outcome", "status"]) == "ok"
+           end)
+
+    assert Enum.any?(events, fn event ->
+             event["type"] == "extension_action_intent" and
+               get_in(event, ["request", "workspace_guard", "opening_operation_id"]) ==
+                 opening["operation_id"]
+           end)
+
+    assert {:ok, _} = Session.Saved.restore(events, id)
+    assert :ok = Session.close_confirmed(run.pid)
+    journal = Path.join(run.dir, id <> ".jsonl")
+    before = File.read!(journal)
+
+    assert {:ok, resumed} =
+             DynamicSupervisor.start_child(
+               Ipse.Sessions,
+               {Session, Keyword.put(run.opts, :id, id)}
+             )
+
+    assert_idle_resume_journal(journal, before, id)
+    assert :ok = Session.close_confirmed(resumed)
+    assert File.read!(path) == bytes
+  end
+
+  @tag :workspace_word_native
+  @tag :workspace_word_large_unknown
+  @tag timeout: 180_000
+  test "owner loss before a large Word page result stays unknown and is not replayed", c do
+    run = open(c, "collection-documents")
+    bytes = document("Orion " <> String.duplicate("source ", 5000), [{:compress, []}])
+    assert byte_size(bytes) > 32_768
+    path = Path.join(run.cwd, "source.docx")
+    File.write!(path, bytes)
+    id = Session.info(run.pid).id
+    lock = :sys.get_state(run.pid).lock_guard
+    lock_ref = Process.monitor(lock)
+    owner = self()
+
+    callback = fn
+      0,
+      {:in,
+       {:"$gen_call", _,
+        {:extension_action_commit, _,
+         %{"request" => %{"op" => "tool.call", "arguments" => %{"snapshot" => "page"}}} = event}}},
+      _ ->
+        send(owner, {:large_word_page_before_commit, event})
+        receive do: (:release_large_word_page -> :ok)
+        1
+
+      count, _, _ ->
+        count
+    end
+
+    assert :ok = :sys.install(run.pid, {callback, 0})
+    assert :ok = Session.invoke_export(run.pid, :command, "ext__corpus__source", args())
+    assert_receive {:large_word_page_before_commit, event}, 30_000
+    assert get_in(event, ["outcome", "status"]) == "ok"
+    monitor = Process.monitor(run.pid)
+    Process.exit(run.pid, :kill)
+    assert_receive {:DOWN, ^monitor, :process, _, :killed}, 5000
+    assert_receive {:DOWN, ^lock_ref, :process, ^lock, _}, 5000
+    {:ok, events} = Journal.load(run.dir, id)
+    assert List.last(events)["type"] == "extension_action_intent"
+    assert get_in(List.last(events), ["request", "arguments", "snapshot"]) == "page"
+    journal = Path.join(run.dir, id <> ".jsonl")
+    before = File.read!(journal)
+
+    assert {:ok, resumed} =
+             DynamicSupervisor.start_child(
+               Ipse.Sessions,
+               {Session, Keyword.put(run.opts, :id, id)}
+             )
+
+    assert_idle_resume_journal(journal, before, id)
+    assert :ok = Session.close_confirmed(resumed)
+    assert File.read!(path) == bytes
   end
 end

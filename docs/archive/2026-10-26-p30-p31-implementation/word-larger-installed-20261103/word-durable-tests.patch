@@ -1,0 +1,227 @@
+--- a/test/extensions/knowledge/document_acquisition_session_test.exs
++++ b/test/extensions/knowledge/document_acquisition_session_test.exs
+@@ -2027,6 +2027,206 @@
+     assert :ok = Session.close_confirmed(resumed)
+   end
+ 
++  @tag :workspace_word_native
++  @tag :workspace_word_interpose
++  @tag timeout: 180_000
++  test "small workspace Word changed at publication is withheld", c do
++    run = open(c, "collection-documents")
++    bytes = document("Orion small source before publication.")
++    replacement = document("A different source at the publication boundary.")
++    path = Path.join(run.cwd, "source.docx")
++    File.write!(path, bytes)
++    owner = self()
++
++    callback = fn
++      0, {:in, {:"$gen_call", _, {:extension_workspace_document_authorize, _, _, _}}}, _ ->
++        File.write!(path, replacement)
++        send(owner, :small_source_interposed)
++        1
++
++      count, _, _ ->
++        count
++    end
++
++    assert :ok = :sys.install(run.pid, {callback, 0})
++    opened = invoke(run, "source", args())
++
++    finished =
++      Enum.reduce_while(1..40, opened, fn _, current ->
++        if current["status"] == "draft",
++          do: {:cont, continue(run, current["continuation"])},
++          else: {:halt, current}
++      end)
++
++    assert_receive :small_source_interposed, 5_000
++    assert finished["status"] == "refused", inspect(finished)
++    assert File.read!(path) == replacement
++    {:ok, events} = Journal.load(run.dir, Session.info(run.pid).id)
++
++    guarded =
++      Enum.filter(events, fn event ->
++        event["type"] == "extension_action_result" and
++          is_map(get_in(event, ["request", "workspace_guard"]))
++      end)
++
++    assert [_ | _] = guarded
++    assert List.last(guarded)["outcome"]["status"] == "failed"
++    refute Enum.any?(guarded, &(&1["outcome"]["status"] == "ok"))
++    home = Path.dirname(run.dir)
++    {:ok, binding} = Ipse.Extension.ProjectIdentity.existing(home, run.cwd)
++    namespace = Ipse.Extension.CollectionStore.namespace(binding["project_id"])
++    key = "source.notes." <> JSON.sha256("workspace:source")
++
++    assert {:ok, %{"record" => nil}} =
++             Ipse.Extension.Collection.execute_profile(
++               Ipse.Extension.CollectionStore.root(home),
++               namespace,
++               %{"op" => "get", "key" => key},
++               Ipse.Usage.id(),
++               Ipse.Extension.Collection.Profile.documents()
++             )
++
++    File.write!(path, bytes)
++    assert File.read!(path) == bytes
++  end
++
++  @tag :workspace_word_native
++  @tag :workspace_word_cancel_registration
++  @tag timeout: 180_000
++  test "cancellation during dormant document-effect registration withholds publication", c do
++    run = open(c, "collection-documents")
++    bytes = document("Orion synthetic cancellation boundary.")
++    path = Path.join(run.cwd, "source.docx")
++    File.write!(path, bytes)
++    owner = self()
++
++    callback = fn
++      0,
++      {:in, {:"$gen_call", _, {:extension_workspace_snapshot_register, _, _, _, peer, _}}},
++      _ ->
++        send(owner, {:document_registration_paused, peer})
++        receive do: (:release_document_registration -> :ok)
++        1
++
++      count, _, _ ->
++        count
++    end
++
++    on_exit(fn ->
++      if Process.alive?(run.pid), do: send(run.pid, :release_document_registration)
++    end)
++
++    assert :ok = :sys.install(run.pid, {callback, 0})
++
++    wait_step = fn wait_step, deadline ->
++      receive do
++        {:ipse, pid, {:approval, ref, "extension:collection.store", proposed}}
++        when pid == run.pid ->
++          assert proposed["artifact_sha256"] == run.artifact.digest
++          assert :ok = Ipse.Extension.CollectionStore.validate(proposed["request"])
++          assert :ok = Session.approve(pid, ref, true)
++          wait_step.(wait_step, deadline)
++
++        {:document_registration_paused, peer} ->
++          {:paused, peer}
++
++        {:ipse, pid, {:done, :ok}} when pid == run.pid ->
++          assert %{"value" => value} = Session.info(pid).extension_result
++          {:value, value}
++
++        {:ipse, pid, {:error, reason}} when pid == run.pid ->
++          flunk("unexpected synthetic Session error: #{inspect(reason)}")
++
++        {:ipse, pid, _} when pid == run.pid ->
++          wait_step.(wait_step, deadline)
++      after
++        max(deadline - System.monotonic_time(:millisecond), 0) ->
++          flunk("registration boundary was not reached")
++      end
++    end
++
++    step = fn id, arguments ->
++      assert :ok = Session.invoke_export(run.pid, :command, "ext__corpus__" <> id, arguments)
++      wait_step.(wait_step, System.monotonic_time(:millisecond) + 20_000)
++    end
++
++    first = step.("source", args())
++
++    boundary =
++      Enum.reduce_while(1..40, first, fn _, current ->
++        case current do
++          {:paused, _} ->
++            {:halt, current}
++
++          {:value,
++           %{"status" => "draft", "continuation" => %{"id" => id, "arguments" => arguments}}} ->
++            {:cont, step.(id, arguments)}
++
++          other ->
++            flunk("unexpected pre-registration outcome: #{inspect(other)}")
++        end
++      end)
++
++    assert {:paused, peer} = boundary
++
++    assert {:current_function, {Ipse.Session.Resources, :execute_file_effect, 4}} =
++             Process.info(peer, :current_function)
++
++    assert {:messages, []} = Process.info(peer, :messages)
++    peer_ref = Process.monitor(peer)
++    cancel_task = Task.async(fn -> Session.cancel(run.pid) end)
++
++    queued =
++      Enum.reduce_while(1..200, false, fn _, _ ->
++        case Process.info(run.pid, :messages) do
++          {:messages, messages} ->
++            if Enum.any?(messages, fn
++                 {:"$gen_call", _, :cancel} -> true
++                 _ -> false
++               end),
++               do: {:halt, true},
++               else:
++                 (
++                   Process.sleep(10)
++                   {:cont, false}
++                 )
++
++          _ ->
++            {:halt, false}
++        end
++      end)
++
++    assert queued
++    send(run.pid, :release_document_registration)
++    cancel = Task.await(cancel_task, 10_000)
++    assert cancel in [:ok, {:error, :cleanup_unconfirmed}]
++
++    IO.puts(
++      if(cancel == :ok,
++        do: "DOCUMENT_CANCEL_CONFIRMED",
++        else: "DOCUMENT_CANCEL_CLEANUP_UNCONFIRMED"
++      )
++    )
++
++    assert_receive {:DOWN, ^peer_ref, :process, ^peer, _}, 5_000
++    home = Path.dirname(run.dir)
++    {:ok, binding} = Ipse.Extension.ProjectIdentity.existing(home, run.cwd)
++    namespace = Ipse.Extension.CollectionStore.namespace(binding["project_id"])
++    key = "source.notes." <> JSON.sha256("workspace:source")
++
++    assert {:ok, %{"record" => nil}} =
++             Ipse.Extension.Collection.execute_profile(
++               Ipse.Extension.CollectionStore.root(home),
++               namespace,
++               %{"op" => "get", "key" => key},
++               Ipse.Usage.id(),
++               Ipse.Extension.Collection.Profile.documents()
++             )
++
++    assert File.read!(path) == bytes
++  end
++
++  @tag :workspace_word_native
+   @tag :workspace_word_large
+   @tag timeout: 300_000
+   test "large workspace Word survives staged publication and rechecks the original on citation",
+@@ -2120,6 +2320,7 @@
+     assert File.read!(path) == bytes
+   end
+ 
++  @tag :workspace_word_native
+   @tag :workspace_word_large_unknown
+   @tag timeout: 180_000
+   test "owner loss before a large Word page result stays unknown and is not replayed", c do
+--- a/test/test_helper.exs
++++ b/test/test_helper.exs
+@@ -28,6 +28,7 @@
+     :macos_sandbox,
+     :macos_filesystem,
+     :memory_scope,
++    :workspace_word_native,
+     :controlled_tty_bridge,
+     :controlled_tty_loss
+   ]

@@ -451,10 +451,24 @@ defmodule Ipse.Extension.Host do
   end
 
   def resume_export(entry, parent, result, owner, job_ref, actions) do
-    execute_export(entry, parent, "host.actions", Actions.resume(result), owner, job_ref, actions)
+    if Ipse.Extension.WorkspaceSnapshot.retained_request?(result["request"]) or
+         Enum.any?(actions, &Ipse.Extension.WorkspaceSnapshot.retained_request?(&1["request"])) do
+      invocation_unknown()
+    else
+      execute_export(
+        entry,
+        parent,
+        "host.actions",
+        Actions.resume(result),
+        owner,
+        job_ref,
+        actions
+      )
+    end
   end
 
   defp execute_export(entry, intent, stage, payload, owner, job_ref, prior_actions) do
+    Ipse.Extension.WorkspaceSnapshot.clear()
     entry = Map.put(entry, :worker_input_context, {owner, job_ref})
 
     entry =
@@ -537,6 +551,7 @@ defmodule Ipse.Extension.Host do
           _ -> invocation_unknown()
         end
       after
+        Ipse.Extension.WorkspaceSnapshot.clear()
         if Process.alive?(worker), do: Worker.close(worker)
       end
     else
@@ -752,8 +767,11 @@ defmodule Ipse.Extension.Host do
   defp execute_action(context, intent, %{"op" => "effect.result.read"}),
     do: Ipse.Extension.EffectResult.execute(context, intent)
 
-  defp execute_action(context, _intent, %{"op" => "tool.call"} = request),
-    do: Ipse.Extension.ToolAction.execute(request, context)
+  defp execute_action(context, intent, %{"op" => "tool.call"} = request) do
+    if Ipse.Extension.WorkspaceSnapshot.request?(request),
+      do: Ipse.Extension.WorkspaceSnapshot.execute(context, intent),
+      else: Ipse.Extension.ToolAction.execute(request, context)
+  end
 
   defp execute_action(context, intent, %{"op" => "service.call"}),
     do: execute_service(context, intent)
@@ -820,6 +838,18 @@ defmodule Ipse.Extension.Host do
         {:extension_tool_context_commit, job_ref, request, Ipse.JSON.digest([snapshot]), updated,
          drift}
       )
+    end
+  end
+
+  defp tool_context(owner, job_ref, %{"op" => "collection.store"} = request) do
+    case Ipse.Extension.Collection.WorkspaceDocumentGuard.preflight_read(request) do
+      {:ok, read} ->
+        tool_context(owner, job_ref, read)
+
+      _ ->
+        if Map.has_key?(request, "workspace_guard"),
+          do: {:error, :document_store_refused},
+          else: :ok
     end
   end
 

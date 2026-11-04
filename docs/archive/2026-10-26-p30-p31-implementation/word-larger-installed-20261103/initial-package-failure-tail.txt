@@ -1,0 +1,8 @@
+** (RuntimeError) Documentation target is missing from the source: docs/archive/2026-10-26-p30-p31-plan-review/index.md
+    dev/release.exs:79: anonymous fn/5 in Ipse.Development.Release.bundle_documentation!/4
+    dev/release.exs:228: anonymous fn/3 in Ipse.Development.Release.map_document_links/2
+    (elixir 1.20.4) lib/enum.ex:2622: Enum."-reduce/3-lists^foldl/2-0-"/3
+    dev/release.exs:226: anonymous fn/3 in Ipse.Development.Release.map_document_links/2
+    (elixir 1.20.4) lib/enum.ex:1851: Enum."-map_reduce/3-lists^mapfoldl/2-0-"/3
+    (elixir 1.20.4) lib/enum.ex:1851: Enum."-map_reduce/3-lists^mapfoldl/2-0-"/3
+    dev/release.exs:204: Ipse.Development.Release.map_document_links/2

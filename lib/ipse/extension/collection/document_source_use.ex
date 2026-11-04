@@ -90,6 +90,59 @@ defmodule Ipse.Extension.Collection.DocumentSourceUse do
   def authenticate(_, _, _, _), do: @error
 
   @doc """
+  Inspect a proposed source head and its existing blocks under one retained
+  document read. This returns no file, Session, consent or publication authority.
+  """
+  def inspect_workspace_document(read, key, head) when is_function(read, 1) do
+    with [_, partition, source_key] <-
+           Regex.run(~r/\Asource\.([a-z][a-z0-9_-]{0,15})\.([0-9a-f]{64})\z/, key),
+         true <- is_map(head) and is_integer(head["ordinal"]) and head["ordinal"] >= 0,
+         true <- head?(head, source_key, div(head["ordinal"], 16)),
+         {bytes, _} <-
+           bundle!(read, partition, head, %{reads: 0, logical_bytes: 0, bundle_bytes: 0}),
+         {:ok, decoded} <- J.decode_unique(bytes),
+         source = source!(decoded, partition, head) do
+      case get_in(source, ["origin", "receipt"]) do
+        %{"kind" => "document_extraction"} = receipt ->
+          body = document_body!(receipt, source)
+          acquisition = body["acquisition"]
+
+          with true <- body["kind"] === "document_extraction" and body["format"] === "docx",
+               true <- J.sha256?(body["original_sha256"]),
+               count when is_integer(count) and count > 0 <- body["original_bytes"],
+               true <- J.safe_uint?(count),
+               true <- is_nil(acquisition) or is_map(acquisition),
+               path = if(acquisition, do: acquisition["path"]),
+               operation = if(acquisition, do: acquisition["operation_id"]),
+               true <- is_nil(path) or is_binary(path),
+               true <- is_nil(operation) or is_binary(operation) do
+            {:ok,
+             %{
+               "path" => path,
+               "original_sha256" => body["original_sha256"],
+               "original_bytes" => count,
+               "acquisition_operation_id" => operation,
+               "source_id" => source["source_id"],
+               "generation" => source["generation"],
+               "bundle_sha256" => head["bundle_sha256"]
+             }}
+          else
+            _ -> @error
+          end
+
+        _ ->
+          {:ok, :not_workspace_document}
+      end
+    else
+      _ -> @error
+    end
+  rescue
+    _ -> @error
+  end
+
+  def inspect_workspace_document(_, _, _), do: @error
+
+  @doc """
   Authenticate one projection source under a retained document read owner.
 
   The returned times and digest describe stored bytes only. Callers must bind

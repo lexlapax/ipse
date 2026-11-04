@@ -1,0 +1,10 @@
+SHIPPED_CORPUS_SHA256=ed677246b7125f97a95b2060ecf9973d79e304c7f0387e8cac8fb18717b0e705
+Running ExUnit with seed: 0, max_cases: 4
+Excluding tags: [:test]
+Including tags: [workspace_word_native: true, test: :"test public Collection preset authenticates paused Word storage and returns typed selected citation", test: :"test public Collection provided source continues without extra authority and old presets keep grants"]
+
+...DOCUMENT_CANCEL_CLEANUP_UNCONFIRMED
+...
+Finished in 57.5 seconds (0.00s async, 57.5s sync)
+
+Result: 6 passed, 24 excluded

@@ -1,0 +1,49 @@
+--- a/test/extensions/knowledge/document_acquisition_session_test.exs
++++ b/test/extensions/knowledge/document_acquisition_session_test.exs
+@@ -15,9 +15,23 @@
+ 
+     artifacts =
+       for preset <- ~w(state-documents state-lexical collection-documents), into: %{} do
+-        if preset == "collection-documents" and System.get_env("IPSE_TEST_WORD_SHIPPED") == "1" do
+-          {:ok, bundles} = Ipse.Extension.Bundles.inventory()
+-          %{path: path} = Enum.find(bundles, &(&1.id == "corpus-collection-documents"))
++        if preset == "collection-documents" do
++          # The preceding ./dev/build.sh refreshes these bundles; this check
++          # verifies the catalog, not that it was built from the current source.
++          path =
++            case Ipse.Extension.Bundles.inventory() do
++              {:ok, bundles} ->
++                case Enum.find(bundles, &(&1.id == "corpus-collection-documents")) do
++                  %{path: path} -> path
++                  _ -> flunk("Shipped Corpus bundle missing; run ./dev/build.sh before tests")
++                end
++
++              _ ->
++                flunk(
++                  "Shipped bundle catalog unavailable or invalid; run ./dev/build.sh before tests"
++                )
++            end
++
+           {preset, path}
+         else
+           path = Path.join(root, preset)
+@@ -65,8 +79,17 @@
+     File.mkdir_p!(home)
+     File.chmod!(home, 0o700)
+ 
+-    {:ok, artifact} =
+-      Artifact.import(c.artifacts[preset], Path.join(home, "extensions/artifacts"))
++    artifact =
++      case Artifact.import(c.artifacts[preset], Path.join(home, "extensions/artifacts")) do
++        {:ok, artifact} ->
++          artifact
++
++        _ when preset == "collection-documents" ->
++          flunk("Shipped Corpus artifact unavailable or invalid; run ./dev/build.sh before tests")
++
++        other ->
++          flunk("Unable to import synthetic artifact: #{inspect(other)}")
++      end
+ 
+     options_file =
+       if preset == "collection-documents",

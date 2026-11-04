@@ -13,6 +13,7 @@ defmodule Ipse.Extension.CollectionStore do
   def validate(r) do
     shape =
       exact?(r, ~w(op scope request)) or
+        Ipse.Extension.Collection.WorkspaceDocumentGuard.guarded_request?(r) or
         (exact?(r, ~w(op scope request source_guard)) and
            is_map(r["request"]) and
            ((r["source_guard"] === "explicit_fact_projection_v1" and
@@ -156,48 +157,67 @@ defmodule Ipse.Extension.CollectionStore do
          true <- Registry.live?(context.identity),
          :ok <-
            GenServer.call(context.owner, {:extension_document_current, context.job_ref, intent}) do
-      Ipse.Session.Resources.file_effect(fn ->
-        Ipse.Session.ManagedToolUse.with_effect(
-          context.managed_tool,
-          Ipse.Session.ManagedToolUse.document_binding(intent),
-          fn deadline ->
-            if mutating?(intent["request"]) and not is_nil(deadline) do
-              @error
-            else
-              binding_use =
-                if is_nil(deadline),
-                  do: &ProjectIdentity.with_existing_binding/4,
-                  else: &ProjectIdentity.with_held_binding/4
+      Ipse.Extension.Collection.WorkspaceDocumentGuard.with_snapshot_reader(
+        context,
+        intent,
+        fn context ->
+          Ipse.Extension.Collection.WorkspaceDocumentGuard.run_document_effect(
+            context,
+            intent,
+            fn ->
+              Ipse.Session.ManagedToolUse.with_effect(
+                context.managed_tool,
+                Ipse.Session.ManagedToolUse.document_binding(intent),
+                fn deadline ->
+                  if mutating?(intent["request"]) and not is_nil(deadline) do
+                    @error
+                  else
+                    binding_use =
+                      if is_nil(deadline),
+                        do: &ProjectIdentity.with_existing_binding/4,
+                        else: &ProjectIdentity.with_held_binding/4
 
-              binding_use.(context.config[:home], context.cwd, b["project"], fn _ ->
-                with :ok <-
-                       GenServer.call(
-                         context.owner,
-                         {:extension_document_current, context.job_ref, intent}
-                       ),
-                     :ok <- observe_inline_claim(context, intent),
-                     {:ok, deadline} <- projection_deadline(context, intent, deadline) do
-                  DocumentStage.execute(
-                    root(context.config[:home]),
-                    b["namespace"],
-                    intent["request"]["request"],
-                    intent["operation_id"],
-                    %{
-                      "project_id" => b["project"]["project_id"],
-                      "session_id" => context.session_id,
-                      "identity_sha256" => JSON.digest([context.identity]),
-                      "invocation_id" => intent["parent_invocation_id"]
-                    },
-                    if(is_nil(deadline), do: [], else: [publish_before_ms: deadline])
-                  )
-                else
-                  _ -> @error
+                    binding_use.(context.config[:home], context.cwd, b["project"], fn _ ->
+                      with :ok <-
+                             GenServer.call(
+                               context.owner,
+                               {:extension_document_current, context.job_ref, intent}
+                             ),
+                           :ok <- observe_inline_claim(context, intent),
+                           {:ok, deadline} <- projection_deadline(context, intent, deadline) do
+                        DocumentStage.execute(
+                          root(context.config[:home]),
+                          b["namespace"],
+                          intent["request"]["request"],
+                          intent["operation_id"],
+                          %{
+                            "project_id" => b["project"]["project_id"],
+                            "session_id" => context.session_id,
+                            "identity_sha256" => JSON.digest([context.identity]),
+                            "invocation_id" => intent["parent_invocation_id"]
+                          },
+                          [
+                            publication_guard: fn changes, read ->
+                              Ipse.Extension.Collection.WorkspaceDocumentGuard.check(
+                                context,
+                                intent,
+                                changes,
+                                read
+                              )
+                            end
+                          ] ++ if(is_nil(deadline), do: [], else: [publish_before_ms: deadline])
+                        )
+                      else
+                        _ -> @error
+                      end
+                    end)
+                  end
                 end
-              end)
+              )
             end
-          end
-        )
-      end)
+          )
+        end
+      )
       |> normalize(intent)
     else
       _ -> failed()
