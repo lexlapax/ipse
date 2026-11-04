@@ -1,6 +1,6 @@
 defmodule IpseKnowledge.Store do
   @moduledoc "Partitioned immutable evidence pages selected by registered source-root CAS."
-  alias IpseKnowledge.Evidence
+  alias IpseKnowledge.{Evidence, Adapters}
   alias IpseKnowledge.Store.{State, MCPCAS}
 
   @operations [
@@ -64,6 +64,101 @@ defmodule IpseKnowledge.Store do
       provided_quote_range(text, receipt["quote"]) ==
         {:ok, receipt["start_byte"], receipt["end_byte"]}
   end
+
+  def start_fetch_transfer(name, profile, fetch, args) do
+    with true <- name?(name) and profile?(profile) and profile["kind"] == "state",
+         true <-
+           keys?(fetch, ~w(kind binding contract)) and fetch["kind"] == "mcp" and
+             name?(fetch["binding"]) and fetch["contract"] == "fetch-v1",
+         true <- keys?(args, ~w(uri title quote timeout_ms)),
+         true <-
+           Enum.all?([{args["uri"], 512}, {args["title"], 128}, {args["quote"], 1024}], fn {text,
+                                                                                            max} ->
+             is_binary(text) and String.valid?(text) and byte_size(text) in 1..max
+           end),
+         true <- is_integer(args["timeout_ms"]) and args["timeout_ms"] in 1000..30_000 do
+      resolved = %{"options" => %{"fetch" => %{"selected" => fetch}}}
+      transfer = %{name: name, profile: profile, fetch: fetch, args: args, adapter: nil}
+
+      fetch_transfer_step(
+        Adapters.start(resolved, :fetch, %{
+          "profile" => "selected",
+          "uri" => args["uri"],
+          "timeout_ms" => args["timeout_ms"]
+        }),
+        transfer
+      )
+    else
+      _ -> error(:invalid_fetch_transfer)
+    end
+  rescue
+    _ -> error(:invalid_fetch_transfer)
+  end
+
+  defp fetch_transfer_step({:call, request, continuation}, transfer),
+    do: {:call, request, %{fetch_transfer: %{transfer | adapter: continuation}}}
+
+  defp fetch_transfer_step({:done, {:ok, fetched}}, transfer) do
+    source = fetched["source"]
+    args = transfer.args
+
+    with true <- source["requested_uri"] == args["uri"] and source["complete"] == true,
+         text when is_binary(text) <- source["text"],
+         true <- byte_size(text) in 1..4096 and String.valid?(text),
+         true <- source["body_sha256"] == Evidence.sha256(text),
+         {:ok, first, last} <- provided_quote_range(text, args["quote"]) do
+      derivation = %{
+        "version" => 1,
+        "kind" => "research.fetch_transfer",
+        "descriptor" => fetched["receipt"],
+        "binding" => transfer.fetch["binding"],
+        "requested_uri" => args["uri"],
+        "observed_uri" => source["observed_uri"],
+        "media_type" => source["media_type"],
+        "observed_at_ms" => source["observed_at_ms"],
+        "body_sha256" => source["body_sha256"],
+        "quote" => args["quote"],
+        "start_byte" => first,
+        "end_byte" => last,
+        "coverage" => fetched["coverage"]
+      }
+
+      put = %{
+        "source_id" => provided_transfer_id(text),
+        "generation" => 1,
+        "expected_revision" => 0,
+        "title" => args["title"],
+        "text" => text,
+        "uri" => source["observed_uri"],
+        "observed_at_ms" => source["observed_at_ms"],
+        "event_at_ms" => nil,
+        "expires_at_ms" => nil
+      }
+
+      case start(transfer.name, transfer.profile, :put, put) do
+        {:call, request, state} ->
+          # Carry the actual fetch/read work into the unchanged total allowance.
+          state = %{
+            state
+            | effects: state.effects + 1,
+              reads: state.reads + transfer.adapter.reads + 1
+          }
+
+          if state.effects <= 16 and state.reads <= 512 and state.effects + state.reads <= 528,
+            do: {:call, request, Map.put(state, :fetched_capture, derivation)},
+            else: error(:effect_limit)
+
+        other ->
+          other
+      end
+    else
+      _ -> error(:invalid_fetch_transfer)
+    end
+  rescue
+    _ -> error(:invalid_fetch_transfer)
+  end
+
+  defp fetch_transfer_step(other, _), do: other
 
   def start(name, profile, operation, args) do
     with true <- name?(name) and profile?(profile) and operation in @operations and is_map(args),
@@ -142,7 +237,21 @@ defmodule IpseKnowledge.Store do
 
   defp legacy_addition?(_), do: false
 
-  def resume(state, outcome) do
+  def resume(%{fetch_transfer: transfer}, outcome),
+    do: fetch_transfer_step(Adapters.resume(transfer.adapter, outcome), transfer)
+
+  def resume(%{fetched_capture: capture} = state, outcome) do
+    result = resume_store(state, outcome)
+
+    case result do
+      {:done, {:ok, value}} -> {:done, {:ok, Map.put(value, "fetch_transfer", capture)}}
+      other -> other
+    end
+  end
+
+  def resume(state, outcome), do: resume_store(state, outcome)
+
+  defp resume_store(state, outcome) do
     adapter = adapter(state.profile)
     bridge(adapter.resume(state.io, outcome), state)
   rescue
@@ -2446,12 +2555,18 @@ defmodule IpseKnowledge.Store do
       cond do
         imported -> %{"original_origin" => imported}
         args["document"] -> Evidence.document_storage_receipt!(args["document"])
+        state[:fetched_capture] -> state.fetched_capture
         args["provided_transfer"] -> args["provided_transfer"]
         true -> nil
       end
 
     %{
-      "kind" => if(imported, do: "import", else: "provided"),
+      "kind" =>
+        cond do
+          imported -> "import"
+          state[:fetched_capture] -> "fetch"
+          true -> "provided"
+        end,
       "store_profile" => state.name,
       "partition_or_scope" => state.profile["partition"],
       "receipt" => receipt,

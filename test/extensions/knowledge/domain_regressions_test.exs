@@ -3,7 +3,7 @@ defmodule Ipse.KnowledgeDomainRegressionsTest do
 
   @suite ~S"""
   ExUnit.start(autorun: false)
-  for file <- ~w(evidence profiles store/state store/mcp_cas store adapters corpus graph research) do
+  for file <- ~w(evidence profiles adapters store/state store/mcp_cas store corpus graph research) do
     Code.require_file(Path.join("extensions/knowledge/src",file<>".ex"))
   end
 

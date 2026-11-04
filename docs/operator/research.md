@@ -10,6 +10,7 @@ authenticity, or semantic support.
 | Ask the main agent to investigate and synthesize | Native `$research` workflow, recorded source/claim ledger |
 | Rank supplied text without a model or service | Offline Research extension, structured result |
 | Investigate through selected search/fetch tools | MCP Research extension, structured result and call receipts |
+| Fetch and retain one selected URI for Corpus questions | [Fetched State retention](#fetch-and-retain-a-selected-source) |
 | Explicitly retain supplied text for later Corpus questions | [Provided-only Research transfer](#retain-supplied-evidence-in-a-shared-corpus) |
 | Keep sources for later questions or traverse retained relationships | [Corpus](corpus.md) or [Graph](graph.md) |
 
@@ -137,7 +138,7 @@ results. The options file contains all seven registries, including empty ones:
 }
 ```
 
-Search/fetch kinds must match. Every Research retrieval profile must be BM25.
+Investigation search/fetch kinds must match. Every Research retrieval profile must be BM25.
 Corpus's dense/hybrid/graph/`mcp_query` profiles are not Research algorithms.
 Unknown/unused families and missing selected profiles refuse configuration.
 
@@ -441,6 +442,99 @@ publication limits still apply. Invalid shapes/hashes/spans/incomplete replies
 refuse. Call receipts bind replies, but do not certify the gateway's internal
 source access or semantic claims.
 
+## Fetch and retain a selected source
+
+Choose `state-fetched` when a reviewed MCP gateway should capture one URI and
+retain its complete text in a shared State Corpus. This preset does not search,
+rank or call a model. It makes a fresh fetch inside each transfer; callers cannot
+supply a prior fetch receipt or body as authority. The gateway must implement the
+[fetch-v1 contract](../developer/knowledge-storage.md#implement-the-research-searchfetch-gateway).
+Choose and allowlist its actual fetch tool using [MCP setup](mcp.md); Ipse installs
+no gateway and does not select one for you.
+
+This independent source-build example uses a fresh home/workspace and the same
+explicit binding/scope/partition in both instances. It does not restore content
+forgotten in an earlier namespace. Build/import/review these artifacts as in the
+provided-text procedure. Replace `mcp__research_gateway__fetch` with the actual
+reviewed tool ID and supply its MCP configuration at the private path below:
+
+```sh
+umask 077
+./dev/build.sh
+IPSE_FETCH_ARTIFACTS=$(mktemp -d)
+IPSE_FETCH_HOME=$(mktemp -d)
+IPSE_FETCH_WORKSPACE=$(mktemp -d)
+elixir extensions/knowledge/build.exs \
+  --sdk _build/dev/lib/ipse/ebin --output "$IPSE_FETCH_ARTIFACTS/research" \
+  --package research --preset state-fetched
+elixir extensions/knowledge/build.exs \
+  --sdk _build/dev/lib/ipse/ebin --output "$IPSE_FETCH_ARTIFACTS/corpus" \
+  --package corpus --preset state-lexical
+elixir -e '[input, output] = System.argv(); options = JSON.decode!(File.read!(input)) |> Map.put("fetch", %{}); File.write!(output, JSON.encode!(options), [:exclusive])' \
+  extensions/knowledge/options/research-state-fetched.json \
+  "$IPSE_FETCH_ARTIFACTS/corpus-options.json"
+elixir -e '[output] = System.argv(); File.write!(output, JSON.encode!(%{"fetch-web" => "mcp__research_gateway__fetch"}), [:exclusive])' \
+  "$IPSE_FETCH_ARTIFACTS/bindings.json"
+elixir extensions/knowledge/config.exs \
+  --artifact "$IPSE_FETCH_ARTIFACTS/research" \
+  --package research --preset state-fetched --instance research \
+  --options extensions/knowledge/options/research-state-fetched.json \
+  --state-binding research-fetch-shared \
+  --mcp-bindings "$IPSE_FETCH_ARTIFACTS/bindings.json" \
+  --output "$IPSE_FETCH_ARTIFACTS/research.json"
+elixir extensions/knowledge/config.exs \
+  --artifact "$IPSE_FETCH_ARTIFACTS/corpus" \
+  --package corpus --preset state-lexical --instance corpus \
+  --options "$IPSE_FETCH_ARTIFACTS/corpus-options.json" \
+  --state-binding research-fetch-shared \
+  --output "$IPSE_FETCH_ARTIFACTS/corpus.json"
+elixir -e '[research, corpus, output] = System.argv(); left = JSON.decode!(File.read!(research)); right = JSON.decode!(File.read!(corpus)); config = %{"version" => 1, "extensions" => left["extensions"] ++ right["extensions"], "extension_trust" => left["extension_trust"] ++ right["extension_trust"]}; File.write!(output, JSON.encode!(config), [:exclusive])' \
+  "$IPSE_FETCH_ARTIFACTS/research.json" "$IPSE_FETCH_ARTIFACTS/corpus.json" \
+  "$IPSE_FETCH_ARTIFACTS/operator.json"
+IPSE_HOME="$IPSE_FETCH_HOME" ./bin/ipse extension import "$IPSE_FETCH_ARTIFACTS/research"
+IPSE_HOME="$IPSE_FETCH_HOME" ./bin/ipse extension import "$IPSE_FETCH_ARTIFACTS/corpus"
+IPSE_HOME="$IPSE_FETCH_HOME" ./bin/ipse config \
+  --config "$IPSE_FETCH_ARTIFACTS/operator.json" --no-project-config \
+  --extension research --extension corpus
+IPSE_HOME="$IPSE_FETCH_HOME" ./bin/ipse chat --provider demo \
+  --config "$IPSE_FETCH_ARTIFACTS/operator.json" --no-project-config \
+  --extension research --extension corpus \
+  --mcp-config /private/path/research-mcp.json --cwd "$IPSE_FETCH_WORKSPACE"
+```
+
+Review the printed artifact digests, manifests and generated trust before
+selection. Unlike `state-retained`, this preset adds selected MCP access as well
+as State access. Approve the exact fetch URI and, separately, the proposed State
+writes. For a compatible gateway serving the storage chapter's example body,
+run each command separately and wait for `Finished.`:
+
+```text
+/ext ext__research__fetch_retain {"store":"notes","fetch":"web","uri":"local:release-policy","title":"Release policy","quote":"Release requires quiescence.","timeout_ms":5000}
+/ext ext__corpus__query {"store":"notes","retrieval":"words","rerank":null,"query":"quiescence","top_k":3,"as_of_ms":null}
+```
+
+Use your selected URI and a unique exact quotation from its captured text. The
+result identifies the canonical body key and derivation; the query citation has
+`origin.kind: fetch`, requested/observed URI, body hash and UTF-8 quote coordinates.
+The existing `research.provided:` key prefix is retained for identity compatibility;
+read the origin rather than inferring provenance from that prefix. The descriptor
+is attribution to a recorded fetch, not permission or a native current-source
+receipt. Later stored metadata alone authenticates no new/current fetch.
+Gateway truth, identity and reported timestamps remain unverified.
+
+Inspect/forget the returned source ID with the Corpus commands in the previous
+procedure. Re-fetching identical body bytes under another URI/quote or fresh
+Session cannot restore them in that same namespace. A malformed, partial,
+hash-mismatched or missing fetch refuses before State writes. A denied State
+approval can leave a recorded denied intent, but changes no stored records.
+An interrupted write may have happened: preserve its journal/configuration and
+inspect storage before explicit recovery; never automatically retry it.
+
+The body/quote bounds remain 4,096/1,024 UTF-8 bytes with unique quote matching.
+Changed-body/stable-origin tracking, derivative or cross-backend invalidation and
+managed-notes/model-selected fetched retention remain unqualified. This is not a
+promise to suppress every restatement or erase already captured journal text.
+
 ## Add an explicitly named reranker
 
 MCP retrieval needs no model. For optional model reranking, use preset mcp-model
@@ -498,8 +592,10 @@ Conforming output proves no ranking improvement or factual support.
 ## Recover before issuing another request
 
 A refusal names the actual operation/limit. It does not change service, profile,
-algorithm, or allowance. Unknown retrieval/model work may have run remotely;
-inspect receipts/service records before deciding on a new explicit investigation.
+algorithm, or allowance. Unknown retrieval/model work may have run remotely,
+and an interrupted retention may have written State. An empty Corpus query does
+not prove that no immutable pages were written. Preserve the original journal,
+namespace and configuration and inspect the recorded outcomes before new work.
 Local cancellation cannot prove remote work stopped. A time_limit refusal needs
 a new reviewed invocation, never automatic replay.
 

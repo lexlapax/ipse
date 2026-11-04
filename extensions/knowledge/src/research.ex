@@ -12,14 +12,20 @@ defmodule IpseKnowledge.Research do
         "version" => 1,
         "services" => [],
         "commands" =>
-          [
-            entry("investigate", "Explicit bounded source investigation", investigate_schema()),
-            entry("ledger", "Inspect or assert a provided claim ledger", ledger_schema())
-          ] ++ retention_exports(),
+          if(@preset == "state-fetched",
+            do: [entry("ledger", "Inspect or assert a provided claim ledger", ledger_schema())],
+            else: [
+              entry("investigate", "Explicit bounded source investigation", investigate_schema()),
+              entry("ledger", "Inspect or assert a provided claim ledger", ledger_schema())
+            ]
+          ) ++ retention_exports(),
         "tools" =>
-          [
-            entry("investigate", "Explicit bounded source investigation", investigate_schema())
-          ] ++ retention_exports()
+          if(@preset == "state-fetched",
+            do: [],
+            else: [
+              entry("investigate", "Explicit bounded source investigation", investigate_schema())
+            ]
+          ) ++ retention_exports()
       }
     }
   end
@@ -54,18 +60,66 @@ defmodule IpseKnowledge.Research do
   defp invoke(%{"id" => "retain", "arguments" => args}, state) when @preset == "state-retained",
     do: retain(args, state)
 
+  defp invoke(%{"id" => "fetch_retain", "arguments" => args}, state)
+       when @preset == "state-fetched",
+       do: fetch_retain(args, state)
+
   defp invoke(_, state), do: finish(state, refused(:invalid_invocation))
 
   defp retention_exports do
-    if @preset == "state-retained",
-      do: [
+    if @preset == "state-fetched" do
+      [
         entry(
-          "retain",
-          "Explicitly retain supplied unverified text and an exact quote in a shared State Corpus",
-          retain_schema()
+          "fetch_retain",
+          "Fetch once through the selected MCP profile and retain attributed bytes under ordinary State approval",
+          fetch_retain_schema()
         )
-      ],
-      else: []
+      ]
+    else
+      if @preset == "state-retained",
+        do: [
+          entry(
+            "retain",
+            "Explicitly retain supplied unverified text and an exact quote in a shared State Corpus",
+            retain_schema()
+          )
+        ],
+        else: []
+    end
+  end
+
+  defp fetch_retain_schema do
+    %{
+      "type" => "object",
+      "additionalProperties" => false,
+      "required" => ~w(store fetch uri title quote timeout_ms),
+      "properties" => %{
+        "store" => string(64),
+        "fetch" => string(64),
+        "uri" => string(512),
+        "title" => string(128),
+        "quote" => string(1024),
+        "timeout_ms" => integer(1000, 30_000)
+      }
+    }
+  end
+
+  defp fetch_retain(args, state) do
+    with true <- exact?(args, ~w(store fetch uri title quote timeout_ms)),
+         {:ok, store} <- Profiles.lookup(state.resolved, "stores", args["store"]),
+         {:ok, fetch} <- Profiles.lookup(state.resolved, "fetch", args["fetch"]) do
+      advance(
+        Store.start_fetch_transfer(
+          args["store"],
+          store,
+          fetch,
+          Map.take(args, ~w(uri title quote timeout_ms))
+        ),
+        %{state | phase: :retain_write, ctx: %{kind: :fetch}}
+      )
+    else
+      _ -> finish(state, refused(:invalid_fetch_transfer))
+    end
   end
 
   defp retain_schema do
@@ -315,6 +369,26 @@ defmodule IpseKnowledge.Research do
   defp advance({:stop, :unknown_effect}, %{phase: :retain_write}), do: {:stop, :unknown_effect}
   defp advance({:stop, :unknown_effect}, state), do: finish(state, refused(:unknown_effect))
   defp advance({:done, {:error, code, _}}, state), do: finish(state, refused(code))
+
+  defp advance({:done, {:ok, stored}}, %{phase: :retain_write, ctx: %{kind: :fetch}} = state) do
+    finish(
+      state,
+      output(
+        "ok",
+        [],
+        [],
+        [],
+        %{
+          "kind" => "fetch_transfer",
+          "durable" => true,
+          "native_receipt" => false,
+          "source_id" => stored["source_id"],
+          "derivation" => stored["fetch_transfer"]
+        },
+        nil
+      )
+    )
+  end
 
   defp advance({:done, {:ok, _}}, %{phase: :retain_write} = state) do
     finish(

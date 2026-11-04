@@ -1,0 +1,7 @@
+test/extensions/knowledge/store_test.exs
+test/extensions/knowledge/graph_population_test.exs
+test/extensions/knowledge/packages_test.exs
+test/extensions/knowledge/shared_producer_test.exs
+test/extensions/knowledge/domain_regressions_test.exs
+test/extensions/knowledge/document_ingestion_test.exs
+test/support/graph_main_capture.exs

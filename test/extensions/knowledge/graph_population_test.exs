@@ -3,7 +3,7 @@ defmodule Ipse.KnowledgeGraphPopulationTest do
   @root Path.expand("../../..", __DIR__)
   @suite ~S"""
   ExUnit.start(autorun: false)
-  for file <- ~w(evidence profiles store/state store/mcp_cas store adapters graph) do
+  for file <- ~w(evidence profiles adapters store/state store/mcp_cas store graph) do
     Code.require_file("extensions/knowledge/src/" <> file <> ".ex")
   end
   corpus=File.read!("extensions/knowledge/src/corpus.ex")

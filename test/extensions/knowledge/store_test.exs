@@ -3,7 +3,7 @@ defmodule Ipse.KnowledgeStoreTest do
   @root Path.expand("../../..", __DIR__)
 
   defp isolated(body) do
-    paths = ~w(evidence.ex store/state.ex store/mcp_cas.ex store.ex)
+    paths = ~w(evidence.ex profiles.ex adapters.ex store/state.ex store/mcp_cas.ex store.ex)
 
     args =
       Enum.flat_map(Enum.reject(:code.get_path(), &(&1 == ~c".")), &["-pa", List.to_string(&1)]) ++

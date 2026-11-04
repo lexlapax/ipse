@@ -1,6 +1,6 @@
 ExUnit.start(autorun: false)
 
-for file <- ~w(evidence profiles store/state store/mcp_cas store adapters),
+for file <- ~w(evidence profiles adapters store/state store/mcp_cas store),
     do: Code.require_file("extensions/knowledge/src/" <> file <> ".ex")
 
 Code.require_file(List.first(System.argv()) || "extensions/knowledge/src/graph.ex")

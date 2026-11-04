@@ -54,6 +54,9 @@ defmodule IpseKnowledge.Profiles do
         {"research", "state-retained"} ->
           @state
 
+        {"research", "state-fetched"} ->
+          @state ++ @mcp
+
         {"research", "offline"} ->
           []
 
@@ -136,10 +139,11 @@ defmodule IpseKnowledge.Profiles do
           ~w(stores retrieval embedding rerank)
 
         "research" ->
-          if(preset == "state-retained",
-            do: ~w(stores search fetch retrieval rerank),
-            else: ~w(search fetch retrieval rerank)
-          )
+          case preset do
+            "state-retained" -> ~w(stores search fetch retrieval rerank)
+            "state-fetched" -> ~w(stores fetch retrieval)
+            _ -> ~w(search fetch retrieval rerank)
+          end
 
         "graph" ->
           ~w(stores extraction)
@@ -168,8 +172,15 @@ defmodule IpseKnowledge.Profiles do
           map_size(o["stores"]) > 0 and map_size(o["extraction"]) > 0
 
         "research" ->
-          map_size(o["search"]) > 0 and map_size(o["fetch"]) > 0 and map_size(o["retrieval"]) > 0 and
-            (preset != "state-retained" or map_size(o["stores"]) > 0)
+          if preset == "state-fetched" do
+            map_size(o["stores"]) > 0 and map_size(o["fetch"]) > 0 and
+              map_size(o["retrieval"]) > 0 and
+              Enum.all?(o["fetch"], fn {_, p} -> p["kind"] == "mcp" end)
+          else
+            map_size(o["search"]) > 0 and map_size(o["fetch"]) > 0 and
+              map_size(o["retrieval"]) > 0 and
+              (preset != "state-retained" or map_size(o["stores"]) > 0)
+          end
       end
 
     authority =

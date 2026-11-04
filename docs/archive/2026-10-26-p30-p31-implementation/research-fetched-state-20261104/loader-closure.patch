@@ -1,0 +1,76 @@
+--- a/test/extensions/knowledge/store_test.exs
++++ b/test/extensions/knowledge/store_test.exs
+@@ -3,7 +3,7 @@
+   @root Path.expand("../../..", __DIR__)
+ 
+   defp isolated(body) do
+-    paths = ~w(evidence.ex store/state.ex store/mcp_cas.ex store.ex)
++    paths = ~w(evidence.ex profiles.ex adapters.ex store/state.ex store/mcp_cas.ex store.ex)
+ 
+     args =
+       Enum.flat_map(Enum.reject(:code.get_path(), &(&1 == ~c".")), &["-pa", List.to_string(&1)]) ++
+--- a/test/extensions/knowledge/graph_population_test.exs
++++ b/test/extensions/knowledge/graph_population_test.exs
+@@ -3,7 +3,7 @@
+   @root Path.expand("../../..", __DIR__)
+   @suite ~S"""
+   ExUnit.start(autorun: false)
+-  for file <- ~w(evidence profiles store/state store/mcp_cas store adapters graph) do
++  for file <- ~w(evidence profiles adapters store/state store/mcp_cas store graph) do
+     Code.require_file("extensions/knowledge/src/" <> file <> ".ex")
+   end
+   corpus=File.read!("extensions/knowledge/src/corpus.ex")
+--- a/test/extensions/knowledge/packages_test.exs
++++ b/test/extensions/knowledge/packages_test.exs
+@@ -3,7 +3,7 @@
+ 
+   @suite ~S"""
+   ExUnit.start(autorun: false)
+-  for file <- ~w(evidence profiles store/state store/mcp_cas store adapters corpus research graph) do
++  for file <- ~w(evidence profiles adapters store/state store/mcp_cas store corpus research graph) do
+     Code.require_file(Path.join("extensions/knowledge/src", file <> ".ex"))
+   end
+   Code.require_file("extensions/knowledge/spec.exs")
+--- a/test/extensions/knowledge/shared_producer_test.exs
++++ b/test/extensions/knowledge/shared_producer_test.exs
+@@ -3,7 +3,7 @@
+ 
+   test "bounded shared producer receipt flow and unknown controls in an isolated worker" do
+     files =
+-      ~w(profiles evidence store store/state store/mcp_cas store/collection store/collection/index store/collection/projection store/collection/generation store/collection/directory store/collection/selected store/collection/job store/collection/reduction store/collection/finalization store/collection/paged store/collection/producer store/collection/producer_progress adapters documents documents/zip documents/docx documents/parser_stage documents/pdf)
++      ~w(profiles evidence adapters store store/state store/mcp_cas store/collection store/collection/index store/collection/projection store/collection/generation store/collection/directory store/collection/selected store/collection/job store/collection/reduction store/collection/finalization store/collection/paged store/collection/producer store/collection/producer_progress documents documents/zip documents/docx documents/parser_stage documents/pdf)
+       |> Enum.map(&Path.expand("extensions/knowledge/src/" <> &1 <> ".ex"))
+ 
+     paths =
+--- a/test/extensions/knowledge/domain_regressions_test.exs
++++ b/test/extensions/knowledge/domain_regressions_test.exs
+@@ -3,7 +3,7 @@
+ 
+   @suite ~S"""
+   ExUnit.start(autorun: false)
+-  for file <- ~w(evidence profiles store/state store/mcp_cas store adapters corpus graph research) do
++  for file <- ~w(evidence profiles adapters store/state store/mcp_cas store corpus graph research) do
+     Code.require_file(Path.join("extensions/knowledge/src",file<>".ex"))
+   end
+ 
+--- a/test/extensions/knowledge/document_ingestion_test.exs
++++ b/test/extensions/knowledge/document_ingestion_test.exs
+@@ -4,7 +4,7 @@
+ 
+   defp isolated(body) do
+     files =
+-      ~w(profiles evidence store store/state store/mcp_cas store/collection store/collection/index store/collection/projection store/collection/generation store/collection/directory store/collection/selected store/collection/job store/collection/reduction store/collection/finalization store/collection/paged store/collection/producer store/collection/producer_progress adapters documents documents/zip documents/docx documents/parser_stage documents/pdf corpus)
++      ~w(profiles evidence adapters store store/state store/mcp_cas store/collection store/collection/index store/collection/projection store/collection/generation store/collection/directory store/collection/selected store/collection/job store/collection/reduction store/collection/finalization store/collection/paged store/collection/producer store/collection/producer_progress documents documents/zip documents/docx documents/parser_stage documents/pdf corpus)
+ 
+     {source_args, compile_prefix} =
+       case System.get_env("IPSE_DOCUMENT_TEST_ARTIFACT") do
+--- a/test/support/graph_main_capture.exs
++++ b/test/support/graph_main_capture.exs
+@@ -1,6 +1,6 @@
+ ExUnit.start(autorun: false)
+ 
+-for file <- ~w(evidence profiles store/state store/mcp_cas store adapters),
++for file <- ~w(evidence profiles adapters store/state store/mcp_cas store),
+     do: Code.require_file("extensions/knowledge/src/" <> file <> ".ex")
+ 
+ Code.require_file(List.first(System.argv()) || "extensions/knowledge/src/graph.ex")

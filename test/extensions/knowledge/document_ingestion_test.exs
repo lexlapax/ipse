@@ -4,7 +4,7 @@ defmodule Ipse.KnowledgeDocumentIngestionTest do
 
   defp isolated(body) do
     files =
-      ~w(profiles evidence store store/state store/mcp_cas store/collection store/collection/index store/collection/projection store/collection/generation store/collection/directory store/collection/selected store/collection/job store/collection/reduction store/collection/finalization store/collection/paged store/collection/producer store/collection/producer_progress adapters documents documents/zip documents/docx documents/parser_stage documents/pdf corpus)
+      ~w(profiles evidence adapters store store/state store/mcp_cas store/collection store/collection/index store/collection/projection store/collection/generation store/collection/directory store/collection/selected store/collection/job store/collection/reduction store/collection/finalization store/collection/paged store/collection/producer store/collection/producer_progress documents documents/zip documents/docx documents/parser_stage documents/pdf corpus)
 
     {source_args, compile_prefix} =
       case System.get_env("IPSE_DOCUMENT_TEST_ARTIFACT") do

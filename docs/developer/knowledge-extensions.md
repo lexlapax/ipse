@@ -15,7 +15,7 @@ Start with the [operator procedures](../operator/corpus.md) and
 | `knowledge.ex`, `knowledge/records.ex`, `notes.ex` | Protected capture continuation, stable evidence and note retention |
 | `knowledge/contracts.ex` | Inert operator-sidecar publication schemas and managed recipes; no authority or executable setup |
 | `corpus.ex` | Source/query/index commands and final revalidation |
-| `graph.ex`, `research.ex` | Main-tool stored-source facts, optional extraction/traversal and captured-source investigations |
+| `graph.ex`, `research.ex` | Main-tool facts/traversal, investigations and explicit provided/fetched State capture |
 | `profiles.ex` | Closed named algorithms and preset compatibility |
 | `store.ex`, `store/` | Root/page transactions and State/MCP adapters |
 | `evidence.ex` | Safe identities, chunks/citations, ranking/fusion/facts/traversal |
@@ -29,6 +29,8 @@ check exact declarations before grants. Import, trust, and activation remain sep
 Corpus uses store/retrieval/embedding/rerank families; Graph uses stores/extraction,
 with empty retrieval registry; Research uses search/fetch/BM25/optional rerank; its opt-in `state-retained`
 preset additionally selects State storage for explicit provided-text retention.
+`state-fetched` combines selected MCP fetch with ordinary State retention; it has
+no search, ranking or model export.
 Reject unused/incompatible profiles before generating permissions. A syntactically
 valid dense/graph/hybrid/remote-query profile is still invalid for Research.
 
@@ -639,15 +641,15 @@ bindings. Disabled/enabled idle/resume counters remain zero for workers, State,
 MCP, embedding, and text work. Actual commands provide positive controls.
 Same source IDs do not turn notes into retained evidence or vice versa. Forgetting
 one store preserves the other's content. This exercise selects offline Research, which owns no retained knowledge store.
-The separate `state-retained` preset shares a store only through explicit
-operator-selected State bindings, scope and partition.
+The separate `state-retained` and `state-fetched` presets share a store only
+through explicit operator-selected State bindings, scope and partition.
 
 Inspect actual namespace-relative filenames/hashes: Research+Memory has one State
 file; Corpus/Graph+Memory have two. Empty inventory proves no inert-resume claim.
 Counters use arity-only OTP trace instrumentation, without arguments/payloads, and
 require every target to be instrumented. Confinement needs separate OS evidence.
-All three packages plus Memory exceed the existing 16-KiB catalog and must refuse
-before Session/worker/store work. Pairwise compatibility grants no larger catalog.
+The artifacts selected by this exercise, plus Memory, exceed the existing
+16-KiB catalog and must refuse before Session/worker/store work. Pairwise compatibility grants no larger catalog.
 Repeat the same artifacts in installed mode for runtime compatibility, not new quality evidence.
 
 ## Trace one source and a revalidated query
@@ -1509,8 +1511,48 @@ the canonical body identity across supplied ID/URI/quote aliases and fresh
 Sessions. A conflicting same-body origin cannot silently replace attribution.
 Changed-body and fetched-source derivative suppression remain outside this mode.
 The body/quote limits are 4,096/1,024 UTF-8 bytes; ambiguity includes overlapping
-quote matches. Old Research presets retain their original capabilities/exports
-and reject stores/retain.
+quote matches. `offline`, `mcp` and `mcp-model` retain their original capabilities
+and exports and reject retained-store options. `state-retained` keeps its
+provided-only flow and does not export `fetch_retain`.
+
+The separate `state-fetched` preset performs one selected fetch and ordinary
+State retention without search or inference. Trace `Research.fetch_retain/2`
+through `Store.start_fetch_transfer/4`: Store starts the existing Adapters fetch,
+accepts only its real host callback sequence, validates descriptor/result pages
+and the complete fetch-v1 body/hash/URI, then constructs the private write
+continuation. Caller arguments contain no body, prior receipt or destination
+identity. Ordinary Store/Corpus put rejects the internal fetched-capture field.
+This is shared pure package code inside one worker, not a nested effectful
+extension invocation. Existing MCP/State actions retain their own approvals and
+durable intent-before-effect order.
+
+Store derives the same canonical full-body key as provided retention, carries the
+actual fetch/read work into the unchanged effect/read allowances and records the
+requested/observed URI, actual effect-result descriptor and exact unique quote
+range. The origin is fetched data with `native_receipt: false`; the stored
+receipt is not a grant or independently authenticated current-source lease.
+Current managed-source/State-write guards stay in force. Same-body forgetting
+covers URI/quote aliases and fresh Sessions in the exact shared namespace, but
+changed-body, stable-origin, cross-backend and derivative suppression remain open.
+The [operator task](../operator/research.md#fetch-and-retain-a-selected-source)
+shows complete selection and recovery; no gateway is installed implicitly.
+
+```sh
+mix test test/extensions/knowledge/research_fetch_transfer_test.exs
+IPSE_TEST_RESEARCH_FETCH_SESSION=1 mix test \
+  test/extensions/knowledge/research_fetch_transfer_test.exs --only research_fetch_session
+```
+
+The pure controls use the existing adapter/Store fixture. The opt-in Linux
+protected-storage Session case uses real synthetic MCP/stdIO and direct ordinary
+Session approvals, with no Input/TTY or model. It binds the stored descriptor to
+its actual recorded fetch, checks Corpus quote/forget/alias containment and
+refused fetches with zero State mutation intents. Its interruption witness holds
+the actual successful State-write callback before result append, kills the owning
+Session and confirms native source-owner exit. Saved keeps that unresolved action;
+explicit idle reopen must add no effect intents or replay it. Do not replace
+this with a synthetic known refusal. The [dated control](../archive/2026-10-26-p30-p31-implementation/research-fetched-state-20261104.md)
+records the bounded candidate, compatibility and remaining qualification gates.
 
 Exercise independent Store forgery refusals, Corpus forwarding rejection, shared
 forgetting and ordinary approval/journal/no-replay behavior with

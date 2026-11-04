@@ -13,7 +13,9 @@ separate [notes permission](knowledge-permissions.md).
 
 To share supplied evidence explicitly between Research and Corpus, follow
 [provided-text retention](research.md#retain-supplied-evidence-in-a-shared-corpus).
-It uses a separately selected State preset and ordinary action approvals.
+It uses a separately selected State preset and ordinary action approvals. For one
+explicit fetch, [fetched State retention](research.md#fetch-and-retain-a-selected-source)
+also requires a reviewed compatible MCP gateway and separate fetch approval.
 
 ## Try a bundled transform
 

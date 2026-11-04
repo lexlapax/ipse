@@ -3,7 +3,7 @@ defmodule Ipse.SharedProducerFixtureTest do
 
   test "bounded shared producer receipt flow and unknown controls in an isolated worker" do
     files =
-      ~w(profiles evidence store store/state store/mcp_cas store/collection store/collection/index store/collection/projection store/collection/generation store/collection/directory store/collection/selected store/collection/job store/collection/reduction store/collection/finalization store/collection/paged store/collection/producer store/collection/producer_progress adapters documents documents/zip documents/docx documents/parser_stage documents/pdf)
+      ~w(profiles evidence adapters store store/state store/mcp_cas store/collection store/collection/index store/collection/projection store/collection/generation store/collection/directory store/collection/selected store/collection/job store/collection/reduction store/collection/finalization store/collection/paged store/collection/producer store/collection/producer_progress documents documents/zip documents/docx documents/parser_stage documents/pdf)
       |> Enum.map(&Path.expand("extensions/knowledge/src/" <> &1 <> ".ex"))
 
     paths =

@@ -1,0 +1,1273 @@
+--- a/extensions/knowledge/src/profiles.ex
++++ b/extensions/knowledge/src/profiles.ex
+@@ -54,6 +54,9 @@
+         {"research", "state-retained"} ->
+           @state
+ 
++        {"research", "state-fetched"} ->
++          @state ++ @mcp
++
+         {"research", "offline"} ->
+           []
+ 
+@@ -136,10 +139,11 @@
+           ~w(stores retrieval embedding rerank)
+ 
+         "research" ->
+-          if(preset == "state-retained",
+-            do: ~w(stores search fetch retrieval rerank),
+-            else: ~w(search fetch retrieval rerank)
+-          )
++          case preset do
++            "state-retained" -> ~w(stores search fetch retrieval rerank)
++            "state-fetched" -> ~w(stores fetch retrieval)
++            _ -> ~w(search fetch retrieval rerank)
++          end
+ 
+         "graph" ->
+           ~w(stores extraction)
+@@ -168,8 +172,15 @@
+           map_size(o["stores"]) > 0 and map_size(o["extraction"]) > 0
+ 
+         "research" ->
+-          map_size(o["search"]) > 0 and map_size(o["fetch"]) > 0 and map_size(o["retrieval"]) > 0 and
+-            (preset != "state-retained" or map_size(o["stores"]) > 0)
++          if preset == "state-fetched" do
++            map_size(o["stores"]) > 0 and map_size(o["fetch"]) > 0 and
++              map_size(o["retrieval"]) > 0 and
++              Enum.all?(o["fetch"], fn {_, p} -> p["kind"] == "mcp" end)
++          else
++            map_size(o["search"]) > 0 and map_size(o["fetch"]) > 0 and
++              map_size(o["retrieval"]) > 0 and
++              (preset != "state-retained" or map_size(o["stores"]) > 0)
++          end
+       end
+ 
+     authority =
+--- a/extensions/knowledge/src/research.ex
++++ b/extensions/knowledge/src/research.ex
+@@ -12,14 +12,20 @@
+         "version" => 1,
+         "services" => [],
+         "commands" =>
+-          [
+-            entry("investigate", "Explicit bounded source investigation", investigate_schema()),
+-            entry("ledger", "Inspect or assert a provided claim ledger", ledger_schema())
+-          ] ++ retention_exports(),
++          if(@preset == "state-fetched",
++            do: [entry("ledger", "Inspect or assert a provided claim ledger", ledger_schema())],
++            else: [
++              entry("investigate", "Explicit bounded source investigation", investigate_schema()),
++              entry("ledger", "Inspect or assert a provided claim ledger", ledger_schema())
++            ]
++          ) ++ retention_exports(),
+         "tools" =>
+-          [
+-            entry("investigate", "Explicit bounded source investigation", investigate_schema())
+-          ] ++ retention_exports()
++          if(@preset == "state-fetched",
++            do: [],
++            else: [
++              entry("investigate", "Explicit bounded source investigation", investigate_schema())
++            ]
++          ) ++ retention_exports()
+       }
+     }
+   end
+@@ -54,18 +60,66 @@
+   defp invoke(%{"id" => "retain", "arguments" => args}, state) when @preset == "state-retained",
+     do: retain(args, state)
+ 
++  defp invoke(%{"id" => "fetch_retain", "arguments" => args}, state)
++       when @preset == "state-fetched",
++       do: fetch_retain(args, state)
++
+   defp invoke(_, state), do: finish(state, refused(:invalid_invocation))
+ 
+   defp retention_exports do
+-    if @preset == "state-retained",
+-      do: [
++    if @preset == "state-fetched" do
++      [
+         entry(
+-          "retain",
+-          "Explicitly retain supplied unverified text and an exact quote in a shared State Corpus",
+-          retain_schema()
++          "fetch_retain",
++          "Fetch once through the selected MCP profile and retain attributed bytes under ordinary State approval",
++          fetch_retain_schema()
+         )
+-      ],
+-      else: []
++      ]
++    else
++      if @preset == "state-retained",
++        do: [
++          entry(
++            "retain",
++            "Explicitly retain supplied unverified text and an exact quote in a shared State Corpus",
++            retain_schema()
++          )
++        ],
++        else: []
++    end
++  end
++
++  defp fetch_retain_schema do
++    %{
++      "type" => "object",
++      "additionalProperties" => false,
++      "required" => ~w(store fetch uri title quote timeout_ms),
++      "properties" => %{
++        "store" => string(64),
++        "fetch" => string(64),
++        "uri" => string(512),
++        "title" => string(128),
++        "quote" => string(1024),
++        "timeout_ms" => integer(1000, 30_000)
++      }
++    }
++  end
++
++  defp fetch_retain(args, state) do
++    with true <- exact?(args, ~w(store fetch uri title quote timeout_ms)),
++         {:ok, store} <- Profiles.lookup(state.resolved, "stores", args["store"]),
++         {:ok, fetch} <- Profiles.lookup(state.resolved, "fetch", args["fetch"]) do
++      advance(
++        Store.start_fetch_transfer(
++          args["store"],
++          store,
++          fetch,
++          Map.take(args, ~w(uri title quote timeout_ms))
++        ),
++        %{state | phase: :retain_write, ctx: %{kind: :fetch}}
++      )
++    else
++      _ -> finish(state, refused(:invalid_fetch_transfer))
++    end
+   end
+ 
+   defp retain_schema do
+@@ -316,6 +370,26 @@
+   defp advance({:stop, :unknown_effect}, state), do: finish(state, refused(:unknown_effect))
+   defp advance({:done, {:error, code, _}}, state), do: finish(state, refused(code))
+ 
++  defp advance({:done, {:ok, stored}}, %{phase: :retain_write, ctx: %{kind: :fetch}} = state) do
++    finish(
++      state,
++      output(
++        "ok",
++        [],
++        [],
++        [],
++        %{
++          "kind" => "fetch_transfer",
++          "durable" => true,
++          "native_receipt" => false,
++          "source_id" => stored["source_id"],
++          "derivation" => stored["fetch_transfer"]
++        },
++        nil
++      )
++    )
++  end
++
+   defp advance({:done, {:ok, _}}, %{phase: :retain_write} = state) do
+     finish(
+       state,
+--- a/extensions/knowledge/src/store.ex
++++ b/extensions/knowledge/src/store.ex
+@@ -1,6 +1,6 @@
+ defmodule IpseKnowledge.Store do
+   @moduledoc "Partitioned immutable evidence pages selected by registered source-root CAS."
+-  alias IpseKnowledge.Evidence
++  alias IpseKnowledge.{Evidence, Adapters}
+   alias IpseKnowledge.Store.{State, MCPCAS}
+ 
+   @operations [
+@@ -65,6 +65,101 @@
+         {:ok, receipt["start_byte"], receipt["end_byte"]}
+   end
+ 
++  def start_fetch_transfer(name, profile, fetch, args) do
++    with true <- name?(name) and profile?(profile) and profile["kind"] == "state",
++         true <-
++           keys?(fetch, ~w(kind binding contract)) and fetch["kind"] == "mcp" and
++             name?(fetch["binding"]) and fetch["contract"] == "fetch-v1",
++         true <- keys?(args, ~w(uri title quote timeout_ms)),
++         true <-
++           Enum.all?([{args["uri"], 512}, {args["title"], 128}, {args["quote"], 1024}], fn {text,
++                                                                                            max} ->
++             is_binary(text) and String.valid?(text) and byte_size(text) in 1..max
++           end),
++         true <- is_integer(args["timeout_ms"]) and args["timeout_ms"] in 1000..30_000 do
++      resolved = %{"options" => %{"fetch" => %{"selected" => fetch}}}
++      transfer = %{name: name, profile: profile, fetch: fetch, args: args, adapter: nil}
++
++      fetch_transfer_step(
++        Adapters.start(resolved, :fetch, %{
++          "profile" => "selected",
++          "uri" => args["uri"],
++          "timeout_ms" => args["timeout_ms"]
++        }),
++        transfer
++      )
++    else
++      _ -> error(:invalid_fetch_transfer)
++    end
++  rescue
++    _ -> error(:invalid_fetch_transfer)
++  end
++
++  defp fetch_transfer_step({:call, request, continuation}, transfer),
++    do: {:call, request, %{fetch_transfer: %{transfer | adapter: continuation}}}
++
++  defp fetch_transfer_step({:done, {:ok, fetched}}, transfer) do
++    source = fetched["source"]
++    args = transfer.args
++
++    with true <- source["requested_uri"] == args["uri"] and source["complete"] == true,
++         text when is_binary(text) <- source["text"],
++         true <- byte_size(text) in 1..4096 and String.valid?(text),
++         true <- source["body_sha256"] == Evidence.sha256(text),
++         {:ok, first, last} <- provided_quote_range(text, args["quote"]) do
++      derivation = %{
++        "version" => 1,
++        "kind" => "research.fetch_transfer",
++        "descriptor" => fetched["receipt"],
++        "binding" => transfer.fetch["binding"],
++        "requested_uri" => args["uri"],
++        "observed_uri" => source["observed_uri"],
++        "media_type" => source["media_type"],
++        "observed_at_ms" => source["observed_at_ms"],
++        "body_sha256" => source["body_sha256"],
++        "quote" => args["quote"],
++        "start_byte" => first,
++        "end_byte" => last,
++        "coverage" => fetched["coverage"]
++      }
++
++      put = %{
++        "source_id" => provided_transfer_id(text),
++        "generation" => 1,
++        "expected_revision" => 0,
++        "title" => args["title"],
++        "text" => text,
++        "uri" => source["observed_uri"],
++        "observed_at_ms" => source["observed_at_ms"],
++        "event_at_ms" => nil,
++        "expires_at_ms" => nil
++      }
++
++      case start(transfer.name, transfer.profile, :put, put) do
++        {:call, request, state} ->
++          # Carry the actual fetch/read work into the unchanged total allowance.
++          state = %{
++            state
++            | effects: state.effects + 1,
++              reads: state.reads + transfer.adapter.reads + 1
++          }
++
++          if state.effects <= 16 and state.reads <= 512 and state.effects + state.reads <= 528,
++            do: {:call, request, Map.put(state, :fetched_capture, derivation)},
++            else: error(:effect_limit)
++
++        other ->
++          other
++      end
++    else
++      _ -> error(:invalid_fetch_transfer)
++    end
++  rescue
++    _ -> error(:invalid_fetch_transfer)
++  end
++
++  defp fetch_transfer_step(other, _), do: other
++
+   def start(name, profile, operation, args) do
+     with true <- name?(name) and profile?(profile) and operation in @operations and is_map(args),
+          :ok <- arguments(operation, args) do
+@@ -142,7 +237,21 @@
+ 
+   defp legacy_addition?(_), do: false
+ 
+-  def resume(state, outcome) do
++  def resume(%{fetch_transfer: transfer}, outcome),
++    do: fetch_transfer_step(Adapters.resume(transfer.adapter, outcome), transfer)
++
++  def resume(%{fetched_capture: capture} = state, outcome) do
++    result = resume_store(state, outcome)
++
++    case result do
++      {:done, {:ok, value}} -> {:done, {:ok, Map.put(value, "fetch_transfer", capture)}}
++      other -> other
++    end
++  end
++
++  def resume(state, outcome), do: resume_store(state, outcome)
++
++  defp resume_store(state, outcome) do
+     adapter = adapter(state.profile)
+     bridge(adapter.resume(state.io, outcome), state)
+   rescue
+@@ -2446,12 +2555,18 @@
+       cond do
+         imported -> %{"original_origin" => imported}
+         args["document"] -> Evidence.document_storage_receipt!(args["document"])
++        state[:fetched_capture] -> state.fetched_capture
+         args["provided_transfer"] -> args["provided_transfer"]
+         true -> nil
+       end
+ 
+     %{
+-      "kind" => if(imported, do: "import", else: "provided"),
++      "kind" =>
++        cond do
++          imported -> "import"
++          state[:fetched_capture] -> "fetch"
++          true -> "provided"
++        end,
+       "store_profile" => state.name,
+       "partition_or_scope" => state.profile["partition"],
+       "receipt" => receipt,
+--- a/extensions/knowledge/spec.exs
++++ b/extensions/knowledge/spec.exs
+@@ -4,7 +4,7 @@
+     "knowledge" => ~w(native decision-shadow),
+     "corpus" =>
+       ~w(state-lexical state-documents state-dense state-rerank state-semantic mcp-lexical mcp-documents mcp-dense mcp-rerank mcp-semantic collection-documents collection-dense),
+-    "research" => ~w(offline state-retained mcp mcp-model),
++    "research" => ~w(offline state-retained state-fetched mcp mcp-model),
+     "graph" => ~w(state-explicit state-model mcp-explicit mcp-model)
+   }
+   @modules %{
+--- /dev/null
++++ b/extensions/knowledge/options/research-state-fetched.json
+@@ -0,0 +1,10 @@
++{
++  "version": 1,
++  "stores": {"notes": {"kind": "state", "scope": "project", "partition": "research-notes"}},
++  "search": {},
++  "fetch": {"web": {"kind": "mcp", "binding": "fetch-web", "contract": "fetch-v1"}},
++  "retrieval": {"words": {"kind": "bm25", "version": 1}},
++  "embedding": {},
++  "rerank": {},
++  "extraction": {}
++}
+--- /dev/null
++++ b/test/extensions/knowledge/research_fetch_transfer_test.exs
+@@ -0,0 +1,96 @@
++defmodule Ipse.KnowledgeResearchFetchTransferTest do
++  use ExUnit.Case, async: false
++  @root Path.expand("../../..", __DIR__)
++
++  setup_all do
++    root = Path.join(System.tmp_dir!(), "ipse-research-fetch-transfer-" <> Ipse.Usage.id())
++    File.mkdir!(root)
++    File.chmod!(root, 0o700)
++    artifact = Path.join(root, "artifact")
++
++    {build, 0} =
++      System.cmd(
++        System.find_executable("elixir"),
++        [
++          "extensions/knowledge/build.exs",
++          "--sdk",
++          Application.app_dir(:ipse, "ebin"),
++          "--output",
++          artifact,
++          "--package",
++          "research",
++          "--preset",
++          "state-fetched"
++        ], stderr_to_stdout: true, env: [{"ERL_FLAGS", "+S 1:1 +A 1"}])
++
++    refute build =~ "warning:"
++    manifest = File.read!(Path.join(artifact, "extension.json"))
++    assert byte_size(manifest) <= 16_384
++    assert {:ok, _} = Ipse.Extension.Artifact.decode(manifest)
++    fixture = Path.join(root, "fixture-ebin")
++    File.mkdir!(fixture)
++
++    assert {:ok, _, diagnostics} =
++             Kernel.ParallelCompiler.compile_to_path(
++               [
++                 Path.join(@root, "dev/fixtures/knowledge.exs")
++               ],
++               fixture, return_diagnostics: true)
++
++    assert diagnostics in [[], %{compile_warnings: [], runtime_warnings: []}]
++
++    if System.get_env("IPSE_TEST_RESEARCH_FETCH_KEEP") != "1",
++      do: on_exit(fn -> File.rm_rf!(root) end)
++
++    %{root: root, artifact: artifact, fixture: fixture}
++  end
++
++  defp paths do
++    Enum.flat_map(Enum.reject(:code.get_path(), &(&1 == ~c".")), &["-pa", List.to_string(&1)])
++  end
++
++  test "fetched transfer validates real adapter envelopes and shared body suppression", c do
++    {output, code} =
++      System.cmd(
++        System.find_executable("elixir"),
++        paths() ++
++          [
++            "-pa",
++            Path.join(c.artifact, "ebin"),
++            Path.join(@root, "test/support/research_fetch_transfer_pure.exs")
++          ], stderr_to_stdout: true, env: [{"ERL_FLAGS", "+S 1:1 +A 1"}])
++
++    assert code == 0, output
++    assert output =~ "10 passed"
++    refute Code.ensure_loaded?(IpseKnowledge.Research)
++  end
++
++  @tag research_fetch_session: true
++  @tag timeout: 120_000
++  @tag skip:
++         if(
++           System.get_env("IPSE_TEST_RESEARCH_FETCH_SESSION") == "1" and
++             :os.type() == {:unix, :linux},
++           do: false,
++           else: "explicit Linux protected-storage fetched-transfer Session fixture required"
++         )
++  test "ordinary MCP and State approvals transfer evidence and preserve refusal, forgetting and unknown no-replay",
++       c do
++    {output, code} =
++      System.cmd(
++        System.find_executable("elixir"),
++        paths() ++
++          [
++            "-pa",
++            c.fixture,
++            Path.join(@root, "test/support/research_fetch_transfer_session.exs"),
++            Path.join(c.root, "journey"),
++            c.artifact
++          ], stderr_to_stdout: true, env: [{"ERL_FLAGS", "+S 1:1 +A 1"}])
++
++    File.write!(Path.join(c.root, "journey-private.log"), output)
++    assert code == 0, output
++    assert output =~ "fetched_state_journey=pass"
++    refute Code.ensure_loaded?(IpseKnowledge.Research)
++  end
++end
+--- /dev/null
++++ b/test/support/research_fetch_transfer_pure.exs
+@@ -0,0 +1,335 @@
++ExUnit.start(autorun: false, max_cases: 1)
++Code.require_file("dev/fixtures/knowledge.exs", Path.expand("../..", __DIR__))
++Code.require_file("extensions/knowledge/src/corpus.ex", Path.expand("../..", __DIR__))
++
++defmodule ResearchFetchTransferTest do
++  use ExUnit.Case, async: false
++  alias IpseKnowledge.{Research, Corpus, Store, Evidence}
++  alias Ipse.Development.Fixtures.Knowledge, as: F
++  @root Path.expand("../..", __DIR__)
++  @body "Résumé 雪: Ada owns release after audit."
++  @quote "Ada owns release after audit."
++  @uri "fixture:release"
++
++  defp opts,
++    do:
++      JSON.decode!(
++        File.read!(Path.join(@root, "extensions/knowledge/options/research-state-fetched.json"))
++      )
++
++  defp args,
++    do: %{
++      "store" => "notes",
++      "fetch" => "web",
++      "uri" => @uri,
++      "title" => "Release",
++      "quote" => @quote,
++      "timeout_ms" => 3000
++    }
++
++  defp db(text \\ @body) do
++    page = %{
++      "text" => text,
++      "observed_uri" => "fixture:observed-release",
++      "media_type" => "text/plain",
++      "observed_at_ms" => 10
++    }
++
++    {:ok, db} =
++      F.configure_web(F.new("research-notes"), %{
++        "searches" => %{},
++        "pages" => %{@uri => page, "fixture:alias" => page}
++      })
++
++    db
++  end
++
++  defp start(module) do
++    options = if module == Corpus, do: opts() |> Map.put("fetch", %{}), else: opts()
++    {:ok, state} = module.init(options)
++    refute Map.has_key?(state, :invalid)
++    state
++  end
++
++  defp value(%Ipse.Extension.ResultPublication.Output{bytes: bytes}), do: JSON.decode!(bytes)
++  defp value(%{"kind" => "result", "value" => value}), do: value
++
++  defp run(module, {:ok, %{"kind" => "host_call", "request" => request}, state}, db, stop) do
++    case {request["op"], stop} do
++      {"state.put", :denied} ->
++        run(
++          module,
++          module.handle(
++            "host.actions",
++            %{"outcome" => %{"status" => "denied", "value" => %{}}},
++            state
++          ),
++          db,
++          :none
++        )
++
++      {"state.put", :unknown_after} ->
++        {_outcome, db} = F.host(db, request)
++
++        run(
++          module,
++          module.handle(
++            "host.actions",
++            %{"outcome" => %{"status" => "unknown", "value" => %{}}},
++            state
++          ),
++          db,
++          :none
++        )
++
++      _ ->
++        {outcome, db} = F.host(db, request)
++        run(module, module.handle("host.actions", %{"outcome" => outcome}, state), db, stop)
++    end
++  end
++
++  defp run(_, {:ok, result, _}, db, _), do: {value(result), db}
++  defp run(_, {:stop, :unknown_effect}, db, _), do: {:unknown, db}
++
++  defp call(module, id, args, db, stop \\ :none),
++    do:
++      run(
++        module,
++        module.handle("invoke.command", %{"id" => id, "arguments" => args}, start(module)),
++        db,
++        stop
++      )
++
++  defp store_run({:call, request, cont}, db) do
++    {outcome, db} = F.host(db, request)
++    store_run(Store.resume(cont, outcome), db)
++  end
++
++  defp store_run(result, db), do: {result, db}
++
++  test "actual fetch protocol precedes the attributed canonical Store write and Corpus query" do
++    {result, db} = call(Research, "fetch_retain", args(), db())
++    assert result["status"] == "ok"
++    assert result["coverage"]["native_receipt"] == false
++    assert result["coverage"]["source_id"] == Store.provided_transfer_id(@body)
++    requests = F.requests(db)
++    assert hd(requests)["op"] == "mcp.call"
++
++    assert Enum.find_index(requests, &(&1["op"] == "effect.result.read")) <
++             Enum.find_index(requests, &(&1["op"] == "state.put"))
++
++    {query, _} =
++      call(
++        Corpus,
++        "query",
++        %{
++          "store" => "notes",
++          "retrieval" => "words",
++          "rerank" => nil,
++          "query" => "release",
++          "top_k" => 3,
++          "as_of_ms" => 20
++        },
++        db
++      )
++
++    assert [evidence] = query["evidence"]
++    citation = evidence["citation"]
++    assert citation["quote"] == @body
++    assert citation["content_sha256"] == Evidence.sha256(@body)
++    assert citation["origin"]["kind"] == "fetch"
++    receipt = citation["origin"]["receipt"]
++    assert receipt == result["coverage"]["derivation"]
++    assert receipt["body_sha256"] == Evidence.sha256(@body)
++
++    assert receipt["requested_uri"] == @uri and
++             receipt["observed_uri"] == "fixture:observed-release"
++
++    assert receipt["quote"] == @quote and receipt["start_byte"] == byte_size("Résumé 雪: ")
++    assert receipt["end_byte"] == byte_size(@body)
++    assert receipt["descriptor"]["kind"] == "mcp.text"
++  end
++
++  test "forget blocks same-body URI and quote aliases in fresh Research states" do
++    {retained, db} = call(Research, "fetch_retain", args(), db())
++    id = retained["coverage"]["source_id"]
++
++    {inspected, db} =
++      call(
++        Corpus,
++        "source",
++        %{"store" => "notes", "action" => "inspect", "args" => %{"source_id" => id}},
++        db
++      )
++
++    {forgotten, db} =
++      call(
++        Corpus,
++        "source",
++        %{
++          "store" => "notes",
++          "action" => "forget",
++          "args" => %{"source_id" => id, "expected_revision" => inspected["coverage"]["revision"]}
++        },
++        db
++      )
++
++    assert forgotten["status"] == "ok"
++    records = F.records(db)
++
++    for uri <- [@uri, "fixture:alias"], quote <- [@quote, "Résumé 雪"] do
++      {refused, after_db} =
++        call(
++          Research,
++          "fetch_retain",
++          args() |> Map.put("uri", uri) |> Map.put("quote", quote),
++          db
++        )
++
++      assert refused["status"] == "refused"
++      assert F.records(after_db) == records
++    end
++  end
++
++  test "malformed and denied fetches never reach State mutation" do
++    for mode <- [
++          :fetch_partial,
++          :fetch_changed_body,
++          :fetch_forged_hash,
++          :fetch_forged_receipt,
++          :fetch_wrong_uri,
++          :denied
++        ] do
++      {refused, db} = call(Research, "fetch_retain", args(), F.barrier(db(), "fetch", mode))
++      assert refused["status"] == "refused"
++      refute Enum.any?(F.requests(db), &(&1["op"] == "state.put"))
++      assert F.records(db) == %{}
++    end
++
++    {refused, db} =
++      call(Research, "fetch_retain", Map.put(args(), "uri", "fixture:missing"), db())
++
++    assert refused["status"] == "refused" and F.records(db) == %{}
++  end
++
++  test "quote and body constraints refuse before any write" do
++    for {text, quote} <- [
++          {@body, "missing"},
++          {"aaa", "aa"},
++          {"x" <> String.duplicate("z", 4096), "x"}
++        ] do
++      {refused, db} = call(Research, "fetch_retain", Map.put(args(), "quote", quote), db(text))
++      assert refused["status"] == "refused" and F.records(db) == %{}
++      refute Enum.any?(F.requests(db), &(&1["op"] == "state.put"))
++    end
++  end
++
++  test "caller cannot supply bytes, fetch receipt, destination identity or historical authority" do
++    for extra <- [
++          %{"text" => @body},
++          %{"source" => %{}},
++          %{"receipt" => %{}},
++          %{"source_id" => "fake"},
++          %{"generation" => 2},
++          %{"expected_revision" => 9},
++          %{"origin" => %{"kind" => "fetch"}},
++          %{"historical_import" => %{}}
++        ] do
++      {refused, db} = call(Research, "fetch_retain", Map.merge(args(), extra), db())
++      assert refused["status"] == "refused" and F.requests(db) == []
++
++      assert {:done, {:error, :invalid_fetch_transfer, _}} =
++               Store.start_fetch_transfer(
++                 "notes",
++                 opts()["stores"]["notes"],
++                 opts()["fetch"]["web"],
++                 Map.merge(Map.take(args(), ~w(uri title quote timeout_ms)), extra)
++               )
++    end
++  end
++
++  test "State denial changes no records and interrupted writes stop unknown" do
++    {refused, denied} = call(Research, "fetch_retain", args(), db(), :denied)
++    assert refused["status"] == "refused" and F.records(denied) == %{}
++    assert {:unknown, after_db} = call(Research, "fetch_retain", args(), db(), :unknown_after)
++    assert map_size(F.records(after_db)) == 1
++  end
++
++  test "same body cannot silently rewrite fetch attribution" do
++    {retained, db} = call(Research, "fetch_retain", args(), db())
++    {refused, same} = call(Research, "fetch_retain", Map.put(args(), "uri", "fixture:alias"), db)
++    assert retained["status"] == "ok" and refused["status"] == "refused"
++    assert F.records(same) == F.records(db)
++  end
++
++  test "a provided-body tombstone also blocks re-fetching those bytes" do
++    put = %{
++      "source_id" => Store.provided_transfer_id(@body),
++      "generation" => 1,
++      "expected_revision" => 0,
++      "title" => "Provided",
++      "text" => @body,
++      "uri" => "provided:release",
++      "observed_at_ms" => 10,
++      "event_at_ms" => nil,
++      "expires_at_ms" => nil
++    }
++
++    assert {{:done, {:ok, stored}}, db} =
++             store_run(Store.start("notes", opts()["stores"]["notes"], :put, put), db())
++
++    id = stored["source_id"]
++
++    {forgotten, db} =
++      call(
++        Corpus,
++        "source",
++        %{
++          "store" => "notes",
++          "action" => "forget",
++          "args" => %{"source_id" => id, "expected_revision" => stored["revision"]}
++        },
++        db
++      )
++
++    assert forgotten["status"] == "ok"
++
++    {refused, after_db} =
++      call(Research, "fetch_retain", Map.put(args(), "uri", "fixture:alias"), db)
++
++    assert refused["status"] == "refused" and F.records(after_db) == F.records(db)
++  end
++
++  test "ordinary Store and Corpus put cannot forward a fabricated fetched capture" do
++    put = %{
++      "source_id" => "provided:ordinary",
++      "generation" => 1,
++      "expected_revision" => 0,
++      "title" => "Provided",
++      "text" => @body,
++      "uri" => @uri,
++      "observed_at_ms" => 10,
++      "event_at_ms" => nil,
++      "expires_at_ms" => nil,
++      "fetched_capture" => %{"descriptor" => %{"operation_id" => String.duplicate("0", 32)}}
++    }
++
++    assert {:done, {:error, :invalid_store_arguments, _}} =
++             Store.start("notes", opts()["stores"]["notes"], :put, put)
++
++    {refused, unchanged} =
++      call(Corpus, "source", %{"store" => "notes", "action" => "put", "args" => put}, db())
++
++    assert refused["status"] == "refused" and F.records(unchanged) == %{}
++  end
++
++  test "an uncertain actual fetch stops without State IO" do
++    assert {:unknown, unchanged} =
++             call(Research, "fetch_retain", args(), F.barrier(db(), "fetch", :unknown))
++
++    refute Enum.any?(F.requests(unchanged), &(&1["op"] in ~w(state.put state.scan state.get)))
++  end
++end
++
++result = ExUnit.run()
++System.halt(if result.failures == 0, do: 0, else: 1)
+--- /dev/null
++++ b/test/support/research_fetch_transfer_session.exs
+@@ -0,0 +1,477 @@
++import ExUnit.Assertions
++alias Ipse.{Session, JSON}
++alias Ipse.Extension.{Artifact, Config, Registry, State}
++alias Ipse.Development.Fixtures.Knowledge, as: F
++Code.require_file("native_pipe_scope.exs", __DIR__)
++[root, artifact_path] = System.argv()
++home = Path.join(root, "home")
++cwd = Path.join(root, "project")
++File.mkdir_p!(cwd)
++File.mkdir_p!(home)
++File.chmod!(home, 0o700)
++System.put_env("HOME", home)
++System.put_env("IPSE_HOME", home)
++{:ok, _} = Application.ensure_all_started(:ipse)
++false = Code.ensure_loaded?(IpseKnowledge.Research)
++
++defmodule FetchTransferNoModel do
++  def complete(_, _, _, _), do: raise("fetch transfer unexpectedly requested inference")
++end
++
++defmodule FetchTransferJourney do
++  import ExUnit.Assertions
++  alias Ipse.{Session, Journal}
++
++  def command(pid, name, args, decision \\ :allow) do
++    assert :ok = Session.invoke_export(pid, :command, name, args)
++    await(pid, args, decision, %{mcp: 0, state: 0}, System.monotonic_time(:millisecond) + 20_000)
++  end
++
++  defp await(pid, args, decision, count, deadline) do
++    receive do
++      {:ipse, ^pid, {:approval, ref, "extension:mcp.call", proposed}} ->
++        request = proposed["request"]
++        assert request["op"] == "mcp.call" and request["binding"] == "fetch-web"
++
++        assert request["arguments"] == %{
++                 "version" => 1,
++                 "contract" => "fetch-v1",
++                 "uri" => args["uri"]
++               }
++
++        assert proposed["effect_binding"]["manifest"]["tool_id"] == "mcp__knowledge_cas__fetch"
++        assert :ok = Session.approve(pid, ref, decision != :deny_fetch)
++        await(pid, args, decision, %{count | mcp: count.mcp + 1}, deadline)
++
++      {:ipse, ^pid, {:approval, ref, "extension:state.put", proposed}} ->
++        assert :ok = Ipse.Extension.State.validate(proposed["request"])
++        assert proposed["request"]["scope"] == "project"
++        assert :ok = Session.approve(pid, ref, decision != :deny_state)
++        await(pid, args, decision, %{count | state: count.state + 1}, deadline)
++
++      {:ipse, ^pid, {:approval, _, _, _}} ->
++        flunk("unexpected approval kind")
++
++      {:ipse, ^pid, {:done, :ok}} ->
++        assert %{"value" => value} = Session.info(pid).extension_result
++        {value, count}
++
++      {:ipse, ^pid, {:done, _}} ->
++        flunk("fetch command did not finish normally")
++
++      {:write_effect_completed_before_record, ^pid, caller, event} when decision == :interrupt ->
++        assert is_pid(caller) and event["request"]["op"] == "state.put" and
++                 event["outcome"]["status"] == "ok"
++
++        {:ok, events} = Journal.load(Process.get(:fetch_history), Process.get(:fetch_fault_id))
++
++        assert Enum.any?(
++                 events,
++                 &(&1["type"] == "extension_action_intent" and
++                     &1["operation_id"] == event["operation_id"])
++               )
++
++        refute Enum.any?(
++                 events,
++                 &(&1["type"] == "extension_action_result" and
++                     &1["operation_id"] == event["operation_id"])
++               )
++
++        monitor = Process.monitor(pid)
++        worker_monitor = Process.monitor(caller)
++        Process.exit(pid, :kill)
++        assert_receive {:DOWN, ^monitor, :process, ^pid, :killed}, 5000
++        assert_receive {:DOWN, ^worker_monitor, :process, ^caller, _}, 5000
++        assert :ok = Ipse.Test.NativePipeScope.await_native_exit(Process.get(:fetch_native_pid))
++        {{:interrupted, event["operation_id"]}, count}
++
++      _ ->
++        await(pid, args, decision, count, deadline)
++    after
++      max(0, deadline - System.monotonic_time(:millisecond)) ->
++        flunk("bounded fetch command did not settle")
++    end
++  end
++
++  def events(options, id) do
++    assert {:ok, events} = Journal.load(options[:state_dir], id)
++    assert {:ok, saved} = Session.Saved.restore(events, id)
++
++    refute Enum.any?(
++             events,
++             &(&1["type"] in ~w(request_intent request_admitted inference_dispatch_intent))
++           )
++
++    {events, saved}
++  end
++
++  def idle(options, id, before) do
++    kinds =
++      ~w(input_received extension_invocation_intent extension_action_intent worker_input_intent inference_dispatch_intent mcp_action_intent)
++
++    assert {:ok, idle} =
++             DynamicSupervisor.start_child(
++               Ipse.Sessions,
++               {Session, Keyword.put(options, :id, id)}
++             )
++
++    assert Session.info(idle).phase == :idle
++    assert :ok = Session.close_confirmed(idle)
++    {after_events, _} = events(options, id)
++
++    assert Enum.filter(before, &(&1["type"] in kinds)) ==
++             Enum.filter(after_events, &(&1["type"] in kinds))
++  end
++
++  def state(root, namespace) do
++    assert {:ok, snapshot} =
++             Ipse.Extension.State.execute(
++               root,
++               namespace,
++               %{
++                 "op" => "state.scan",
++                 "scope" => "project",
++                 "after" => nil,
++                 "generation" => nil,
++                 "limit" => 16
++               },
++               Ipse.Usage.id()
++             )
++
++    assert snapshot["next"] == nil
++    snapshot
++  end
++end
++
++{:ok, backend} = F.start_backend("research-notes")
++body = "Résumé 雪: Ada owns release after audit."
++
++page = %{
++  "text" => body,
++  "observed_uri" => "fixture:observed-release",
++  "media_type" => "text/plain",
++  "observed_at_ms" => 10
++}
++
++fault_page = %{page | "text" => "Fault capture. " <> body}
++
++:ok =
++  F.configure_web_backend(backend, %{
++    "searches" => %{},
++    "pages" => %{
++      "fixture:release" => page,
++      "fixture:alias" => page,
++      "fixture:fault" => fault_page
++    }
++  })
++
++runtime_root = Application.app_dir(:ipse)
++
++artifacts =
++  for {name, path} <- [
++        {"research", artifact_path},
++        {"corpus", Path.join(runtime_root, "priv/extension-bundles/corpus-state-documents")}
++      ],
++      into: %{} do
++    assert {:ok, artifact} = Artifact.import(path, Path.join(home, "extensions/artifacts"))
++    {name, artifact}
++  end
++
++research =
++  Jason.decode!(
++    File.read!(
++      Path.expand("../../extensions/knowledge/options/research-state-fetched.json", __DIR__)
++    )
++  )
++
++corpus = Map.put(research, "fetch", %{})
++
++source = %{
++  scope: "operator",
++  path: Path.join(home, "fixture.json"),
++  data: %{
++    "extensions" =>
++      for(
++        {name, artifact} <- artifacts,
++        do: %{
++          "instance" => name,
++          "artifact" => artifact.digest,
++          "enabled" => true,
++          "options" => if(name == "research", do: research, else: corpus),
++          "order" => 0,
++          "lifetime" => "session"
++        }
++      ),
++    "extension_trust" =>
++      for(
++        {name, artifact} <- artifacts,
++        do: %{
++          "artifact" => artifact.digest,
++          "capabilities" => artifact.manifest["capabilities"],
++          "allow_project" => false,
++          "allow_children" => false,
++          "state_bindings" => [
++            %{
++              "version" => 1,
++              "instance" => name,
++              "id" => "research-shared",
++              "scopes" => ["project"]
++            }
++          ],
++          "mcp_bindings" =>
++            if(name == "research",
++              do: [
++                %{
++                  "instance" => name,
++                  "alias" => "fetch-web",
++                  "tool" => "mcp__knowledge_cas__fetch"
++                }
++              ],
++              else: []
++            )
++        }
++      )
++  }
++}
++
++{:ok, selected} = Config.resolve([source], [])
++{:ok, entries} = Registry.prepare(selected, home)
++
++config_for = fn mode ->
++  path = Path.join(root, "mcp-" <> mode <> ".json")
++
++  File.write!(
++    path,
++    Jason.encode!(%{"servers" => [F.web_stdio_config("research-notes", mode, backend.port)]})
++  )
++
++  {:ok, [server]} = Ipse.MCP.Config.load(path)
++
++  %{
++    provider: :demo,
++    model: "unused",
++    provider_module: FetchTransferNoModel,
++    home: home,
++    operator_home: nil,
++    extensions: entries,
++    mcp_servers: [server],
++    approval: :ask,
++    approval_origin: :interactive,
++    headless: false,
++    compact: false
++  }
++end
++
++options_for = fn mode ->
++  [
++    config: config_for.(mode),
++    cwd: cwd,
++    state_dir: Path.join(home, "sessions"),
++    owner: self(),
++    subscriber: self()
++  ]
++end
++
++start = fn options ->
++  assert {:ok, pid} = DynamicSupervisor.start_child(Ipse.Sessions, {Session, options})
++  {pid, Session.info(pid).id}
++end
++
++args = %{
++  "store" => "notes",
++  "fetch" => "web",
++  "uri" => "fixture:release",
++  "title" => "Release",
++  "quote" => "Ada owns release after audit.",
++  "timeout_ms" => 3000
++}
++
++normal_options = options_for.("normal")
++{pid, id} = start.(normal_options)
++identity = Enum.find(entries, &(&1.identity["instance"] == "research")).identity
++assert {:ok, namespace} = State.namespace(identity, "project", cwd, id)
++state_root = Path.join(home, "extension-state-v1")
++
++try do
++  before = FetchTransferJourney.state(state_root, namespace)
++
++  {denied, %{mcp: 1, state: 0}} =
++    FetchTransferJourney.command(pid, "ext__research__fetch_retain", args, :deny_fetch)
++
++  assert denied["status"] == "refused" and
++           FetchTransferJourney.state(state_root, namespace) == before
++
++  {denied, %{mcp: 1, state: 1}} =
++    FetchTransferJourney.command(pid, "ext__research__fetch_retain", args, :deny_state)
++
++  assert denied["status"] == "refused" and
++           FetchTransferJourney.state(state_root, namespace) == before
++
++  {stored, count} = FetchTransferJourney.command(pid, "ext__research__fetch_retain", args)
++  assert stored["status"] == "ok" and count.mcp == 1 and count.state > 0
++  assert stored["coverage"]["native_receipt"] == false
++  target = "research.provided:" <> JSON.sha256(body)
++  assert stored["coverage"]["source_id"] == target
++
++  query_args = %{
++    "store" => "notes",
++    "retrieval" => "words",
++    "rerank" => nil,
++    "query" => "release",
++    "top_k" => 3,
++    "as_of_ms" => 20
++  }
++
++  {query, %{mcp: 0, state: 0}} =
++    FetchTransferJourney.command(pid, "ext__corpus__query", query_args)
++
++  assert [evidence] = query["evidence"]
++  citation = evidence["citation"]
++  assert citation["quote"] == body and citation["content_sha256"] == JSON.sha256(body)
++  assert citation["start_byte"] == 0 and citation["end_byte"] == byte_size(body)
++  assert citation["origin"]["kind"] == "fetch" and citation["origin"]["historical"] == false
++  receipt = citation["origin"]["receipt"]
++  assert receipt == stored["coverage"]["derivation"]
++
++  assert receipt["quote"] == args["quote"] and receipt["start_byte"] == byte_size("Résumé 雪: ") and
++           receipt["end_byte"] == byte_size(body)
++
++  {inspected, _} =
++    FetchTransferJourney.command(pid, "ext__corpus__source", %{
++      "store" => "notes",
++      "action" => "inspect",
++      "args" => %{"source_id" => target}
++    })
++
++  {forgotten, _} =
++    FetchTransferJourney.command(pid, "ext__corpus__source", %{
++      "store" => "notes",
++      "action" => "forget",
++      "args" => %{"source_id" => target, "expected_revision" => inspected["coverage"]["revision"]}
++    })
++
++  assert forgotten["status"] == "ok"
++  {events, _} = FetchTransferJourney.events(normal_options, id)
++
++  assert [actual_fetch] =
++           Enum.filter(
++             events,
++             &(&1["type"] == "extension_action_result" and
++                 &1["operation_id"] == receipt["descriptor"]["operation_id"])
++           )
++
++  assert actual_fetch["request"]["op"] == "mcp.call" and
++           actual_fetch["request"]["arguments"]["uri"] == args["uri"]
++
++  assert actual_fetch["outcome"]["status"] == "ok" and
++           actual_fetch["outcome"]["value"] == receipt["descriptor"]
++
++  assert :ok = Session.close_confirmed(pid)
++  FetchTransferJourney.idle(normal_options, id, events)
++  {fresh, fresh_id} = start.(normal_options)
++  frozen = FetchTransferJourney.state(state_root, namespace)
++
++  {refused, %{mcp: 1, state: 0}} =
++    FetchTransferJourney.command(
++      fresh,
++      "ext__research__fetch_retain",
++      args |> Map.put("uri", "fixture:alias") |> Map.put("quote", "Résumé 雪")
++    )
++
++  assert refused["status"] == "refused" and
++           FetchTransferJourney.state(state_root, namespace) == frozen
++
++  {missing, %{mcp: 1, state: 0}} =
++    FetchTransferJourney.command(
++      fresh,
++      "ext__research__fetch_retain",
++      Map.put(args, "uri", "fixture:missing")
++    )
++
++  assert missing["status"] == "refused" and
++           FetchTransferJourney.state(state_root, namespace) == frozen
++
++  {empty, _} = FetchTransferJourney.command(fresh, "ext__corpus__query", query_args)
++  assert empty["evidence"] == []
++  {events, _} = FetchTransferJourney.events(normal_options, fresh_id)
++  assert :ok = Session.close_confirmed(fresh)
++  FetchTransferJourney.idle(normal_options, fresh_id, events)
++
++  for mode <-
++        ~w(fetch_partial fetch_changed_body fetch_forged_hash fetch_forged_receipt fetch_wrong_uri fetch_refused) do
++    options = options_for.(mode)
++    {negative, negative_id} = start.(options)
++
++    {refused, %{mcp: 1, state: 0}} =
++      FetchTransferJourney.command(negative, "ext__research__fetch_retain", args)
++
++    assert refused["status"] == "refused" and
++             FetchTransferJourney.state(state_root, namespace) == frozen
++
++    {events, _} = FetchTransferJourney.events(options, negative_id)
++
++    refute Enum.any?(
++             events,
++             &(&1["type"] == "extension_action_intent" and
++                 get_in(&1, ["request", "op"]) == "state.put")
++           )
++
++    assert :ok = Session.close_confirmed(negative)
++    FetchTransferJourney.idle(options, negative_id, events)
++  end
++
++  {fault, fault_id} = start.(normal_options)
++  {:os_pid, source_owner_pid} = Port.info(:sys.get_state(fault).lock, :os_pid)
++  Process.put(:fetch_native_pid, source_owner_pid)
++  Process.put(:fetch_history, normal_options[:state_dir])
++  Process.put(:fetch_fault_id, fault_id)
++  collector = self()
++
++  hook = fn
++    false, {:in, {:"$gen_call", {caller, _}, {:extension_action_commit, _, event}}}, _
++    when is_map(event) ->
++      if event["request"]["op"] == "state.put" and event["outcome"]["status"] == "ok" do
++        send(collector, {:write_effect_completed_before_record, self(), caller, event})
++
++        receive do
++          :unreachable_fault_release -> :ok
++        after
++          5000 -> exit(:fault_witness_unconfirmed)
++        end
++      end
++
++      false
++
++    state, _, _ ->
++      state
++  end
++
++  assert :ok = :sys.install(fault, {hook, false})
++
++  {{:interrupted, operation}, counts} =
++    FetchTransferJourney.command(
++      fault,
++      "ext__research__fetch_retain",
++      Map.put(args, "uri", "fixture:fault"),
++      :interrupt
++    )
++
++  assert counts.mcp == 1 and counts.state == 1
++  {events, saved} = FetchTransferJourney.events(normal_options, fault_id)
++  assert saved.extension_state.action["operation_id"] == operation
++
++  refute Enum.any?(
++           events,
++           &(&1["type"] == "extension_action_result" and &1["operation_id"] == operation)
++         )
++
++  FetchTransferJourney.idle(normal_options, fault_id, events)
++  assert :ok = F.stop_backend(backend)
++
++  IO.puts(
++    "fetched_state_journey=pass actual_mcp_fetch=true ordinary_approvals=true exact_quote_and_derivation=true same_body_forget_aliases=true malformed_fetch_state_intents=0 interrupted_write_unknown=true saved_and_idle_no_replay=true model_calls=0 tty_reads=0"
++  )
++after
++  if Process.alive?(pid), do: Session.close_confirmed(pid)
++  if Process.alive?(backend.pid), do: F.stop_backend(backend)
++end

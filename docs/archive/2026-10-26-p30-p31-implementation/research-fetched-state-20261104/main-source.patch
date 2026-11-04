@@ -1,0 +1,184 @@
+--- a/test/extensions/knowledge/document_ingestion_test.exs
++++ b/test/extensions/knowledge/document_ingestion_test.exs
+@@ -4,7 +4,7 @@
+ 
+   defp isolated(body) do
+     files =
+-      ~w(profiles evidence store store/state store/mcp_cas store/collection store/collection/index store/collection/projection store/collection/generation store/collection/directory store/collection/selected store/collection/job store/collection/reduction store/collection/finalization store/collection/paged store/collection/producer store/collection/producer_progress adapters documents documents/zip documents/docx documents/parser_stage documents/pdf corpus)
++      ~w(profiles evidence adapters store store/state store/mcp_cas store/collection store/collection/index store/collection/projection store/collection/generation store/collection/directory store/collection/selected store/collection/job store/collection/reduction store/collection/finalization store/collection/paged store/collection/producer store/collection/producer_progress documents documents/zip documents/docx documents/parser_stage documents/pdf corpus)
+ 
+     {source_args, compile_prefix} =
+       case System.get_env("IPSE_DOCUMENT_TEST_ARTIFACT") do
+--- a/test/extensions/knowledge/domain_regressions_test.exs
++++ b/test/extensions/knowledge/domain_regressions_test.exs
+@@ -3,7 +3,7 @@
+ 
+   @suite ~S"""
+   ExUnit.start(autorun: false)
+-  for file <- ~w(evidence profiles store/state store/mcp_cas store adapters corpus graph research) do
++  for file <- ~w(evidence profiles adapters store/state store/mcp_cas store corpus graph research) do
+     Code.require_file(Path.join("extensions/knowledge/src",file<>".ex"))
+   end
+ 
+--- a/test/extensions/knowledge/graph_population_test.exs
++++ b/test/extensions/knowledge/graph_population_test.exs
+@@ -3,7 +3,7 @@
+   @root Path.expand("../../..", __DIR__)
+   @suite ~S"""
+   ExUnit.start(autorun: false)
+-  for file <- ~w(evidence profiles store/state store/mcp_cas store adapters graph) do
++  for file <- ~w(evidence profiles adapters store/state store/mcp_cas store graph) do
+     Code.require_file("extensions/knowledge/src/" <> file <> ".ex")
+   end
+   corpus=File.read!("extensions/knowledge/src/corpus.ex")
+--- a/test/extensions/knowledge/packages_test.exs
++++ b/test/extensions/knowledge/packages_test.exs
+@@ -3,7 +3,7 @@
+ 
+   @suite ~S"""
+   ExUnit.start(autorun: false)
+-  for file <- ~w(evidence profiles store/state store/mcp_cas store adapters corpus research graph) do
++  for file <- ~w(evidence profiles adapters store/state store/mcp_cas store corpus research graph) do
+     Code.require_file(Path.join("extensions/knowledge/src", file <> ".ex"))
+   end
+   Code.require_file("extensions/knowledge/spec.exs")
+@@ -15,16 +15,16 @@
+     use ExUnit.Case, async: false
+ 
+     test "three independent descriptors have closed command catalogs" do
+-      for {module, commands} <- [
+-        {IpseKnowledge.Corpus, ~w(source query index)},
+-        {IpseKnowledge.Research, ~w(investigate ledger)},
+-        {IpseKnowledge.Graph, ~w(source extract query)}
++      for {module, commands, tools} <- [
++        {IpseKnowledge.Corpus, ~w(source query index), ~w(query)},
++        {IpseKnowledge.Research, ~w(investigate ledger), ~w(investigate)},
++        {IpseKnowledge.Graph, ~w(source extract query), ~w(query capture)}
+       ] do
+         descriptor = module.describe()
+         assert descriptor["sdk"] == 2
+         assert "invoke.result.pages" in descriptor["capabilities"]
+         assert Enum.map(descriptor["exports"]["commands"], & &1["id"]) == commands
+-        assert length(descriptor["exports"]["tools"]) == 1
++        assert Enum.map(descriptor["exports"]["tools"], & &1["id"]) == tools
+         assert descriptor["exports"]["services"] == []
+       end
+     end
+--- a/test/extensions/knowledge/research_fetch_transfer_test.exs
++++ b/test/extensions/knowledge/research_fetch_transfer_test.exs
+@@ -21,7 +21,10 @@
+           "research",
+           "--preset",
+           "state-fetched"
+-        ], stderr_to_stdout: true, env: [{"ERL_FLAGS", "+S 1:1 +A 1"}])
++        ],
++        stderr_to_stdout: true,
++        env: [{"ERL_FLAGS", "+S 1:1 +A 1"}]
++      )
+ 
+     refute build =~ "warning:"
+     manifest = File.read!(Path.join(artifact, "extension.json"))
+@@ -30,14 +33,22 @@
+     fixture = Path.join(root, "fixture-ebin")
+     File.mkdir!(fixture)
+ 
+-    assert {:ok, _, diagnostics} =
+-             Kernel.ParallelCompiler.compile_to_path(
+-               [
+-                 Path.join(@root, "dev/fixtures/knowledge.exs")
+-               ],
+-               fixture, return_diagnostics: true)
++    {fixture_output, fixture_status} =
++      System.cmd(
++        System.find_executable("elixirc"),
++        paths() ++
++          [
++            "--warnings-as-errors",
++            "-o",
++            fixture,
++            Path.join(@root, "dev/fixtures/knowledge.exs")
++          ],
++        stderr_to_stdout: true,
++        env: [{"ERL_FLAGS", "+S 1:1 +A 1"}]
++      )
+ 
+-    assert diagnostics in [[], %{compile_warnings: [], runtime_warnings: []}]
++    assert fixture_status == 0, fixture_output
++    refute fixture_output =~ "warning:"
+ 
+     if System.get_env("IPSE_TEST_RESEARCH_FETCH_KEEP") != "1",
+       do: on_exit(fn -> File.rm_rf!(root) end)
+@@ -58,7 +69,10 @@
+             "-pa",
+             Path.join(c.artifact, "ebin"),
+             Path.join(@root, "test/support/research_fetch_transfer_pure.exs")
+-          ], stderr_to_stdout: true, env: [{"ERL_FLAGS", "+S 1:1 +A 1"}])
++          ],
++        stderr_to_stdout: true,
++        env: [{"ERL_FLAGS", "+S 1:1 +A 1"}]
++      )
+ 
+     assert code == 0, output
+     assert output =~ "10 passed"
+@@ -86,7 +100,10 @@
+             Path.join(@root, "test/support/research_fetch_transfer_session.exs"),
+             Path.join(c.root, "journey"),
+             c.artifact
+-          ], stderr_to_stdout: true, env: [{"ERL_FLAGS", "+S 1:1 +A 1"}])
++          ],
++        stderr_to_stdout: true,
++        env: [{"ERL_FLAGS", "+S 1:1 +A 1"}]
++      )
+ 
+     File.write!(Path.join(c.root, "journey-private.log"), output)
+     assert code == 0, output
+--- a/test/extensions/knowledge/shared_producer_test.exs
++++ b/test/extensions/knowledge/shared_producer_test.exs
+@@ -3,7 +3,7 @@
+ 
+   test "bounded shared producer receipt flow and unknown controls in an isolated worker" do
+     files =
+-      ~w(profiles evidence store store/state store/mcp_cas store/collection store/collection/index store/collection/projection store/collection/generation store/collection/directory store/collection/selected store/collection/job store/collection/reduction store/collection/finalization store/collection/paged store/collection/producer store/collection/producer_progress adapters documents documents/zip documents/docx documents/parser_stage documents/pdf)
++      ~w(profiles evidence adapters store store/state store/mcp_cas store/collection store/collection/index store/collection/projection store/collection/generation store/collection/directory store/collection/selected store/collection/job store/collection/reduction store/collection/finalization store/collection/paged store/collection/producer store/collection/producer_progress documents documents/zip documents/docx documents/parser_stage documents/pdf)
+       |> Enum.map(&Path.expand("extensions/knowledge/src/" <> &1 <> ".ex"))
+ 
+     paths =
+--- a/test/extensions/knowledge/store_test.exs
++++ b/test/extensions/knowledge/store_test.exs
+@@ -3,7 +3,7 @@
+   @root Path.expand("../../..", __DIR__)
+ 
+   defp isolated(body) do
+-    paths = ~w(evidence.ex store/state.ex store/mcp_cas.ex store.ex)
++    paths = ~w(evidence.ex profiles.ex adapters.ex store/state.ex store/mcp_cas.ex store.ex)
+ 
+     args =
+       Enum.flat_map(Enum.reject(:code.get_path(), &(&1 == ~c".")), &["-pa", List.to_string(&1)]) ++
+--- a/test/support/graph_main_capture.exs
++++ b/test/support/graph_main_capture.exs
+@@ -1,6 +1,6 @@
+ ExUnit.start(autorun: false)
+ 
+-for file <- ~w(evidence profiles store/state store/mcp_cas store adapters),
++for file <- ~w(evidence profiles adapters store/state store/mcp_cas store),
+     do: Code.require_file("extensions/knowledge/src/" <> file <> ".ex")
+ 
+ Code.require_file(List.first(System.argv()) || "extensions/knowledge/src/graph.ex")
+--- a/test/support/research_fetch_transfer_session.exs
++++ b/test/support/research_fetch_transfer_session.exs
+@@ -12,6 +12,7 @@
+ System.put_env("HOME", home)
+ System.put_env("IPSE_HOME", home)
+ {:ok, _} = Application.ensure_all_started(:ipse)
++assert :sys.get_state(Ipse.Session.Input).entries == %{}
+ false = Code.ensure_loaded?(IpseKnowledge.Research)
+ 
+ defmodule FetchTransferNoModel do
+@@ -467,6 +468,7 @@
+ 
+   FetchTransferJourney.idle(normal_options, fault_id, events)
+   assert :ok = F.stop_backend(backend)
++  assert :sys.get_state(Ipse.Session.Input).entries == %{}
+ 
+   IO.puts(
+     "fetched_state_journey=pass actual_mcp_fetch=true ordinary_approvals=true exact_quote_and_derivation=true same_body_forget_aliases=true malformed_fetch_state_intents=0 interrupted_write_unknown=true saved_and_idle_no_replay=true model_calls=0 tty_reads=0"

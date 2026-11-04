@@ -3,7 +3,7 @@ defmodule IpseKnowledge.PackagesIsolationTest do
 
   @suite ~S"""
   ExUnit.start(autorun: false)
-  for file <- ~w(evidence profiles store/state store/mcp_cas store adapters corpus research graph) do
+  for file <- ~w(evidence profiles adapters store/state store/mcp_cas store corpus research graph) do
     Code.require_file(Path.join("extensions/knowledge/src", file <> ".ex"))
   end
   Code.require_file("extensions/knowledge/spec.exs")
@@ -15,16 +15,16 @@ defmodule IpseKnowledge.PackagesIsolationTest do
     use ExUnit.Case, async: false
 
     test "three independent descriptors have closed command catalogs" do
-      for {module, commands} <- [
-        {IpseKnowledge.Corpus, ~w(source query index)},
-        {IpseKnowledge.Research, ~w(investigate ledger)},
-        {IpseKnowledge.Graph, ~w(source extract query)}
+      for {module, commands, tools} <- [
+        {IpseKnowledge.Corpus, ~w(source query index), ~w(query)},
+        {IpseKnowledge.Research, ~w(investigate ledger), ~w(investigate)},
+        {IpseKnowledge.Graph, ~w(source extract query), ~w(query capture)}
       ] do
         descriptor = module.describe()
         assert descriptor["sdk"] == 2
         assert "invoke.result.pages" in descriptor["capabilities"]
         assert Enum.map(descriptor["exports"]["commands"], & &1["id"]) == commands
-        assert length(descriptor["exports"]["tools"]) == 1
+        assert Enum.map(descriptor["exports"]["tools"], & &1["id"]) == tools
         assert descriptor["exports"]["services"] == []
       end
     end

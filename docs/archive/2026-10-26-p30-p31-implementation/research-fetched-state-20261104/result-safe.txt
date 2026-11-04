@@ -1,0 +1,1 @@
+fetched_state_journey=pass actual_mcp_fetch=true ordinary_approvals=true exact_quote_and_derivation=true same_body_forget_aliases=true malformed_fetch_state_intents=0 interrupted_write_unknown=true saved_and_idle_no_replay=true model_calls=0 tty_reads=0
