@@ -75,6 +75,7 @@ nor resource/offline qualification. No daemon configuration or existing model wa
 
 ## Source checkpoint evidence — 2026-11-04
 
+- [Installed Collection Word ceiling](word-installed-capacity-20261104.md) qualifies the exact 6adb7aca archive at 1 MiB original bytes, 64 KiB UTF-8 and 32 chunks, with three independent overflow guards, file recovery and final Saved/idle no replay. The two failed attempts and partial thumbnail warning remain preserved; broader capacity and fidelity are separate.
 - [Main-tool Graph capture](graph-main-capture-20261104.md) records the existing-State-source tool, exact citations and ordinary approvals, ten protocol controls and four actual scripted main-tool/StateSession cases. Managed graph, aliases, original current-use, capacity, installed and quality gates remain open; the first fixture failures remain retained.
 - [Integrated Research transfer and Word v17](research-word-integration-20261104.md) records the complete strict build, four verified bundles, 63 focused passes and two fresh Word capacity/recovery passes; broader lineage, fidelity, installed and final combined gates remain open.
 - [Frozen regression groups](source-regression-groups-20261104.md) preserve all 473 files' terminal 4,018/4,019 result, eleven passing integrity checks, the original owner-loss failure and locale RED/GREEN evidence. A separately passing [confirmed-native-exit control](source-owner-loss-causal-20261104.md) strengthens the causal witness; the old aggregate remains failed.

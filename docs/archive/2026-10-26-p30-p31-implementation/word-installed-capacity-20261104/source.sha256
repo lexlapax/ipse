@@ -1,0 +1,6 @@
+ecfd62167dd7274e012320b53e57fe16337f2cf691581859bdaa33fb69cb92bd  ./dev/release.exs
+94ce9033f906ddf30fab7b05b262baa67869c742cc056acbffe182cef584461a  ./dev/verification/documents_setup_installed.exs
+747f557d61b8fe00e17b8ac7883d76b08d4cbe6c35bea2019db7cf6e1f8c4134  ./test/support/documents_setup.exs
+ce2b08f27bafa9411c2d547ea0342fd902da5f04a93e3528a5e08f14b19adb45  ./test/support/operator_pty.rs
+cea9c211558addd2917256b8e3b66fa5cc384f3f768a6d4ee803d9d0e2ab2027  ./test/support/word_capacity_fixture.ex
+644f8de55702744376dc2a135607d9d00e6ab44239ee7c25bc7dfe8377731e31  ./test/support/word_capacity_installed_journey.exs

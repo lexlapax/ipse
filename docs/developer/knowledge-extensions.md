@@ -769,7 +769,15 @@ code never opens paths or enlarges SDK/result envelopes.
 segment metadata. Supplied `put_document` keeps its 8192-byte extracted-text
 bound. Workspace acquisition supports up to 65536 extracted UTF-8 bytes,
 32 stored segment groups, 32 chunks and 16384 canonical metadata bytes with at most 32 warnings.
-It does not trim text, warnings or locators to fit. Metadata at most 2,048 bytes
+It does not trim text, warnings or locators to fit. Test original bytes,
+extracted text and chunk count independently: a source can exceed 32 chunks
+without reaching 64 KiB. A pure parser or source-payload check does not exercise
+the host's original-byte snapshot limit. In the actual Session control, require
+the expected native acquisition phase, unchanged prior head, exact UTF-8
+citations after file restoration, confirmed close and idle reconstruction without
+new effect intents. The [installed Collection ceiling control](../archive/2026-10-26-p30-p31-implementation/word-installed-capacity-20261104.md)
+provides a worked synthetic example; it does not qualify full-store capacity or
+Word rendering. Metadata at most 2,048 bytes
 keeps the packed receipt version 3: canonical document JSON and its digest wrap
 the supplied-byte version 1 or acquired-byte version 2 receipt. The latter binds
 the actual host acquisition operation and relative path. Larger metadata uses

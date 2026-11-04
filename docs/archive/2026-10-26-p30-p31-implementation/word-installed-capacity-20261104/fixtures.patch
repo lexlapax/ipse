@@ -1,0 +1,562 @@
+--- a/dev/verification/documents_setup_installed.exs
++++ b/dev/verification/documents_setup_installed.exs
+@@ -1,8 +1,14 @@
+-[archive, root] = System.argv()
++[archive, root | selected] = System.argv()
++true = selected in [[], ["collection_capacity"]]
+ archive = Path.expand(archive)
+ root = Path.expand(root)
+ Code.require_file("../release.exs", __DIR__)
+ :ok = Ipse.Development.Release.verify_checksum!(archive)
++
++true =
++  Ipse.Development.Release.checksum(archive) ==
++    "5b392067c4ec96233e6b1742d4f8c760368ab001b9cb90add95326e801001346"
++
+ source = Path.expand("../../test/support/documents_setup.exs", __DIR__)
+ driver_source = Path.expand("../../test/support/operator_pty.rs", __DIR__)
+ false = File.exists?(root)
+@@ -32,11 +38,25 @@
+ 
+ {identity, 0} =
+   System.cmd(Path.join(release, "ipse"), ["version", "--json"],
+-    env: [{"PATH", utilities}, {"IPSE_HOME", home}, {"ERL_FLAGS", "+S 2:2"}],
++    env: [
++      {"PATH", utilities},
++      {"IPSE_RUNNER_PATH", Path.join(release, "lib/ipse-0.1.0/priv/ipse-runner")},
++      {"ERL_LIBS", nil},
++      {"ELIXIR_ERL_OPTIONS", nil},
++      {"ERL_AFLAGS", nil},
++      {"ERL_ZFLAGS", nil},
++      {"ERL_CRASH_DUMP", Path.join(home, "erl_crash.dump")},
++      {"HOME", home},
++      {"LANG", "C.utf8"},
++      {"LC_ALL", "C.utf8"},
++      {"IPSE_HOME", home},
++      {"ERL_FLAGS", "+S 2:2"}
++    ],
+     stderr_to_stdout: true
+   )
+ 
+ identity = :json.decode(identity)
++true = identity["commit"] == "6adb7aca314ac1afa5aa53c3b31813ab0dfa7f21"
+ 
+ inventory = fn ->
+   for path <- Path.wildcard(release <> "/**/*", match_dot: true), into: %{} do
+@@ -53,14 +73,25 @@
+ 
+ before = inventory.()
+ 
++File.write!(
++  Path.join(root, "release-inventory-before.term"),
++  :erlang.term_to_binary(before, [:deterministic]),
++  [:exclusive, :sync]
++)
++
+ eval = """
+ release = #{inspect(release)}
+ for name <- ~w(elixir elixirc mix rustc cargo), do: nil = System.find_executable(name)
+ true = String.starts_with?(System.find_executable("erlc"), release <> "/erts-")
+ true = String.starts_with?(Application.app_dir(:ipse), release <> "/lib/")
+-for module <- [Ipse.CLI, Ipse.CLI.Documents, Ipse.Extension.Bundles] do
++for module <- Application.spec(:ipse, :modules) do
++  Code.ensure_loaded!(module)
+   true = String.starts_with?(List.to_string(:code.which(module)), release <> "/lib/")
+ end
++{:ok, priv} = Ipse.Workspace.canonical_path(to_string(:code.priv_dir(:ipse)))
++true = String.starts_with?(priv, release <> "/")
++true = File.regular?(Path.join(priv, "ipse-runner"))
++true = String.starts_with?(List.to_string(:code.which(Ipse.Extension.Bootstrap)), release <> "/lib/")
+ Code.prepend_path(#{inspect(Path.join(exunit, "ebin"))})
+ {:ok, entries} = Ipse.Extension.Bundles.inventory()
+ ~w(corpus-collection-documents corpus-state-documents knowledge knowledge-decision-shadow) =
+@@ -69,15 +100,22 @@
+ false = :code.is_loaded(IpseKnowledge.Corpus)
+ """
+ 
++scenarios = [
++  {"state", "--knowledge"},
++  {"collection", "--knowledge"},
++  {"cancel", "--knowledge-cancel"},
++  {"stale", "--knowledge-stale"},
++  {"race", "--knowledge-config"},
++  {"pipe", nil}
++]
++
++scenarios =
++  if selected == ["collection_capacity"],
++    do: [{"collection_capacity", "--knowledge"}],
++    else: scenarios
++
+ results =
+-  for {scenario, mode} <- [
+-        {"state", "--knowledge"},
+-        {"collection", "--knowledge"},
+-        {"cancel", "--knowledge-cancel"},
+-        {"stale", "--knowledge-stale"},
+-        {"race", "--knowledge-config"},
+-        {"pipe", nil}
+-      ] do
++  for {scenario, mode} <- scenarios do
+     journey = Path.join(root, scenario)
+     File.mkdir!(journey)
+     File.chmod!(journey, 0o700)
+@@ -93,6 +131,15 @@
+         stderr_to_stdout: true,
+         env: [
+           {"PATH", utilities},
++          {"IPSE_RUNNER_PATH", Path.join(release, "lib/ipse-0.1.0/priv/ipse-runner")},
++          {"ERL_LIBS", nil},
++          {"ELIXIR_ERL_OPTIONS", nil},
++          {"ERL_AFLAGS", nil},
++          {"ERL_ZFLAGS", nil},
++          {"ERL_CRASH_DUMP", Path.join(home, "erl_crash.dump")},
++          {"HOME", home},
++          {"LANG", "C.utf8"},
++          {"LC_ALL", "C.utf8"},
+           {"IPSE_HOME", home},
+           {"ERL_FLAGS", "+S 2:2"},
+           {"RELEASE_DISTRIBUTION", "none"}
+@@ -102,13 +149,16 @@
+     File.write!(Path.join(root, scenario <> ".log"), output)
+ 
+     marker =
+-      if scenario in ~w(state collection),
++      if scenario in ~w(state collection collection_capacity),
+         do: "DOCUMENT_SETUP_JOURNEY_PASSED",
+         else: "DOCUMENT_SETUP_REFUSAL_PASSED"
+ 
+     unless status == 0 and String.contains?(output, marker),
+       do: raise("Installed setup failed in #{scenario}; see private fixture log")
+ 
++    if scenario == "collection_capacity",
++      do: true = String.contains?(output, "INSTALLED_WORD_CAPACITY_PASSED")
++
+     IO.puts("PASS installed document setup: #{scenario}")
+ 
+     %{
+@@ -119,6 +169,11 @@
+   end
+ 
+ true = before == inventory.()
++:ok = Ipse.Development.Release.verify_checksum!(archive)
++
++true =
++  Ipse.Development.Release.checksum(archive) ==
++    "5b392067c4ec96233e6b1742d4f8c760368ab001b9cb90add95326e801001346"
+ 
+ report = %{
+   version: 1,
+@@ -136,4 +191,9 @@
+ }
+ 
+ File.write!(Path.join(root, "report.json"), :json.encode(report))
+-IO.puts("INSTALLED_DOCUMENT_SETUP_ALL_SIX_PASSED")
++
++IO.puts(
++  if selected == ["collection_capacity"],
++    do: "INSTALLED_DOCUMENT_CAPACITY_COHORT_PASSED",
++    else: "INSTALLED_DOCUMENT_SETUP_ALL_SIX_PASSED"
++)
+--- a/test/support/documents_setup.exs
++++ b/test/support/documents_setup.exs
+@@ -1,3 +1,4 @@
++Code.require_file("word_capacity_fixture.ex", __DIR__)
+ ExUnit.start(autorun: false)
+ import ExUnit.Assertions
+ {:ok, _} = Application.ensure_all_started(:ipse)
+@@ -115,6 +116,8 @@
+   end
+ end
+ 
++Code.require_file("word_capacity_installed_journey.exs", __DIR__)
++
+ for key <-
+       ~w(IPSE_HOME IPSE_CONFIG IPSE_PROFILE) ++
+         Enum.map(
+@@ -159,7 +162,7 @@
+   end)
+ end
+ 
+-profile = if scenario == "collection", do: "collection", else: "state"
++profile = if scenario in ["collection", "collection_capacity"], do: "collection", else: "state"
+ 
+ argv =
+   ["documents", "setup", "--cwd", cwd, "--profile", profile, "--write"] ++
+@@ -455,6 +458,16 @@
+   refute Enum.any?(after_recovery, &(&1["type"] == "request_admitted"))
+   :ok = Ipse.Session.close_confirmed(resumed_numbered)
+ 
++  if scenario == "collection_capacity" do
++    InstalledWordCapacityJourney.run(
++      session_opts,
++      cwd,
++      home,
++      instance["artifact"],
++      get_in(instance, ["options", "stores", "notes", "partition"])
++    )
++  end
++
+   # Inspect the same imported package after the live Session journey has closed.
+   artifact_ebin = Path.join([home, "extensions", "artifacts", instance["artifact"], "ebin"])
+   Code.prepend_path(artifact_ebin)
+--- a/test/support/operator_pty.rs
++++ b/test/support/operator_pty.rs
+@@ -70,7 +70,7 @@
+         .stdout(Stdio::from(slave.try_clone().unwrap()))
+         .stderr(Stdio::from(slave.try_clone().unwrap())).spawn().unwrap();
+     drop(slave);
+-    let deadline = Instant::now() + Duration::from_secs(if args.last().is_some_and(|a| a == "recall-many") { 300 } else { 60 });
++    let deadline = Instant::now() + Duration::from_secs(if args.last().is_some_and(|a| a == "recall-many" || a == "collection_capacity") { 300 } else { 60 });
+     let mut output = Vec::new();
+     let mut number = 1;
+     let mut answered = Vec::new();
+--- a/test/support/word_capacity_fixture.ex
++++ b/test/support/word_capacity_fixture.ex
+@@ -4,12 +4,19 @@
+   # Synthetic geometry, not independent Word rendering or semantic quality.
+   # An inert PNG thumbnail exercises original-byte geometry without expanding
+   # the main XML. Its unexamined relationship must remain a partial warning.
+-  def build(kind) when kind in [:at_bound, :text_over, :original_over] do
+-    text_bytes = if kind === :text_over, do: 65_537, else: 65_536
++  def build(kind) when kind in [:at_bound, :text_over, :original_over, :chunk_over] do
++    text_bytes =
++      cond do
++        kind === :text_over -> 65_537
++        kind === :chunk_over -> 35_872
++        true -> 65_536
++      end
++
++    paragraph_count = 32
+     original_bytes = if kind === :original_over, do: 1_048_577, else: 1_048_576
+ 
+     paragraphs =
+-      Enum.map(1..32, fn ordinal ->
++      Enum.map(1..paragraph_count, fn ordinal ->
+         needle =
+           case ordinal do
+             1 -> "firstcapacityneedle"
+@@ -19,7 +26,12 @@
+           end
+ 
+         prefix = "#{needle} preserves résumé 雪 evidence. "
+-        target = if ordinal === 32, do: text_bytes - 31 - 31 * 2047, else: 2047
++
++        target =
++          if kind === :chunk_over,
++            do: if(ordinal === 32, do: 4097, else: 1024),
++            else: if(ordinal === 32, do: text_bytes - 31 - 31 * 2047, else: 2047)
++
+         remaining = target - byte_size(prefix)
+         filler = String.duplicate("detail ", div(remaining, 7) + 1)
+         prefix <> binary_part(filler, 0, remaining - 1) <> "x"
+@@ -40,7 +52,7 @@
+       paragraphs: paragraphs,
+       original_bytes: original_bytes,
+       text_bytes: text_bytes,
+-      chunks: 32,
++      chunks: if(kind === :chunk_over, do: 33, else: 32),
+       needles: [
+         {1, "firstcapacityneedle"},
+         {16, "middlecapacityneedle"},
+--- /dev/null
++++ b/test/support/word_capacity_installed_journey.exs
+@@ -0,0 +1,298 @@
++defmodule InstalledWordCapacityJourney do
++  import ExUnit.Assertions
++  alias Ipse.{JSON, Journal, Session}
++  @source "workspace:capacity"
++  @filename "capacity.docx"
++
++  def run(options, cwd, home, digest, partition) do
++    assert is_binary(partition) and partition != ""
++    fixture = Ipse.Test.WordCapacityFixture.build(:at_bound)
++    assert fixture.original_bytes === 1_048_576 and fixture.text_bytes === 65_536
++    assert fixture.chunks === 32
++    file = Path.join(cwd, @filename)
++    File.write!(file, fixture.bytes)
++    assert {:ok, pid} = DynamicSupervisor.start_child(Ipse.Sessions, {Session, options})
++    id = Session.info(pid).id
++    invoke = fn pid, command, args -> DocumentSetupJourney.invoke(pid, command, args, digest) end
++    acquire = arguments(1, 0, JSON.sha256(fixture.bytes))
++    value = invoke.(pid, "source", acquire)
++    value = DocumentSetupJourney.finish(pid, value, digest)
++    assert value["status"] === "ok", inspect(value)
++    head = head(home, cwd, partition)
++    assert head["value"]["text_bytes"] === fixture.text_bytes
++    assert head["value"]["chunks"] === 32
++    assert get_in(head, ["value", "lexical", "content_sha256"]) === JSON.sha256(fixture.text)
++    citations = citations(pid, fixture, digest)
++    File.write!(file, DocumentSetupJourney.document())
++    refused(pid, "firstcapacityneedle", digest)
++    assert head(home, cwd, partition) === head
++    File.write!(file, fixture.bytes)
++    assert citations(pid, fixture, digest) === citations
++    held = file <> ".held"
++    refute File.exists?(held)
++    assert :ok = File.rename(file, held)
++    refused(pid, "middlecapacityneedle", digest)
++    {before_close, _} = events(options[:state_dir], id)
++    original_acquisitions = acquisitions(before_close)
++    assert length(original_acquisitions) === 1
++    assert :ok = Session.close_confirmed(pid)
++    assert {:ok, before_reopen} = Journal.load(options[:state_dir], id)
++
++    assert {:ok, resumed} =
++             DynamicSupervisor.start_child(
++               Ipse.Sessions,
++               {Session, Keyword.put(options, :id, id)}
++             )
++
++    assert Session.info(resumed).phase === :idle
++    assert {:ok, after_reopen} = Journal.load(options[:state_dir], id)
++    assert intents(after_reopen) === intents(before_reopen)
++    refused(resumed, "lastcapacityneedle", digest)
++    assert :ok = File.rename(held, file)
++    assert citations(resumed, fixture, digest) === citations
++    assert head(home, cwd, partition) === head
++    assert {:ok, after_restore} = Journal.load(options[:state_dir], id)
++    assert acquisitions(after_restore) === original_acquisitions
++
++    refusals =
++      for kind <- [:text_over, :original_over, :chunk_over] do
++        over = Ipse.Test.WordCapacityFixture.build(kind)
++
++        expected_text_bytes =
++          case kind do
++            :text_over -> 65_537
++            :chunk_over -> 35_872
++            :original_over -> 65_536
++          end
++
++        assert over.text_bytes === expected_text_bytes
++
++        assert over.original_bytes === if(kind === :original_over, do: 1_048_577, else: 1_048_576)
++        File.write!(file, over.bytes)
++        {:ok, prior} = Journal.load(options[:state_dir], id)
++        replacement = arguments(2, head["value"]["revision"], JSON.sha256(over.bytes))
++        value = invoke.(resumed, "source", replacement)
++        value = DocumentSetupJourney.finish(resumed, value, digest)
++        assert value["status"] === "refused", inspect(value)
++
++        code =
++          if kind !== :original_over,
++            do: "document_source_limit",
++            else: "document_acquisition_refused"
++
++        assert Enum.any?(value["gaps"], &(&1["code"] === code))
++        assert value["evidence"] === [] and value["claims"] === []
++        assert head(home, cwd, partition) === head
++        assert {:ok, after_refusal} = Journal.load(options[:state_dir], id)
++        new_events = Enum.drop(after_refusal, length(prior))
++
++        refute Enum.any?(new_events, fn event ->
++                 event["type"] === "extension_action_intent" and
++                   get_in(event, ["request", "op"]) === "collection.store" and
++                   Ipse.Extension.CollectionStore.mutating?(event["request"])
++               end)
++
++        snapshots =
++          Enum.filter(new_events, fn event ->
++            event["type"] === "extension_action_result" and
++              get_in(event, ["request", "op"]) === "tool.call" and
++              get_in(event, ["request", "arguments", "path"]) === @filename
++          end)
++
++        [opening] =
++          Enum.filter(snapshots, &(get_in(&1, ["request", "arguments", "snapshot"]) === "start"))
++
++        pages =
++          Enum.filter(snapshots, &(get_in(&1, ["request", "arguments", "snapshot"]) === "page"))
++
++        if kind !== :original_over do
++          assert opening["outcome"]["status"] === "ok"
++          assert length(pages) === 256 and Enum.all?(pages, &(&1["outcome"]["status"] === "ok"))
++        else
++          assert opening["outcome"]["status"] === "failed" and pages === []
++        end
++
++        File.write!(file, fixture.bytes)
++        assert citations(resumed, fixture, digest) === citations
++
++        %{
++          kind: Atom.to_string(kind),
++          code: code,
++          snapshot_start: opening["outcome"]["status"],
++          pages: length(pages),
++          collection_mutation_intents: 0
++        }
++      end
++
++    assert {:ok, final} = Journal.load(options[:state_dir], id)
++    assert :ok = Session.close_confirmed(resumed)
++    assert {:ok, prior_idle} = Journal.load(options[:state_dir], id)
++
++    assert {:ok, idle} =
++             DynamicSupervisor.start_child(
++               Ipse.Sessions,
++               {Session, Keyword.put(options, :id, id)}
++             )
++
++    assert Session.info(idle).phase === :idle
++    assert :ok = Session.close_confirmed(idle)
++    {after_idle, _} = events(options[:state_dir], id)
++    assert intents(after_idle) === intents(prior_idle)
++    assert acquisitions(after_idle) === acquisitions(final)
++    assert head(home, cwd, partition) === head
++    assert File.read!(file) === fixture.bytes
++
++    report = %{
++      source_id: @source,
++      original_bytes: fixture.original_bytes,
++      text_bytes: fixture.text_bytes,
++      chunks: 32,
++      quote_count: length(citations),
++      extraction_version: "ipse-documents-v17",
++      coverage: "partial",
++      thumbnail_warning_preserved: true,
++      changed_missing_restored: true,
++      saved: true,
++      idle_no_replay: true,
++      model_calls: 0,
++      refusals: refusals
++    }
++
++    File.write!(Path.join(Path.dirname(home), "capacity-result.json"), Jason.encode!(report), [
++      :exclusive,
++      :sync
++    ])
++
++    IO.puts(
++      "INSTALLED_WORD_CAPACITY_PASSED original_bytes=1048576 text_bytes=65536 chunks=32 quotes=3 recipe=v17 partial_thumbnail_warning=preserved changed_missing_restored=true saved_idle_noReplay=true model_calls=0"
++    )
++  end
++
++  defp arguments(generation, revision, hash),
++    do: %{
++      "store" => "notes",
++      "action" => "read_document",
++      "args" => %{
++        "source_id" => @source,
++        "generation" => generation,
++        "expected_revision" => revision,
++        "title" => "Installed capacity Word source",
++        "path" => @filename,
++        "expected_sha256" => hash,
++        "uri" => "workspace:capacity.docx",
++        "observed_at_ms" => 10,
++        "event_at_ms" => nil,
++        "expires_at_ms" => nil
++      }
++    }
++
++  defp head(home, cwd, partition) do
++    assert {:ok, binding} = Ipse.Extension.ProjectIdentity.existing(home, cwd)
++    namespace = Ipse.Extension.CollectionStore.namespace(binding["project_id"])
++
++    assert {:ok, %{"record" => record}} =
++             Ipse.Extension.Collection.execute_profile(
++               Ipse.Extension.CollectionStore.root(home),
++               namespace,
++               %{"op" => "get", "key" => "source." <> partition <> "." <> JSON.sha256(@source)},
++               Ipse.Usage.id(),
++               Ipse.Extension.Collection.Profile.documents()
++             )
++
++    assert is_map(record)
++    assert {:ok, value} = Ipse.Extension.Collection.DocumentStage.decode_packed(record["value"])
++    %{"physical_record" => record, "value" => value}
++  end
++
++  defp query(pid, needle, digest),
++    do:
++      DocumentSetupJourney.invoke(
++        pid,
++        "query_selected",
++        %{
++          "store" => "notes",
++          "retrieval" => "words",
++          "query" => needle,
++          "top_k" => 1,
++          "as_of_ms" => 20,
++          "source_ids" => [@source]
++        },
++        digest
++      )
++
++  defp refused(pid, needle, digest) do
++    value = query(pid, needle, digest)
++    assert value["status"] === "refused"
++    assert value["evidence"] === [] and value["claims"] === []
++    assert Enum.any?(value["gaps"], &(&1["code"] === "document_source_changed_or_unavailable"))
++  end
++
++  defp citations(pid, fixture, digest) do
++    Enum.map(fixture.needles, fn {paragraph, needle} ->
++      result = query(pid, needle, digest)
++      assert result["status"] === "partial"
++      assert [hit] = result["evidence"]
++      citation = hit["citation"]
++      assert citation["document"]["status"] === "partial"
++
++      assert Enum.any?(result["gaps"], fn gap ->
++               gap["code"] === "partial_document" and
++                 Enum.any?(
++                   gap["warnings"] || [],
++                   &(&1["code"] === "internal_relationship_not_examined" and
++                       &1["part"] === "_rels/.rels")
++                 )
++             end)
++
++      quote = needle <> " preserves résumé 雪 evidence. "
++
++      start =
++        fixture.paragraphs
++        |> Enum.take(paragraph - 1)
++        |> Enum.reduce(0, &(byte_size(&1) + 1 + &2))
++
++      assert citation["quote"] === quote
++
++      assert citation["start_byte"] === start and
++               citation["end_byte"] === start + byte_size(quote)
++
++      assert citation["document"]["start_byte"] === 0 and
++               citation["document"]["end_byte"] === byte_size(quote)
++
++      assert citation["content_sha256"] === JSON.sha256(fixture.text)
++      assert citation["document"]["original_sha256"] === JSON.sha256(fixture.bytes)
++      assert citation["document"]["extraction_version"] === "ipse-documents-v17"
++      assert get_in(citation, ["document", "locator", "paragraph"]) === paragraph
++      citation
++    end)
++  end
++
++  defp events(dir, id) do
++    assert {:ok, events} = Journal.load(dir, id)
++    assert {:ok, saved} = Session.Saved.restore(events, id)
++    refute saved.managed_lineage.unavailable
++
++    refute Enum.any?(
++             events,
++             &(&1["type"] in ~w(request_intent request_admitted inference_dispatch_intent managed_output_withheld))
++           )
++
++    {events, saved}
++  end
++
++  defp acquisitions(events),
++    do:
++      Enum.filter(
++        events,
++        &(&1["type"] === "extension_invocation_intent" and
++            get_in(&1, ["payload", "arguments", "action"]) === "read_document" and
++            get_in(&1, ["payload", "arguments", "args", "source_id"]) === @source)
++      )
++
++  defp intents(events),
++    do:
++      Enum.filter(
++        events,
++        &(&1["type"] in ~w(extension_invocation_intent extension_action_intent request_intent request_admitted inference_dispatch_intent worker_input_intent))
++      )
++end

@@ -389,7 +389,8 @@ The shipped Collection document artifact can acquire a workspace `.docx` larger
 than the State profile's 32,768-byte original limit. Its host-owned snapshot is
 bounded at 1 MiB, but the extraction, locator, journal, action and time limits
 can refuse a smaller file. Extracted text remains limited to 64 KiB and 32
-chunks. The snapshot bound is a ceiling, not a promise that every document
+chunks. These are independent limits: a document can exceed 32 chunks while
+remaining below the text ceiling. The snapshot bound is a ceiling, not a promise that every document
 within it can be extracted or stored. Finish each returned continuation and
 approval before the next one; an interrupted effect is unknown and is not
 automatically replayed.
