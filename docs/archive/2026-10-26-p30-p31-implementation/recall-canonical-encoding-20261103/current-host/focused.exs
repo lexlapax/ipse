@@ -1,0 +1,8 @@
+for {key, _} <- System.get_env(), String.starts_with?(key, "IPSE_"), do: System.delete_env(key)
+System.put_env("IPSE_HOME", Path.join(__DIR__, "task-home"))
+{:ok, _} = Application.ensure_all_started(:ipse)
+ExUnit.start(autorun: false)
+Code.require_file("resume_assertions.exs", __DIR__)
+for file <- ~w(test/ipse/json_test.exs test/ipse/session/source_replay_cache_test.exs test/ipse/session/source_window_test.exs test/ipse/session/saved_test.exs), do: Code.require_file(file, __DIR__)
+result = ExUnit.run()
+System.halt(if result.failures == 0, do: 0, else: 1)

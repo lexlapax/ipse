@@ -66,24 +66,17 @@ defmodule Ipse.JSON do
 
   defp unique_object(value, _depth, _max_depth), do: {:ok, value}
 
-  defp canonical_json(value) when is_map(value) do
-    pairs =
-      value
-      |> Enum.map(fn {key, item} -> {to_string(key), item} end)
-      |> Enum.sort_by(&elem(&1, 0))
+  defp canonical_json(value), do: value |> canonical_value() |> Jason.encode_to_iodata!()
 
-    fields =
-      Enum.map_join(pairs, ",", fn {key, item} ->
-        Jason.encode!(key) <> ":" <> canonical_json(item)
-      end)
-
-    "{" <> fields <> "}"
+  defp canonical_value(value) when is_map(value) do
+    value
+    |> Enum.map(fn {key, item} -> {to_string(key), canonical_value(item)} end)
+    |> Enum.sort_by(&elem(&1, 0))
+    |> Jason.OrderedObject.new()
   end
 
-  defp canonical_json(value) when is_list(value),
-    do: "[" <> Enum.map_join(value, ",", &canonical_json/1) <> "]"
-
-  defp canonical_json(value), do: Jason.encode!(value)
+  defp canonical_value(value) when is_list(value), do: Enum.map(value, &canonical_value/1)
+  defp canonical_value(value), do: value
 
   @schema_limit 32 * 1024
   @argument_limit 16 * 1024

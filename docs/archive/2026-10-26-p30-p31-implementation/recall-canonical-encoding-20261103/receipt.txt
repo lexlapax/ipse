@@ -1,0 +1,87 @@
+Synthetic populated-recall reconstruction finding, 2026-11-03
+
+No unknown turn was resumed or replayed. No new Session/provider/native workload
+was launched for timing. No product deadline, consent, source or ownership gate
+was changed. Current shared worktree remained unedited by this lane. This is a
+pure reconstruction measurement, not a successful 33-note journey or failure-cause
+attribution.
+
+Measured existing compiled test runtime: the four relevant loaded BEAM paths,
+SHA-256 values and compile source metadata are in benchmark.log. The existing
+runtime was not rebuilt from the current HEAD. Exact current source inputs are
+in source-inputs.sha256. The main source baseline was 6fbbd90f when work began.
+
+Retained synthetic source inputs are bound to these committed manifests:
+- source-owner-phase-20261103/single/phase-before.json: one eight-note source,
+  214events,367227bytes, SHA edb7dbfdaa4114c4b5e91ac54d9df26518712a92ab140fbc25d1284d864e8de7.
+- egress-diagnostic-dcbb-20261103/strict-source-before.json:33source journals,
+  32events each, ~67821..68454bytes each, all33archived hashes checked.
+
+retained.exs reads only those synthetic journals, validates archived hashes and
+later stable inode/device/owner/mode/size/mtime/ctime fields plus hashes. It calls
+pure Saved/SourceWindow/Actions reconstruction and owner-linked SourceReplayCache.
+The cache owns no OS resource; it stops explicitly after each case and cannot
+outlive this VM. No source lock/lease or live authority is obtained or claimed.
+Raw source bytes and approval codes are never printed. HOME is unchanged.
+
+Observed pre-candidate:
+- single8 first cache fill680943us; warm hits1402..1580us; Saved warm541998,
+  542891,543217us; SourceWindow2338..2403us; Actions135686..137261us.
+- split33 first cache fill sum2911223us; warm entire33-source passes ~10ms.
+  First source Saved124226..130954us; Actions31777..38319us; SourceWindow290,
+  293,1457us.
+- eprof of one actual32-event source reported107226Jason.encode!/1 calls,
+  2991881escape_json_chunk calls. Profiling perturbs timing; measured profile
+  intervals are not uninstrumented latency or product deadline evidence.
+
+Candidate json-candidate.patch replaces recursive per-scalar/key Jason encoder
+invocations with a recursively key-sorted Jason.OrderedObject representation and
+one Jason.encode_to_iodata! invocation. The existing maintained Jason API already
+preserves ordered duplicate key pairs. Hash input ordering, scalar JSON encoding,
+stringified key collisions and invalid-value rejection are preserved.
+
+Observed candidate in a separate VM:
+- single8 first cache fill659558us (startup-inclusive); Saved warm420779,
+  422310us after first523255us. Actions96588..98986us.
+- split33 first cache fill sum2292894us (21.24% lower). First source Saved
+  96420..99809us, median97270us versus126858us (23.33% lower).
+  Actions24083..24438us; SourceWindow266..284us. Cache hits remain ~0.3ms/source.
+These are one pair of runs with different process startup/cache state, not a
+statistical latency bound, proof the failed turn timed out, or recall acceptance.
+The dominant Saved cost remains well above SourceWindow alone; this result does
+not justify the withdrawn SourceWindow-reuse or generic batching candidates.
+
+verify.exs compared260nested/scalar/control/Unicode/numeric/key-collision cases,
+5invalid cases and every event digest plus whole-history digests for34sources /
+1270events before/after. Historical digest manifest before/after identical:
+313924804702f834b8ebf37c4715723d98f9559430911ae46963bf9a60b35e57.
+15existing JSON tests passed. First use of deprecated Code warnings_as_errors
+options emitted warnings; do not treat that as a strict compile.
+
+Then copied the existing runtime and dereferenced priv into runtime/ (22MiB),
+formatted candidate and copied tests, and ran:
+TMPDIR=/dev/shm ERL_FLAGS='+S 2:2' elixirc --warnings-as-errors
+ --ignore-module-conflict -pa 'runtime/*/ebin' -o runtime/ipse/ebin json-candidate.ex
+Exit0; strict-compile.log is empty. This strictly compiles only the changed JSON
+module, not the entire project.
+Focused direct ExUnit against that frozen runtime passed39tests in2.3sec:
+16JSON (new historical contract/error corpus includes invalid URI struct),
+6SourceReplayCache,7SourceWindow including actual Session/receipt/resume behavior,
+10Saved/handoff. Synthetic IPSE_HOME, unchanged HOME. runtime-after.sha256 is an
+AFTER-only inventory; no claim is made of a runtime pre/post fingerprint pair.
+
+Initial retained measurement stopped because its verifier compared atime too;
+that log/script are retained as retained-initial.*. Original-content hashes had
+matched. The corrected verifier excludes access time. A standalone elixir
+--warnings-as-errors attempt refused before executing a file; its log is retained.
+No Session/turn/effect retry occurred.
+
+Exact focused patch SHA:
+f933310f339d4f3fbe8837e1704d9b2b2b51de6fb482a078cd4193f2b7fbb81a.
+Candidate source SHA3a4fa167d9b7596c0ade4c107c4c0d95f9ed792613a598b16c1595d1baee8150.
+Candidate test SHA2bb7ec6169ad2b9325ee08f2ddba157c8edc90072bb5062618ff829a75bc9ef8.
+
+Next executable gate: independent source/test review, integrate/freeze current
+runtime with full project strict compile and relevant source-owner tests, then
+one fresh33-note real Session attempt with unchanged deadlines/no-replay guards.
+Do not launch the annual cohort or replay prior unknown outcomes.

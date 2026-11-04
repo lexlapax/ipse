@@ -1,0 +1,36 @@
+One fresh strict33-note attempt after canonical digest optimization.
+Runtime:/dev/shm/ipse-json-current-20261103-01 complete195current modules.
+Dedicated strict listener starts after seed and has180saccept; workload listener
+repair is not the component exercised. Product provider selected5000ms and all
+normal Worker deadlines unchanged. Longer PTY/ExUnit bounds cover setup only.
+HOME stayed inherited; new owner-only synthetic task homes/sources/consent.
+
+Result:test1filter0postcheck0. Runtime lib/compiled/native files and symlink
+inventory match before/after. All33source journal+lock identities and journal
+hashes unchanged; no held journal path remains. See separately captured actual
+source-after.json and verifier.
+
+Actual consumer:37Worker inputs delivered, managed preflight result, dispatch
+intent; measured request failed14195ms, partial finish14196ms, turn error.
+Synthetic listener initial receive returned closed before request bytes.
+No provider request, complete32-note assertions or idle reopen was established.
+
+The 120000ms managed preflight window starts checked_at_ms1793766633699 and
+ends1793766753699. Request admission1793766633653. These journal wall-time facts
+and whole-request monotonic durations do not locate individual gate/send phases
+or measure the listener close time. No transport marker/timestamp was enabled.
+The runtime selected fixture provider timeout5000ms; its effective transport
+budget is bounded by configured timeout and current-source deadlines, but the
+exact runtime effective deadline value was not captured.
+
+Evidence gap:strict fixture line400 consumes request or done(status), discarding
+separate Session {:error,reason} notifications. Its raw failure only retains
+ExUnit.AssertionError/status/counts/tail. Journals retain outcome and durations,
+without an underlying typed error. This result cannot establish timeout or a
+failure cause. No unknown or failed turn was resumed or retried. Raw terminal
+log and consumer journal remain private volatile synthetic evidence; only raw
+log SHA and bounded projections are retained here.
+
+Next diagnostic must repair the error collector first, use fresh sources and
+Session, preserve the same runtime/timeouts and no-replay marker, and capture
+safe fixed typed cause plus listener timestamps rather than infer from total.

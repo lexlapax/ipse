@@ -99,6 +99,79 @@ defmodule Ipse.JSONTest do
     assert_raise Protocol.UndefinedError, fn -> Ipse.JSON.digest([{:not, :json}]) end
   end
 
+  test "persisted digests retain the historical encoder contract across nested values and failures" do
+    historical = fn historical, value ->
+      cond do
+        is_map(value) ->
+          fields =
+            value
+            |> Enum.map(fn {key, item} -> {to_string(key), item} end)
+            |> Enum.sort_by(&elem(&1, 0))
+            |> Enum.map_join(",", fn {key, item} ->
+              Jason.encode!(key) <> ":" <> historical.(historical, item)
+            end)
+
+          "{" <> fields <> "}"
+
+        is_list(value) ->
+          "[" <> Enum.map_join(value, ",", &historical.(historical, &1)) <> "]"
+
+        true ->
+          Jason.encode!(value)
+      end
+    end
+
+    scalars = [
+      nil,
+      true,
+      false,
+      0,
+      -1,
+      9_007_199_254_740_991,
+      0.0,
+      -0.0,
+      1.0e-100,
+      1.0e100,
+      "",
+      "é 🐚",
+      "\u0000\n\r\t\b\f\"\\/",
+      "\u2028\u2029",
+      :ordinary,
+      :null
+    ]
+
+    values =
+      for a <- scalars, b <- scalars do
+        [%{"z" => [a, b], "a" => %{nested: [b, %{"é" => a}], zero: 0}}]
+      end
+
+    values = values ++ [[%{"alpha" => 2, alpha: 1}], [%{}], [[]], []]
+
+    for value <- values do
+      assert Ipse.JSON.digest(value) == Ipse.JSON.sha256(historical.(historical, value))
+    end
+
+    outcome = fn fun ->
+      try do
+        {:ok, fun.()}
+      rescue
+        error -> {:error, error.__struct__}
+      end
+    end
+
+    for value <- [
+          [{:not, :json}],
+          [<<255>>],
+          [%{{:bad, :key} => 1}],
+          [self()],
+          [make_ref()],
+          [%URI{}]
+        ] do
+      assert outcome.(fn -> Ipse.JSON.digest(value) end) ==
+               outcome.(fn -> Ipse.JSON.sha256(historical.(historical, value)) end)
+    end
+  end
+
   alias Ipse.JSON, as: Schema
 
   test "validates nested objects, required fields, arrays, scalar types, enums and bounds" do

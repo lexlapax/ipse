@@ -1,0 +1,7 @@
+%{case: "single8", source_count: 1, journal_bytes: [367227], event_counts: [214], cache_entries: 1, cache_bytes: 5914, miss_us: [680901], hit_us: [[1528], [1518], [1304]], first_source_components_us: %{input: [12, 10, 10], context: [275347, 269416, 271147], usage: [60, 51, 50], saved: [538758, 555923, 561271], source_window: [2390, 2388, 2386], actions: [134040, 134028, 133490], assertion: [507, 423, 428]}}
+** (RuntimeError) original synthetic source changed
+    /dev/shm/ipse-populated-cache-phase-a0XYcKFw/retained.exs:52: anonymous fn/3 in :elixir_compiler_0.__FILE__/1
+    (elixir 1.20.4) lib/enum.ex:2622: Enum."-reduce/3-lists^foldl/2-0-"/3
+    /dev/shm/ipse-populated-cache-phase-a0XYcKFw/retained.exs:50: anonymous fn/4 in :elixir_compiler_0.__FILE__/1
+    (elixir 1.20.4) lib/enum.ex:2622: Enum."-reduce/3-lists^foldl/2-0-"/3
+    /dev/shm/ipse-populated-cache-phase-a0XYcKFw/retained.exs:15: (file)

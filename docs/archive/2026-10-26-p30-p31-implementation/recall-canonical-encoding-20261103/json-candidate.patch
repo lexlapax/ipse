@@ -1,0 +1,117 @@
+--- a/lib/ipse/json.ex
++++ b/lib/ipse/json.ex
+@@ -66,24 +66,17 @@
+ 
+   defp unique_object(value, _depth, _max_depth), do: {:ok, value}
+ 
+-  defp canonical_json(value) when is_map(value) do
+-    pairs =
+-      value
+-      |> Enum.map(fn {key, item} -> {to_string(key), item} end)
+-      |> Enum.sort_by(&elem(&1, 0))
++  defp canonical_json(value), do: value |> canonical_value() |> Jason.encode_to_iodata!()
+ 
+-    fields =
+-      Enum.map_join(pairs, ",", fn {key, item} ->
+-        Jason.encode!(key) <> ":" <> canonical_json(item)
+-      end)
+-
+-    "{" <> fields <> "}"
++  defp canonical_value(value) when is_map(value) do
++    value
++    |> Enum.map(fn {key, item} -> {to_string(key), canonical_value(item)} end)
++    |> Enum.sort_by(&elem(&1, 0))
++    |> Jason.OrderedObject.new()
+   end
+ 
+-  defp canonical_json(value) when is_list(value),
+-    do: "[" <> Enum.map_join(value, ",", &canonical_json/1) <> "]"
+-
+-  defp canonical_json(value), do: Jason.encode!(value)
++  defp canonical_value(value) when is_list(value), do: Enum.map(value, &canonical_value/1)
++  defp canonical_value(value), do: value
+ 
+   @schema_limit 32 * 1024
+   @argument_limit 16 * 1024
+--- a/test/ipse/json_test.exs
++++ b/test/ipse/json_test.exs
+@@ -99,6 +99,79 @@
+     assert_raise Protocol.UndefinedError, fn -> Ipse.JSON.digest([{:not, :json}]) end
+   end
+ 
++  test "persisted digests retain the historical encoder contract across nested values and failures" do
++    historical = fn historical, value ->
++      cond do
++        is_map(value) ->
++          fields =
++            value
++            |> Enum.map(fn {key, item} -> {to_string(key), item} end)
++            |> Enum.sort_by(&elem(&1, 0))
++            |> Enum.map_join(",", fn {key, item} ->
++              Jason.encode!(key) <> ":" <> historical.(historical, item)
++            end)
++
++          "{" <> fields <> "}"
++
++        is_list(value) ->
++          "[" <> Enum.map_join(value, ",", &historical.(historical, &1)) <> "]"
++
++        true ->
++          Jason.encode!(value)
++      end
++    end
++
++    scalars = [
++      nil,
++      true,
++      false,
++      0,
++      -1,
++      9_007_199_254_740_991,
++      0.0,
++      -0.0,
++      1.0e-100,
++      1.0e100,
++      "",
++      "é 🐚",
++      "\u0000\n\r\t\b\f\"\\/",
++      "\u2028\u2029",
++      :ordinary,
++      :null
++    ]
++
++    values =
++      for a <- scalars, b <- scalars do
++        [%{"z" => [a, b], "a" => %{nested: [b, %{"é" => a}], zero: 0}}]
++      end
++
++    values = values ++ [[%{"alpha" => 2, alpha: 1}], [%{}], [[]], []]
++
++    for value <- values do
++      assert Ipse.JSON.digest(value) == Ipse.JSON.sha256(historical.(historical, value))
++    end
++
++    outcome = fn fun ->
++      try do
++        {:ok, fun.()}
++      rescue
++        error -> {:error, error.__struct__}
++      end
++    end
++
++    for value <- [
++          [{:not, :json}],
++          [<<255>>],
++          [%{{:bad, :key} => 1}],
++          [self()],
++          [make_ref()],
++          [%URI{}]
++        ] do
++      assert outcome.(fn -> Ipse.JSON.digest(value) end) ==
++               outcome.(fn -> Ipse.JSON.sha256(historical.(historical, value)) end)
++    end
++  end
++
+   alias Ipse.JSON, as: Schema
+ 
+   test "validates nested objects, required fields, arrays, scalar types, enums and bounds" do

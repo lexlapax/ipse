@@ -1,0 +1,24 @@
+warning: :warnings_as_errors is deprecated as part of Code.get_compiler_option/1
+  (elixir 1.20.4) lib/code.ex:1716: Code.get_compiler_option/1
+  (elixir 1.20.4) lib/code.ex:1691: anonymous fn/2 in Code.compiler_options/1
+  (elixir 1.20.4) lib/enum.ex:2622: Enum."-reduce/3-lists^foldl/2-0-"/3
+  (elixir 1.20.4) lib/code.ex:1690: Code.compiler_options/1
+  /dev/shm/ipse-populated-cache-phase-a0XYcKFw/verify.exs:27: (file)
+  (elixir 1.20.4) src/elixir_compiler.erl:102: :elixir_compiler.dispatch/4
+
+warning: :warnings_as_errors is deprecated as part of Code.put_compiler_option/2, instead you must pass it as a --warnings-as-errors flag. If you need to set it as a default in a mix task, you can also set it under aliases: [compile: "compile --warnings-as-errors"]
+  (elixir 1.20.4) lib/code.ex:1900: Code.put_compiler_option/2
+  (elixir 1.20.4) lib/code.ex:1692: anonymous fn/2 in Code.compiler_options/1
+  (elixir 1.20.4) lib/enum.ex:2622: Enum."-reduce/3-lists^foldl/2-0-"/3
+  (elixir 1.20.4) lib/code.ex:1690: Code.compiler_options/1
+  /dev/shm/ipse-populated-cache-phase-a0XYcKFw/verify.exs:27: (file)
+  (elixir 1.20.4) src/elixir_compiler.erl:102: :elixir_compiler.dispatch/4
+
+%{corpus_cases: 260, invalid_cases: 5, retained_sources: 34, retained_events: 1270, historical_digest_manifest: "313924804702f834b8ebf37c4715723d98f9559430911ae46963bf9a60b35e57"}
+CANONICAL_DIGEST_EQUIVALENCE_PASSED
+Running ExUnit with seed: 578493, max_cases: 4
+
+...............
+Finished in 0.1 seconds (0.1s on load, 0.02s async, 0.00s sync)
+
+Result: 15 passed

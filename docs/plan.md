@@ -173,6 +173,11 @@ following limits until the end-to-end paths are qualified:
    removes a fixture-only idle timeout, with local lifecycle and one unpopulated
    Session compatibility check. It does not resolve the populated recall failure
    or complete an integrated day.
+   The [canonical encoding optimization](archive/2026-10-26-p30-p31-implementation/recall-canonical-encoding-20261103.md)
+   preserves historical digests and reduces measured retained-source reconstruction
+   cost, with current-host strict compilation and 39 focused tests. Its fresh
+   33-note control still failed before provider dispatch; the fixture skipped the
+   separate error notification, so capture that diagnostic before another probe.
    Workload tooling can advance alongside the notes journey; the completed
    integrated workload depends on the Session and recall behavior it exercises.
 3. **Documents and local retrieval — P31C1b/D1/F.** Independently finish document

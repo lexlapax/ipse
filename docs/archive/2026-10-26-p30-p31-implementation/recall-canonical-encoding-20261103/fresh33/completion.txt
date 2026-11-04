@@ -1,0 +1,3 @@
+test_exit=1
+filter_exit=0
+postcheck_exit=0

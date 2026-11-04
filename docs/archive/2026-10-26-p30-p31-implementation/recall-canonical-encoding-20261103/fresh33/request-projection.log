@@ -1,0 +1,62 @@
+header_metadata_keys: ["budget", "budget_root", "configuration", "cwd", "decision_profiles",
+ "delegation_origin", "embedding_profiles", "execution", "execution_mode",
+ "extension_catalog", "extension_subscriptions", "extensions",
+ "managed_action_layout", "managed_output_layout", "managed_read_layout",
+ "managed_supersession_layout", "managed_tool_layout", "max_output_tokens",
+ "mcp_fingerprint_version", "mcp_servers", "model", "model_profiles",
+ "provider", "provider_destination", "reference_layout",
+ "release_receipt_layout", "sandbox", "semantic_admission",
+ "session_lock_identity", "source_layout", "source_origin",
+ "source_origin_layout", "subagent_concurrency", "subagents", "usage_version"]
+%{
+  index: 206,
+  type: "request_admitted",
+  keys: ["admitted_at_ms", "attempt", "attempt_id", "billing_mode",
+   "endpoint_sha256", "kind", "model", "parent_request_id", "parent_session_id",
+   "provider", "request_id", "selected_profile", "session_id", "turn_id",
+   "type", "version"],
+  numeric_fields: %{
+    "admitted_at_ms" => 1793766633653,
+    "attempt" => 1,
+    "version" => 1
+  }
+}
+%{
+  index: 208,
+  type: "managed_preflight_intent",
+  keys: ["admission_sha256", "before_sha256", "checked_at_ms", "deadline_ms",
+   "dependencies_sha256", "input_sha256", "intent_id", "phase",
+   "policy_generation", "request_id", "route_sha256", "session_id",
+   "snapshot_sha256", "source_generation", "tools_sha256", "turn_id", "type",
+   "version"],
+  numeric_fields: %{
+    "checked_at_ms" => 1793766633699,
+    "deadline_ms" => 1793766753699,
+    "policy_generation" => 1,
+    "source_generation" => 3,
+    "version" => 1
+  }
+}
+%{
+  index: 210,
+  type: "inference_dispatch_intent",
+  keys: ["admission_sha256", "attempt_id", "input_sha256", "intent_id",
+   "mode_sha256", "phase", "pin_sha256", "request_id", "reservation_id",
+   "route_sha256", "service_id", "session_id", "source_sha256", "tools_sha256",
+   "turn_id", "type", "version"],
+  numeric_fields: %{"version" => 1}
+}
+%{
+  index: 211,
+  type: "request_measured",
+  keys: ["duration_ms", "kind", "outcome", "type"],
+  numeric_fields: %{"duration_ms" => 14195}
+}
+%{
+  index: 212,
+  type: "request_finished",
+  keys: ["attempt_id", "duration_ms", "finality", "outcome", "reported_model",
+   "request_id", "type", "usage", "version"],
+  numeric_fields: %{"duration_ms" => 14196, "version" => 1}
+}
+fixture_selected_profile: %{provider_timeout_ms: 5000, provider: "ollama"}
