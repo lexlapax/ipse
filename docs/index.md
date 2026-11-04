@@ -29,7 +29,7 @@ quick start. Try the demo before configuring a model account.
 | Correct or replace an existing native literal through two fresh reviews | [Correct or supersede a note](operator/knowledge-permissions.md#correct-or-supersede-a-native-note) |
 | Retain source text and retrieve exact passages | [Use a corpus](operator/corpus.md) |
 | Set up shipped Word support without building an artifact | [Document setup](operator/corpus.md#set-up-packaged-word-support) |
-| Record relationships with exact source quotations | [Use Graph](operator/graph.md) |
+| Record relationships manually or through the main model over stored evidence | [Use Graph](operator/graph.md), [main-tool capture](operator/graph.md#capture-through-the-main-model) |
 | Investigate provided text or selected search/fetch tools | [Use the Research extension](operator/research.md) |
 | Gather sources with the main agent and export its ledger | [Run native research](operator/research.md) |
 | Configure explicit vector generation | [Use embeddings](operator/extensions.md) |

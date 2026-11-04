@@ -1,0 +1,9 @@
+02f720befeef2b0b5cc5e6404e3c8dcc80b19b58b26d3679f1713490c4326ece  ./REMAINING.md
+bcc0d9a6458cc02da430ff13f0d417fbd2eac5b15a59774d1a1857db97a07148  ./REVIEW.md
+c23cd5c086ad5047bd6e8f267c18ebd557018ef2b275f0182e62ffe09f777188  ./actual01-phase.json
+e38f8cc547fab4f8b2d95bb8d755888dba95a377dd1c174ff1ff1d4d6ba86ced  ./actual02-state-delta.json
+d81bea223f23ba531d23805392a207c6dcfe1bff7bd16d1aeecc046dee42804f  ./actual02.status
+a6e48762663c035adb0f90496b64d635d335f23fd9cc36b74d88f5cc8133e8f5  ./artifact-qualification.json
+f18d62be04a0d566424c339fe930ef9a5ce39db6f086548bf63b4e391d855464  ./pure-03.log
+46ec0a8e649ac5268a75c3eb9fddd4a2429784fe6144a2aa710ddd6995369e2e  ./source-files.sha256
+6a57f08bf6a261594c4e5b592e7bace5d01fe31eb275cc50fd0b94f66fc6ebbe  ./source.patch

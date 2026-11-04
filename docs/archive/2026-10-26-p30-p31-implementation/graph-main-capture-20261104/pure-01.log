@@ -1,0 +1,41 @@
+Running ExUnit with seed: 792464, max_cases: 2
+
+.
+
+  1) test source replacement and forgetting invalidate captured facts (CaptureTest)
+     _build/verification/ipse-graph-main-capture-20261104-01/test/capture.exs:222
+     Assertion with == failed
+     code:  assert query["claims"] == []
+     left:  [
+              %{
+                "evidence_indexes" => [],
+                "label" => "open",
+                "uncertainty" => "semantic_support_unassessed"
+              }
+            ]
+     right: []
+     stacktrace:
+       _build/verification/ipse-graph-main-capture-20261104-01/test/capture.exs:228: (test)
+
+....
+
+  2) test expired sources refuse before writes and generation changes between snapshot and open refuse (CaptureTest)
+     _build/verification/ipse-graph-main-capture-20261104-01/test/capture.exs:176
+     Assertion with == failed
+     code:  assert query["claims"] == []
+     left:  [
+              %{
+                "evidence_indexes" => [],
+                "label" => "open",
+                "uncertainty" => "semantic_support_unassessed"
+              }
+            ]
+     right: []
+     stacktrace:
+       _build/verification/ipse-graph-main-capture-20261104-01/test/capture.exs:195: (test)
+
+
+Finished in 0.05 seconds (0.00s async, 0.05s sync)
+
+Result: 5/7 passed
+Failed: 2 tests

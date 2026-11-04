@@ -1,0 +1,1 @@
+Checked 1171 Markdown files, 9624 local links and manual/archive rules; 0 errors

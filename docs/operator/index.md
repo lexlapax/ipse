@@ -48,7 +48,7 @@ are refused as busy; they are not queued for later execution.
 | Review an assistant's exact recommendation after its completed reply | [Decision cards during chat](knowledge-permissions.md#review-a-proposed-decision-during-chat) |
 | Store sources and retrieve cited passages | [Corpus](corpus.md) |
 | Set up packaged Word support, acquire a small document and inspect its citations | [Word setup](corpus.md#set-up-packaged-word-support) |
-| Extract attributed facts and follow relationships | [Graph](graph.md) |
+| Capture attributed relationships from stored sources and follow their citations | [Graph](graph.md), [main-tool capture](graph.md#capture-through-the-main-model) |
 | Investigate with the main agent, supplied text, or an explicit retrieval gateway | [Research](research.md) |
 | Inspect usage/cost estimates and reserve shared model allowances | [Resource controls](resources.md) |
 | Configure local diagnostic sinks and retention | [Diagnostic capture](observability.md) |

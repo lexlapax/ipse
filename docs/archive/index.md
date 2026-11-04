@@ -11,6 +11,7 @@ to start another review; use the [current review workflow](../operator/developme
 
 | Snapshot | Provenance | Current guidance and retained records |
 | --- | --- | --- |
+| [2026-11-04 main-tool Graph capture](2026-10-26-p30-p31-implementation/graph-main-capture-20261104.md) | Existing-State-source relationships, ten protocol controls, four actual scripted main-tool/StateSession cases and preserved fixture failures; no managed graph or alias/quality completion | [Graph](../operator/graph.md#capture-through-the-main-model), [knowledge training](../developer/knowledge-extensions.md#capture-relationships-through-the-main-tool-path), [plan](../plan.md) |
 | [2026-10-29 documentation discovery repair](2026-10-29-documentation-discovery/index.md) | Recursive archive-navigation symlink failure retained; Git-scoped provenance discovery preserves all snapshot/hash checks | [Testing](../developer/testing.md), [plan](../plan.md) |
 | [2026-10-29 native shared-lease experiment](2026-10-29-native-shared-lease/index.md) | Development-only descriptor transfer and process-death controls; production lease integration remains open | [Session supersession evidence](2026-10-28-managed-supersession-session/index.md), [plan](../plan.md) |
 | [2026-10-28 Session supersession](2026-10-28-managed-supersession-session/index.md) | Genuine source/review integration and terminal handoff controls, with the earlier failure retained | [Implementation handoff](2026-10-26-p30-p31-implementation/handoff-20261028-sol-retention.md), [plan](../plan.md) |

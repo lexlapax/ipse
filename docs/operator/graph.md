@@ -1,10 +1,17 @@
 # Record attributed facts and query a graph
 
-Use Graph when you want to record an explicit relationship, retain its source
-quotation, and follow a bounded path through current facts. A fact is an
-attributed assertion, not proof that its subject, predicate, and object are true.
-Start with the explicit preset below. It uses no model, embeddings, MCP server,
-or network service.
+Use Graph to record relationships with exact source quotations and follow a
+bounded path through current stored facts. A fact is an attributed assertion,
+not proof that its subject, predicate, and object are true. Graph is experimental
+and runs only when you explicitly select its instance.
+
+Start with the explicit State preset below, then choose how to supply facts:
+
+| Task | Route |
+| --- | --- |
+| Author every fact without inference | [Construct the explicit fact](#prepare-one-explicit-fact-without-a-model), then publish it with the command walkthrough |
+| Let the existing main model propose relationships | [Store the source](#select-graph-and-store-the-source), then use [main-tool capture](#capture-through-the-main-model); Graph makes no secondary model call |
+| Use a separate extractor or remote store | [Select the optional capabilities](#add-optional-model-extraction-or-an-mcp-store) and review their independent approvals |
 
 Graph is an independently built extension. It is separate from
 [Corpus](corpus.md), [Research](research.md), and the [memory extensions](memory.md).
@@ -78,13 +85,14 @@ endpoints, or arbitrary host requests supplied in command arguments.
 This walkthrough records `Release requires quiescence.` as a source and asserts
 that relationship with an exact quotation. Facts carry source/chunk hashes and
 byte coordinates. Use the reviewed local evidence helper to construct those
-fields instead of inventing them.
+fields instead of inventing them. Skip this authoring step if you will use the
+main model's capture tool after storing the source.
 
 Run this before opening chat. It writes one command to a local text file. It
 performs no host action, model request, or change to graph state:
 
 ```sh
-elixir -r extensions/knowledge/src/evidence.ex -e '
+elixir -pa _build/dev/lib/ipse/ebin -r extensions/knowledge/src/evidence.ex -e '
 alias IpseKnowledge.Evidence
 {:ok, source} = Evidence.source(%{
   "source_id" => "manual:release",
@@ -164,9 +172,81 @@ revision, state, chunk IDs/spans, and projection metadata without returning the
 full source body. Keep the actual revision for later changes. Do not assume the
 root revision equals the source generation or the number of user commands.
 
+## Capture through the main model
+
+First store and inspect the source as above. This tool works on an existing
+State source, not on an arbitrary conversation message or a file path. Use your
+already reviewed [main-provider selection](usage.md#select-a-provider) for this
+step instead of the walkthrough's `--provider demo`, keeping the same Ipse home,
+operator configuration, `--extension graph` and workspace. The demo main provider
+does not choose this tool. Choosing a main provider does not select or authorize
+a separate Graph extractor.
+
+For the source just stored, ask in ordinary chat:
+
+```text
+Use Graph's capture tool for existing source manual:release, generation 1, store notes and explicit extraction profile asserted. Record Release / requires / quiescence as a positive, explicitly stated relationship, not inferred, with no validity interval. Quote exactly "Release requires quiescence." Use no aliases or entity merges.
+```
+
+The model-visible tool is `ext__graph__capture`. Its complete argument shape for
+that request is shown below as a reference; it is not an `/ext` command:
+
+```json
+{
+  "store": "notes",
+  "extraction": "asserted",
+  "source_id": "manual:release",
+  "generation": 1,
+  "relations": [{
+    "subject": "Release", "predicate": "requires", "object": "quiescence",
+    "polarity": "positive", "inferred": false,
+    "valid_from_ms": null, "valid_to_ms": null,
+    "quote": "Release requires quiescence."
+  }]
+}
+```
+
+Under the default ask policy, review the full outer tool request first, then
+each proposed State write. Use
+the printed approval code for that particular request. Approving the outer tool
+does not preapprove its State writes, and denying a State write does not grant a
+retry. Expect capture `status: "ok"` only after the projection is published.
+Use the [query command below](#publish-and-traverse-the-relationship) to inspect
+the resulting relationship and exact citation basis; a successful capture does
+not require the separate `extract-command.txt` step.
+
+Graph independently checks the exact current source generation and derives chunk
+IDs, quote offsets and hashes. The quote must occur exactly once in the entire
+stored source, remain within one chunk and contain at most 1,024 UTF-8 bytes.
+One request permits one to eight relationships spanning at most two chunks.
+The selected extraction profile must be `explicit`; the tool does not dispatch
+`model.complete`, embeddings or another service. Normal main-provider usage
+still applies. Future or expired sources, historical imports, a changed
+generation and invalid or ambiguous quotes refuse. A concurrent source update
+can also make the projection claim conflict. Review new source metadata before
+deciding on new work; do not substitute a generation merely to suppress an error.
+
+Polarity is `positive` or `negative`; negative means a denied relationship, not
+missing evidence. Keep uncertainty explicit with `inferred`, and use optional
+Unix-millisecond `valid_from_ms`/`valid_to_ms` fields for stated validity.
+These annotations do not establish truth. Source expiry still controls eligibility;
+querying or capturing the same bytes does not refresh the source's lifetime.
+Later batches retain earlier facts in the same profile and deduplicate unchanged
+fact identities within the existing projection limits.
+
+This path preserves ordinary State approvals. It cannot save a graph derived
+from protected managed-note context: those State writes remain refused under
+the host's dependency guard. A copied State source or receipt supplies no current
+authority over the original Session or file. Reversible aliases/merges and
+automatic identity resolution are not implemented. Use unambiguous entity IDs;
+matching names do not prove that two people or objects are the same. Real-model
+relationship extraction, installed capture and full graph-collection capacity
+remain unqualified.
+
 ## Publish and traverse the relationship
 
-Paste the entire line from `extract-command.txt` into chat. The command selects
+For the no-model authoring route, paste the entire line from `extract-command.txt`
+into chat. The command selects
 the stored source generation, one exact chunk, and the explicit fact. Review its
 State writes separately. Expect `status: "ok"` when publication completes. A
 saved source alone does not create a fact projection.
@@ -196,7 +276,8 @@ including when the seed has no positive outgoing relationship. They never count
 as traversal steps or make their objects into reached nodes.
 Object names use the same case-insensitive matching: `lock` and `LOCK` name the
 same traversal node. Claims keep the original recorded spelling and citations.
-Read both claims before treating a `conflict` as resolved.
+This is comparison behavior, not a verified identity merge. Read both claims
+before treating a `conflict` as resolved.
 
 `coverage.seed` records the requested starting entity. `edges` counts positive
 traversal steps. `context_facts` includes the selected facts and retained context,
@@ -372,7 +453,13 @@ newer draft. It preserves the source and already published projections. A late
 result from the aborted draft cannot publish. Abort also works for an unfinished
 source-ingestion draft. It does not cancel or undo work at a remote model service.
 
-For an unknown model outcome, inspect the service and retained journal before
+After an unknown main-tool capture or interrupted State result, keep the journal
+and original State files, then inspect the source and any draft before new work.
+An interrupted claim can have written a draft even when no fact result was
+returned. Idle resume starts no capture or write. Abort is a separate explicit
+decision; it does not establish that an unknown earlier effect never happened.
+
+For an unknown secondary-model outcome, inspect the service and retained journal before
 explicitly deciding whether to request new work. Resume never replays extraction
 or completes a draft. Keep locks and original state intact.
 Artifact/options/configuration changes can prevent resume; use

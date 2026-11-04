@@ -103,6 +103,7 @@ the host contract your feature needs:
 | Request approved tools, MCP, text, native embeddings or typed advice | [Effects](extension-effects.md) |
 | Choose notifications, finite jobs, live feeds, or historical catch-up | [Events](extension-events.md) |
 | Change citations, retrieval, attributed facts, or native Research | [Knowledge algorithms](knowledge-extensions.md) |
+| Trace a main-model graph tool through ordinary State approvals and source-bound publication | [Relationship capture](knowledge-extensions.md#capture-relationships-through-the-main-tool-path) |
 | Follow acquired bytes through document extraction, storage and cited retrieval | [Document ingestion](knowledge-extensions.md#follow-acquired-document-bytes-into-cited-storage) |
 | Publish immutable pages/root CAS, suppress/migrate, or implement a remote store/gateway | [Knowledge storage](knowledge-storage.md) |
 

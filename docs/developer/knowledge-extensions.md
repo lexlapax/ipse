@@ -15,7 +15,7 @@ Start with the [operator procedures](../operator/corpus.md) and
 | `knowledge.ex`, `knowledge/records.ex`, `notes.ex` | Protected capture continuation, stable evidence and note retention |
 | `knowledge/contracts.ex` | Inert operator-sidecar publication schemas and managed recipes; no authority or executable setup |
 | `corpus.ex` | Source/query/index commands and final revalidation |
-| `graph.ex`, `research.ex` | Attributed extraction/traversal and captured-source investigations |
+| `graph.ex`, `research.ex` | Main-tool stored-source facts, optional extraction/traversal and captured-source investigations |
 | `profiles.ex` | Closed named algorithms and preset compatibility |
 | `store.ex`, `store/` | Root/page transactions and State/MCP adapters |
 | `evidence.ex` | Safe identities, chunks/citations, ranking/fusion/facts/traversal |
@@ -1133,7 +1133,99 @@ complete short chunks, omitted context, exhaustive windows, and encoded Answer
 packing. Six 480-byte passages can fit where only three of six 900-byte passages
 fit; escaping can reduce that number. Do not shorten away conditions to pack more.
 
-## Retain compatible and conflicting attributed facts
+## Capture relationships through the main tool path
+
+Follow the [Graph operator exercise](../operator/graph.md#capture-through-the-main-model)
+from an existing State source to a main-model-selected tool. Graph's `capture`
+export belongs only to `invoke.tool`; it is not an additional `/ext` command.
+The `state-explicit` artifact needs no `host.model` capability for this path.
+The normal main provider proposes the relationships; Graph invokes no second
+provider. Explicit `extract` commands and optional model-extraction presets keep
+their separate contracts.
+
+Start with a source stored under the selected State binding, scope and partition.
+For source `manual:release`, generation 1, containing `Release requires
+quiescence.`, the main tool arguments are:
+
+```json
+{
+  "store": "notes", "extraction": "asserted",
+  "source_id": "manual:release", "generation": 1,
+  "relations": [{
+    "subject": "Release", "predicate": "requires", "object": "quiescence",
+    "polarity": "positive", "inferred": false,
+    "valid_from_ms": null, "valid_to_ms": null,
+    "quote": "Release requires quiescence."
+  }]
+}
+```
+
+Trace the continuation through these existing owners:
+
+1. Normal main-tool approval admits the exact `ext__graph__capture` arguments.
+   Each later State mutation still passes the ordinary approval policy; the
+   default ask policy presents its own request. Neither
+   this descriptor nor a stored quote grants saved knowledge permission.
+2. `Graph.capture/2` validates closed arguments, a State store and an explicit
+   extraction profile, then requests `Store.snapshot`. Bounds are one to eight
+   relations and at most two independently derived chunks. A nonexplicit
+   profile refuses before any host work; changing options cannot add authority.
+3. The `capture_snapshot` continuation selects the exact source ID/generation
+   and checks current stored-source eligibility. `Store.provided_quote_range/2`
+   requires one exact occurrence across the entire source, including overlapping
+   occurrences. Unlike the optional extractor's per-chunk uniqueness rule,
+   another occurrence elsewhere in this source also makes capture ambiguous.
+   `Evidence.chunks`, `citation` and `fact` derive the actual chunk, absolute
+   UTF-8 byte coordinates, hashes and existing fact identity. Model-proposed
+   citations, chunk IDs and extra fact fields are not accepted.
+4. Graph supplies those facts to its existing `extract` continuation:
+   `Store.projection_open`, the explicit `Adapters` branch and
+   `Store.projection_commit`. Source generation, revision, draft, selected chunks,
+   exact spans and existing storage/effect limits remain checked. A source
+   replacement after the first snapshot refuses at the ordinary projection
+   claim; it cannot publish under a stale source generation.
+5. Existing projection predecessors retain prior facts and deduplicate unchanged
+   fact IDs. Query revalidation, opposing-polarity context, inferred labels and
+   validity-time filtering apply exactly as described below. Source replacement
+   invalidates prior-generation facts; forgetting suppresses later capture.
+
+Malformed/ambiguous support refuses before mutations. A denied or unknown Store
+effect stops the invocation, rather than returning a partial successful batch or
+requesting a retry. An unknown State result can represent a written draft/root
+claim without final fact publication. Preserve the intent and original State
+files; idle reconstruction must add no effect intent. Inspection and exact abort
+remain explicit subsequent operations. Do not replace an unknown with an empty
+successful graph result.
+
+Exercise the worker protocol and the actual Session/State path together:
+
+```sh
+mix test test/extensions/knowledge/graph_capture_test.exs
+```
+
+The worker suite covers exact/ambiguous/forged quotes, generation mismatch and
+interposition, expiry, polarity/conflict/inference/time, replacement/forgetting,
+retained prior facts, closed bounds and denied/unknown stop. The separate Session
+script imports the exact built artifact and uses an in-process scripted main
+provider to select the real tool. It checks ordinary outer and State approvals,
+published citations, generation refusal, denial with unchanged State bytes and
+owner death at an incoming actual successful State result before journal commit.
+Strict Saved validation and fresh idle resume preserve intent counts. That
+control establishes neither a live model's relationship quality nor final-fact
+commitment for the interrupted write. It needs no Input channel or model service.
+
+Keep the boundary narrow. Currentness here means the selected retained State
+source, not an original file lock or durable Session-source authority. Public
+read/quote proofs remain evidence JSON that needs its consuming host adapter to
+authenticate current use. `Session.Invocation` still refuses State.put/delete
+and generic Collection.store when managed notes or other managed dependencies
+are inherited. Do not copy a managed receipt into State or remove those guards
+to extend this tool. Managed graph publication needs a separately reviewed
+source/policy/owner contract. Reversible entity aliases/merges, identity resolution,
+Collection graph capacity, installed capture and extraction-quality qualification
+are separate open work; keep Graph optional and experimental.
+
+### Retain compatible and conflicting attributed facts
 
 Facts keep every support citation and extraction identity. Traverse positive edges
 only. Before classification, claim context retains negative assertions on reached
@@ -1202,7 +1294,9 @@ Store first claims a source-bound projection draft with token and capacity plan.
 Entrypoints check remaining read/effect allowance before calls, then return validated
 results through that token. Store owns packing and final publication. Explicit
 fact batches pack actual JSON before claim, up to 32 facts; count is not reservation
-for 32 worst-case records. Model extraction derives affordable allowance before
+for 32 worst-case records. Main-tool capture supplies already attributed explicit
+facts through this same path without an inference action. The separately selected
+model extractor derives affordable allowance before
 egress. Output exceeding it leaves a draft for inspection/exact abort. Eight heads
 per source allow updates to an existing kind/profile at capacity, while a ninth
 refuses before draft/model work.

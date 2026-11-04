@@ -27,7 +27,14 @@ defmodule IpseKnowledge.Graph do
           entry("extract", "Explicit attributable fact projection", extract_schema()),
           entry("query", "Traverse current supported facts", query_schema())
         ],
-        "tools" => [entry("query", "Traverse current supported facts", query_schema())]
+        "tools" => [
+          entry("query", "Traverse current supported facts", query_schema()),
+          entry(
+            "capture",
+            "Capture relationships from unique exact quotes in a current State source; no extra model call",
+            capture_schema()
+          )
+        ]
       }
     }
   end
@@ -62,6 +69,7 @@ defmodule IpseKnowledge.Graph do
   defp invoke(%{"id" => "source", "arguments" => args}, state), do: source(args, state)
   defp invoke(%{"id" => "extract", "arguments" => args}, state), do: extract(args, state)
   defp invoke(%{"id" => "query", "arguments" => args}, state), do: query(args, state)
+  defp invoke(%{"id" => "capture", "arguments" => args}, state), do: capture(args, state)
   defp invoke(_, state), do: finish(state, refused(:invalid_invocation))
 
   defp source(%{"store" => store, "action" => action, "args" => args} = outer, state) do
@@ -110,6 +118,62 @@ defmodule IpseKnowledge.Graph do
       )
     else
       _ -> finish(state, refused(:invalid_extraction))
+    end
+  end
+
+  defp capture(args, state) do
+    with true <- exact?(args, ~w(store extraction source_id generation relations)),
+         {:ok, profile} <- Profiles.lookup(state.resolved, "stores", args["store"]),
+         true <- profile["kind"] == "state",
+         {:ok, %{"kind" => "explicit"}} <-
+           Profiles.lookup(state.resolved, "extraction", args["extraction"]),
+         true <- text?(args["source_id"], 256) and Evidence.safe_positive?(args["generation"]),
+         true <- is_list(args["relations"]) and length(args["relations"]) in 1..8,
+         true <-
+           Enum.all?(args["relations"], fn relation ->
+             exact?(
+               relation,
+               ~w(subject predicate object polarity inferred valid_from_ms valid_to_ms quote)
+             ) and
+               text?(relation["quote"], 1024)
+           end) do
+      advance(Store.start(args["store"], profile, :snapshot, %{}), %{
+        state
+        | phase: :capture_snapshot,
+          ctx: %{args: args}
+      })
+    else
+      _ -> finish(state, refused(:invalid_capture))
+    end
+  end
+
+  defp captured_facts(source, relations, extraction) do
+    with {:ok, chunks} <- Evidence.chunks(source) do
+      Enum.reduce_while(relations, {:ok, []}, fn relation, {:ok, facts} ->
+        with {:ok, start, finish} <- Store.provided_quote_range(source["text"], relation["quote"]),
+             chunk when is_map(chunk) <-
+               Enum.find(chunks, &(start >= &1["start_byte"] and finish <= &1["end_byte"])),
+             {:ok, citation} <- Evidence.citation(source, chunk, start, finish),
+             {:ok, fact} <-
+               Evidence.fact(
+                 relation
+                 |> Map.delete("quote")
+                 |> Map.put("extraction", %{
+                   "kind" => "explicit",
+                   "profile" => extraction,
+                   "version" => 1
+                 })
+                 |> Map.put("citations", [citation])
+               ) do
+          {:cont, {:ok, [fact | facts]}}
+        else
+          _ -> {:halt, {:error, :invalid_capture_support}}
+        end
+      end)
+      |> case do
+        {:ok, facts} -> {:ok, Enum.reverse(facts)}
+        error -> error
+      end
     end
   end
 
@@ -173,6 +237,33 @@ defmodule IpseKnowledge.Graph do
       )
     else
       _ -> finish(state, refused(:effect_budget))
+    end
+  end
+
+  defp advance({:done, {:ok, snapshot}}, %{phase: :capture_snapshot} = state) do
+    args = state.ctx.args
+
+    with [source] <- Enum.filter(snapshot["sources"], &(&1["source_id"] == args["source_id"])),
+         true <- source["generation"] == args["generation"],
+         true <- Evidence.current?(source, System.system_time(:millisecond)),
+         {:ok, facts} <- captured_facts(source, args["relations"], args["extraction"]),
+         chunks =
+           facts |> Enum.flat_map(& &1["citations"]) |> Enum.map(& &1["chunk_id"]) |> Enum.uniq(),
+         true <- length(chunks) in 1..2 do
+      extract(
+        %{
+          "store" => args["store"],
+          "extraction" => args["extraction"],
+          "source_id" => args["source_id"],
+          "generation" => args["generation"],
+          "max_edges" => length(facts),
+          "chunks" => chunks,
+          "facts" => facts
+        },
+        state
+      )
+    else
+      _ -> finish(state, refused(:capture_source_unavailable))
     end
   end
 
@@ -367,6 +458,41 @@ defmodule IpseKnowledge.Graph do
       }
     }
   end
+
+  defp capture_schema do
+    relation = %{
+      "type" => "object",
+      "additionalProperties" => false,
+      "required" =>
+        ~w(subject predicate object polarity inferred valid_from_ms valid_to_ms quote),
+      "properties" => %{
+        "subject" => string(256),
+        "predicate" => string(128),
+        "object" => string(256),
+        "polarity" => %{"type" => "string", "enum" => ~w(positive negative)},
+        "inferred" => %{"type" => "boolean"},
+        "quote" => string(1024),
+        "valid_from_ms" => nullable_time(),
+        "valid_to_ms" => nullable_time()
+      }
+    }
+
+    %{
+      "type" => "object",
+      "additionalProperties" => false,
+      "required" => ~w(store extraction source_id generation relations),
+      "properties" => %{
+        "store" => string(64),
+        "extraction" => string(64),
+        "source_id" => string(256),
+        "generation" => integer(1, 1_000_000_000),
+        "relations" => %{"type" => "array", "minItems" => 1, "maxItems" => 8, "items" => relation}
+      }
+    }
+  end
+
+  defp nullable_time,
+    do: %{"type" => ["integer", "null"], "minimum" => 0, "maximum" => Evidence.safe_integer_max()}
 
   defp query_schema do
     %{
