@@ -1,0 +1,2 @@
+{"child":"first","held_ms":2851,"decision_request_duration_ms":3026,"preflight_budget_ms":120000,"finality":"partial","outcome":"failed","decision_dispatch_intents":0}
+{"child":"second","held_ms":116,"decision_request_duration_ms":384,"preflight_budget_ms":120000,"finality":"partial","outcome":"failed","decision_dispatch_intents":0}

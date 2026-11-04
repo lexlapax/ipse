@@ -78,7 +78,10 @@ committed-runtime retained-cohort checks remain open before notes acceptance.
 Separate [P30 current-use controls](archive/2026-10-26-p30-p31-implementation/p30-advice-output-revocation-20261104.md)
 pass settled-output revocation and the proposal's own signed seven-day expiry
 under a fresh day-eight grant. The old service-alias fixture failure remains
-preserved; simultaneous reviewed reservations and consumer quality stay open.
+preserved. A [later simultaneous committed-preflight cohort](archive/2026-10-26-p30-p31-implementation/p30-simultaneous-preflight-20261104.md)
+reaches both real reserve/fits paths and excludes a second call, but its winner
+fails before dispatch and remains unknown. Known simultaneous settlement, idle
+reopen and consumer quality stay open; the fast inner refusal is not identified.
 
 For each active lane, name the next end-to-end result, its owner, required inputs
 and observable pass/fail checks. Use focused tests during implementation; preserve
@@ -1070,8 +1073,10 @@ any remaining registration or live-account limits explicitly.
 A [native in-flight cross-process control](archive/2026-10-26-p30-p31-implementation/p30-inflight-native-eof-20261103.md)
 now verifies refusal of a second one-call reservation while the first remains
 admitted, followed by settlement and idle reopen without replay. It corrects
-the earlier fixture's terminal lifecycle; simultaneous reservation entry and
-whole-milestone qualification remain open.
+the earlier fixture's terminal lifecycle. A [subsequent simultaneous cohort](archive/2026-10-26-p30-p31-implementation/p30-simultaneous-preflight-20261104.md)
+reaches both reservation APIs after committed preflights, but still fails before
+decision dispatch and does not qualify simultaneous settlement or idle reopening.
+Whole-milestone qualification remains open.
 
 **Authorized; typed/protocol and admitted-operation increments in progress.** P31 is the active delivery
 path. P30A/B can proceed independently; later
@@ -1120,7 +1125,9 @@ An [independent cross-process control](archive/2026-10-26-p30-p31-implementation
 also observes that refusal in a new OS process using the same protected ledger,
 with no third dispatch. A later [in-flight attempt](archive/2026-10-26-p30-p31-implementation/p30-inflight-allowance-20261103.md)
 failed at the second operator channel before its approval or allowance check;
-in-flight and simultaneous cross-process reservations remain untested.
+that attempt qualifies neither path. The later native in-flight control above
+passes separately; simultaneous known settlement remains unqualified despite
+the later committed-preflight cohort's observed pool exclusion.
 The later [exact Linux package proof](archive/2026-10-26-p30-p31-implementation/package-idle-resume-20261031.md#passing-final-package)
 passes generic installed checks and the independent synthetic decision/document
 artifacts; full-source, consumer-quality and installed knowledge qualification

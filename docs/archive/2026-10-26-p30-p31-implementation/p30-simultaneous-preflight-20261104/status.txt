@@ -1,0 +1,8 @@
+test_exit=2
+inputs_post=0
+private_runtime_post=0
+private_pathset_post=0
+operator_before_fuser=1
+operator_after_fuser=1
+operator_cleanup=0
+main_runtime_not_pinned=true

@@ -1,0 +1,2 @@
+{"child":"first","consumer_is_fresh_not_either_original":true,"complete_preflight_dependency_digest_matches":true,"dependency_versions":{"3":2,"7":1},"referenced_original_owners":["first"],"references_other_active_consumer":false,"referenced_originals_have_durable_release_intent":true}
+{"child":"second","consumer_is_fresh_not_either_original":true,"complete_preflight_dependency_digest_matches":true,"dependency_versions":{"3":2,"7":1},"referenced_original_owners":["second"],"references_other_active_consumer":false,"referenced_originals_have_durable_release_intent":true}
