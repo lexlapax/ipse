@@ -1,0 +1,428 @@
+--- a/test/support/native_note_recall_many.exs
++++ b/test/support/native_note_recall_many.exs
+@@ -6,12 +6,15 @@
+ [root, "recall-many"] = System.argv()
+ sparse = System.get_env("IPSE_TEST_RECALL_SPARSE") == "1"
+ reappear = System.get_env("IPSE_TEST_RECALL_REAPPEAR") == "1"
++strict_sources = System.get_env("IPSE_TEST_RECALL_STRICT_SOURCES") == "1"
+ assert not reappear or sparse
++assert not strict_sources or (sparse and reappear)
+ 
+ provider_timeout =
+   System.get_env("IPSE_TEST_RECALL_PROVIDER_TIMEOUT_MS", "5000") |> String.to_integer()
+ 
+ assert provider_timeout in 1..100_000
++assert not strict_sources or provider_timeout == 5_000
+ home = Path.join(root, "home")
+ cwd = Path.join(root, "work")
+ 
+@@ -135,7 +138,7 @@
+   Enum.reduce(1..33, {[], source, channel, [source_id]}, fn step,
+                                                             {texts, current, channel, ids} ->
+     {current, channel, ids} =
+-      if sparse and step == 2 do
++      if (sparse and step == 2) or (strict_sources and step > 1) do
+         assert :ok = Ipse.Session.close_confirmed(current)
+         assert {:ok, other} = DynamicSupervisor.start_child(Ipse.Sessions, {Ipse.Session, opts})
+         assert {:ok, next_channel} = Ipse.Session.open_input_channel(other, self())
+@@ -172,6 +175,53 @@
+   |> then(fn {texts, current, _, ids} -> {texts, current, ids} end)
+ 
+ assert :ok = Ipse.Session.close_confirmed(source)
++
++original_snapshot =
++  if strict_sources do
++    assert length(source_ids) == 33 and length(Enum.uniq(source_ids)) == 33
++
++    Map.new(Enum.zip(source_ids, texts), fn {id, text} ->
++      assert {:ok, events} = Ipse.Journal.load(dir, id)
++      assert {:ok, _} = Ipse.Session.Saved.restore(events, id)
++      assert [assertion] = Enum.filter(events, &(&1["type"] == "operator_assertion"))
++      assert assertion["text"] == text
++      refute Enum.any?(events, &(&1["type"] == "inference_dispatch_intent"))
++
++      pins =
++        for extension <- ~w(jsonl lock), into: %{} do
++          path = Path.join(dir, id <> "." <> extension)
++          assert {:ok, %{type: :regular, links: 1} = stat} = File.lstat(path)
++          assert stat.inode > 0
++
++          {extension,
++           {Map.take(stat, [:major_device, :minor_device, :inode, :uid, :gid, :mode, :size]),
++            Ipse.JSON.sha256(File.read!(path))}}
++        end
++
++      {id, pins}
++    end)
++  else
++    %{}
++  end
++
++if strict_sources do
++  metadata =
++    Map.new(original_snapshot, fn {id, files} ->
++      {id,
++       Map.new(files, fn {extension, {identity, sha}} ->
++         {extension,
++          %{
++            "identity" => Map.new(identity, fn {key, value} -> {Atom.to_string(key), value} end),
++            "sha256" => sha
++          }}
++       end)}
++    end)
++
++  path = Path.join(root, "original-source-pins.json")
++  File.write!(path, Jason.encode!(metadata), [:binary, :exclusive, :sync])
++  File.chmod!(path, 0o600)
++end
++
+ assert {:ok, source_events} = Ipse.Journal.load(dir, source_id)
+ {restore_us, restored} = :timer.tc(fn -> Ipse.Session.Saved.restore(source_events, source_id) end)
+ assert {:ok, _} = restored
+@@ -201,11 +251,11 @@
+ end
+ 
+ assert Enum.count(source_events, &(&1["type"] == "operator_assertion")) ==
+-         if(sparse, do: 1, else: 33)
++         if(sparse or strict_sources, do: 1, else: 33)
+ 
+ refute Enum.any?(source_events, &(&1["type"] == "inference_dispatch_intent"))
+ 
+-{held_journal, expected_texts} =
++{held_journal, expected_texts, missing_text, expected_notes, missing_key} =
+   if sparse do
+     collection = Ipse.Extension.SemanticAdmission.collection_root(home)
+ 
+@@ -239,16 +289,34 @@
+     assert length(rows) == 33
+ 
+     first_source =
+-      Enum.find(
+-        rows,
+-        &(get_in(&1, ["value", "evidence", "sources"]) |> List.first() |> Map.fetch!("session_id") ==
+-            source_id)
+-      )
++      if strict_sources do
++        sources =
++          Enum.map(rows, fn row ->
++            [proof] = get_in(row, ["value", "evidence", "sources"])
++            proof["session_id"]
++          end)
++
++        assert MapSet.new(sources) == MapSet.new(source_ids)
++        hd(rows)
++      else
++        Enum.find(
++          rows,
++          &(get_in(&1, ["value", "evidence", "sources"])
++            |> List.first()
++            |> Map.fetch!("session_id") == source_id)
++        )
++      end
+ 
+     assert is_map(first_source)
+ 
+     unavailable_id =
+-      if List.last(rows)["key"] == first_source["key"], do: List.last(source_ids), else: source_id
++      if strict_sources,
++        do: first_source["value"]["evidence"]["sources"] |> hd() |> Map.fetch!("session_id"),
++        else:
++          if(List.last(rows)["key"] == first_source["key"],
++            do: List.last(source_ids),
++            else: source_id
++          )
+ 
+     expected =
+       Enum.reject(rows, fn row ->
+@@ -257,11 +325,16 @@
+       end)
+ 
+     assert Enum.any?(Enum.drop(rows, 32), &(&1 in expected))
++    if strict_sources, do: assert(length(expected) == 32)
+     journal = Path.join(dir, unavailable_id <> ".jsonl")
++    refute File.exists?(journal <> ".held")
+     File.rename!(journal, journal <> ".held")
+-    {journal, Enum.map(expected, & &1["value"]["text"])}
++
++    {journal, Enum.map(expected, & &1["value"]["text"]), first_source["value"]["text"],
++     Map.new(expected, &{&1["key"], %{text: &1["value"]["text"], revision: &1["revision"]}}),
++     first_source["key"]}
+   else
+-    {nil, texts}
++    {nil, texts, nil, %{}, nil}
+   end
+ 
+ assert {:ok, session} = DynamicSupervisor.start_child(Ipse.Sessions, {Ipse.Session, opts})
+@@ -322,6 +395,74 @@
+ 
+ wire = Jason.encode!(request["messages"])
+ 
++parts =
++  if strict_sources do
++    prefix =
++      Ipse.Extension.render_context(%{"knowledge" => []}) |> String.replace_suffix("[]", "")
++
++    items =
++      Enum.flat_map(request["messages"], fn
++        %{"role" => "user"} = message ->
++          case Ipse.Session.Reference.selected_publishers(message) do
++            {:ok, %{"extensions" => text}} when is_binary(text) ->
++              if String.starts_with?(text, prefix) do
++                assert {:ok, items} = Jason.decode(String.replace_prefix(text, prefix, ""))
++                assert is_list(items)
++                items
++              else
++                []
++              end
++
++            _ ->
++              []
++          end
++
++        _ ->
++          []
++      end)
++
++    parts =
++      items
++      |> Enum.filter(
++        &(get_in(&1, ["provenance", "instance"]) == "knowledge" and is_binary(&1["id"]) and
++            String.starts_with?(&1["id"], "note_text_"))
++      )
++      |> Enum.flat_map(fn item ->
++        assert {:ok, group} = Jason.decode(item["text"])
++        assert group["format"] == "note_parts_v1"
++        assert group["fields"] == ~w(key revision read_operation_id offset_bytes total_bytes text)
++        assert Enum.all?(group["records"], &(is_list(&1) and length(&1) == 6))
++        Enum.map(group["records"], &Map.new(Enum.zip(group["fields"], &1)))
++      end)
++
++    assert MapSet.new(Enum.map(parts, & &1["key"])) == MapSet.new(Map.keys(expected_notes))
++    refute Enum.any?(parts, &(&1["key"] == missing_key or &1["text"] == missing_text))
++    refute String.contains?(wire, missing_text)
++
++    for {key, expected} <- expected_notes do
++      selected = Enum.filter(parts, &(&1["key"] == key))
++      assert selected != []
++
++      {text, offset} =
++        Enum.reduce(selected, {"", 0}, fn part, {text, offset} ->
++          assert part["revision"] == expected.revision
++          assert is_binary(part["read_operation_id"])
++
++          assert part["offset_bytes"] == offset and
++                   part["total_bytes"] == byte_size(expected.text)
++
++          assert is_binary(part["text"]) and String.valid?(part["text"])
++          {text <> part["text"], offset + byte_size(part["text"])}
++        end)
++
++      assert text == expected.text and offset == byte_size(expected.text)
++    end
++
++    parts
++  else
++    []
++  end
++
+ if reappear do
+   assert_receive {:recall_source_reappeared_before_preflight, ^session}, 5_000
+   assert File.regular?(held_journal)
+@@ -354,6 +495,20 @@
+       get_in(event, ["outcome", "status"]) == "ok"
+   end)
+ 
++if strict_sources do
++  for part <- parts do
++    assert Enum.any?(reads, fn event ->
++             record = get_in(event, ["outcome", "value", "record"])
++
++             event["operation_id"] == part["read_operation_id"] and
++               get_in(event, ["request", "request", "key"]) == part["key"] and
++               is_map(record) and record["key"] == part["key"] and
++               record["revision"] == part["revision"] and
++               get_in(record, ["value", "text"]) == expected_notes[part["key"]].text
++           end)
++  end
++end
++
+ coverage =
+   events
+   |> Enum.flat_map(fn event ->
+@@ -385,7 +540,76 @@
+ assert coverage["included"] == included
+ assert :ok = Ipse.Session.close_confirmed(session)
+ 
++if strict_sources do
++  assert length(reads) == 32
++  assert length(Enum.uniq_by(reads, &get_in(&1, ["request", "request", "key"]))) == 32
++  assert included == 32 and coverage["coverage"] == "partial" and coverage["unavailable"] == 1
++  refute File.exists?(held_journal <> ".held")
++
++  for {id, pins} <- original_snapshot do
++    assert {:ok, events} = Ipse.Journal.load(dir, id)
++    assert {:ok, _} = Ipse.Session.Saved.restore(events, id)
++
++    for {extension, {expected_stat, expected_sha}} <- pins do
++      path = Path.join(dir, id <> "." <> extension)
++      assert {:ok, %{type: :regular, links: 1} = stat} = File.lstat(path)
++      assert Map.take(stat, Map.keys(expected_stat)) == expected_stat
++      assert Ipse.JSON.sha256(File.read!(path)) == expected_sha
++    end
++  end
++
++  {:ok, before_resume} = Ipse.Journal.load(dir, session_id)
++
++  effect_types =
++    ~w(input_received extension_invocation_intent extension_action_intent worker_input_intent inference_dispatch_intent)
++
++  intents = Enum.filter(before_resume, &(&1["type"] in effect_types))
++
++  refute Enum.any?(
++           before_resume,
++           &(&1["type"] == "worker_input_result" and &1["status"] == "unknown")
++         )
++
++  assert {:ok, resumed} =
++           DynamicSupervisor.start_child(
++             Ipse.Sessions,
++             {Ipse.Session, Keyword.put(opts, :id, session_id)}
++           )
++
++  assert Ipse.Session.info(resumed).phase == :idle
++  assert :ok = Ipse.Session.close_confirmed(resumed)
++  assert {:ok, after_resume} = Ipse.Journal.load(dir, session_id)
++  assert {:ok, _} = Ipse.Session.Saved.restore(after_resume, session_id)
++  assert Enum.filter(after_resume, &(&1["type"] in effect_types)) == intents
++
++  for {id, pins} <- original_snapshot, {extension, {identity, sha}} <- pins do
++    path = Path.join(dir, id <> "." <> extension)
++    assert {:ok, stat} = File.lstat(path)
++    assert Map.take(stat, Map.keys(identity)) == identity
++    assert Ipse.JSON.sha256(File.read!(path)) == sha
++  end
++
++  File.write!(
++    Path.join(root, "strict-recall-result.json"),
++    Jason.encode!(%{
++      "originals" => 33,
++      "eligible" => 32,
++      "unavailable" => 1,
++      "coverage" => "partial",
++      "structured_parts" => length(parts),
++      "committed_reads" => length(reads),
++      "source_identities_unchanged" => true,
++      "same_id_idle_intents_unchanged" => true
++    }),
++    [:exclusive, :sync]
++  )
++
++  IO.puts(
++    "NATIVE_NOTE_RECALL_STRICT_SOURCES_PASSED originals=33 unavailable=1 reads=32 included=32 structured_parts=verified original_bytes_and_lock_identity=unchanged idle_intents=unchanged"
++  )
++end
++
+ if held_journal && File.exists?(held_journal <> ".held"),
+   do: File.rename!(held_journal <> ".held", held_journal)
+ 
+-IO.puts("NATIVE_NOTE_RECALL_MANY_PASSED")
++IO.puts("NATIVE_NOTE_RECALL_MANY_PASSED")
+\ No newline at end of file
+--- /dev/null
++++ b/test/ipse/session/native_note_recall_strict_sources_test.exs
+@@ -0,0 +1,94 @@
++defmodule Ipse.Session.NativeNoteStrictSourcesRecallTest do
++  use ExUnit.Case, async: false
++
++  @tag timeout: 300_000
++  @tag :recall_strict_sources
++  test "32 exact notes remain eligible when one of 33 original sources reappears before preflight" do
++    assert System.get_env("IPSE_TEST_RECALL_KEEP") == "1"
++    run("recall-many", sparse: true, reappear: true)
++  end
++
++  defp run(mode, opts) do
++    root = Path.join(System.tmp_dir!(), "ipse-native-recall-" <> Ipse.Usage.id())
++    File.mkdir!(root)
++    File.chmod!(root, 0o700)
++    IO.puts("STRICT_RECALL_FRESH_ROOT=" <> root)
++    operator_home = Path.join(root, "operator-home")
++    File.mkdir!(operator_home)
++    File.chmod!(operator_home, 0o700)
++    if System.get_env("IPSE_TEST_RECALL_KEEP") != "1", do: on_exit(fn -> File.rm_rf!(root) end)
++    driver = Path.join(root, "pty")
++
++    assert {"", 0} =
++             System.cmd(
++               "rustc",
++               [
++                 "--edition=2021",
++                 "-D",
++                 "warnings",
++                 Path.expand("../../support/operator_pty.rs", __DIR__),
++                 "-o",
++                 driver
++               ],
++               stderr_to_stdout: true
++             )
++
++    paths =
++      :code.get_path()
++      |> Enum.map(&List.to_string/1)
++      |> Enum.reject(&(&1 == "."))
++      |> Enum.map(&Path.expand/1)
++      |> Enum.reverse()
++      |> Enum.flat_map(&["-pa", &1])
++
++    {output, status} =
++      System.cmd(
++        driver,
++        ["--assertion", System.find_executable("elixir"), "--erl", "+S 2:2"] ++
++          paths ++
++          [
++            Path.expand(
++              "../../support/native_note_recall_many.exs",
++              __DIR__
++            ),
++            root,
++            mode
++          ],
++        stderr_to_stdout: true,
++        env: [
++          {"HOME", operator_home},
++          {"IPSE_TEST_RECALL_STRICT_SOURCES", "1"},
++          {"IPSE_TEST_RECALL_PROVIDER_TIMEOUT_MS", "5000"},
++          {"IPSE_TEST_RECALL_TIMING", "0"},
++          {"IPSE_TEST_RECALL_SPARSE", if(opts[:sparse], do: "1", else: "0")},
++          {"IPSE_TEST_RECALL_REAPPEAR", if(opts[:reappear], do: "1", else: "0")}
++        ]
++      )
++
++    assert status == 0, String.slice(output, -8000, 8000)
++
++    expected =
++      case mode do
++        "save_race" ->
++          "NATIVE_NOTE_RECALL_RACE_PASSED"
++
++        "recall-many" ->
++          "NATIVE_NOTE_RECALL_MANY_PASSED"
++
++        _ ->
++          "NATIVE_NOTE_RECALL_PASSED"
++      end
++
++    assert output =~ expected
++
++    assert output =~
++             "NATIVE_NOTE_RECALL_STRICT_SOURCES_PASSED originals=33 unavailable=1 reads=32 included=32 structured_parts=verified original_bytes_and_lock_identity=unchanged idle_intents=unchanged"
++
++    if mode == "save_race" do
++      [_, outcome] =
++        Regex.run(~r/NATIVE_NOTE_RECALL_RACE_PASSED (provider-withheld|no-dispatch)/, output)
++
++      IO.puts("NATIVE_NOTE_RECALL_RACE #{outcome}")
++    end
++  end
++end
+\ No newline at end of file

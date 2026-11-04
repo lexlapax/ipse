@@ -1,0 +1,17 @@
+warning: :warnings_as_errors is deprecated as part of Code.get_compiler_option/1
+  (elixir 1.20.4) lib/code.ex:1716: Code.get_compiler_option/1
+  (elixir 1.20.4) lib/code.ex:1691: anonymous fn/2 in Code.compiler_options/1
+  (elixir 1.20.4) lib/enum.ex:2622: Enum."-reduce/3-lists^foldl/2-0-"/3
+  (elixir 1.20.4) lib/code.ex:1690: Code.compiler_options/1
+  _build/verification/ipse-recall33-strict-sources-20261104-01/entry.exs:34: (file)
+  (elixir 1.20.4) src/elixir_compiler.erl:102: :elixir_compiler.dispatch/4
+
+warning: :warnings_as_errors is deprecated as part of Code.put_compiler_option/2, instead you must pass it as a --warnings-as-errors flag. If you need to set it as a default in a mix task, you can also set it under aliases: [compile: "compile --warnings-as-errors"]
+  (elixir 1.20.4) lib/code.ex:1900: Code.put_compiler_option/2
+  (elixir 1.20.4) lib/code.ex:1692: anonymous fn/2 in Code.compiler_options/1
+  (elixir 1.20.4) lib/enum.ex:2622: Enum."-reduce/3-lists^foldl/2-0-"/3
+  (elixir 1.20.4) lib/code.ex:1690: Code.compiler_options/1
+  _build/verification/ipse-recall33-strict-sources-20261104-01/entry.exs:34: (file)
+  (elixir 1.20.4) src/elixir_compiler.erl:102: :elixir_compiler.dispatch/4
+
+private_modules=241 bootstrap_priv=pass bundles=4 strict_wrapper_compile=pass selected_tests=1 app_started=false helper_executed=false

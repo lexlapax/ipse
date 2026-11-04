@@ -177,7 +177,10 @@ following limits until the end-to-end paths are qualified:
    [current canonical positive](archive/2026-10-26-p30-p31-implementation/current-canonical-recall-20261104.md)
    delivers all 33 short notes from one original source Session to a new consumer
    with complete coverage, strict Saved reconstruction and confirmed close.
-   Current multi-source and retained-cohort recall remain separate open gates.
+   A later [strict 33-original control](archive/2026-10-26-p30-p31-implementation/recall33-strict-sources-20261104.md)
+   separately passes with one source missing during recall and restored before
+   preflight, 32 exact eligible note parts and unchanged original identities.
+   The retained-cohort gate remains open.
    A [fresh egress diagnostic](archive/2026-10-26-p30-p31-implementation/egress-diagnostic-dcbb-20261103.md)
    reached managed-current use after a successful gate, but missing terminal
    markers leave its failure cause inconclusive. A [small source-owner comparison](archive/2026-10-26-p30-p31-implementation/source-owner-phase-20261103.md)
@@ -204,10 +207,12 @@ following limits until the end-to-end paths are qualified:
    separate error notification. The subsequent [scope-ownership repair](archive/2026-10-26-p30-p31-implementation/recall-owned-cache-20261103.md)
    captures that diagnostic, preserves a single pure reconstruction cache across
    the admitted task, inference-slot and controlled-child scopes, and passes 75
-   focused controls. A fresh untraced 33-source journey now passes at the unchanged
-   five-second provider limit, with exact full text for all 32 eligible notes,
-   partial missing-source coverage and idle reopen without replay. This closes
-   the small fitting-set gate. Next qualify a distinct read against the retained
+   focused controls. A later [fresh strict 33-original-source control](archive/2026-10-26-p30-p31-implementation/recall33-strict-sources-20261104.md)
+   now passes at the unchanged five-second provider limit in 125 seconds, with
+   exact full text and committed-read provenance for all 32 eligible notes,
+   partial missing/reappearing-source coverage, unchanged original journal/lock
+   identities and idle reopen without replay. This closes that fitting-set case;
+   earlier failed attempts remain preserved. Next qualify a distinct read against the retained
    2,000-note cohort, then one complete populated day before the annual workload.
    A [native renewed-recall control](archive/2026-10-26-p30-p31-implementation/authenticated-expired-recall-20261104.md)
    now passes after narrowly classifying authenticated expired ordinary neighbors,
@@ -1310,9 +1315,12 @@ also failed the native control and was not retained. A later [task-scoped source
 replay](archive/2026-10-26-p30-p31-implementation/task-source-replay-20261102.md)
 passes the existing 32-note native control with a 15-second synthetic provider
 timeout. A later [owned-cache repair](archive/2026-10-26-p30-p31-implementation/recall-owned-cache-20261103.md)
-passes a fresh untraced 33-source case at the unchanged five-second provider limit,
-including exact complete text for all 32 eligible notes, missing-original partial
-coverage and idle reopen without replay. The 2,000-note cohort, integrated day,
+passes its focused ownership controls. A later [strict current 33-original-source
+control](archive/2026-10-26-p30-p31-implementation/recall33-strict-sources-20261104.md) passes in
+125 seconds at the unchanged five-second provider limit, including exact complete
+text and committed-read provenance for all 32 eligible notes, missing/reappearing
+original partial coverage, unchanged source identities and idle reopen without
+replay. The 2,000-note cohort, integrated day,
 annual workload and complete recall qualification remain open.
 
 | Package | Output and prerequisites |

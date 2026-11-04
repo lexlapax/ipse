@@ -1,0 +1,14 @@
+private_modules=241 bootstrap_priv=pass bundles=4 strict_wrapper_compile=pass selected_tests=1 app_started=false helper_executed=false
+STRICT_RECALL_COHORT_DISPATCH selected=1 private_modules=241
+Running ExUnit with seed: 0, max_cases: 1
+Excluding tags: [:test]
+Including tags: [:recall_strict_sources]
+
+STRICT_RECALL_FRESH_ROOT=<fresh-private-root>
+.
+Finished in 125.0 seconds (0.00s async, 125.0s sync)
+
+Result: 1 passed
+
+09:12:17.053 [notice] Application ipse exited: :stopped
+STRICT_RECALL_COHORT_RESULT failures=0 selected=1
