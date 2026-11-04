@@ -7,6 +7,217 @@ defmodule Ipse.Session.SourceReplayCacheTest do
 
   defp events, do: [%{"type" => "session", "metadata" => %{}}]
 
+  defp with_root(fun) do
+    {:ok, scope} = Resources.start(self())
+    :ok = Resources.attach(scope, self())
+    previous = Resources.bind(scope)
+
+    try do
+      fun.(scope)
+    after
+      Resources.bind(previous)
+      if Process.alive?(scope), do: Resources.close(scope)
+    end
+  end
+
+  defp with_slot_scope(fun) do
+    {:ok, scope} = Resources.start_with_source_replay_cache(self())
+    :ok = Resources.attach(scope, self())
+    previous = Resources.bind(scope)
+
+    try do
+      fun.(scope)
+    after
+      Resources.bind(previous)
+      assert :ok = Resources.close(scope)
+    end
+  end
+
+  test "slot and controlled scopes borrow the original job cache before the gate warms it" do
+    with_root(fn original ->
+      assert :sys.get_state(original).source_replay_cache == nil
+      parent = self()
+
+      task =
+        Resources.async(fn ->
+          with_slot_scope(fn _ ->
+            {:ok, cache} = Resources.source_replay_cache()
+            send(parent, {:slot_cache, cache})
+            receive do: (:gate_warmed -> :ok)
+
+            Resources.controlled_owned_effect(
+              fn ->
+                assert {:ok, ^cache} = Resources.source_replay_cache()
+                assert {:ok, index} = SourceReplayCache.restore(cache, events(), @id)
+                changed = put_in(events(), [Access.at(0), "metadata", "probe"], true)
+                assert {:ok, _} = SourceReplayCache.restore(cache, changed, @id)
+                {cache, index}
+              end,
+              5_000
+            )
+          end)
+        end)
+
+      assert_receive {:slot_cache, cache}
+      assert {:ok, ^cache} = Resources.source_replay_cache()
+      assert :sys.get_state(cache.pid).entries == %{}
+      assert {:ok, original_index} = SourceReplayCache.restore(cache, events(), @id)
+      send(task.pid, :gate_warmed)
+      assert {:ok, {^cache, child_index}} = Task.await(task, 10_000)
+      assert child_index.window_id != original_index.window_id
+      assert child_index.secret != original_index.secret
+      assert map_size(:sys.get_state(cache.pid).entries) == 2
+      assert Process.alive?(cache.pid)
+      assert {:ok, _} = SourceReplayCache.restore(cache, events(), @id)
+    end)
+  end
+
+  test "killing a controlled borrower leaves the original cache alive and reusable" do
+    with_root(fn _ ->
+      parent = self()
+
+      task =
+        Resources.async(fn ->
+          with_slot_scope(fn _ ->
+            Resources.controlled_owned_effect(
+              fn ->
+                {:ok, cache} = Resources.source_replay_cache()
+                {:ok, _} = SourceReplayCache.restore(cache, events(), @id)
+                send(parent, {:borrower, self(), cache})
+                Process.sleep(:infinity)
+              end,
+              5_000
+            )
+          end)
+        end)
+
+      assert_receive {:borrower, peer, cache}
+      Process.exit(peer, :kill)
+      assert Task.await(task, 10_000) == {:unknown, :effect_interrupted}
+      assert Process.alive?(cache.pid)
+      assert {:ok, ^cache} = Resources.source_replay_cache()
+      assert {:ok, _} = SourceReplayCache.restore(cache, events(), @id)
+    end)
+  end
+
+  test "a foreign current scope and a different owner cannot borrow the job cache" do
+    with_root(fn scope ->
+      {:ok, cache} = Resources.source_replay_cache()
+
+      foreign =
+        Task.async(fn ->
+          Resources.bind(scope)
+          Resources.start_with_source_replay_cache(self())
+        end)
+
+      assert Task.await(foreign) == {:error, :cleanup_scope_closed}
+
+      assert Resources.start_with_source_replay_cache(foreign.pid) ==
+               {:error, :cleanup_scope_closed}
+
+      assert Process.alive?(cache.pid)
+    end)
+  end
+
+  test "a dead borrowed cache is refused rather than reowned by the slot or its child" do
+    with_root(fn _ ->
+      parent = self()
+
+      task =
+        Resources.async(fn ->
+          with_slot_scope(fn _ ->
+            {:ok, cache} = Resources.source_replay_cache()
+            send(parent, {:borrow_ready, cache})
+            receive do: (:cache_killed -> :ok)
+            assert {:error, :cleanup_scope_closed} = Resources.source_replay_cache()
+            Resources.controlled_owned_effect(fn -> Resources.source_replay_cache() end, 5_000)
+          end)
+        end)
+
+      assert_receive {:borrow_ready, cache}
+      monitor = Process.monitor(cache.pid)
+      Process.exit(cache.pid, :kill)
+      assert_receive {:DOWN, ^monitor, :process, _, :killed}
+      send(task.pid, :cache_killed)
+      assert Task.await(task, 10_000) == {:ok, {:error, :cleanup_scope_closed}}
+    end)
+  end
+
+  test "ordinary and parentless scopes keep independent owned cache lifetimes" do
+    with_root(fn _ ->
+      {:ok, parent_cache} = Resources.source_replay_cache()
+      {:ok, ordinary} = Resources.start(self())
+      previous = Resources.bind(ordinary)
+      {:ok, own_cache} = Resources.source_replay_cache()
+      Resources.bind(previous)
+      assert own_cache.pid != parent_cache.pid
+      assert :ok = Resources.close(ordinary)
+      refute Process.alive?(own_cache.pid)
+      assert Process.alive?(parent_cache.pid)
+    end)
+
+    previous = Resources.bind(nil)
+
+    try do
+      {:ok, scope} = Resources.start_with_source_replay_cache(self())
+      Resources.bind(scope)
+      {:ok, cache} = Resources.source_replay_cache()
+      assert :ok = Resources.close(scope)
+      refute Process.alive?(cache.pid)
+    after
+      Resources.bind(previous)
+    end
+  end
+
+  test "a controlled child owns its cache only when the parent had none" do
+    with_root(fn scope ->
+      assert {:ok, cache} =
+               Resources.controlled_owned_effect(
+                 fn ->
+                   {:ok, cache} = Resources.source_replay_cache()
+                   cache
+                 end,
+                 5_000
+               )
+
+      refute Process.alive?(cache.pid)
+      assert :sys.get_state(scope).source_replay_cache == nil
+    end)
+  end
+
+  test "loss of the original owner stops its cache and the three-level controlled peer" do
+    parent = self()
+
+    owner =
+      spawn(fn ->
+        with_root(fn root ->
+          Resources.async(fn ->
+            with_slot_scope(fn slot ->
+              Resources.controlled_owned_effect(
+                fn ->
+                  {:ok, cache} = Resources.source_replay_cache()
+                  send(parent, {:owned_tree, root, slot, self(), cache})
+                  Process.sleep(:infinity)
+                end,
+                20_000
+              )
+            end)
+          end)
+
+          Process.sleep(:infinity)
+        end)
+      end)
+
+    assert_receive {:owned_tree, root, slot, peer, cache}, 2_000
+    watches = Enum.map([root, slot, peer, cache.pid], &{&1, Process.monitor(&1)})
+    :ok = :sys.suspend(cache.pid)
+    Process.exit(owner, :kill)
+
+    for {pid, ref} <- watches do
+      assert_receive {:DOWN, ^ref, :process, ^pid, _}, 5_000
+    end
+  end
+
   test "reconstructs its own result, distinguishes changed input and refreshes index secrets" do
     assert {:ok, cache} = SourceReplayCache.start(self())
     on_exit(fn -> if Process.alive?(cache.pid), do: Process.exit(cache.pid, :kill) end)

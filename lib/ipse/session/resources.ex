@@ -5,6 +5,19 @@ defmodule Ipse.Session.Resources do
 
   def start(owner), do: GenServer.start(__MODULE__, owner)
 
+  @doc false
+  def start_with_source_replay_cache(owner) when owner == self() do
+    # The current scope authenticates this caller. Only its immutable replay
+    # cache is shared; the new scope retains its own resources and permissions.
+    case source_replay_cache() do
+      :none -> start(owner)
+      {:ok, cache} -> GenServer.start(__MODULE__, {:with_source_replay_cache, owner, cache})
+      _ -> {:error, :cleanup_scope_closed}
+    end
+  end
+
+  def start_with_source_replay_cache(_), do: {:error, :cleanup_scope_closed}
+
   def start_child(root, peer, reporter, token),
     do: GenServer.start(__MODULE__, {:child, root, peer, reporter, token})
 
@@ -175,7 +188,8 @@ defmodule Ipse.Session.Resources do
   def init({:child, root, peer, reporter, token}) do
     Process.flag(:trap_exit, true)
 
-    with {:ok, ticket, guard} <- GenServer.call(root, {:register_child, peer, reporter, token}) do
+    with {:ok, ticket, guard, replay_cache} <-
+           GenServer.call(root, {:register_child, peer, reporter, token}) do
       {:ok,
        %{
          owner: peer,
@@ -186,7 +200,7 @@ defmodule Ipse.Session.Resources do
          effects: %{},
          lock_guard: guard,
          resources: %{},
-         source_replay_cache: nil,
+         source_replay_cache: replay_cache,
          failed: false,
          closed: false,
          child_tokens: %{},
@@ -196,6 +210,11 @@ defmodule Ipse.Session.Resources do
     else
       _ -> {:stop, :cleanup_scope_closed}
     end
+  end
+
+  def init({:with_source_replay_cache, owner, cache}) do
+    {:ok, state} = init(owner)
+    {:ok, %{state | source_replay_cache: {:borrowed, cache}}}
   end
 
   def init(owner) do
@@ -321,7 +340,14 @@ defmodule Ipse.Session.Resources do
           resource = %{pid: child, kind: :child, monitor: Process.monitor(child)}
           ticket = %{scope: self(), id: id}
 
-          {:reply, {:ok, ticket, state.lock_guard},
+          replay_cache =
+            case state.source_replay_cache do
+              %{pid: pid} = cache when is_pid(pid) -> {:borrowed, cache}
+              {:borrowed, cache} -> {:borrowed, cache}
+              nil -> nil
+            end
+
+          {:reply, {:ok, ticket, state.lock_guard, replay_cache},
            %{
              state
              | resources: Map.put(state.resources, id, resource),
@@ -451,6 +477,11 @@ defmodule Ipse.Session.Resources do
 
     if admitted do
       case state.source_replay_cache do
+        {:borrowed, %{pid: pid} = cache} when is_pid(pid) ->
+          if Process.alive?(pid),
+            do: {:reply, {:ok, cache}, state},
+            else: {:reply, {:error, :cleanup_scope_closed}, state}
+
         %{pid: pid} = cache when is_pid(pid) ->
           if Process.alive?(pid),
             do: {:reply, {:ok, cache}, state},
@@ -603,6 +634,9 @@ defmodule Ipse.Session.Resources do
 
     %{state | tasks: %{}, effects: %{}, failed: failed}
   end
+
+  defp close_source_replay_cache(%{source_replay_cache: {:borrowed, _}} = state, _deadline),
+    do: %{state | source_replay_cache: nil}
 
   defp close_source_replay_cache(%{source_replay_cache: %{pid: pid}} = state, deadline)
        when is_pid(pid) do

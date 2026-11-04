@@ -1,0 +1,102 @@
+--- a/test/support/native_note_recall_many.exs
++++ b/test/support/native_note_recall_many.exs
+@@ -2,6 +2,8 @@
+ import ExUnit.Assertions
+ {:ok, _} = Application.ensure_all_started(:ipse)
+ Code.require_file(Path.expand("provider_fixture.ex", __DIR__))
++Code.ensure_loaded!(Ipse.Test.RecallDiagnosticTrace)
++Code.ensure_loaded!(Ipse.Test.RecallDiagnostic)
+ 
+ [root, "recall-many"] = System.argv()
+ sparse = System.get_env("IPSE_TEST_RECALL_SPARSE") == "1"
+@@ -298,6 +300,8 @@
+       assert File.regular?(held_journal <> ".held")
+       refute File.exists?(held_journal)
+       File.rename!(held_journal <> ".held", held_journal)
++      trace = Ipse.Test.RecallDiagnosticTrace.start(session, owner)
++      send(owner, {:recall_trace_ready, trace})
+       send(owner, {:recall_source_reappeared_before_preflight, session})
+       true
+ 
+@@ -328,13 +332,21 @@
+   Task.async(fn ->
+     try do
+       {:ok, socket} = :gen_tcp.accept(listener, 180_000)
++      Ipse.Test.RecallDiagnostic.listener(owner, "accepted", 0, nil)
+ 
+       try do
+         request =
+           case :gen_tcp.recv(socket, 0, provider_timeout + 1_000) do
+-            {:ok, first} -> {:ok, Ipse.Test.ProviderFixture.request(socket, first)}
+-            {:error, :closed} -> :closed
+-            other -> flunk("Synthetic provider initial read failed: #{inspect(other)}")
++            {:ok, first} ->
++              Ipse.Test.RecallDiagnostic.listener(owner, "first_read", byte_size(first), "ok")
++              {:ok, Ipse.Test.ProviderFixture.request(socket, first)}
++
++            {:error, :closed} ->
++              Ipse.Test.RecallDiagnostic.listener(owner, "first_read", 0, "closed")
++              :closed
++
++            other ->
++              flunk("Synthetic provider initial read failed: #{inspect(other)}")
+           end
+ 
+         case request do
+@@ -369,39 +381,16 @@
+     end
+   end)
+ 
++diagnostic_started = System.monotonic_time(:microsecond)
+ assert :ok = Ipse.Session.prompt(session, prompt)
+ 
+-request =
+-  receive do
+-    {:recall_many_request, request} ->
+-      request
+-
+-    {:ipse, ^session, {:done, status}} ->
+-      {:ok, events} = Ipse.Journal.load(dir, session_id)
+-      counts = Enum.frequencies_by(events, & &1["type"])
+-
+-      inputs =
+-        events
+-        |> Enum.filter(&(&1["type"] == "worker_input_result"))
+-        |> Enum.frequencies_by(& &1["status"])
+-
+-      tail =
+-        events
+-        |> Enum.take(-25)
+-        |> Enum.map(&Map.take(&1, ~w(type status reason closure cleanup_confirmed)))
+-
+-      closed =
+-        receive do
+-          :recall_provider_closed_without_request -> true
+-        after
+-          0 -> false
+-        end
++{request, diagnostic} =
++  case Ipse.Test.RecallDiagnostic.request(session, server, root, nil, diagnostic_started) do
++    {:ok, request, diagnostic} ->
++      {request, diagnostic}
+ 
+-      flunk(
+-        "Recall ended #{inspect(status)} before dispatch, provider_closed=#{closed}, counts=#{inspect(counts)}, worker_inputs=#{inspect(inputs)}, tail=#{inspect(tail, limit: :infinity)}"
+-      )
+-  after
+-    120_000 -> flunk("Recall did not dispatch or finish within the fixture bound")
++    {:ended, status} ->
++      flunk("Recall ended " <> status <> " before dispatch; bounded diagnostic saved")
+   end
+ 
+ wire = Jason.encode!(request["messages"])
+@@ -481,8 +470,7 @@
+ end
+ 
+ included = Enum.count(texts, &String.contains?(wire, &1))
+-assert_receive {:ipse, ^session, {:done, :ok}}, 30_000
+-assert :ok = Task.await(server, 5_000)
++assert :ok = Ipse.Test.RecallDiagnostic.complete(session, server, diagnostic)
+ 
+ assert {:ok, events} = Ipse.Journal.load(dir, session_id)
+ assert {:ok, _} = Ipse.Session.Saved.restore(events, session_id)

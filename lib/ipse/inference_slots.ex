@@ -76,7 +76,7 @@ defmodule Ipse.InferenceSlots do
              "route_sha256" => JSON.digest([route])
            }),
          true <- Ledger.meta?(full_meta),
-         {:ok, scope} <- Resources.start(self()) do
+         {:ok, scope} <- Resources.start_with_source_replay_cache(self()) do
       owner = self()
       upstream = Resources.file_effect_owner()
       ref = make_ref()

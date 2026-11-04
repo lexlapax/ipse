@@ -40,10 +40,21 @@ never accepts a caller-supplied index. It retains at most 128 indexes and 8 MiB
 of their encoded representations, with retained binaries detached from journal
 read buffers. Inputs over 8 MiB and simultaneous cache requests use the ordinary
 uncached reconstruction path. This is an encoded-size bound, not a bound on total
-BEAM heap or transient copies. Each use still opens and locks the original source,
+BEAM heap or transient copies. The original admitted task's cleanup scope owns
+and closes this cache. Its inference-slot and controlled-child scopes borrow
+the same pure cache through authenticated resource entry and registration.
+A borrower drops its reference at close and refuses a dead borrowed cache.
+Independent scopes and scopes without a parent cache retain their own cache
+lifetimes. The full Session ID and event-list digest
+remain the reuse key, and each restored index gets fresh query handles.
+Each use still opens and locks the original source,
 checks its origin and project, validates source pages, resolves the requested
 proofs and rechecks the owners. The cache dies with its cleanup scope; a cache hit
 does not retain a lease or authorize a later display, write or provider request.
+
+Run `mix test test/ipse/session/source_replay_cache_test.exs` when changing this
+ownership path. Its controls cover cache identity, fresh handles and borrowing
+across both resource scopes, including owner closure and refused registrations.
 
 Session remains the conversation and permission owner. Only that owner can install
 or query the writer cache. Native model reads additionally require the exact active

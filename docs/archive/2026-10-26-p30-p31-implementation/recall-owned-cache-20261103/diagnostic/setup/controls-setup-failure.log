@@ -1,0 +1,85 @@
+     warning: Ipse.JSON.sha256/1 is undefined (module Ipse.JSON is not available or is yet to be defined)
+     │
+ 153 │           "sha256" => Ipse.JSON.sha256(reason)
+     │                                 ~
+     │
+     └─ test/support/recall_diagnostic_trace.ex:153:33: Ipse.Test.RecallDiagnosticTrace.safe_error/1
+
+    warning: Jason.encode!/1 is undefined (module Jason is not available or is yet to be defined). Make sure the module name is correct and has been specified in full (or that an alias has been defined)
+    │
+ 99 │     File.write!(Path.join(state.root, "diagnostic-outcome.json"), Jason.encode!(outcome), [
+    │                                                                         ~
+    │
+    └─ test/support/recall_diagnostic.ex:99:73: Ipse.Test.RecallDiagnostic.finish/3
+
+    warning: Jason.encode!/1 is undefined (module Jason is not available or is yet to be defined). Make sure the module name is correct and has been specified in full (or that an alias has been defined)
+    │
+ 54 │     refute Jason.encode!(summary) =~ private
+    │                  ~
+    │
+    └─ controls.exs:54:18: Ipse.Test.RecallDiagnosticControls."test arity-only trace retains numeric deadlines, balanced returns and exact kill ancestry without payload"/1
+
+     warning: Jason.decode!/1 is undefined (module Jason is not available or is yet to be defined). Make sure the module name is correct and has been specified in full (or that an alias has been defined)
+     │
+ 102 │       control_root |> Path.join("diagnostic-outcome.json") |> File.read!() |> Jason.decode!()
+     │                                                                                     ~
+     │
+     └─ controls.exs:102:85: Ipse.Test.RecallDiagnosticControls."test collector consumes actual error notification and retains listener phases before done"/1
+
+Running ExUnit with seed: 895374, max_cases: 4
+
+
+
+  1) test trace pressure stops recording within fixed bounds and marks incomplete (Ipse.Test.RecallDiagnosticControls)
+     controls.exs:57
+     ** (ArgumentError) could not load module Ipse.Provider.MintOwned due to reason :nofile
+     code: trace = RecallDiagnosticTrace.start(self(), self(), true)
+     stacktrace:
+       (elixir 1.20.4) lib/code.ex:2069: Code.ensure_loaded!/1
+       test/support/recall_diagnostic_trace.ex:57: anonymous fn/2 in Ipse.Test.RecallDiagnosticTrace.start/3
+       (elixir 1.20.4) lib/enum.ex:2622: Enum."-reduce/3-lists^foldl/2-0-"/3
+       test/support/recall_diagnostic_trace.ex:56: Ipse.Test.RecallDiagnosticTrace.start/3
+       controls.exs:58: (test)
+
+
+
+  2) test collector consumes actual error notification and retains listener phases before done (Ipse.Test.RecallDiagnosticControls)
+     controls.exs:66
+     ** (UndefinedFunctionError) function Jason.encode!/1 is undefined (module Jason is not available). Make sure the module name is correct and has been specified in full (or that an alias has been defined)
+     code: RecallDiagnostic.request(
+     stacktrace:
+       Jason.encode!(%{"collector_overflow" => false, "done_observed_at_us" => -576460751618676, "errors" => [%{"at_us" => -576460751618678, "reason" => %{"code" => "transport_completion_cleanup_unconfirmed"}}], "listener" => [%{"at_us" => -576460751618679, "bytes" => 0, "code" => nil, "phase" => "accepted"}, %{"at_us" => -576460751618679, "bytes" => 0, "code" => "closed", "phase" => "first_read"}], "listener_task" => %{"class" => "closed"}, "prompt_started_at_us" => -576460751618678, "status" => "error", "trace" => %{"available" => false, "reason" => "preflight_not_observed"}, "version" => 1})
+       test/support/recall_diagnostic.ex:99: Ipse.Test.RecallDiagnostic.finish/3
+       test/support/recall_diagnostic.ex:55: Ipse.Test.RecallDiagnostic.wait/5
+       controls.exs:93: (test)
+
+
+
+  3) test arity-only trace retains numeric deadlines, balanced returns and exact kill ancestry without payload (Ipse.Test.RecallDiagnosticControls)
+     controls.exs:11
+     ** (ArgumentError) could not load module Ipse.Provider.MintOwned due to reason :nofile
+     code: trace = RecallDiagnosticTrace.start(self(), self(), true)
+     stacktrace:
+       (elixir 1.20.4) lib/code.ex:2069: Code.ensure_loaded!/1
+       test/support/recall_diagnostic_trace.ex:57: anonymous fn/2 in Ipse.Test.RecallDiagnosticTrace.start/3
+       (elixir 1.20.4) lib/enum.ex:2622: Enum."-reduce/3-lists^foldl/2-0-"/3
+       test/support/recall_diagnostic_trace.ex:56: Ipse.Test.RecallDiagnosticTrace.start/3
+       controls.exs:12: (test)
+
+
+
+  4) test collector preserves positive request exactly and never writes request content (Ipse.Test.RecallDiagnosticControls)
+     controls.exs:113
+     ** (UndefinedFunctionError) function Jason.encode!/1 is undefined (module Jason is not available). Make sure the module name is correct and has been specified in full (or that an alias has been defined)
+     code: assert :ok = RecallDiagnostic.complete(session, server, state)
+     stacktrace:
+       Jason.encode!(%{"collector_overflow" => false, "done_observed_at_us" => -576460751617871, "errors" => [], "listener" => [], "listener_task" => %{"class" => "ok"}, "prompt_started_at_us" => -576460751617872, "status" => "ok", "trace" => %{"available" => false, "reason" => "preflight_not_observed"}, "version" => 1})
+       test/support/recall_diagnostic.ex:99: Ipse.Test.RecallDiagnostic.finish/3
+       test/support/recall_diagnostic.ex:55: Ipse.Test.RecallDiagnostic.wait/5
+       controls.exs:144: (test)
+
+
+Finished in 0.07 seconds (0.07s on load, 0.00s async, 0.00s sync)
+
+Result: 0/4 passed
+Failed: 4 tests

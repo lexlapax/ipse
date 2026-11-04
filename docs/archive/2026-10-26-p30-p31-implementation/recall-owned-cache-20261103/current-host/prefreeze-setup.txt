@@ -1,0 +1,1 @@
+Pre-test inventory refused one tracked documentation directory symlink; no focused test started. Corrected inventory hashes tracked regular files and records symlink targets separately.

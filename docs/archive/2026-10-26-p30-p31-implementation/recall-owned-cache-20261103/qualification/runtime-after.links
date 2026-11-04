@@ -1,0 +1,17 @@
+_build/test/lib/elixir_uuid -> /dev/shm/ipse-json-current-20261103-01/_build/test/lib/elixir_uuid
+_build/test/lib/ex_json_pointer -> /dev/shm/ipse-json-current-20261103-01/_build/test/lib/ex_json_pointer
+_build/test/lib/finch -> /dev/shm/ipse-json-current-20261103-01/_build/test/lib/finch
+_build/test/lib/hpax -> /dev/shm/ipse-json-current-20261103-01/_build/test/lib/hpax
+_build/test/lib/ipse/priv -> ../../../../priv
+_build/test/lib/jason -> /dev/shm/ipse-json-current-20261103-01/_build/test/lib/jason
+_build/test/lib/jsonschex -> /dev/shm/ipse-json-current-20261103-01/_build/test/lib/jsonschex
+_build/test/lib/mcp_elixir_sdk -> /dev/shm/ipse-json-current-20261103-01/_build/test/lib/mcp_elixir_sdk
+_build/test/lib/mime -> /dev/shm/ipse-json-current-20261103-01/_build/test/lib/mime
+_build/test/lib/mint -> /dev/shm/ipse-json-current-20261103-01/_build/test/lib/mint
+_build/test/lib/nimble_options -> /dev/shm/ipse-json-current-20261103-01/_build/test/lib/nimble_options
+_build/test/lib/nimble_pool -> /dev/shm/ipse-json-current-20261103-01/_build/test/lib/nimble_pool
+_build/test/lib/plug -> /dev/shm/ipse-json-current-20261103-01/_build/test/lib/plug
+_build/test/lib/plug_crypto -> /dev/shm/ipse-json-current-20261103-01/_build/test/lib/plug_crypto
+_build/test/lib/req -> /dev/shm/ipse-json-current-20261103-01/_build/test/lib/req
+_build/test/lib/telemetry -> /dev/shm/ipse-json-current-20261103-01/_build/test/lib/telemetry
+deps -> /dev/shm/ipse-json-current-20261103-01/deps

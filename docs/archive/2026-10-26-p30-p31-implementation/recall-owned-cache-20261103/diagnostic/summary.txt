@@ -1,0 +1,90 @@
+One fresh strict33-note safe metadata diagnostic, 2026-11-03.
+
+Unchanged frozen195-module JSON-optimization runtime and selected5000ms provider
+/normal Worker deadlines. No product source changed. New synthetic original
+Sessions, consent, input and consuming Session. No prior unknown turn resumed or
+replayed. Dedicated listener starts after seed,180saccept and6sinitialread;
+this does not exercise the separately repaired workload listener.
+
+Result:test1/filter0/postcheck0. Complete lib/runtime/native file and symlink
+inventories match before/after. All33original journal+lock dev/inode/uid identities
+and journal hashes match their actual pre-run inventory; no .held journal path
+remains. Source-after verifier and actual post-read inventory are included.
+Raw source journals remain in private synthetic tmpfs; the raw terminal
+transcript remains in the ignored task directory. Only its hash and
+payload-free metadata are retained here.
+
+Observer sources and compiledBEAM hashes were frozen before launch in
+fixture.sha256 (SHAfed053a022e2a37d6310fa69b32002eddb6eebb720ddc539f8f38d82c561891d).
+Helper elixirc warnings-as-errors passed with explicit runtime codepaths. Four
+pure BEAM controls passed1.2sec seed854330: actual controlled_owned_effect timeout
+and exact controlled_wait reporter/peer kill interval, numeric/call arity privacy,
+bounded pressure, error-before-done capture, unchanged positive request. No native
+helper/protected effect/provider was used by those component controls. Previous
+setup failures and reviewed controls remain separately retained. Final trace
+control JSON preserves the actual11 safe rows from its real controlled wait.
+ObserverBEAMs remain in the ignored fixture directory; hashes/source are
+archived, not the complete observer/runtime binaries.
+
+Actual diagnostic observer output has209targeted call/return/kill records,
+truncated=false and collector_overflow=false. ancestry_overflow=true means the
+bounded256entry ancestry/exit maps overflowed; emitted ancestry is partial and
+no actor exit rows survived. Do NOT treat this as a complete trace or claim zero
+dropped events. Source/return payloads and arguments were not persisted. Tracing
+can change scheduling; this is diagnostic evidence, not unmodified latency.
+
+Surfaced error was135bytes with SHA
+c4a7d0120ee294b304a55696c57db1f17095b06b5e63033b861703a565795cb4.
+analyze-outcome.exs independently reconstructs the fixed producer's unknown-service
+summary using the actual dispatch service ID and matches its exact byte length
+and hash. Thus the error is the known unknown-service-outcome summary WITHOUT an
+inner detail. The original safe classifier correctly emitted unclassified_binary;
+the derived match does not turn that error into a timeout-specific diagnostic.
+
+Observed cache calls (all completed):
+- p3:32reconstruct calls,2,515,270us total in-function; wall firstcall→lastreturn
+  -576460645796110→-576460643039680us (2.756430s).
+- p3:32fresh calls,511us total; wall firstcall→lastreturn
+  -576460641280846→-576460641025456us (0.255390s).
+- p8:32reconstruct calls,2,552,012us total; wall firstcall→lastreturn
+  -576460638914545→-576460636131227us (2.783318s), zero fresh calls.
+The parent cache is warm; a second actor performs a full cold reconstruction.
+No source identifier argument was traced. Source preservation, fixed dispatch
+bindings and the reviewed code path support the same selected-originals
+interpretation, rather than direct recorded argument comparison.
+
+Gate p4 starts-576460642136574us and returns ok_tuple at-576460639988278us
+(2.148296s). MintOwned.execute p5 receives5000ms, then controlled_owned_effect
+and controlled_wait p5 receive5000ms. Wait starts-576460639982072us.
+Transport p7 starts stream_witnessed/execute at-576460639979557us with5000ms.
+Its admitted_send deadline_ms is-576460634980; with_current starts
+-576460639974342us. The second cold cache fold starts1.059797s after current
+entry and completes3.843115s after entry. There is no current_wire or remaining/1
+call and no successful provider request assertion.
+
+At-576460634984964 and-576460634984940us, p9 and p10 issue kill signals to p5,
+4.997108/4.997132s after controlled_wait entry. This is NOT the controlled_wait
+reporter's own timeout kill of its peer. p11 then signals p7 and p12 signals
+cachep8. Seven open spans remain: p5 MintOwned/controlled_owned_effect/wait and
+p7 stream_witnessed/execute/admitted_send/with_current. Native completion/cleanup
+is unconfirmed; open spans must not be invented into normal returns.
+
+Captured ancestry p4→p9, p9→p5/p10/p13 and p14→cachep3 matches reviewed source:
+InferenceDispatch's async coordinator creates InferenceSlots scope, worker and
+watchdog, while gate executes in the original task scope. Thus the cache reset
+includes BOTH original task→new Slots scope and Slots→controlledchild. Partial
+ancestry omits other guard relations. The kill timing/pattern is consistent with
+InferenceSlots dispatch-window termination, but internal await/watchdog/native
+controller branches were not traced; do not claim which branch fired or a fully
+identified first failure cause from this evidence alone.
+
+Listener accepts at-576460639974402us and its first read returns closed with0bytes
+at-576460634984236us (4.990166s after acceptance). These are actual monotonic
+observations, not inferred from the whole request duration. Complete request,
+32-note body/citation and inert-reopen assertions were not reached.
+
+Measured duplicate cold reconstruction consumes2.552s inside the live5s window.
+The narrow next repair is same-job parent-owned historical cache inheritance
+across the actual scope graph, retaining content keys/bounds/lifetime and all
+current source, consent, native, wire and deadline checks. Cache results grant
+no live authority. No such repair or further33probe is included in this run.

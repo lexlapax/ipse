@@ -1,0 +1,14 @@
+    warning: Jason.encode!/1 is undefined (module Jason is not available or is yet to be defined). Make sure the module name is correct and has been specified in full (or that an alias has been defined)
+    │
+ 99 │     File.write!(Path.join(state.root, "diagnostic-outcome.json"), Jason.encode!(outcome), [
+    │                                                                         ~
+    │
+    └─ test/support/recall_diagnostic.ex:99:73: Ipse.Test.RecallDiagnostic.finish/3
+
+     warning: Ipse.JSON.sha256/1 is undefined (module Ipse.JSON is not available or is yet to be defined)
+     │
+ 153 │           "sha256" => Ipse.JSON.sha256(reason)
+     │                                 ~
+     │
+     └─ test/support/recall_diagnostic_trace.ex:153:33: Ipse.Test.RecallDiagnosticTrace.safe_error/1
+

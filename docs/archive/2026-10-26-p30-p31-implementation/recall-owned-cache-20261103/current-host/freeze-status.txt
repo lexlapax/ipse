@@ -1,0 +1,1 @@
+focused source/runtime/dependency content and complete regular-file pathsets unchanged; copied exact preexisting generated catalog/artifacts; source catalog unchanged

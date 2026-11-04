@@ -1,0 +1,59 @@
+Current-source cache candidate build/focused qualification, 2026-11-03.
+
+Source is a full git archive of ace41c750fd534bce2bcad1a20377a30cc8479cd,
+plus ONLY reviewed3-file patch e41ead7b6a0bfa1fc17044fbde7ea0567eef8c8aeff680b10bac2c54bb0c41a6.
+All3preimages matched clean main before applying. Own isolated Git metadata uses
+read-only parent object alternates; tracked diff is exactly Resources,
+InferenceSlots and SourceReplayCache tests. Current Word and JSON code retained;
+no prototypeadapter/native/Mode patch applied. Formatting only3touchedfiles removed
+extraEOFblanklines. FinalpatchSHA:
+b7d2b2579f7fa3bbb5d24762a04a53dd31234400e0be5723b0e975d1fd531d5a.
+
+Source/build/evidence live on ignored disk. Dependency sources and15explicit
+compiled app paths reuse /dev/shm/ipse-json-current-20261103-01 read-only via
+symlinks; host app compiled fresh. Exact copied nativehelper SHA:
+ac424d10e2ce6809cedcb157acd70092b00ca68aa7a48201a6007ac5dccbf33b.
+Task-owned MIX_HOME/HEX_HOME/HOME and one explicit existing Hex2.5.1 archive
+path, HEX_OFFLINE=1, TESTenv, no fetch/install. No user config/token file was
+read intentionally; there was no OS-level access audit. Parent HOME unchanged.
+
+mix format3files and mix compile --force --no-deps-check --warnings-as-errors
+PASS:195files. Dependencies/nativehelper were reused, not rebuilt. See exact
+build.sh and logs. Beforefocusedtests, regular tracked sources, their symlink
+targets, selected complete runtime files/links, helper and dependency sources
+were fingerprinted. First pre-test inventory refused a historical documentation
+directory symlink before tests; preserved initialmanifest/refusal, corrected
+inventory records symlink target separately.
+
+Focused direct ExUnit PASS75tests14.0s(seed0,maxcases1):13SourceReplayCache,
+25InferenceSlots and37StoredSources defaultcases. HOME/IPSE_HOME/TMPDIR isolated
+only inside child, protected state in fresh tmpfs. No test_helper/global HOME
+mutation, actual33recall, paid inference or prototypeadapter. Source owner/native
+transaction component effects are actual fixtures, not completed annual turns.
+Opt-in128source/hook cases were not enabled.
+
+Focused source/runtime/helper/dependency/symlink postchecks all0. Recomputed
+complete regular-file manifests matched exactly, detecting additions/removals as
+well as content changes. Actual1133code/test/dev/native input paths match expected
+tracked paths. Source symlink target matches. Final regular-source manifest has
+8993files SHAa2083b00cb62baa188f418b4df74de3d2b82ce7146b6d3590ccd400a35fc2e3e.
+
+After tests, copied the EXACT diagnostic baseline priv/extension-bundles catalog
+and77artifactfiles from /dev/shm/ipse-json-current-20261103-01. Source-before,
+copy and source-after hashes and symlink inventories match. CatalogmanifestSHA:
+6afb838131d56504681dad659399798a57f76345677d40afde601d0376155488.
+This intentionally reuses old-built artifacts to isolate host cache change; it
+does not establish current-source artifact or final integrated package readiness.
+The reference priv contained only ipse-runner at its top level, no PDFhelper or
+notices to copy. No different worker artifact was rebuilt.
+
+Final selectedruntime878files manifestSHA:
+72f7f77eff9a221111066307851029a8b9a11755735ffec1c4c0234cad17198d.
+Finalruntime symlinkmanifestSHA:
+1092d14b42cd6750906288fa0379e2bc8e074fdc09a1cc139b10375b43423a03.
+These inventories cover selected host/dependency/native/catalog files; ERTS and
+external toolchain/archive bytes are not part of that runtime inventory.
+
+Qualification runtime.path now names this candidate. No33qualification launched;
+new fixture helpers/manifest and parentreview/serialslot remain required. Source
+cache fixes do not grant source/consent/native authority or qualify annual work.

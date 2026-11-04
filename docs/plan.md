@@ -177,7 +177,14 @@ following limits until the end-to-end paths are qualified:
    preserves historical digests and reduces measured retained-source reconstruction
    cost, with current-host strict compilation and 39 focused tests. Its fresh
    33-note control still failed before provider dispatch; the fixture skipped the
-   separate error notification, so capture that diagnostic before another probe.
+   separate error notification. The subsequent [scope-ownership repair](archive/2026-10-26-p30-p31-implementation/recall-owned-cache-20261103.md)
+   captures that diagnostic, preserves a single pure reconstruction cache across
+   the admitted task, inference-slot and controlled-child scopes, and passes 75
+   focused controls. A fresh untraced 33-source journey now passes at the unchanged
+   five-second provider limit, with exact full text for all 32 eligible notes,
+   partial missing-source coverage and idle reopen without replay. This closes
+   the small fitting-set gate. Next qualify a distinct read against the retained
+   2,000-note cohort, then one complete populated day before the annual workload.
    Workload tooling can advance alongside the notes journey; the completed
    integrated workload depends on the Session and recall behavior it exercises.
 3. **Documents and local retrieval — P31C1b/D1/F.** Independently finish document
@@ -1247,7 +1254,11 @@ An exploratory [batched-read prototype](archive/2026-10-26-p30-p31-implementatio
 also failed the native control and was not retained. A later [task-scoped source
 replay](archive/2026-10-26-p30-p31-implementation/task-source-replay-20261102.md)
 passes the existing 32-note native control with a 15-second synthetic provider
-timeout; the 5-second provider case and fitting-set coverage remain open.
+timeout. A later [owned-cache repair](archive/2026-10-26-p30-p31-implementation/recall-owned-cache-20261103.md)
+passes a fresh untraced 33-source case at the unchanged five-second provider limit,
+including exact complete text for all 32 eligible notes, missing-original partial
+coverage and idle reopen without replay. The 2,000-note cohort, integrated day,
+annual workload and complete recall qualification remain open.
 
 | Package | Output and prerequisites |
 | --- | --- |

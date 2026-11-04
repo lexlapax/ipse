@@ -1,0 +1,61 @@
+Untraced strict33-note qualification, 2026-11-03.
+
+PASS:1test,4excluded; test_exit=0/filter_exit=0/postcheck_exit=0.
+One NEW synthetic consuming Session after33fresh native-reviewed source Sessions.
+No old failed/unknown turn was resumed or replayed. This qualifies this small
+strict source-runtime journey only, not2000notes, retrieval quality, installed
+behavior, a full day or annual work.
+
+Candidate: full current ace41c750fd534bce2bcad1a20377a30cc8479cd plus ONLY
+postformatted reviewed3-file cachebridge patch SHA
+b7d2b2579f7fa3bbb5d24762a04a53dd31234400e0be5723b0e975d1fd531d5a.
+Runtime manifestSHA72f7f77eff9a221111066307851029a8b9a11755735ffec1c4c0234cad17198d.
+Exact old-built baseline catalog/artifacts77files were copied/hashchecked from
+/dev/shm/ipse-json-current-20261103-01, not rebuilt, to isolate hostcache behavior.
+The complete current195-module strictcompile and75focusedtests belong to the
+separate cachecurrent evidence. Native helper and dependency apps were reused.
+
+Qualification helper strictcompile passed. Exact fixture/observer manifestSHA
+ a54b88f27b4a5215f3af3d6d14075d59ff5a24449e96104b85522ef2fddc1202.
+Source/observer/entry bytes checked before/after. Fresh VM asserts empty own trace
+flags; no tracer-start/ready/finish hook exists in exercised fixture/collector.
+Collector output explicitly says trace.enabled=false. Classifier module contains
+unused diagnostic methods but no tracing function is called by qualification.
+A bounded fresh20MiB tmpfs write/sync preflight passed before effects, removing
+only its own zero-filled probe. Protected homes/state were new tmpfs locations;
+HOME stayed inherited. Dedicated listener starts after seeding with180saccept and
+6sinitial-read bounds. Product provider5000ms and normal Worker limits unchanged;
+longer PTY/ExUnit limits cover setup. No paid/model-service inference used.
+
+The original first indexed source was temporarily unavailable, then reappeared
+before model preflight. Actual provider request contains the exact32remaining
+eligible note keys/revisions/full reconstructed texts/read-operation IDs, including
+the eligible later-page note. Excluded note/text remains absent; coverage stays
+explicitly partial. Each rendered part is crosschecked with its committed
+successful read. See exact sourcefixture assertions, not mere token substring
+matching or a coverage counter.
+
+Provider-request canonical digest:
+650b46deb5b01c1cb27f103b46caeb83c087169deb4c85bb882b9e26489b85c1.
+One request_admitted and one inference_dispatch_intent remain after idle reopen;
+37Worker inputs delivered, no unknown input. The provider responded and the turn
+completed. Whole model request measured15185ms, final completed15185ms. This
+includes managed preflight/gates/other work and is NOT an inner5s transport bound
+or a statistical/comparative latency claim. Listener metadata/durations are
+retained separately; no request body or transcript is archived.
+
+All33original journal+lock device/inode/uid identities and journal hashes match
+before/after; no held journal path remains. Fixture checks and independent live
+post-read verifier agree. Consumer close/reopen is confirmed, idle, and adds no
+new input/Worker/action/inference intent. Selected lib/runtime/dependency-app/native/
+artifact content and symlink inventories match before/after, including full
+regular-file pathsets (no added-file blind spot).
+
+Raw terminal log and consumer journal remain in ignored/private task storage;
+raw original sources are tmpfs. Only their hashes and payload-free projections
+are archived. Manifests alone cannot reconstruct deleted volatile runtime or
+rawrequest/transcript data. Independent review must distinguish exact fixture
+assertions and successful exit from independently retained body bytes.
+
+No further workload or calendar was launched. Next gate is a separately reviewed
+fresh populated read, then a full integrated day only after that succeeds.

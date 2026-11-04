@@ -1,0 +1,1 @@
+One final regular-source inventory is archived. Initial/successful inventories and equal runtime/dependency/catalog snapshots remain on disk; comparison hashes and successful complete-set comparisons are retained without duplicating identical large manifests.
