@@ -5822,6 +5822,13 @@ defmodule Ipse.Session do
   def handle_info({port, _}, %{share_barrier: %{controlled: true, owner_port: port}} = s),
     do: {:noreply, poison_session_share(s)}
 
+  def handle_info(
+        {:session_share_timeout, generation},
+        %{share_barrier: %{generation: current}} = s
+      )
+      when is_reference(generation) and is_reference(current) and generation != current,
+      do: {:noreply, s}
+
   def handle_info(message, %{share_barrier: %{request: request} = b} = s)
       when not is_nil(request) do
     case :gen_server.check_response(message, request) do

@@ -1,0 +1,20 @@
+2026-11-04 whole-manual review
+
+The complete developer Persistence and Session Sources chapters, operator Recovery
+chapter and audience entry points were reviewed against the source. Persistence
+owns timer-generation and native Writer/lock lifecycle; Session Sources owns the
+paired worker observations, current source checks and retained delivery. Recovery
+already requires inspecting unknown effects and preserving journals/locks, so no
+new operator action or re-enable procedure is needed.
+
+The timer paragraph teaches both cancelled-message handling and the unchanged
+current deadline/unexpected-message quarantine. Its worked test command runs the
+actual consecutive-share and stalled-Writer controls. The worker chapter now
+describes actual native pairs and their 32-unit budget instead of the superseded
+ReadView route; it explicitly distinguishes the 4-MiB cache and document allowance.
+The review also clarifies locked reconstruction versus current-use authority and
+nonempty nomination references. Examples, source owners and navigation remain
+consistent. The dated record keeps the separate retained-cohort failure unresolved.
+
+Canonical links/manual/archive checks are in docs-check.log. The full concurrent
+regression is a frozen earlier source, and is not claimed as timer-fix coverage.

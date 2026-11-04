@@ -86,6 +86,33 @@ defmodule Ipse.Session.ShareOperationBarrierTest do
     assert {:error, :cleanup_unconfirmed} = Session.close_confirmed(c.session)
   end
 
+  @tag :stale_share_timeout
+  test "a late timeout from a completed share leaves the next share usable", c do
+    {task, job, intent} = install_task(c.session)
+    send(task.pid, {:begin, c.session, job, intent})
+    assert_receive {:begun, {:ok, old_capability, _transport, _snapshot}}, 5_000
+    old_generation = :sys.get_state(c.session).share_barrier.generation
+    send(task.pid, {:abort, c.session, job, old_capability})
+    assert_receive {:aborted, :ok}, 5_000
+    assert :sys.get_state(c.session).share_barrier == nil
+
+    send(task.pid, {:begin, c.session, job, intent})
+    assert_receive {:begun, {:ok, capability, _transport, _snapshot}}, 5_000
+    barrier = :sys.get_state(c.session).share_barrier
+    refute barrier.generation == old_generation
+
+    send(c.session, {:session_share_timeout, old_generation})
+    assert :sys.get_state(c.session).share_barrier == barrier
+    assert Process.read_timer(barrier.timer) > 0
+    assert Process.alive?(task.pid)
+
+    send(task.pid, {:abort, c.session, job, capability})
+    assert_receive {:aborted, :ok}, 5_000
+    assert :sys.get_state(c.session).share_barrier == nil
+    restore_idle(c.session, task)
+    assert :ok = Session.close_confirmed(c.session)
+  end
+
   test "draft cancellation also poisons without waiting for Writer", c do
     {task, job, intent} = install_task(c.session)
     writer = :sys.get_state(c.session).journal_writer

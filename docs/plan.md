@@ -226,8 +226,13 @@ following limits until the end-to-end paths are qualified:
    preserves both outcomes, qualifies bounded root-identity reuse and paired
    storage observations, and records an instrumented private storage improvement.
    A fresh paired-worker check passes on eight original sources. A new ordinary
-   retained read, complete populated day, annual throughput and full notes
-   acceptance remain open.
+   retained read on that runtime reaches 30 delivered Worker inputs before a
+   protected-share ownership failure; its 31st input remains unknown and no
+   provider request occurs. A [separately reproduced stale-timer repair](archive/2026-10-26-p30-p31-implementation/share-stale-timeout-20261104.md)
+   prevents a completed share's late timeout from poisoning the next share. It
+   does not identify the retained read's trigger. Successful ordinary retained
+   recall, a complete populated day, annual throughput and full notes acceptance
+   remain open.
    Workload tooling can advance alongside the notes journey; the completed
    integrated workload depends on the Session and recall behavior it exercises.
 3. **Documents and local retrieval — P31C1b/D1/F.** Independently finish document

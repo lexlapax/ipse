@@ -89,7 +89,13 @@ there is no close/reacquire upgrade. A qualified terminal operation freezes
 Session state and drains its actual Writer before exporting that retained lock.
 The Writer snapshot binds the active source proofs and inactive original lock
 identities to the exact job and owner generation. Confirmed recipient settlement
-is required before thaw. The
+is required before thaw. Each share timer carries that generation. Cancellation
+can leave an already queued timeout, so Session discards a well-formed timeout
+for another generation without changing the live barrier or cancelling its timer.
+The current generation's deadline and unexpected messages still quarantine the
+operation. Exercise both consecutive shares and the stalled-Writer timeout with
+`mix test test/ipse/session/share_operation_barrier_test.exs`.
+The
 [managed approval adapter](session-sources.md#reconstruct-without-giving-old-tokens-authority)
 adds the pending-call, full-payload and terminal-purpose checks; lock sharing
 alone supplies no display or approval authority.
@@ -138,9 +144,9 @@ and acquire no binding during resume. They remain conversation history, but the
 live collection-source callback refuses their protected publication authority.
 The protected [managed reader](collection-sdk.md) can now resolve inactive
 original Session sources in the consuming Session's selected state directory,
-under their retained ownership locks. This does not provide current recall or
-authority for later inference. The trust boundary remains cooperative storage:
-an arbitrary same-user writer can rewrite files and recorded facts coherently.
+under their retained ownership locks. Locked reconstruction alone grants no
+current-use authority for later inference. The trust boundary remains cooperative
+storage: an arbitrary same-user writer can rewrite files and recorded facts coherently.
 A live source query rechecks the retained file's identity, expected length,
 canonical directory and private parent before returning cached data. Appends
 repeat these checks after sync, withholding success if the origin changed.
@@ -934,7 +940,7 @@ mix test test/ipse/extension/collection_directory_test.exs test/ipse/extension/c
 When trusted management preparation needs continuous target ownership, use
 `Collection.with_managed_read/3` instead of carrying a released view into review.
 It retains one actual notes Collection owner and supplies the same bounded read
-closure used by managed normalization:32shared units, one per exact key, four
+closure used by managed normalization: 32 shared units, one per exact key, four
 per neighbor lookup and eight for a pending summary. Reads check the native owner
 before and after IO, and the closure expires with its callback. Exhaustion is
 sticky; a caller cannot ignore it and return successful data. A normalizer's

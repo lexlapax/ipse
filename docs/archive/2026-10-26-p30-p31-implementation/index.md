@@ -76,6 +76,7 @@ nor resource/offline qualification. No daemon configuration or existing model wa
 ## Source checkpoint evidence — 2026-11-04
 
 - [Research retention beside managed recall](research-managed-coexistence-20261104.md) passes one complete fresh native coexistence case with explicit user State approval, same-ID Corpus query/citations and a refused model-selected State write; earlier fixture failures and broader transfer gaps remain explicit.
+- [Completed-share timeout isolation](share-stale-timeout-20261104.md) reproduces and repairs a late-generation timer poisoning the next share, while preserving the separately failed retained read and its unresolved trigger.
 
 - [Paired native literal reader](recall-paired-native-reader-20261104.md) distinguishes the failed cleanup-unknown and later traced deadline reads, records paired Worker/component and complete main-build controls plus an instrumented populated storage comparison, and keeps ordinary retained recall and annual gates open.
 - [Simultaneous committed-preflight refusal](p30-simultaneous-preflight-20261104.md) preserves partial real pool exclusion followed by pre-service failure/unknown reservation, failed idle reopen and read-only fast-refusal/source-union discrimination. It is not a simultaneous settlement or liveness pass.

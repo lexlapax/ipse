@@ -256,8 +256,8 @@ existing 8-KiB bound. It refuses protected-note record dependencies; an exact
 union of cached root-only prerequisites is supported without dropping lineage
 or replacing the capture's current-use and publication gates. It also refuses presentation
 transforms, selected text consumers, after-turn delivery, active drafts,
-references, planning and headless acceptance. These refusals do not upgrade a
-historical selection into authority. The bounded attempt ledger restores spent
+nonempty nomination references, planning and headless acceptance. These refusals
+do not upgrade a historical selection into authority. The bounded attempt ledger restores spent
 answer identities, including attempts whose capture result is unknown. Later
 completed answers have separate identities; they cannot reuse the earlier
 operation or make its outcome known. Legacy capture-start records reconstruct
@@ -689,8 +689,10 @@ input purpose. Ordinary effect approval remains separate.
 
 Within each of its two independent protected observations, the Worker-input
 path groups version-4 literal dependencies in their original relative order,
-including those separated by other versions. It reads at most 32 per Collection
-view, closes each view before observing other versions, and reconstructs the
+including those separated by other versions. It requests at most 32 at a time,
+using `ObservedRead.managed_record_pairs/5` to read two literals per actual native
+Collection owner. Each pair closes before the next; all pair roots must agree.
+It closes these scopes before observing other versions and reconstructs the
 complete result and proof union in the original dependency order. Every selected
 read still checks the exact current native root and each record's signed metadata,
 recipe and source policy. The second observation reacquires current authority
@@ -698,8 +700,10 @@ and must reproduce the first; the final retained Collection owner must match
 every observed root before the input can be delivered. Other managed-use paths
 retain their per-dependency observations.
 
-Grouping changes internal read and failure order, not the authority or resource
-limits. Each view retains its 512-read and 512-observation-unit ceilings. The
+Grouping changes internal read and failure order while preserving current-authority
+checks. Each pair retains the native 32-unit ceiling: two 13-unit literal reads
+fit within it. This path uses native Blocks limits and does not use ReadView's
+4-MiB encoded cache or the document reader's 512-unit allowance. The
 DomainAuth capability remains shared across all records and versions in a
 protected pass, with its existing 128-verification, 1-MiB input and five-second
 limits. The separate 128-source-owner bound does not imply that 128 signed
