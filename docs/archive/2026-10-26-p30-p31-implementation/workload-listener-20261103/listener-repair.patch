@@ -1,0 +1,490 @@
+--- a/dev/fixtures/synthetic_ollama.exs
++++ b/dev/fixtures/synthetic_ollama.exs
+@@ -2,100 +2,212 @@
+   @moduledoc "Loopback-only synthetic Ollama fixture for native workload evidence."
+   @header_bytes 16_384
+   @body_bytes 2_097_152
+-  @timeout 30_000
++  @read_timeout 30_000
++  @poll_ms 250
+ 
++  # The runner owns the turn deadline. Idle fixture time must not end a turn
++  # before protected recall reaches the provider boundary.
+   def start(port, owner, first, count)
+       when is_integer(port) and port in 1..65_535 and is_pid(owner) and
+              is_integer(first) and first > 0 and is_integer(count) and count > 0 do
+     with {:ok, listener} <-
+            :gen_tcp.listen(port, [:binary, active: false, reuseaddr: true, ip: {127, 0, 0, 1}]) do
++      token = make_ref()
++
+       task =
+         Task.async(fn ->
++          owner_ref = Process.monitor(owner)
++
+           try do
+-            for turn <- first..(first + count - 1) do
+-              {:ok, socket} = :gen_tcp.accept(listener, @timeout)
++            receive do
++              {:synthetic_provider_start, ^token} ->
++                run(listener, owner, owner_ref, first, count)
+ 
+-              try do
+-                {headers, bytes} = request(socket, <<>>)
+-                [request_line | _] = String.split(headers, "\r\n")
+-                true = request_line in ["POST /api/chat HTTP/1.1", "POST /api/chat HTTP/1.0"]
+-                payload = Jason.decode!(bytes)
+-                prompt = prompt(turn)
+-                true = payload["model"] == "synthetic" and is_list(payload["messages"])
+-
+-                true =
+-                  Enum.any?(payload["messages"], fn message ->
+-                    message["role"] == "user" and message["content"] == prompt
+-                  end)
+-
+-                # All source text is synthetic; do not copy the request into a receipt.
+-                reference = String.contains?(bytes, "Native capacity source ")
+-
+-                send(
+-                  owner,
+-                  {:synthetic_provider_request, turn, Ipse.JSON.sha256(bytes), byte_size(bytes),
+-                   reference}
+-                )
+-
+-                body =
+-                  Jason.encode!(%{
+-                    "model" => "synthetic",
+-                    "message" => %{
+-                      "role" => "assistant",
+-                      "content" => "Synthetic workload answer #{turn}."
+-                    },
+-                    "done" => true,
+-                    "prompt_eval_count" => 1,
+-                    "eval_count" => 1
+-                  }) <> "\n"
+-
+-                :ok =
+-                  :gen_tcp.send(
+-                    socket,
+-                    "HTTP/1.1 200 Fixture\r\ncontent-type: application/x-ndjson\r\ncontent-length: #{byte_size(body)}\r\nconnection: close\r\n\r\n" <>
+-                      body
+-                  )
+-              after
+-                :gen_tcp.close(socket)
+-              end
++              {:DOWN, ^owner_ref, :process, ^owner, _} ->
++                {:error, :owner_down}
+             end
+           after
+             :gen_tcp.close(listener)
++            Process.demonitor(owner_ref, [:flush])
+           end
+-
+-          :ok
+         end)
+ 
+-      {:ok, task}
++      Process.unlink(task.pid)
++
++      case :gen_tcp.controlling_process(listener, task.pid) do
++        :ok ->
++          send(task.pid, {:synthetic_provider_start, token})
++          {:ok, task}
++
++        _ ->
++          Task.shutdown(task, :brutal_kill)
++          :gen_tcp.close(listener)
++          {:error, :listener_transfer_failed}
++      end
+     end
+   end
+ 
++  defp run(listener, owner, owner_ref, first, count) do
++    Enum.reduce_while(first..(first + count - 1), :ok, fn turn, _ ->
++      outcome =
++        try do
++          serve(listener, owner, owner_ref, turn)
++        rescue
++          _ -> {:error, :fixture_failed}
++        catch
++          _, _ -> {:error, :fixture_failed}
++        end
++
++      case outcome do
++        :ok ->
++          {:cont, :ok}
++
++        {:error, :owner_down} = error ->
++          {:halt, error}
++
++        {:error, stage} ->
++          send(owner, {:synthetic_provider_failure, turn, stage})
++          {:halt, {:error, {:synthetic_provider_failure, turn, stage}}}
++      end
++    end)
++  end
++
+   def prompt(turn), do: "Synthetic annual workload turn #{turn}: use the available references."
+ 
+-  defp request(socket, buffer) do
++  defp serve(listener, owner, owner_ref, turn) do
++    with {:ok, socket} <- accept(listener, owner, owner_ref) do
++      try do
++        with {:ok, headers, bytes} <- request(socket, owner, owner_ref),
++             :ok <- validate(headers, bytes, turn),
++             :ok <- ensure_owner(owner, owner_ref) do
++          reference = String.contains?(bytes, "Native capacity source ")
++
++          send(
++            owner,
++            {:synthetic_provider_request, turn, Ipse.JSON.sha256(bytes), byte_size(bytes),
++             reference}
++          )
++
++          body =
++            Jason.encode!(%{
++              "model" => "synthetic",
++              "message" => %{
++                "role" => "assistant",
++                "content" => "Synthetic workload answer #{turn}."
++              },
++              "done" => true,
++              "prompt_eval_count" => 1,
++              "eval_count" => 1
++            }) <> "\n"
++
++          case :gen_tcp.send(
++                 socket,
++                 "HTTP/1.1 200 Fixture\r\ncontent-type: application/x-ndjson\r\ncontent-length: #{byte_size(body)}\r\nconnection: close\r\n\r\n" <>
++                   body
++               ) do
++            :ok -> :ok
++            _ -> {:error, :response_send_failed}
++          end
++        end
++      rescue
++        _ -> {:error, :invalid_request}
++      catch
++        _, _ -> {:error, :invalid_request}
++      after
++        :gen_tcp.close(socket)
++      end
++    end
++  end
++
++  defp accept(listener, owner, owner_ref) do
++    if owner_alive?(owner, owner_ref) do
++      case :gen_tcp.accept(listener, @poll_ms) do
++        {:ok, socket} -> {:ok, socket}
++        {:error, :timeout} -> accept(listener, owner, owner_ref)
++        {:error, _} -> {:error, :listener_failed}
++      end
++    else
++      {:error, :owner_down}
++    end
++  end
++
++  defp request(socket, owner, owner_ref) do
++    deadline = System.monotonic_time(:millisecond) + @read_timeout
++    headers(socket, owner, owner_ref, deadline, <<>>)
++  end
++
++  defp headers(socket, owner, owner_ref, deadline, buffer) do
+     case :binary.split(buffer, "\r\n\r\n") do
+-      [headers, initial] ->
+-        true = byte_size(headers) <= @header_bytes
+-        [_, length] = Regex.run(~r/(?:^|\r\n)content-length:\s*(\d+)(?:\r\n|$)/i, headers)
+-        size = String.to_integer(length)
+-        true = size in 1..@body_bytes
+-        {headers, body(socket, initial, size)}
++      [headers, initial] when byte_size(headers) <= @header_bytes ->
++        with [_, length] <- Regex.run(~r/(?:^|\r\n)content-length:\s*(\d+)(?:\r\n|$)/i, headers),
++             {size, ""} <- Integer.parse(length),
++             true <- size in 1..@body_bytes,
++             {:ok, bytes} <- body(socket, owner, owner_ref, deadline, initial, size) do
++          {:ok, headers, bytes}
++        else
++          {:error, _} = error -> error
++          _ -> {:error, :invalid_request}
++        end
+ 
+       [_] when byte_size(buffer) <= @header_bytes ->
+-        {:ok, chunk} = :gen_tcp.recv(socket, 0, @timeout)
+-        request(socket, buffer <> chunk)
++        with {:ok, chunk} <- read(socket, owner, owner_ref, deadline),
++             do: headers(socket, owner, owner_ref, deadline, buffer <> chunk)
+ 
+       _ ->
+-        raise "synthetic provider request headers exceeded the fixture bound"
++        {:error, :invalid_request}
++    end
++  end
++
++  defp body(_socket, _owner, _owner_ref, _deadline, bytes, size) when byte_size(bytes) == size,
++    do: {:ok, bytes}
++
++  defp body(socket, owner, owner_ref, deadline, bytes, size) when byte_size(bytes) < size do
++    with {:ok, chunk} <- read(socket, owner, owner_ref, deadline),
++         do: body(socket, owner, owner_ref, deadline, bytes <> chunk, size)
++  end
++
++  defp body(_, _, _, _, _, _), do: {:error, :invalid_request}
++
++  defp read(socket, owner, owner_ref, deadline) do
++    remaining = deadline - System.monotonic_time(:millisecond)
++
++    cond do
++      not owner_alive?(owner, owner_ref) ->
++        {:error, :owner_down}
++
++      remaining <= 0 ->
++        {:error, :request_timeout}
++
++      true ->
++        case :gen_tcp.recv(socket, 0, min(remaining, @poll_ms)) do
++          {:ok, bytes} when byte_size(bytes) > 0 -> {:ok, bytes}
++          {:error, :timeout} -> read(socket, owner, owner_ref, deadline)
++          _ -> {:error, :request_read_failed}
++        end
+     end
+   end
+ 
+-  defp body(_socket, bytes, size) when byte_size(bytes) == size, do: bytes
++  defp ensure_owner(owner, owner_ref),
++    do: if(owner_alive?(owner, owner_ref), do: :ok, else: {:error, :owner_down})
+ 
+-  defp body(socket, bytes, size) when byte_size(bytes) < size do
+-    {:ok, chunk} = :gen_tcp.recv(socket, 0, @timeout)
+-    body(socket, bytes <> chunk, size)
++  defp owner_alive?(owner, owner_ref) do
++    receive do
++      {:DOWN, ^owner_ref, :process, ^owner, _} -> false
++    after
++      0 -> Process.alive?(owner)
++    end
+   end
+ 
+-  defp body(_, _, _), do: raise("synthetic provider request exceeded its declared length")
++  defp validate(headers, bytes, turn) do
++    [request_line | _] = String.split(headers, "\r\n")
++    payload = Jason.decode!(bytes)
++
++    if request_line in ["POST /api/chat HTTP/1.1", "POST /api/chat HTTP/1.0"] and
++         payload["model"] == "synthetic" and is_list(payload["messages"]) and
++         Enum.any?(payload["messages"], fn message ->
++           message["role"] == "user" and message["content"] == prompt(turn)
++         end),
++       do: :ok,
++       else: {:error, :invalid_request}
++  end
+ end
+--- a/dev/knowledge/native_notes_integrated.ex
++++ b/dev/knowledge/native_notes_integrated.ex
+@@ -261,13 +261,45 @@
+           {:synthetic_provider_request, ^turn, _, _, false} ->
+             flunk("synthetic request omitted every seeded reference")
+ 
++          {:synthetic_provider_failure, ^turn, stage} ->
++            flunk(
++              "synthetic provider fixture failed at #{stage}; inspect the unresolved turn and do not replay"
++            )
++
++          {:DOWN, ref, :process, pid, reason}
++          when ref == server.ref and pid == server.pid and reason != :normal ->
++            flunk(
++              "synthetic provider fixture exited unexpectedly; inspect the unresolved turn and do not replay"
++            )
++
+           {:ipse, ^session, {:done, status}} ->
+             flunk("session stopped before request: #{inspect(status)}")
+         after
+           120_000 -> flunk("synthetic provider request not confirmed; do not replay")
+         end
+ 
+-      assert_receive {:ipse, ^session, {:done, :ok}}, 30_000
++      receive do
++        {:ipse, ^session, {:done, :ok}} ->
++          :ok
++
++        {:ipse, ^session, {:done, status}} ->
++          flunk("session did not complete: #{inspect(status)}")
++
++        {:synthetic_provider_failure, ^turn, stage} ->
++          flunk(
++            "synthetic provider fixture failed at #{stage}; inspect the unresolved turn and do not replay"
++          )
++
++        {:DOWN, ref, :process, pid, reason}
++        when ref == server.ref and pid == server.pid and reason != :normal ->
++          flunk(
++            "synthetic provider fixture exited unexpectedly; inspect the unresolved turn and do not replay"
++          )
++      after
++        30_000 ->
++          flunk("synthetic turn did not complete; inspect the unresolved turn and do not replay")
++      end
++
+       assert {:ok, events} = Journal.load(state_dir, id)
+       inputs = Enum.filter(events, &(&1["type"] == "input_received"))
+       dispatches = Enum.filter(events, &(&1["type"] == "inference_dispatch_intent"))
+--- a/dev/knowledge/native_notes_integrated_full.ex
++++ b/dev/knowledge/native_notes_integrated_full.ex
+@@ -249,13 +249,45 @@
+           {:synthetic_provider_request, ^turn, _, _, false} ->
+             flunk("synthetic request omitted every seeded reference")
+ 
++          {:synthetic_provider_failure, ^turn, stage} ->
++            flunk(
++              "synthetic provider fixture failed at #{stage}; inspect the unresolved turn and do not replay"
++            )
++
++          {:DOWN, ref, :process, pid, reason}
++          when ref == server.ref and pid == server.pid and reason != :normal ->
++            flunk(
++              "synthetic provider fixture exited unexpectedly; inspect the unresolved turn and do not replay"
++            )
++
+           {:ipse, ^session, {:done, status}} ->
+             flunk("session stopped before request: #{inspect(status)}")
+         after
+           120_000 -> flunk("synthetic provider request not confirmed; do not replay")
+         end
+ 
+-      assert_receive {:ipse, ^session, {:done, :ok}}, 30_000
++      receive do
++        {:ipse, ^session, {:done, :ok}} ->
++          :ok
++
++        {:ipse, ^session, {:done, status}} ->
++          flunk("session did not complete: #{inspect(status)}")
++
++        {:synthetic_provider_failure, ^turn, stage} ->
++          flunk(
++            "synthetic provider fixture failed at #{stage}; inspect the unresolved turn and do not replay"
++          )
++
++        {:DOWN, ref, :process, pid, reason}
++        when ref == server.ref and pid == server.pid and reason != :normal ->
++          flunk(
++            "synthetic provider fixture exited unexpectedly; inspect the unresolved turn and do not replay"
++          )
++      after
++        30_000 ->
++          flunk("synthetic turn did not complete; inspect the unresolved turn and do not replay")
++      end
++
+       assert {:ok, events} = Journal.load(state_dir, id)
+       inputs = Enum.filter(events, &(&1["type"] == "input_received"))
+       dispatches = Enum.filter(events, &(&1["type"] == "inference_dispatch_intent"))
+--- /dev/null
++++ b/test/dev/knowledge/synthetic_ollama_lifecycle_test.exs
+@@ -0,0 +1,110 @@
++Code.require_file("../../../dev/fixtures/synthetic_ollama.exs", __DIR__)
++
++defmodule Ipse.Development.SyntheticOllamaLifecycleTest do
++  use ExUnit.Case, async: false
++  alias Ipse.Development.SyntheticOllama
++
++  defp available_port do
++    {:ok, socket} = :gen_tcp.listen(0, [:binary, active: false, ip: {127, 0, 0, 1}])
++    {:ok, {_, port}} = :inet.sockname(socket)
++    :ok = :gen_tcp.close(socket)
++    port
++  end
++
++  defp connect(port) do
++    :gen_tcp.connect({127, 0, 0, 1}, port, [:binary, active: false], 1_000)
++  end
++
++  defp post(socket, body) do
++    :gen_tcp.send(
++      socket,
++      "POST /api/chat HTTP/1.1\r\ncontent-length: #{byte_size(body)}\r\n\r\n" <> body
++    )
++  end
++
++  test "valid loopback request is observed once and the listener closes" do
++    port = available_port()
++    {:ok, task} = SyntheticOllama.start(port, self(), 1, 1)
++    {:ok, socket} = connect(port)
++
++    body =
++      Jason.encode!(%{
++        "model" => "synthetic",
++        "messages" => [
++          %{"role" => "user", "content" => SyntheticOllama.prompt(1)},
++          %{"role" => "user", "content" => "Native capacity source synthetic"}
++        ]
++      })
++
++    assert :ok = post(socket, body)
++    assert_receive {:synthetic_provider_request, 1, digest, bytes, true}, 2_000
++    assert digest == Ipse.JSON.sha256(body) and bytes == byte_size(body)
++    assert {:ok, response} = :gen_tcp.recv(socket, 0, 2_000)
++    assert response =~ "HTTP/1.1 200 Fixture"
++    assert :ok = Task.await(task, 2_000)
++    assert {:error, :econnrefused} = connect(port)
++    :gen_tcp.close(socket)
++  end
++
++  test "malformed request reports a typed fixture error without killing its owner" do
++    port = available_port()
++    {:ok, task} = SyntheticOllama.start(port, self(), 1, 1)
++    {:ok, socket} = connect(port)
++    assert :ok = post(socket, "{")
++    assert_receive {:synthetic_provider_failure, 1, :invalid_request}, 2_000
++    assert {:error, {:synthetic_provider_failure, 1, :invalid_request}} = Task.await(task, 2_000)
++    assert Process.alive?(self())
++    refute_receive {:synthetic_provider_request, _, _, _, _}, 0
++    assert {:error, :econnrefused} = connect(port)
++    :gen_tcp.close(socket)
++  end
++
++  test "unexpected listener death is monitored rather than linked to its owner" do
++    port = available_port()
++    {:ok, task} = SyntheticOllama.start(port, self(), 1, 1)
++    Process.exit(task.pid, :kill)
++    assert_receive {:DOWN, ref, :process, pid, :killed}, 2_000
++    assert ref == task.ref and pid == task.pid
++    assert Process.alive?(self())
++    assert {:error, :econnrefused} = connect(port)
++  end
++
++  test "explicit shutdown closes the listener" do
++    port = available_port()
++    {:ok, task} = SyntheticOllama.start(port, self(), 1, 1)
++    assert Task.shutdown(task, :brutal_kill) == nil
++    assert {:error, :econnrefused} = connect(port)
++  end
++
++  test "normal owner exit stops the listener even with a partial request" do
++    port = available_port()
++    parent = self()
++
++    {owner, owner_monitor} =
++      spawn_monitor(fn ->
++        {:ok, task} = SyntheticOllama.start(port, self(), 1, 1)
++        send(parent, {:listener_ready, self(), task.pid})
++        receive do: (:stop -> :ok)
++      end)
++
++    assert_receive {:listener_ready, ^owner, listener}, 2_000
++    listener_monitor = Process.monitor(listener)
++    {:ok, socket} = connect(port)
++    assert :ok = :gen_tcp.send(socket, "POST /api/chat HTTP/1.1\r\ncontent-length: 10\r\n")
++    send(owner, :stop)
++    assert_receive {:DOWN, ^owner_monitor, :process, ^owner, :normal}, 2_000
++    assert_receive {:DOWN, ^listener_monitor, :process, ^listener, :normal}, 2_000
++    assert {:error, :econnrefused} = connect(port)
++    :gen_tcp.close(socket)
++  end
++
++  @tag timeout: 40_000
++  test "an idle listener outlives the old 30 second accept deadline" do
++    port = available_port()
++    {:ok, task} = SyntheticOllama.start(port, self(), 1, 1)
++    assert Task.yield(task, 30_500) == nil
++    assert Process.alive?(self()) and Process.alive?(task.pid)
++    assert Task.shutdown(task, :brutal_kill) == nil
++    assert {:error, :econnrefused} = connect(port)
++  end
++end

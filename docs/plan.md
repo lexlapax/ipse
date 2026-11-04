@@ -169,6 +169,10 @@ following limits until the end-to-end paths are qualified:
    [refused before any recorded reservation or inference](archive/2026-10-26-p30-p31-implementation/pilot-local-refusal-20261103.md);
    the observed account-directory mode explains the refusal under the tested
    code, though the generic error did not identify its failing check.
+   The [synthetic workload listener repair](archive/2026-10-26-p30-p31-implementation/workload-listener-20261103.md)
+   removes a fixture-only idle timeout, with local lifecycle and one unpopulated
+   Session compatibility check. It does not resolve the populated recall failure
+   or complete an integrated day.
    Workload tooling can advance alongside the notes journey; the completed
    integrated workload depends on the Session and recall behavior it exercises.
 3. **Documents and local retrieval — P31C1b/D1/F.** Independently finish document

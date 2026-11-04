@@ -1359,6 +1359,14 @@ OS-managed app containers.
 
 ## Diagnose with synthetic data
 
+For the integrated notes workload's loopback provider, run
+`mix test test/dev/knowledge/synthetic_ollama_lifecycle_test.exs`. The listener
+monitors its owner while idle and while reading a request, reports bounded fixture
+failures, and closes on owner loss. Its request-read limit is 30 seconds total;
+the workload runner retains its separate 120-second request wait and 30-second
+completion wait. An interrupted turn remains unknown and is never replayed.
+These synthetic controls do not establish populated recall or a completed day.
+
 Use observability privacy/pressure fixtures and compare callback failure with real
 cleanup against interrupted trace catalog publication. For argument-free dispatcher
 sampling:

@@ -249,13 +249,45 @@ defmodule Ipse.Development.NativeNotesIntegratedFull do
           {:synthetic_provider_request, ^turn, _, _, false} ->
             flunk("synthetic request omitted every seeded reference")
 
+          {:synthetic_provider_failure, ^turn, stage} ->
+            flunk(
+              "synthetic provider fixture failed at #{stage}; inspect the unresolved turn and do not replay"
+            )
+
+          {:DOWN, ref, :process, pid, reason}
+          when ref == server.ref and pid == server.pid and reason != :normal ->
+            flunk(
+              "synthetic provider fixture exited unexpectedly; inspect the unresolved turn and do not replay"
+            )
+
           {:ipse, ^session, {:done, status}} ->
             flunk("session stopped before request: #{inspect(status)}")
         after
           120_000 -> flunk("synthetic provider request not confirmed; do not replay")
         end
 
-      assert_receive {:ipse, ^session, {:done, :ok}}, 30_000
+      receive do
+        {:ipse, ^session, {:done, :ok}} ->
+          :ok
+
+        {:ipse, ^session, {:done, status}} ->
+          flunk("session did not complete: #{inspect(status)}")
+
+        {:synthetic_provider_failure, ^turn, stage} ->
+          flunk(
+            "synthetic provider fixture failed at #{stage}; inspect the unresolved turn and do not replay"
+          )
+
+        {:DOWN, ref, :process, pid, reason}
+        when ref == server.ref and pid == server.pid and reason != :normal ->
+          flunk(
+            "synthetic provider fixture exited unexpectedly; inspect the unresolved turn and do not replay"
+          )
+      after
+        30_000 ->
+          flunk("synthetic turn did not complete; inspect the unresolved turn and do not replay")
+      end
+
       assert {:ok, events} = Journal.load(state_dir, id)
       inputs = Enum.filter(events, &(&1["type"] == "input_received"))
       dispatches = Enum.filter(events, &(&1["type"] == "inference_dispatch_intent"))
