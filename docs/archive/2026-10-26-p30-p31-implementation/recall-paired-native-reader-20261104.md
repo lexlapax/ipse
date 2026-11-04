@@ -1,5 +1,11 @@
 # Root-checked paired literal reads — 2026-11-04
 
+Historical paired-reader evidence. The later
+[coalesced notes Worker-input reader](coalesced-worker-readview-20261104.md)
+supersedes the notes fast path while retaining pairs for genuine initial capacity
+fallback and the existing document route. This record preserves its original
+qualification and failed retained reads.
+
 This checkpoint records a bounded worker-observation optimization, its focused
 controls and a private storage comparison. It does **not** qualify retained
 2,000-note recall, a complete populated day, annual throughput or P31 completion.

@@ -233,11 +233,16 @@ defmodule Ipse.Extension.Collection do
     do: Profile.run(profile, fn -> open_view(root, project) end)
 
   @doc "Open one bounded owner-task index cache after full protected validation; no authority is granted."
-  def open_view(root, project) do
+  def open_view(root, project), do: open_view(root, project, false)
+
+  @doc false
+  def open_view_classified(root, project), do: open_view(root, project, true)
+
+  defp open_view(root, project, classified?) do
     with false <- Process.get(@lock_key, false) != false,
          true <- is_binary(root) and Path.type(root) == :absolute and JSON.sha256?(project),
-         {:ok, view} <- ReadView.begin() do
-      install_view(root, project, view)
+         {:ok, view} <- if(classified?, do: ReadView.begin_classified(), else: ReadView.begin()) do
+      install_view(root, project, view, classified?)
     else
       {:error, _} = error -> error
       _ -> {:error, :invalid_collection_view_request}
@@ -246,7 +251,7 @@ defmodule Ipse.Extension.Collection do
     _ -> @error
   end
 
-  defp install_view(root, project, view) do
+  defp install_view(root, project, view, classified?) do
     profile = Profile.selected()
 
     try do
@@ -257,7 +262,12 @@ defmodule Ipse.Extension.Collection do
 
       case result do
         {:ok, cache} ->
-          case ReadView.install(view, cache) do
+          installed =
+            if classified?,
+              do: ReadView.install_classified(view, cache),
+              else: ReadView.install(view, cache)
+
+          case installed do
             :ok ->
               {:ok, view}
 

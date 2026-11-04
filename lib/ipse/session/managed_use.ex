@@ -1221,7 +1221,7 @@ defmodule Ipse.Session.ManagedUse do
     else
       with {:ok, specs} <- v4_specs(c, pending),
            {:ok, records} <-
-             ObservedRead.managed_record_pairs(
+             ObservedRead.managed_records_coalesced(
                root,
                pin["namespace"],
                Enum.map(specs, fn {_dependency, request, recipe} -> {request, recipe} end),

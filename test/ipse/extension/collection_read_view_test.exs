@@ -22,6 +22,68 @@ defmodule Ipse.Extension.CollectionReadViewTest do
     %{parent: parent, root: Path.join(parent, "collections"), project: JSON.sha256("view")}
   end
 
+  @tag :coalesced_raw_bound
+  test "eight maximum notes values with maximum keys fit the unchanged raw reply bound", c do
+    keys = for n <- 1..8, do: "maximum." <> String.pad_leading(Integer.to_string(n), 88, "0")
+    value = %{"text" => String.duplicate("x", 6144 - byte_size(Jason.encode!(%{"text" => ""})))}
+    assert byte_size(Jason.encode!(value)) == 6144
+    assert Enum.all?(keys, &(byte_size(&1) == 96))
+    assert {:ok, _} = commit(c, 0, Enum.map(keys, &change(&1, 0, value)))
+    assert {:ok, view} = C.open_view(c.root, c.project)
+    assert {:ok, result} = get(view, keys)
+    assert result["keys"] === keys
+    assert Enum.all?(result["records"], &(&1["value"] === value))
+    assert byte_size(Jason.encode!(result)) <= 65_536
+    assert :sys.get_state(view.server).observations == 8
+    assert {:error, _} = get(view, keys ++ ["ninth"])
+    assert :ok = C.close_view(view)
+  end
+
+  @tag :coalesced_capacity
+  test "classified cache capacity separates valid size from invalid refs and native record count",
+       c do
+    view = seed(c)
+    cache = :sys.get_state(view.server).cache
+    assert :ok = C.close_view(view)
+    reference = cache["records"]["a"]
+
+    records =
+      Map.new(1..8192, fn n ->
+        key = "padding." <> String.pad_leading(Integer.to_string(n), 88, "0")
+        {key, Map.put(reference, "key", key)}
+      end)
+
+    large = Map.put(cache, "records", records)
+    assert {:ok, view} = ReadView.begin_classified()
+    assert {:error, :collection_view_index_capacity} = ReadView.install_classified(view, large)
+    await_dead(view.server)
+    assert {:ok, view} = ReadView.begin()
+    assert {:error, :collection_view_capacity} = ReadView.install(view, large)
+    await_dead(view.server)
+
+    assert {:ok, view} = ReadView.begin_classified()
+    invalid = put_in(large, ["records", "padding.bad"], Map.put(reference, "sha256", "bad"))
+    # Exactly 8192 entries, so malformed refs cannot masquerade as size capacity.
+    invalid = update_in(invalid["records"], &Map.delete(&1, elem(hd(Map.to_list(records)), 0)))
+    assert {:error, :collection_view_capacity} = ReadView.install_classified(view, invalid)
+    await_dead(view.server)
+
+    assert {:ok, view} = ReadView.begin_classified()
+    over = put_in(large, ["records", "extra"], Map.put(reference, "key", "extra"))
+    assert {:error, :collection_view_records_capacity} = ReadView.install_classified(view, over)
+    await_dead(view.server)
+
+    assert {:ok, view} = ReadView.begin_classified()
+
+    assert {:error, :collection_view_capacity} =
+             ReadView.install_classified(
+               view,
+               Map.put(large, "root_sha256", String.duplicate("0", 64))
+             )
+
+    await_dead(view.server)
+  end
+
   defp change(key, revision, value),
     do: %{"key" => key, "expected_revision" => revision, "value" => value}
 

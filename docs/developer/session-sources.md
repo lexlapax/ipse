@@ -690,25 +690,47 @@ input purpose. Ordinary effect approval remains separate.
 Within each of its two independent protected observations, the Worker-input
 path groups version-4 literal dependencies in their original relative order,
 including those separated by other versions. It requests at most 32 at a time,
-using `ObservedRead.managed_record_pairs/5` to read two literals per actual native
-Collection owner. Each pair closes before the next; all pair roots must agree.
-It closes these scopes before observing other versions and reconstructs the
-complete result and proof union in the original dependency order. Every selected
-read still checks the exact current native root and each record's signed metadata,
-recipe and source policy. The second observation reacquires current authority
-and must reproduce the first; the final retained Collection owner must match
-every observed root before the input can be delivered. Other managed-use paths
-retain their per-dependency observations.
+using `ObservedRead.managed_records_coalesced/5`. For the notes profile, this
+opens one bounded Collection read view for that pass. It reads the selected
+literal, format and override values in batches of eight, plans live and anchor
+neighbors from sealed historical references, then freshly reads each distinct
+selected page. Planning establishes no current authority. Every value batch must
+have the same native-checked root and summary; the unchanged managed-record
+reader authenticates each record's metadata, recipe and source policy. A final
+fresh format/root read and confirmed view close precede the returned observations.
+
+The view is local to one pass. It retains at most 160 raw records and bounds the
+sum of encoded batch-reply sizes to twenty 64-KiB replies. At most 32 literals
+consume at most 417 of the existing 512 view units, within its unchanged
+60-second lifetime. No authentication fact is cached across passes or requests.
+The second observation reacquires current
+authority and must reproduce the first. Original source ownership is retained
+between those observations, outside Collection ownership; the final retained
+Collection owner must match every observed root before the input can be delivered.
+The complete result and proof union remain in their original dependency order.
+The view closes before other versions are observed. Other dependency versions
+and managed-use paths retain their existing observations.
+
+The document profile uses the existing paired native reader. Notes use that same
+reader only when the initial view open reports a validated index above its 4-MiB
+encoded cache limit or all sixteen view slots genuinely occupied. This fallback
+occurs before any view borrow or domain-auth verification. More than 8,192
+references, invalid metadata, owner loss, expiry and failures after borrowing
+refuse; they cannot select a fallback. Ordinary `Collection.open_view/2` retains
+its generic capacity error; the trusted adapter uses the internal classified
+entry point. Notes pairs retain their separate native 32-unit ceiling: two
+13-unit literal reads fit within it. Documents retain their profile-specific
+bounds. Each pair closes before the next; all pair roots must agree. The failed
+initial open adds work, so fallback does not promise identical timing or failure
+behavior.
 
 Grouping changes internal read and failure order while preserving current-authority
-checks. Each pair retains the native 32-unit ceiling: two 13-unit literal reads
-fit within it. This path uses native Blocks limits and does not use ReadView's
-4-MiB encoded cache or the document reader's 512-unit allowance. The
-DomainAuth capability remains shared across all records and versions in a
-protected pass, with its existing 128-verification, 1-MiB input and five-second
-limits. The separate 128-source-owner bound does not imply that 128 signed
-records fit within those limits. Owner loss or unconfirmed cleanup still
-withholds the input; no batch or cached view grants a later use.
+checks. The DomainAuth capability remains shared across all records and versions
+in a protected pass, with its existing 128-verification, 1-MiB input and five-second
+limits. Worker and current-use deadlines are not renewed. The separate
+128-source-owner bound does not imply that 128 signed records fit within those
+limits. Owner loss or unconfirmed cleanup still withholds the input; no batch or
+cached view grants a later use.
 
 After pipe settlement, every source/control scope must close and Writer must
 thaw before Session commits `worker_input_result: delivered` and the publisher

@@ -4552,6 +4552,34 @@ defmodule Ipse.Extension.CollectionNormalizerV3IntegrationTest do
                assert {:ok, expected} = view_result
                assert {:ok, ^expected} = pair_result
 
+               {{:ok, coalesced}, coalesced_quota} =
+                 count_quota_calls(fn ->
+                   ObservedRead.managed_records_coalesced(
+                     c.root,
+                     c.namespace,
+                     requests,
+                     cap,
+                     catalog
+                   )
+                 end)
+
+               assert coalesced === expected
+               assert coalesced_quota == 4 and coalesced_quota < view_quota
+
+               IO.puts(
+                 "COALESCED_THREE_NATIVE_QUOTA " <>
+                   Jason.encode!(%{old: view_quota, new: coalesced_quota})
+               )
+
+               assert {:error, :collection_observation_refused} =
+                        ObservedRead.managed_records_coalesced(
+                          c.root,
+                          c.namespace,
+                          List.duplicate(hd(requests), 33),
+                          cap,
+                          catalog
+                        )
+
                for {{request, recipe}, expected} <- Enum.zip(requests, expected) do
                  assert {:ok, ^expected} =
                           ObservedRead.managed_record(
@@ -4795,6 +4823,665 @@ defmodule Ipse.Extension.CollectionNormalizerV3IntegrationTest do
              end)
 
     assert paired === observations
+
+    assert {:ok, coalesced} =
+             Identity.with_existing_domain_auth(c.home, c.cwd, c.binding, domain, fn cap,
+                                                                                     catalog ->
+               {{:ok, first}, quota} =
+                 count_quota_calls(fn ->
+                   ObservedRead.managed_records_coalesced(
+                     c.root,
+                     c.namespace,
+                     Enum.take(requests, 32),
+                     cap,
+                     catalog
+                   )
+                 end)
+
+               assert quota <= 22 and quota < 161
+
+               {:ok, last} =
+                 ObservedRead.managed_records_coalesced(
+                   c.root,
+                   c.namespace,
+                   Enum.drop(requests, 32),
+                   cap,
+                   catalog
+                 )
+
+               assert {{:error, :collection_observation_refused}, 0} =
+                        count_quota_calls(fn ->
+                          ObservedRead.managed_records_coalesced(
+                            c.root,
+                            c.namespace,
+                            requests,
+                            cap,
+                            catalog
+                          )
+                        end)
+
+               IO.puts(
+                 "COALESCED_DISTINCT33 " <>
+                   Jason.encode!(%{first: length(first), tail: length(last), native_quota: quota})
+               )
+
+               {:ok, first ++ last}
+             end)
+
+    assert coalesced === observations
+  end
+
+  @tag :coalesced_native_capacity
+  @tag timeout: 180_000
+  test "a genuine valid native index above the ReadView byte envelope uses exact paired fallback",
+       c do
+    opts = options(1, 0)
+    assert {:ok, _} = publish(c, opts, scope(c), first: true)
+    request = {%{"op" => "get_record", "key" => hd(opts.request["changes"])["key"]}, opts.recipe}
+    {:ok, initial_view} = C.open_view(c.root, c.namespace)
+    initial_refs = map_size(:sys.get_state(initial_view.server).cache["records"])
+    assert :ok = C.close_view(initial_view)
+    assert initial_refs + 7800 <= 8192
+    seed_started = System.monotonic_time(:millisecond)
+    seed_deadline = seed_started + 120_000
+    # Long valid keys reach encoded-cache capacity with tiny shared object
+    # values; refs and native decoded index remain within their existing caps.
+    for {numbers, i} <- Enum.with_index(Enum.chunk_every(Enum.to_list(1..7800), 32)) do
+      assert System.monotonic_time(:millisecond) < seed_deadline
+
+      changes =
+        Enum.map(numbers, fn n ->
+          key = "padding." <> String.pad_leading(Integer.to_string(n), 88, "0")
+          assert byte_size(key) == 96
+          %{"key" => key, "expected_revision" => 0, "value" => %{"text" => "tiny"}}
+        end)
+
+      assert {:ok, _} =
+               C.execute(
+                 c.root,
+                 c.namespace,
+                 %{
+                   "op" => "commit",
+                   "expected_generation" => 1 + i,
+                   "advance_floor" => false,
+                   "changes" => changes
+                 },
+                 Usage.id()
+               )
+    end
+
+    seed_ms = System.monotonic_time(:millisecond) - seed_started
+    # This invokes the real native view_open/index load and actual install.
+    assert {{:error, :collection_view_index_capacity}, capacity_calls} =
+             count_storage_calls(fn -> C.open_view_classified(c.root, c.namespace) end)
+
+    assert capacity_calls.load_pointer == 1 and capacity_calls.install == 1
+    assert capacity_calls.quota == 1
+    assert [] == Registry.lookup(Ipse.Registry, {C.ReadView, self()})
+    assert {:error, :collection_view_capacity} = C.open_view(c.root, c.namespace)
+
+    domain = Map.take(scope(c, false), [:namespace, :format])
+
+    assert {:ok, expected} =
+             Identity.with_existing_domain_auth(c.home, c.cwd, c.binding, domain, fn cap,
+                                                                                     catalog ->
+               ObservedRead.managed_record_pairs(c.root, c.namespace, [request], cap, catalog)
+             end)
+
+    assert {:ok, {actual, fallback_calls}} =
+             Identity.with_existing_domain_auth(c.home, c.cwd, c.binding, domain, fn cap,
+                                                                                     catalog ->
+               assert {{:ok, actual}, counts} =
+                        count_storage_calls(fn ->
+                          ObservedRead.managed_records_coalesced(
+                            c.root,
+                            c.namespace,
+                            [request],
+                            cap,
+                            catalog
+                          )
+                        end)
+
+               assert counts.load == 1 and counts.load_pointer == 2
+               assert counts.install == 1 and counts.quota == 2
+               {:ok, {actual, counts}}
+             end)
+
+    assert actual === expected
+    assert length(actual) == 1
+    assert [] == Registry.lookup(Ipse.Registry, {C.ReadView, self()})
+
+    IO.puts(
+      "COALESCED_NATIVE_INDEX_CAPACITY " <>
+        Jason.encode!(%{
+          padding_records: 7800,
+          references: initial_refs + 7800,
+          native_record_limit: 8192,
+          encoded_cache_lower_bound_exclusive: 4_194_304,
+          seed_ms: seed_ms,
+          actual_native_view_open_and_install: true,
+          capacity_calls: capacity_calls,
+          fallback_calls: fallback_calls,
+          exact_observation_and_root_equal: true,
+          no_input_session_provider_or_retained_access: true
+        })
+    )
+  end
+
+  @tag :coalesced_large_literals
+  test "coalesced full-size source quotes preserve exact observations across eight-key reads",
+       c do
+    opts =
+      for n <- 1..8 do
+        opts = options(n, n - 1)
+        [source] = opts.verified_sources
+        quote = String.pad_trailing("synthetic long literal #{n}: ", 1024, "x")
+
+        source =
+          source
+          |> Map.put("quote", quote)
+          |> Map.put("quote_sha256", JSON.sha256(quote))
+          |> Map.put("content_sha256", JSON.sha256(quote))
+          |> Map.put("end_byte", 1024)
+
+        {:ok, key, value} =
+          Records.capture(
+            %{
+              "text" => quote,
+              "category" => "ordinary",
+              "reason" => "trusted long source",
+              "event_at_ms" => nil
+            },
+            source,
+            10 * 86_400_000
+          )
+
+        opts = %{
+          opts
+          | verified_sources: [source],
+            request:
+              Map.put(opts.request, "changes", [
+                %{"key" => key, "expected_revision" => 0, "value" => value}
+              ])
+        }
+
+        assert {:ok, _} = publish(c, opts, scope(c, n == 1), first: n == 1)
+        opts
+      end
+
+    requests =
+      Enum.map(
+        opts,
+        &{%{"op" => "get_record", "key" => hd(&1.request["changes"])["key"]}, &1.recipe}
+      )
+
+    assert {:ok, _} =
+             Identity.with_existing_domain_auth(
+               c.home,
+               c.cwd,
+               c.binding,
+               Map.take(scope(c, false), [:namespace, :format]),
+               fn cap, catalog ->
+                 assert {:ok, expected} =
+                          ObservedRead.managed_record_pairs(
+                            c.root,
+                            c.namespace,
+                            requests,
+                            cap,
+                            catalog
+                          )
+
+                 assert {:ok, ^expected} =
+                          ObservedRead.managed_records_coalesced(
+                            c.root,
+                            c.namespace,
+                            requests,
+                            cap,
+                            catalog
+                          )
+
+                 {:ok, expected}
+               end
+             )
+  end
+
+  @tag :coalesced_populated
+  test "coalesced and paired 32 literals match at a populated two-thousand-entry index", c do
+    options =
+      for n <- 1..33 do
+        opts = options(n, n - 1)
+        assert {:ok, _} = publish(c, opts, scope(c, n == 1), first: n == 1)
+        opts
+      end
+
+    # Ordinary trusted backend entries preserve the real signed metadata and
+    # source bindings. This is storage evidence, not a Session/source authority test.
+    for {numbers, i} <- Enum.with_index(Enum.chunk_every(Enum.to_list(1..2000), 32)) do
+      assert {:ok, _} =
+               C.execute(
+                 c.root,
+                 c.namespace,
+                 %{
+                   "op" => "commit",
+                   "expected_generation" => 33 + i,
+                   "advance_floor" => false,
+                   "changes" =>
+                     Enum.map(numbers, fn n ->
+                       %{
+                         "key" => "padding." <> String.pad_leading(Integer.to_string(n), 80, "0"),
+                         "expected_revision" => 0,
+                         "value" => %{"text" => "synthetic padding"}
+                       }
+                     end)
+                 },
+                 Usage.id()
+               )
+    end
+
+    requests =
+      options
+      |> Enum.reverse()
+      |> Enum.take(32)
+      |> Enum.map(fn opts ->
+        {%{"op" => "get_record", "key" => hd(opts.request["changes"])["key"]}, opts.recipe}
+      end)
+
+    domain = Map.take(scope(c, false), [:namespace, :format])
+
+    run = fn route ->
+      Identity.with_existing_domain_auth(c.home, c.cwd, c.binding, domain, fn cap, catalog ->
+        {duration, {result, counts}} =
+          :timer.tc(fn ->
+            count_storage_calls(fn ->
+              apply(ObservedRead, route, [c.root, c.namespace, requests, cap, catalog])
+            end)
+          end)
+
+        assert {:ok, records} = result
+        {:ok, %{records: records, duration_us: duration, calls: counts}}
+      end)
+    end
+
+    assert {:ok, paired} = run.(:managed_record_pairs)
+    assert {:ok, coalesced} = run.(:managed_records_coalesced)
+    assert paired.records === coalesced.records
+    assert length(coalesced.records) == 32
+    assert paired.calls.load == 16
+    assert coalesced.calls.load == 0
+    assert coalesced.calls.load_pointer == 1
+    assert paired.calls.load_pointer == 16
+    assert paired.calls.quota == 16
+    assert coalesced.calls.quota < paired.calls.quota
+    # A timing receipt is informative, never a flaky speed assertion.
+    IO.puts(
+      "COALESCED_POPULATED_STORAGE " <>
+        Jason.encode!(%{
+          extra_entries: 2000,
+          literals: 32,
+          paired: Map.delete(paired, :records),
+          coalesced: Map.delete(coalesced, :records),
+          exact_observations: true,
+          component_instrumented: true,
+          session_or_annual_qualification: false
+        })
+    )
+  end
+
+  defp count_storage_calls(fun) do
+    parent = self()
+
+    collector =
+      spawn(fn ->
+        loop = fn loop, counts ->
+          receive do
+            {:trace, _, :call, {Ipse.Runner.Transaction, :quota, 3}} ->
+              loop.(loop, Map.update!(counts, :quota, &(&1 + 1)))
+
+            {:trace, _, :call, {C.ReadView, :install_classified, 2}} ->
+              loop.(loop, Map.update!(counts, :install, &(&1 + 1)))
+
+            {:trace, _, :call, {C, :load_pointer, 4}} ->
+              loop.(loop, Map.update!(counts, :load_pointer, &(&1 + 1)))
+
+            {:trace, _, :call, {C, :load, 3}} ->
+              loop.(loop, Map.update!(counts, :load, &(&1 + 1)))
+
+            {:count, caller} ->
+              send(caller, {:storage_counts, counts})
+              loop.(loop, counts)
+
+            :stop ->
+              :ok
+
+            _ ->
+              loop.(loop, counts)
+          end
+        end
+
+        loop.(loop, %{quota: 0, load: 0, load_pointer: 0, install: 0})
+      end)
+
+    session = :trace.session_create(:coalesced_storage_counter, collector, [])
+
+    try do
+      1 = :trace.function(session, {Ipse.Runner.Transaction, :quota, 3}, true, [:local])
+      1 = :trace.function(session, {C, :load, 3}, true, [:local])
+      1 = :trace.function(session, {C, :load_pointer, 4}, true, [:local])
+      1 = :trace.function(session, {C.ReadView, :install_classified, 2}, true, [:local])
+      1 = :trace.process(session, parent, true, [:call, :arity, :set_on_spawn])
+      result = fun.()
+      1 = :trace.process(session, parent, false, [:call, :arity, :set_on_spawn])
+      delivered = :trace.delivered(session, :all)
+      assert_receive {:trace_delivered, :all, ^delivered}, 5_000
+      send(collector, {:count, parent})
+      assert_receive {:storage_counts, counts}, 5_000
+      {result, counts}
+    after
+      :trace.session_destroy(session)
+      send(collector, :stop)
+    end
+  end
+
+  @tag :coalesced_adversarial
+  test "coalesced reads refuse root changes before planning, after planning and before final check",
+       c do
+    for stage <- [:planning, :values, :final] do
+      coalesced_root_interposition(c, stage, :root)
+    end
+  end
+
+  @tag :coalesced_adversarial
+  test "coalesced selected bytes are reread after historical planning", c do
+    coalesced_root_interposition(c, :values, :object)
+  end
+
+  @tag :coalesced_adversarial
+  test "coalesced cache corruption cannot fall back to otherwise valid pairs", c do
+    opts = options(1, 0)
+    assert {:ok, _} = publish(c, opts, scope(c), first: true)
+    request = {%{"op" => "get_record", "key" => hd(opts.request["changes"])["key"]}, opts.recipe}
+    handler = {__MODULE__, make_ref()}
+    flag = :atomics.new(1, [])
+
+    :ok =
+      :telemetry.attach(
+        handler,
+        [:ipse, :extension, :collection, :view_read],
+        fn _, _, _, _ ->
+          if :atomics.compare_exchange(flag, 1, 0, 1) == :ok do
+            owner = Ipse.Session.Resources.file_effect_owner()
+            [{view, _}] = Registry.lookup(Ipse.Registry, {C.ReadView, owner})
+            :sys.replace_state(view, fn state -> %{state | header_seal: "corrupted"} end)
+          end
+        end,
+        nil
+      )
+
+    try do
+      assert {:error, :collection_observation_refused} =
+               Identity.with_existing_domain_auth(
+                 c.home,
+                 c.cwd,
+                 c.binding,
+                 Map.take(scope(c, false), [:namespace, :format]),
+                 fn cap, catalog ->
+                   assert {:ok, [_]} =
+                            ObservedRead.managed_record_pairs(
+                              c.root,
+                              c.namespace,
+                              [request],
+                              cap,
+                              catalog
+                            )
+
+                   ObservedRead.managed_records_coalesced(
+                     c.root,
+                     c.namespace,
+                     [request],
+                     cap,
+                     catalog
+                   )
+                 end
+               )
+
+      assert [] == Registry.lookup(Ipse.Registry, {C.ReadView, self()})
+    after
+      :telemetry.detach(handler)
+    end
+  end
+
+  @tag :coalesced_adversarial
+  test "genuine sixteen occupied view slots use the unchanged pair route before any borrow", c do
+    opts =
+      for n <- 1..3 do
+        opts = options(n, n - 1)
+        assert {:ok, _} = publish(c, opts, scope(c, n == 1), first: n == 1)
+        opts
+      end
+
+    requests =
+      Enum.map(
+        opts,
+        &{%{"op" => "get_record", "key" => hd(&1.request["changes"])["key"]}, &1.recipe}
+      )
+
+    parent = self()
+
+    holders =
+      for _ <- 1..16 do
+        spawn_monitor(fn ->
+          {:ok, view} = C.ReadView.begin()
+          send(parent, {:slot_ready, self()})
+
+          receive do
+            :close_slot -> assert :ok = C.ReadView.close(view)
+          after
+            20_000 -> flunk("slot fixture not released")
+          end
+        end)
+      end
+
+    try do
+      for {pid, _} <- holders, do: assert_receive({:slot_ready, ^pid}, 5_000)
+      assert {:error, :collection_view_slots_capacity} = C.ReadView.begin_classified()
+
+      assert {:ok, _} =
+               Identity.with_existing_domain_auth(
+                 c.home,
+                 c.cwd,
+                 c.binding,
+                 Map.take(scope(c, false), [:namespace, :format]),
+                 fn cap, catalog ->
+                   assert {:ok, expected} =
+                            ObservedRead.managed_record_pairs(
+                              c.root,
+                              c.namespace,
+                              requests,
+                              cap,
+                              catalog
+                            )
+
+                   assert {{:ok, ^expected}, 2} =
+                            count_quota_calls(fn ->
+                              ObservedRead.managed_records_coalesced(
+                                c.root,
+                                c.namespace,
+                                requests,
+                                cap,
+                                catalog
+                              )
+                            end)
+
+                   {:ok, expected}
+                 end
+               )
+    after
+      for {pid, _} <- holders, do: send(pid, :close_slot)
+      for {pid, ref} <- holders, do: assert_receive({:DOWN, ^ref, :process, ^pid, :normal}, 5_000)
+    end
+  end
+
+  defp coalesced_root_interposition(c, stage, mutation) do
+    # Each case uses an independent namespace; no failed operation is replayed.
+    c = %{
+      c
+      | namespace: JSON.sha256(c.namespace <> Atom.to_string(stage) <> Atom.to_string(mutation))
+    }
+
+    opts =
+      for n <- 1..2 do
+        opts = options(n, n - 1)
+        assert {:ok, _} = publish(c, opts, scope(c, n == 1), first: n == 1)
+        opts
+      end
+
+    requests =
+      Enum.map(
+        opts,
+        &{%{"op" => "get_record", "key" => hd(&1.request["changes"])["key"]}, &1.recipe}
+      )
+
+    handler = {__MODULE__, make_ref()}
+    flag = :atomics.new(1, [])
+    owner = self()
+
+    :ok =
+      :telemetry.attach(
+        handler,
+        [:ipse, :extension, :collection, :view_read],
+        &__MODULE__.install_coalesced_gate/4,
+        {owner, flag, stage}
+      )
+
+    task =
+      Task.async(fn ->
+        Identity.with_existing_domain_auth(
+          c.home,
+          c.cwd,
+          c.binding,
+          Map.take(scope(c, false), [:namespace, :format]),
+          fn cap, catalog ->
+            ObservedRead.managed_records_coalesced(c.root, c.namespace, requests, cap, catalog)
+          end
+        )
+      end)
+
+    try do
+      assert_receive {:coalesced_gate, view, cache}, 10_000
+
+      if mutation == :root do
+        assert {:ok, _} =
+                 C.execute(
+                   c.root,
+                   c.namespace,
+                   %{
+                     "op" => "commit",
+                     "expected_generation" => 2,
+                     "advance_floor" => false,
+                     "changes" => [
+                       %{
+                         "key" => "unrelated.root-change",
+                         "expected_revision" => 0,
+                         "value" => %{"text" => "changed"}
+                       }
+                     ]
+                   },
+                   Usage.id()
+                 )
+      else
+        state = %{cache: cache}
+
+        {_, ref} =
+          Enum.find(state.cache["records"], fn {key, _} ->
+            String.starts_with?(key, Ipse.Extension.Collection.ManagedPages.prefix(:live))
+          end)
+
+        path = Path.join([c.root, c.namespace, "objects", ref["sha256"] <> ".json"])
+        bytes = File.read!(path)
+        File.write!(path, String.duplicate(" ", byte_size(bytes)))
+      end
+
+      send(view, :release_coalesced)
+      assert {:error, :collection_observation_refused} = Task.await(task, 10_000)
+      assert [] == Registry.lookup(Ipse.Registry, {C.ReadView, task.pid})
+    after
+      :telemetry.detach(handler)
+      if Process.alive?(task.pid), do: Task.shutdown(task, :brutal_kill)
+    end
+  end
+
+  def install_coalesced_gate(_, _, _, {owner, flag, stage}) do
+    if :atomics.compare_exchange(flag, 1, 0, 1) == :ok do
+      effect_owner = Ipse.Session.Resources.file_effect_owner()
+      [{view, _}] = Registry.lookup(Ipse.Registry, {C.ReadView, effect_owner})
+      cache = :sys.get_state(view).cache
+      format = Ipse.Extension.Collection.ManagedPages.format_key()
+
+      gate = fn
+        count, {:in, {:"$gen_call", _, {_ref, {:borrow, request}}}}, _ ->
+          matches =
+            case stage do
+              :planning -> request["op"] == "neighbors"
+              :values -> request["op"] == "get_many" and request["keys"] != [format]
+              :final -> request["op"] == "get_many" and request["keys"] == [format]
+            end
+
+          if matches and count == 0 do
+            send(owner, {:coalesced_gate, self(), cache})
+            receive do: (:release_coalesced -> :ok)
+            1
+          else
+            count
+          end
+
+        count, _, _ ->
+          count
+      end
+
+      :ok = :sys.install(view, {gate, 0})
+    end
+  end
+
+  @tag :coalesced_adversarial
+  test "a lost native owner cannot return any coalesced literal", c do
+    opts = options(1, 0)
+    assert {:ok, _} = publish(c, opts, scope(c), first: true)
+    request = %{"op" => "get_record", "key" => hd(opts.request["changes"])["key"]}
+    domain = Map.take(scope(c, false), [:namespace, :format])
+    handler = {__MODULE__, make_ref()}
+    owner = self()
+
+    :ok =
+      :telemetry.attach(
+        handler,
+        [:ipse, :extension, :collection, :view_read],
+        &__MODULE__.batch_owner_fence/4,
+        owner
+      )
+
+    try do
+      assert {:unknown, :project_identity_lock_lost} =
+               Identity.with_existing_domain_auth(c.home, c.cwd, c.binding, domain, fn cap,
+                                                                                       catalog ->
+                 result =
+                   ObservedRead.managed_records_coalesced(
+                     c.root,
+                     c.namespace,
+                     [{request, opts.recipe}, {request, opts.recipe}],
+                     cap,
+                     catalog
+                   )
+
+                 send(owner, {:batch_inner_result, result})
+                 result
+               end)
+
+      assert_receive {:batch_owner_closed, true, true}
+      assert_receive {:batch_inner_result, {:error, :collection_observation_refused}}
+      assert [] == Registry.lookup(Ipse.Registry, {C.ReadView, owner})
+    after
+      :telemetry.detach(handler)
+    end
   end
 
   @tag :managed_v4_batch_fence

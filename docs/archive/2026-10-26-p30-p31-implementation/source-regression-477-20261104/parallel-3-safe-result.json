@@ -1,0 +1,21 @@
+{
+  "all_11_integrity_checks_passed": true,
+  "excluded": 1,
+  "executed": 588,
+  "failed": 0,
+  "group": "parallel-3",
+  "invalid": 0,
+  "matching_processes_after": 0,
+  "outer_summary": "Result: 588 passed, 1 skipped, 1 excluded",
+  "passed": 588,
+  "product_source_commit": "09f9beb4393fdbf45e5a79d8753a91c22571e248",
+  "raw_private_log_exported": false,
+  "run_pins_sha256": "fe960bc43edbcd8c8b644c3e8373f8fb146da6c950d610e930fffe1b05dd6ce4",
+  "runtime_build_commit": null,
+  "runtime_manifest_sha256": "d6aa925214d4924c10d65be4cc3b477ce2545a683eabcbb7e8f9fcca20190a8e",
+  "skipped": 1,
+  "source_commit": "9b1a4e5edd0879804524eab0f71f28bcfc414e33",
+  "source_manifest_sha256": "e414a352ed6dba44915c3d9036a6101b4d15fc37c7a787ebfd38a92d4e4e758c",
+  "status_sha256": "04004046234d2084fc6f414189983480d84d2ae63f97d6509777ab3dc6ce3a70",
+  "test_exit": 0
+}

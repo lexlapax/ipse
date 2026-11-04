@@ -903,6 +903,19 @@ logarithmic: integrity checks still examine up to 8,192 directory keys, and a
 neighbor request checks all matching-prefix references. No persisted secondary
 index or whole-store value scan is introduced.
 
+An internal classified open distinguishes a valid index exceeding the encoded
+cache limit from genuine exhaustion of all sixteen slots. The ordinary open
+keeps its generic capacity error. Invalid headers/references, an oversized
+reference count, ownership errors and stale or expired views do not qualify for
+a capacity fallback. The notes Worker-input adapter can use the existing paired
+reader only after one of those two initial capacity refusals, before any borrow
+or authentication. Its coalesced path plans historical neighbor references,
+freshly reads selected values under matching native roots and authenticates the
+result within each independent protected pass. See the
+[Worker-input flow](session-sources.md#deliver-a-managed-export-input-under-its-original-owners)
+for the distinct source owners, final root check and unchanged domain/Worker
+deadlines. These rules do not enlarge the separate 32-unit managed-read closure.
+
 `Collection.Directory` owns the pure selection and observation-cost rules. Its
 helpers grant no authority. The managed-publication callback uses the same
 selector and costs inside its separate 32-unit owner-bound closure, described
@@ -930,8 +943,10 @@ history. The first publication invalidates an absent view.
 
 Views grant no policy, source, Session or managed eligibility authority. Their
 owning adapter must check those facts and the active job at every dispatch.
-Cross-turn caching, managed recall, format adoption and withdrawal still require
-their reviewed integration. Exercise the pure selector and native view suites:
+The [managed Worker-input integration](session-sources.md#deliver-a-managed-export-input-under-its-original-owners)
+adds independent protected observations and original-source ownership to its
+notes view. It grants no cross-turn cache authority or generic format adoption
+or withdrawal permission. Exercise the pure selector and native view suites:
 
 ```sh
 mix test test/ipse/extension/collection_directory_test.exs test/ipse/extension/collection_neighbors_test.exs test/ipse/extension/collection_read_view_test.exs test/ipse/extension/collection_empty_read_view_test.exs

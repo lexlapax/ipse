@@ -1,0 +1,7 @@
+{
+  "group": "parallel-2",
+  "matching_processes": [],
+  "same_uid_unreadable_cmdlines": [],
+  "cmdline_environment_disclosed": false,
+  "bounded_roots": 2
+}

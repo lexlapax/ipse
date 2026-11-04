@@ -8848,7 +8848,7 @@ defmodule Ipse.Extension.ManagedCollectionCallSessionTest do
       spawn(fn ->
         collect = fn collect, count ->
           receive do
-            {:trace, _, :call, {ObservedRead, :managed_record_pairs, _}} ->
+            {:trace, _, :call, {ObservedRead, :managed_records_coalesced, _}} ->
               collect.(collect, Map.update!(count, :batches, &(&1 + 1)))
 
             {:trace, _, :call, {ObservedRead, :read, _}} ->
@@ -8874,7 +8874,7 @@ defmodule Ipse.Extension.ManagedCollectionCallSessionTest do
       end)
 
     try do
-      assert 1 == :erlang.trace_pattern({ObservedRead, :managed_record_pairs, 5}, true, [])
+      assert 1 == :erlang.trace_pattern({ObservedRead, :managed_records_coalesced, 5}, true, [])
       assert 1 == :erlang.trace_pattern({ObservedRead, :read, 3}, true, [])
       assert 1 == :erlang.trace(self(), true, [:call, :arity, :set_on_spawn, {:tracer, counter}])
 
@@ -8903,7 +8903,7 @@ defmodule Ipse.Extension.ManagedCollectionCallSessionTest do
       assert_receive {:managed_batch_calls, %{batches: 0, root_reads: 2}}, 5_000
     after
       :erlang.trace(self(), false, [:call, :arity, :set_on_spawn])
-      :erlang.trace_pattern({ObservedRead, :managed_record_pairs, 5}, false, [])
+      :erlang.trace_pattern({ObservedRead, :managed_records_coalesced, 5}, false, [])
       :erlang.trace_pattern({ObservedRead, :read, 3}, false, [])
       send(counter, :stop)
     end

@@ -50,7 +50,12 @@ defmodule Ipse.Extension.Collection.ReadView do
     }
 
   @doc false
-  def begin do
+  def begin, do: begin_view(false)
+
+  @doc false
+  def begin_classified, do: begin_view(true)
+
+  defp begin_view(classified?) do
     owner = Resources.file_effect_owner()
 
     with true <- is_pid(owner) and Process.alive?(owner),
@@ -65,6 +70,9 @@ defmodule Ipse.Extension.Collection.ReadView do
       {:error, reason} when reason in [:collection_view_exists, :collection_view_capacity] ->
         {:error, reason}
 
+      {:error, :collection_view_slots_capacity} = error ->
+        if classified?, do: error, else: {:error, :collection_view_capacity}
+
       _ ->
         @error
     end
@@ -73,7 +81,19 @@ defmodule Ipse.Extension.Collection.ReadView do
   end
 
   @doc false
-  def install(view, cache), do: call(view, {:install, cache})
+  def install(view, cache) do
+    case install_classified(view, cache) do
+      {:error, reason}
+      when reason in [:collection_view_index_capacity, :collection_view_records_capacity] ->
+        {:error, :collection_view_capacity}
+
+      result ->
+        result
+    end
+  end
+
+  @doc false
+  def install_classified(view, cache), do: call(view, {:install, cache})
   @doc false
   def borrow(view, request), do: call(view, {:borrow, request})
   @doc false
@@ -119,10 +139,7 @@ defmodule Ipse.Extension.Collection.ReadView do
   @impl true
   def init(owner) do
     with {:ok, _} <- Registry.register(Ipse.Registry, {__MODULE__, owner}, nil),
-         slot when is_integer(slot) <-
-           Enum.find(0..15, fn slot ->
-             match?({:ok, _}, Registry.register(Ipse.Registry, {__MODULE__, :slot, slot}, nil))
-           end) do
+         {:ok, slot} <- reserve_slot() do
       ref = make_ref()
       Process.send_after(self(), :expire, @lifetime)
 
@@ -144,8 +161,19 @@ defmodule Ipse.Extension.Collection.ReadView do
        }}
     else
       {:error, {:already_registered, _}} -> {:stop, :collection_view_exists}
-      _ -> {:stop, :collection_view_capacity}
+      {:error, :collection_view_slots_capacity} -> {:stop, :collection_view_slots_capacity}
+      _ -> {:stop, :collection_view_unavailable}
     end
+  end
+
+  defp reserve_slot do
+    Enum.reduce_while(0..15, {:error, :collection_view_slots_capacity}, fn slot, full ->
+      case Registry.register(Ipse.Registry, {__MODULE__, :slot, slot}, nil) do
+        {:ok, _} -> {:halt, {:ok, slot}}
+        {:error, {:already_registered, _}} -> {:cont, full}
+        _ -> {:halt, @error}
+      end
+    end)
   end
 
   @impl true
@@ -166,13 +194,23 @@ defmodule Ipse.Extension.Collection.ReadView do
   def handle_call(_, _, state), do: {:reply, @error, state}
 
   defp operate({:install, cache}, _, %{cache: nil, busy: nil} = state) do
-    with true <- cache?(cache),
+    with true <- cache_header?(cache),
+         :ok <-
+           if(map_size(cache["records"]) <= @records,
+             do: :ok,
+             else: {:error, :collection_view_records_capacity}
+           ),
+         true <- cache_records?(cache),
          keys = cache["records"] |> Map.keys() |> Enum.sort(),
          {:ok, index} <- Directory.index(keys),
          seals = Map.new(cache["records"], fn {key, ref} -> {key, JSON.digest([ref])} end),
-         true <-
-           byte_size(Jason.encode!(%{"cache" => cache, "keys" => keys, "seals" => seals})) <=
-             @bytes do
+         :ok <-
+           if(
+             byte_size(Jason.encode!(%{"cache" => cache, "keys" => keys, "seals" => seals})) <=
+               @bytes,
+             do: :ok,
+             else: {:error, :collection_view_index_capacity}
+           ) do
       header = Map.delete(cache, "records")
 
       {:reply, :ok,
@@ -185,7 +223,12 @@ defmodule Ipse.Extension.Collection.ReadView do
            keys_seal: JSON.digest([keys])
        }}
     else
-      _ -> {:stop, :normal, {:error, :collection_view_capacity}, state}
+      {:error, reason} = error
+      when reason in [:collection_view_records_capacity, :collection_view_index_capacity] ->
+        {:stop, :normal, error, state}
+
+      _ ->
+        {:stop, :normal, {:error, :collection_view_capacity}, state}
     end
   rescue
     _ -> {:stop, :normal, @error, state}
@@ -280,28 +323,36 @@ defmodule Ipse.Extension.Collection.ReadView do
 
   def valid_request?(request), do: Directory.read_request?(request)
 
-  defp cache?(cache) do
-    ((keys?(cache, @cache_keys) and cache["version"] === 2) or
-       (keys?(cache, @cache_keys ++ ["storage_profile"]) and cache["version"] === 3 and
-          cache["storage_profile"] == Profile.documents())) and
+  defp cache_header?(cache) do
+    is_map(cache) and map_size(cache) in [length(@cache_keys), length(@cache_keys) + 1] and
+      ((keys?(cache, @cache_keys) and cache["version"] === 2) or
+         (keys?(cache, @cache_keys ++ ["storage_profile"]) and cache["version"] === 3 and
+            cache["storage_profile"] == Profile.documents())) and
       is_binary(cache["collection_root"]) and byte_size(cache["collection_root"]) <= 4096 and
       Path.type(cache["collection_root"]) == :absolute and
       JSON.sha256?(cache["project"]) and root_matches?(cache) and
+      is_map(cache["summary"]) and map_size(cache["summary"]) == length(@summary_keys) and
       keys?(cache["summary"], @summary_keys) and cache["summary"]["version"] === 3 and
       cache["summary"]["project"] === cache["project"] and
       JSON.safe_uint?(cache["summary"]["generation"]) and
       JSON.safe_uint?(cache["summary"]["floor"]) and
       ((cache["summary"]["floor"] === 0 and is_nil(cache["summary"]["floor_anchor"])) or
          (cache["summary"]["floor"] > 0 and id?(cache["summary"]["floor_anchor"]))) and
-      is_map(cache["records"]) and map_size(cache["records"]) <= @records and
-      Enum.all?(cache["records"], fn {key, ref} ->
-        key?(key) and keys?(ref, @record_keys) and ref["key"] === key and
-          JSON.safe_uint?(ref["revision"]) and ref["revision"] > 0 and
-          ref["revision"] <= cache["summary"]["generation"] and
-          JSON.sha256?(ref["sha256"]) and is_integer(ref["bytes"]) and
-          ref["bytes"] in 2..value_limit(cache) and
-          id?(ref["operation_id"])
-      end)
+      is_map(cache["records"])
+  rescue
+    _ -> false
+  end
+
+  defp cache_records?(cache) do
+    Enum.all?(cache["records"], fn {key, ref} ->
+      key?(key) and is_map(ref) and map_size(ref) == length(@record_keys) and
+        keys?(ref, @record_keys) and ref["key"] === key and
+        JSON.safe_uint?(ref["revision"]) and ref["revision"] > 0 and
+        ref["revision"] <= cache["summary"]["generation"] and
+        JSON.sha256?(ref["sha256"]) and is_integer(ref["bytes"]) and
+        ref["bytes"] in 2..value_limit(cache) and
+        id?(ref["operation_id"])
+    end)
   rescue
     _ -> false
   end

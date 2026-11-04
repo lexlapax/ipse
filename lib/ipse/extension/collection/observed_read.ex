@@ -26,6 +26,8 @@ defmodule Ipse.Extension.Collection.ObservedRead do
     Collection.ManagedPages,
     Collection.ManagedRetention,
     Collection.Migration,
+    Collection.Profile,
+    Collection.ReadView,
     ManagedRecipe,
     SemanticConsent
   }
@@ -505,6 +507,194 @@ defmodule Ipse.Extension.Collection.ObservedRead do
   end
 
   def managed_records(_, _, _, _, _), do: @error
+
+  @doc false
+  # Plans contain only sealed historical refs. No result escapes until every
+  # selected value has been freshly read by native owners at the same root.
+  # At 32 literals: 256 neighbor units + at most 160 value units + one final
+  # root/value check = 417 of the unchanged 512-unit, 60-second view budget.
+  def managed_records_coalesced(root, namespace, requests, cap, catalog)
+      when is_list(requests) and length(requests) in 1..32 do
+    with {:ok, entries} <- managed_record_specs(namespace, requests, catalog) do
+      if Profile.selected() != Profile.notes() do
+        managed_record_pairs(root, namespace, requests, cap, catalog)
+      else
+        case Collection.open_view_classified(root, namespace) do
+          {:ok, view} ->
+            result =
+              try do
+                coalesced_view(view, namespace, entries, cap)
+              rescue
+                _ -> @error
+              catch
+                _, _ -> @error
+              end
+
+            if Collection.close_view(view) == :ok, do: result, else: @error
+
+          {:error, reason}
+          when reason in [:collection_view_index_capacity, :collection_view_slots_capacity] ->
+            # No borrow or domain-auth operation has run. The existing pair
+            # route retains its larger native-index availability and the same
+            # caller's domain-auth and absolute worker/current-use deadlines.
+            managed_record_pairs(root, namespace, requests, cap, catalog)
+
+          _ ->
+            @error
+        end
+      end
+    else
+      _ -> @error
+    end
+  rescue
+    _ -> @error
+  catch
+    _, _ -> @error
+  end
+
+  def managed_records_coalesced(_, _, _, _, _), do: @error
+
+  defp coalesced_view(view, namespace, entries, cap) do
+    keys =
+      Enum.flat_map(entries, fn {request, recipe, lineage} ->
+        [request["key"], ManagedPages.format_key(), recipe["override_prefix"] <> lineage]
+      end)
+      |> Enum.uniq()
+
+    with {:ok, data} <- prefetch_values(view, keys, %{first: nil, records: %{}, bytes: 0}),
+         {:ok, _} <- root_identity(data.first["witness"], namespace),
+         {:ok, plans} <- plan_managed_neighbors(view, entries, data.first),
+         pages =
+           plans
+           |> Map.values()
+           |> Enum.map(&get_in(&1, ["neighbors", "selected", "key"]))
+           |> Enum.filter(&is_binary/1)
+           |> Enum.uniq()
+           |> Enum.reject(&Map.has_key?(data.records, &1)),
+         {:ok, data} <- prefetch_values(view, pages, data) do
+      read = fn %{"op" => "get_many", "keys" => selected} ->
+        if length(selected) in 1..8 and Enum.all?(selected, &Map.has_key?(data.records, &1)) do
+          {:ok,
+           %{
+             "version" => 2,
+             "summary" => data.first["summary"],
+             "witness" => data.first["witness"],
+             "keys" => selected,
+             "records" => Enum.map(selected, &Map.fetch!(data.records, &1)),
+             "next" => nil
+           }}
+        else
+          @error
+        end
+      end
+
+      neighbors = fn selected ->
+        case Map.fetch(plans, selected) do
+          {:ok, plan} -> {:ok, plan}
+          _ -> @error
+        end
+      end
+
+      with {:ok, records} <-
+             Enum.reduce_while(entries, {:ok, []}, fn {request, recipe, lineage}, {:ok, acc} ->
+               case managed_record_read(read, neighbors, request, cap, lineage, recipe) do
+                 {:ok, record} -> {:cont, {:ok, [record | acc]}}
+                 _ -> {:halt, @error}
+               end
+             end),
+           {:ok, final} <-
+             Collection.view_read(view, %{
+               "op" => "get_many",
+               "keys" => [ManagedPages.format_key()]
+             }),
+           true <- same_prefetch_root?(data.first, final),
+           true <- final["records"] === [Map.fetch!(data.records, ManagedPages.format_key())] do
+        {:ok, Enum.reverse(records)}
+      else
+        _ -> @error
+      end
+    else
+      _ -> @error
+    end
+  end
+
+  defp prefetch_values(view, keys, data) do
+    Enum.chunk_every(keys, 8)
+    |> Enum.reduce_while({:ok, data}, fn selected, {:ok, data} ->
+      with {:ok, result} <- Collection.view_read(view, %{"op" => "get_many", "keys" => selected}),
+           true <- result["keys"] === selected and length(result["records"]) == length(selected),
+           true <- is_nil(data.first) or same_prefetch_root?(data.first, result),
+           bytes = data.bytes + byte_size(Jason.encode!(result)),
+           true <- bytes <= 20 * 65_536,
+           records = Map.merge(data.records, Map.new(Enum.zip(selected, result["records"]))),
+           true <- map_size(records) <= 160 do
+        {:cont, {:ok, %{first: data.first || result, records: records, bytes: bytes}}}
+      else
+        _ -> {:halt, @error}
+      end
+    end)
+  end
+
+  defp same_prefetch_root?(first, next),
+    do: first["summary"] === next["summary"] and first["witness"] === next["witness"]
+
+  defp plan_managed_neighbors(view, entries, first) do
+    for {request, _, lineage} <- entries,
+        {kind, identity} <- [
+          {:live, ManagedPages.live_identity(request["key"])},
+          {:anchor, lineage}
+        ] do
+      %{
+        "version" => 1,
+        "prefix" => ManagedPages.prefix(kind),
+        "fence_bytes" => ManagedPages.width(kind),
+        "needle" => identity
+      }
+    end
+    |> Enum.uniq()
+    |> Enum.reduce_while({:ok, %{}}, fn request, {:ok, plans} ->
+      case plan_neighbor(view, request, first) do
+        {:ok, plan} -> {:cont, {:ok, Map.put(plans, request, plan)}}
+        _ -> {:halt, @error}
+      end
+    end)
+  end
+
+  defp plan_neighbor(view, request, first) do
+    with {:ok, token, cache} <-
+           ReadView.borrow(view, %{"op" => "neighbors", "request" => request}) do
+      result =
+        with true <- cache["summary"] === first["summary"],
+             true <- cache["root_state"] === first["witness"]["root_state"],
+             true <- cache["root_sha256"] === first["witness"]["root_sha256"],
+             true <- cache["manifest_sha256"] === first["witness"]["manifest_sha256"],
+             {:ok, pointer} <- JSON.decode_bounded(cache["root_bytes"], 1024),
+             true <- pointer === first["witness"]["root"],
+             true <- cache["neighbor_request"] === request do
+          neighbors = Map.delete(cache["neighbors"], "state")
+
+          {:ok,
+           %{
+             "version" => 1,
+             "summary" => first["summary"],
+             "witness" => first["witness"],
+             "directory" => request,
+             "state" => cache["neighbors"]["state"],
+             "neighbors" =>
+               Map.new(neighbors, fn {slot, key} -> {slot, cache["records"][key]} end)
+           }}
+        else
+          _ -> @error
+        end
+
+      finished =
+        ReadView.finish(view, token, if(match?({:ok, _}, result), do: :ok, else: :invalid))
+
+      if match?({:ok, _}, result) and finished == :ok, do: result, else: @error
+    else
+      _ -> @error
+    end
+  end
 
   @doc false
   # Host worker batches keep no ReadView cache. Each pair owns a real notes
