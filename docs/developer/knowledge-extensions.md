@@ -1515,10 +1515,27 @@ and reject stores/retain.
 Exercise independent Store forgery refusals, Corpus forwarding rejection, shared
 forgetting and ordinary approval/journal/no-replay behavior with
 `mix test test/extensions/knowledge/research_transfer_test.exs`. These controls
-use supplied synthetic data and direct Session commands, not model-selected
-transfers or mixed managed-notes/tool context. For those combinations, retain
-current source/policy/dependency checks and qualify an actual main-route journey
-before extending the claim.
+use supplied synthetic data and ordinary direct Session commands. The separate
+native coexistence case exercises a reviewed registered loopback main route:
+
+```sh
+IPSE_TEST_RESEARCH_MIXED=1 mix test \
+  test/extensions/knowledge/research_transfer_test.exs --only mixed_h1_coexistence
+```
+
+Run that opt-in case in the serial native-operator group with supported protected
+storage. It recalls a real native-approved note, retains supplied text by an
+explicit user command, then approves a model-selected Corpus read in the same
+conversation. Inspect inheritance at a prefix where the invocation entry exists;
+completion removes that live entry, so a final empty lookup proves no historical
+property. Bind the actual delivered WorkerInput and current/confirmed output
+release to the full union, then check the third provider request's exact citation.
+The separate `--yes` model-selected retain must preserve the note union yet create
+no State mutation intent/result or approval and leave the complete State snapshot
+unchanged. Preserve its exact terminal and WorkerInput outcome; an error is not a
+successful managed-derived write. Both histories must restore and reopen idle
+without replay. The [dated control](../archive/2026-10-26-p30-p31-implementation/research-managed-coexistence-20261104.md)
+records the bounded full pass and preserves its earlier fixture failures.
 
 Native [`Tools.Research`](../../lib/ipse/tools/research.ex) instead captures literal
 URLs/excerpts from uniquely identified successful recorded MCP results. It records

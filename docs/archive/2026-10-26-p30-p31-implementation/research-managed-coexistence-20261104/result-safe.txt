@@ -1,0 +1,2 @@
+mixed_h1_coexistence=pass native_seed=1 explicit_command_approved=true positive_main_requests=3 corpus_tool_quote_attributed=true managed_tool_state_mutations=0 state_snapshot_unchanged=true original_bytes_unchanged=true saved_and_idle_no_replay=true negative_status=error negative_worker_input_unknown=0
+synthetic_http_requests_total=4 positive=3 negative=1

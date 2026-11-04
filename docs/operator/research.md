@@ -186,8 +186,16 @@ fetch or authenticate it. The offline and MCP presets do not offer `retain`.
 
 This source-build exercise needs the supported Elixir/OTP toolchain and a built
 checkout. It uses a fresh private home/workspace, ordinary State approvals and
-direct commands with the credential-free demo provider. It does not qualify
-mixing these outputs with managed notes or model tool context.
+direct commands with the credential-free demo provider. To use this beside
+protected saved-note recall, choose a registered main route with its own reviewed
+provider/service configuration; the demo does not deliver protected current notes.
+An explicit `/ext` retain remains a user command with ordinary State approval.
+A later model-selected Corpus read can return its attributed passage while
+preserving the recalled note's source checks; approve the exact proposed tool
+arguments when requested. A model-selected Research retain that inherits managed
+notes remains refused even with `--yes`. Saved knowledge does not grant State
+write permission. The [bounded coexistence control](../archive/2026-10-26-p30-p31-implementation/research-managed-coexistence-20261104.md)
+checks that distinction using a registered synthetic local route.
 
 Build the two reviewed artifacts and generate matching options/configurations:
 

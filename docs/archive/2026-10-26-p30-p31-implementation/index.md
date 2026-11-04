@@ -75,6 +75,8 @@ nor resource/offline qualification. No daemon configuration or existing model wa
 
 ## Source checkpoint evidence — 2026-11-04
 
+- [Research retention beside managed recall](research-managed-coexistence-20261104.md) passes one complete fresh native coexistence case with explicit user State approval, same-ID Corpus query/citations and a refused model-selected State write; earlier fixture failures and broader transfer gaps remain explicit.
+
 - [Paired native literal reader](recall-paired-native-reader-20261104.md) distinguishes the failed cleanup-unknown and later traced deadline reads, records paired Worker/component and complete main-build controls plus an instrumented populated storage comparison, and keeps ordinary retained recall and annual gates open.
 - [Simultaneous committed-preflight refusal](p30-simultaneous-preflight-20261104.md) preserves partial real pool exclusion followed by pre-service failure/unknown reservation, failed idle reopen and read-only fast-refusal/source-union discrimination. It is not a simultaneous settlement or liveness pass.
 - [Installed Collection Word ceiling](word-installed-capacity-20261104.md) qualifies the exact 6adb7aca archive at 1 MiB original bytes, 64 KiB UTF-8 and 32 chunks, with three independent overflow guards, file recovery and final Saved/idle no replay. The two failed attempts and partial thumbnail warning remain preserved; broader capacity and fidelity are separate.

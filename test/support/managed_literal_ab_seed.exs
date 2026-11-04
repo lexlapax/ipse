@@ -20,10 +20,13 @@ end
 System.put_env("IPSE_HOME", home)
 config_path = Path.join(home, "config.json")
 
-File.write!(
-  config_path,
-  Jason.encode!(%{"version" => 1, "settings" => %{"provider" => "demo", "model" => "scripted"}})
-)
+operator =
+  case System.get_env("IPSE_TEST_LITERAL_OPERATOR_CONFIG") do
+    nil -> %{"version" => 1, "settings" => %{"provider" => "demo", "model" => "scripted"}}
+    path -> Jason.decode!(File.read!(path))
+  end
+
+File.write!(config_path, Jason.encode!(operator))
 
 File.chmod!(config_path, 0o600)
 

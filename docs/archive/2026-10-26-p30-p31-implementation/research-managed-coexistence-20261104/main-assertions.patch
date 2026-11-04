@@ -1,0 +1,16 @@
+--- a/test/support/research_managed_coexistence.exs
++++ b/test/support/research_managed_coexistence.exs
+@@ -508,11 +508,12 @@
+ before_state = ResearchMixedJourney.state(state_root, namespace)
+ assert :ok = Session.prompt(negative, "Try the model-selected supplied-source retention tool.")
+ {negative_status, negative_approvals} = ResearchMixedJourney.await(negative)
+-assert negative_status in [:ok, :error]
++assert negative_status == :error
+ assert negative_approvals == 0
+ {negative_messages, _} = ResearchMixedJourney.request(script, :negative, 0)
+ assert Jason.encode!(negative_messages) =~ seed["text"]
+ {negative_events, negative_saved} = ResearchMixedJourney.events(history, negative_id)
++assert negative_saved.worker_input_unknown == []
+ 
+ assert [tool] =
+          Enum.filter(
