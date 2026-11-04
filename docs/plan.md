@@ -1012,6 +1012,12 @@ any remaining registration or live-account limits explicitly.
 
 ## P30: advisory decision engines
 
+A [native in-flight cross-process control](archive/2026-10-26-p30-p31-implementation/p30-inflight-native-eof-20261103.md)
+now verifies refusal of a second one-call reservation while the first remains
+admitted, followed by settlement and idle reopen without replay. It corrects
+the earlier fixture's terminal lifecycle; simultaneous reservation entry and
+whole-milestone qualification remain open.
+
 **Authorized; typed/protocol and admitted-operation increments in progress.** P31 is the active delivery
 path. P30A/B can proceed independently; later
 P30 work consumes the first usable notes journey, not the entire P31 milestone.

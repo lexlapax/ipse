@@ -1,0 +1,7 @@
+Running ExUnit with seed: 439851, max_cases: 4
+
+Retaining concurrent synthetic fixture: /dev/shm/ipse-p30-inflight-eof-20261103-01/task-tmp/ipse-shadow-session-a6b51c186280ae9bfa1a522b975ea694
+.
+Finished in 23.2 seconds (0.00s async, 23.2s sync)
+
+Result: 1 passed

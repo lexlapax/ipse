@@ -88,6 +88,24 @@ exists for the specific saved-note experiment; broader saved helper consent and
 qualified automatic consumers remain separate implementation and acceptance work in the
 [plan](../plan.md#p30-advisory-decision-engines).
 
+To exercise a shared saved allowance, hold one admitted decision's provider
+response while another OS process starts a distinct Session under the same
+project, policy and epoch. That Session must obtain its own native approval.
+Observe its exact reservation operation inside the locked allowance check:
+the first admitted call consumes the one-call allowance before settlement,
+the contender receives no reservation, and only the first request reaches the
+decision provider. Check that every other resource dimension fits, so another
+ceiling cannot explain the refusal. After releasing the response, require the
+first operation to settle and both Sessions to reopen idle without replay.
+
+The [native concurrency fixture](../archive/2026-10-26-p30-p31-implementation/p30-inflight-native-eof-20261103.md)
+shows the necessary terminal coordination. After the first approval, normal EOF
+closes its idle native prompt while accepted work finishes; wait for its input
+entries to release before starting the contender's terminal. `/exit` cancels
+accepted work and would test a different state. This sequence tests an allowance
+already held in flight; simultaneous reservation entry needs a separate race
+control.
+
 ## Build one request and inspect its wire form
 
 From a built checkout:
