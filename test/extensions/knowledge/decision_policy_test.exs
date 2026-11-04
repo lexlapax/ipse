@@ -635,7 +635,7 @@ defmodule IpseKnowledge.Knowledge.DecisionPolicyTest do
     refute "host.decision" in manifest["capabilities"]
 
     assert Enum.map(manifest["exports"]["tools"], & &1["id"]) ==
-             ~w(capture index read search)
+             ~w(capture nominate index read search)
 
     assert File.regular?(
              Path.join(artifact, "ebin/Elixir.IpseKnowledge.Knowledge.DecisionPolicy.beam")

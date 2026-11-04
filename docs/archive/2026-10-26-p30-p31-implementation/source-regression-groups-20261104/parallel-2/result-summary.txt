@@ -1,0 +1,2 @@
+Finished in 266.4 seconds (17.4s async, 248.9s sync)
+Result: 648 passed, 4 skipped

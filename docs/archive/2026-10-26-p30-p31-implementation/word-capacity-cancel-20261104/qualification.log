@@ -1,0 +1,5 @@
+over_bound call_schema=pass concrete_hash=true source_revision=1 mutation_actions=0 returned_fields=[{"code", "document_source_limit"}, {"status", "refused"}] native_snapshot_phases=%{{"page", "ok"} => 256, {"start", "ok"} => 1}
+over_bound call_schema=pass concrete_hash=true source_revision=1 mutation_actions=0 returned_fields=[{"code", "document_acquisition_refused"}, {"status", "refused"}] native_snapshot_phases=%{{"start", "failed"} => 1}
+conversation strict_saved=pass lineage_available=true no_withheld=true original_acquisition_count=1 source_markers=18 over_bound_calls=2 journal_unchanged=true
+conversation strict_saved=pass lineage_available=true no_withheld=true original_acquisition_count=1 source_markers=19 over_bound_calls=0 journal_unchanged=true
+matching_operator_holders=0 native_app_model_effects=false

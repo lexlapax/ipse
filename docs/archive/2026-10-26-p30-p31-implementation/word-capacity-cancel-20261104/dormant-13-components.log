@@ -1,0 +1,7 @@
+Running ExUnit with seed: 527804, max_cases: 1
+
+.............
+Finished in 4.8 seconds (0.00s async, 4.8s sync)
+
+Result: 13 passed
+ipse_app_started=false native_tty_model_fixture=false

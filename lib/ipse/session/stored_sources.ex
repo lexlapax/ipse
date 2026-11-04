@@ -383,7 +383,8 @@ defmodule Ipse.Session.StoredSources do
   defp with_sessions([], _, _, verified, fun), do: fun.(verified)
 
   defp with_sessions([{id, proofs} | rest], %{session_id: id} = c, i, verified, fun) do
-    with {:ok, current} <- local(c, i, proofs) do
+    with {:ok, current} <- local(c, i, proofs),
+         :ok <- Ipse.Session.ChatReviewHandoff.verify_originals(c, id) do
       result = with_sessions(rest, c, i, current ++ verified, fun)
 
       case local(c, i, proofs) do
@@ -424,6 +425,7 @@ defmodule Ipse.Session.StoredSources do
                    true <- project?(metadata, c),
                    {:ok, index} <- source_index(stats.events, id),
                    :ok <- SourceWindow.validate_sources(c.history_dir, id, stats.events),
+                   :ok <- Ipse.Session.ChatReviewHandoff.verify_originals(c, id, stats.events),
                    {:ok, current} <-
                      resolve(index, proofs, c[:stored_source_resolution]),
                    true <- lock_live?(lock, monitor) do

@@ -50,9 +50,9 @@ defmodule Ipse.Extension.SemanticAdmission do
 
             with true <- SemanticConsent.policy?(policy),
                  true <- not context["mode"]["headless"] or policy["headless"],
-                 {:ok, class} <- outer_class(policy, base["descriptor_sha256"]),
+                 {:ok, class} <- selected_outer_class(config, policy, identity, descriptor),
                  true <- descriptor["stage"] != "event.job" or class == "collection.read",
-                 :ok <- Mode.knowledge(context["mode"], class) do
+                 :ok <- outer_mode(context["mode"], class) do
               {:ok, Map.put(base, "class", class)}
             else
               _ -> {:error, :semantic_outer_denied}
@@ -73,7 +73,7 @@ defmodule Ipse.Extension.SemanticAdmission do
       Enum.sort(Map.keys(binding)) ==
         ~w(artifact_sha256 class descriptor_sha256 kind namespace pin version) and
       binding["kind"] == "semantic.outer" and binding["version"] === 1 and
-      binding["class"] in ~w(collection.read collection.publish decision.create) and
+      binding["class"] in ~w(collection.read collection.publish decision.create nomination.select) and
       SemanticConsent.pin?(binding["pin"]) and binding["pin"]["session_id"] == session_id and
       binding["namespace"] == binding["pin"]["namespace"] and
       Ipse.JSON.sha256?(binding["artifact_sha256"]) and
@@ -92,6 +92,7 @@ defmodule Ipse.Extension.SemanticAdmission do
       descriptor["instance"] == identity["instance"] and
       descriptor["stage"] in ~w(invoke.tool invoke.command event.job) and
       (descriptor["stage"] != "event.job" or binding["class"] == "collection.read") and
+      (binding["class"] != "nomination.select" or nomination_descriptor?(identity, descriptor)) and
       binding["namespace"] == pin["namespace"] and
       (is_nil(metadata) or
          (valid?(metadata["semantic_admission"], session_id) and
@@ -100,9 +101,14 @@ defmodule Ipse.Extension.SemanticAdmission do
             metadata["semantic_admission"]["instance"] == identity["instance"] and
             metadata["semantic_admission"]["policy"]["artifact_sha256"] ==
               identity["artifact_sha256"] and
-            outer_class(metadata["semantic_admission"]["policy"], binding["descriptor_sha256"]) ===
-              {:ok, binding["class"]} and
-            Mode.knowledge(metadata["execution_mode"], binding["class"]) == :ok))
+            recorded_outer_class?(
+              metadata["semantic_admission"]["policy"],
+              identity,
+              descriptor,
+              binding,
+              metadata
+            ) and
+            outer_mode(metadata["execution_mode"], binding["class"]) == :ok))
   rescue
     _ -> false
   end
@@ -336,6 +342,69 @@ defmodule Ipse.Extension.SemanticAdmission do
   rescue
     _ -> {:error, :semantic_outer_denied}
   end
+
+  # This purpose is an outer worker-entry receipt only. The saved policy gains
+  # no effect mapping; every host request under it is refused before context.
+  defp selected_outer_class(config, policy, identity, descriptor) do
+    if nomination_descriptor?(identity, descriptor) do
+      with true <- nomination_policy?(policy, identity, descriptor),
+           {:ok, entry, ^descriptor} <-
+             Ipse.Extension.Catalog.lookup(config, "invoke.tool", "ext__knowledge__nominate"),
+           true <- entry.identity === identity,
+           {:ok, bundles} <- Ipse.Extension.Bundles.inventory(),
+           [bundle] <- Enum.filter(bundles, &(&1.id == "knowledge")),
+           true <- bundle.digest === identity["artifact_sha256"] do
+        {:ok, "nomination.select"}
+      else
+        _ -> {:error, :semantic_outer_denied}
+      end
+    else
+      outer_class(policy, Ipse.JSON.digest([descriptor]))
+    end
+  end
+
+  defp nomination_descriptor?(identity, descriptor) do
+    identity["instance"] === "knowledge" and descriptor["instance"] === "knowledge" and
+      descriptor["stage"] === "invoke.tool" and descriptor["id"] === "nominate" and
+      descriptor["name"] === "ext__knowledge__nominate"
+  end
+
+  defp nomination_policy?(policy, identity, descriptor) do
+    nomination_descriptor?(identity, descriptor) and SemanticConsent.policy?(policy) and
+      get_in(policy, ["settings", "identity_sha256"]) === Ipse.JSON.digest([identity]) and
+      match?(
+        %{"kind" => "reviewed.bundle", "instance" => "knowledge"},
+        get_in(policy, ["settings", "activation"])
+      ) and
+      get_in(policy, ["settings", "activation", "artifact_sha256"]) ===
+        identity["artifact_sha256"] and
+      not Enum.any?(
+        policy["settings"]["effects"],
+        &(&1["outer_sha256"] === Ipse.JSON.digest([descriptor]))
+      )
+  end
+
+  defp recorded_outer_class?(
+         policy,
+         identity,
+         descriptor,
+         %{"class" => "nomination.select"},
+         metadata
+       ) do
+    with {:ok, catalog} <- Ipse.Extension.Catalog.from_metadata(metadata),
+         true <- descriptor in catalog["entries"],
+         [^identity] <- Enum.filter(metadata["extensions"], &(&1["instance"] === "knowledge")) do
+      nomination_policy?(policy, identity, descriptor)
+    else
+      _ -> false
+    end
+  end
+
+  defp recorded_outer_class?(policy, _, _, binding, _),
+    do: outer_class(policy, binding["descriptor_sha256"]) === {:ok, binding["class"]}
+
+  defp outer_mode(mode, "nomination.select"), do: Mode.nomination(mode)
+  defp outer_mode(mode, class), do: Mode.knowledge(mode, class)
 
   defp context_for(config, binding, instance, selectors, namespace, id, generation) do
     with identity when is_map(identity) <- identity(config, instance),

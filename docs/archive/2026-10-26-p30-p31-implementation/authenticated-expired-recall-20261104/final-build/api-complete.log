@@ -1,0 +1,8 @@
+Running ExUnit with seed: 0, max_cases: 1
+Excluding tags: [:test]
+Including tags: [typed_expiry_execute: true]
+
+.
+Finished in 1.3 seconds (0.00s async, 1.3s sync)
+
+Result: 1 passed, 53 excluded

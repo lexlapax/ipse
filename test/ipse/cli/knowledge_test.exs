@@ -91,6 +91,7 @@ defmodule Ipse.CLI.KnowledgeTest do
     end
   end
 
+  @tag :knowledge_nomination_policy
   test "review data binds actual bundled recipes and routes without creating consent" do
     root = private_root()
     home = Path.join(root, "home")
@@ -153,8 +154,14 @@ defmodule Ipse.CLI.KnowledgeTest do
         })
       end
 
-    assert length(descriptors) == 6
+    assert length(descriptors) == 7
     assert length(effects) == 10
+
+    [nomination] = Enum.filter(descriptors, &(&1["id"] == "nominate"))
+    assert nomination["stage"] == "invoke.tool"
+    nomination_sha = Ipse.JSON.digest([nomination])
+    refute Enum.any?(effects, &(&1["outer_sha256"] == nomination_sha))
+    descriptors = Enum.reject(descriptors, &(&1["id"] == "nominate"))
 
     for descriptor <- descriptors do
       hash = Ipse.JSON.digest([descriptor])

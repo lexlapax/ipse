@@ -1,0 +1,42 @@
+real_priv_and_helper_verified
+Running ExUnit with seed: 568029, max_cases: 2
+
+.
+
+  1) test startup snapshot does not arm a reader and an authorized read invalidates it first (Ipse.Session.ChatReofferTest)
+     _build/verification/ipse-chat-reoffer-20261103-01/test/ipse/session/chat_reoffer_test.exs:139
+     Assertion with === failed
+     code:  assert invalidated.chat_reoffer_snapshot === nil
+     left:  %{
+              mode: %{
+                "approval" => "ask",
+                "approval_origin" => "interactive",
+                "ceiling" => "normal",
+                "enclosing_ceiling" => "normal",
+                "headless" => false,
+                "knowledge" => "available",
+                "version" => 1
+              },
+              request: nil,
+              channel: "startup-channel",
+              generation: "generation",
+              ref: #Reference<0.892493085.2826436609.35481>,
+              input_generation: 0,
+              turn: nil,
+              choices: [
+                %{
+                  key: "pending.de31a0f6b907a7db6859bd871365639f1fa4774065c5a3d28a6dd84fb920b08e",
+                  sha256: "ec88d7e18a61970435e14e848eb8b929c497bc29b79fe0cc07f7029bfa0af366"
+                }
+              ],
+              focus_id: "1fcce856e3532a9ab4a31889257997a2"
+            }
+     right: nil
+     stacktrace:
+       _build/verification/ipse-chat-reoffer-20261103-01/test/ipse/session/chat_reoffer_test.exs:191: (test)
+
+....
+Finished in 0.2 seconds (0.2s async, 0.00s sync)
+
+Result: 5/6 passed
+Failed: 1 test

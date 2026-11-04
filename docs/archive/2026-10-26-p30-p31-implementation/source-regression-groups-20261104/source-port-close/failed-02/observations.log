@@ -1,0 +1,9 @@
+** (MatchError) no match of right hand side value:
+
+    {:error, "source lock unavailable"}
+
+    _build/verification/ipse-source-port-close-boundary-20261104-02/observe.exs:23: anonymous fn/4 in :elixir_compiler_0.__FILE__/1
+    (elixir 1.20.4) lib/enum.ex:4636: Enum.map_range/4
+    (elixir 1.20.4) lib/enum.ex:4636: Enum.map_range/4
+    (elixir 1.20.4) lib/enum.ex:4636: Enum.map/2
+    _build/verification/ipse-source-port-close-boundary-20261104-02/observe.exs:16: (file)

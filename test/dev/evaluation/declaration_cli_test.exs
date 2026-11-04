@@ -19,9 +19,7 @@ defmodule Ipse.KnowledgeEvaluationDeclarationCLITest do
     source = Path.expand("../../..", __DIR__)
 
     {files, 0} =
-      System.cmd("git", ["ls-files", "--cached", "--others", "--exclude-standard", "-z"],
-        cd: source
-      )
+      System.cmd("git", ["ls-files", "--cached", "-z"], cd: source)
 
     for relative <- String.split(files, <<0>>, trim: true),
         not String.starts_with?(relative, "docs/archive/"),
@@ -185,9 +183,7 @@ defmodule Ipse.KnowledgeEvaluationDeclarationCLITest do
       source = Path.expand("../../..", __DIR__)
 
       {files, 0} =
-        System.cmd("git", ["ls-files", "--cached", "--others", "--exclude-standard", "-z"],
-          cd: source
-        )
+        System.cmd("git", ["ls-files", "--cached", "-z"], cd: source)
 
       # The synthetic evaluator repository needs executable sources, not the
       # potentially much larger historical evidence archive.

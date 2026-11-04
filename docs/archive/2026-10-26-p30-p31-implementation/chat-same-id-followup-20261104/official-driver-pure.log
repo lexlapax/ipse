@@ -1,0 +1,26 @@
+
+running 21 tests
+test tests::active_prompt_then_complete ... ok
+test tests::active_prompt_without_completion_is_not_ready ... ok
+test tests::chat_activated_card_is_input_ready ... ok
+test tests::chat_historical_completion_does_not_close_a_fresh_prompt ... ok
+test tests::chat_initial_prompt_is_not_a_post_input_prompt ... ok
+test tests::chat_prompt_after_answer_is_ready ... ok
+test tests::chat_prompt_before_answer_is_ready ... ok
+test tests::chat_static_card_is_not_input_ready ... ok
+test tests::chat_sentinel_without_completion_is_not_ready ... ok
+test tests::complete_then_active_prompt ... ok
+test tests::completion_and_prompt_without_question_are_not_this_phase ... ok
+test tests::completion_without_active_prompt_is_not_ready ... ok
+test tests::earlier_input_prompt_does_not_activate_the_current_card ... ok
+test tests::failed_turn_then_active_prompt ... ok
+test tests::historical_initial_prompt_is_not_current ... ok
+test tests::malformed_chat_challenge_is_not_input_ready ... ok
+test tests::planning_exit_refuses_missing_boundary_or_old_prompt ... ok
+test tests::planning_exit_requires_live_mode_check_and_new_prompt ... ok
+test tests::refreshed_answer_invalidates_earlier_prompt ... ok
+test tests::refreshed_card_requires_its_own_input_prompt ... ok
+test tests::same_followup_requires_its_own_prompt_and_actual_settlement ... ok
+
+test result: ok. 21 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+

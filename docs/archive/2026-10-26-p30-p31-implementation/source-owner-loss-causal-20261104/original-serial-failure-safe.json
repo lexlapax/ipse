@@ -1,0 +1,20 @@
+{
+  "version": 1,
+  "run": "serial02",
+  "handle": 52971,
+  "run_still_active_at_observation": true,
+  "test_module": "Ipse.Extension.ManagedCollectionCallSessionTest",
+  "test": "original A owner loss after staging prevents the native B publication and refunds nothing",
+  "test_path": "test/ipse/extension/managed_collection_call_session_test.exs",
+  "declaration_line": 2663,
+  "failed_assertion_line": 2694,
+  "failed_assertion": "collection_read(snapshot) == before",
+  "before": {"version": 3, "generation": 1, "floor": 1},
+  "after": {"version": 3, "generation": 2, "floor": 2},
+  "prior_assertions_completed": ["source Port.close returned true", "Session owner terminated normally", "capture_results(events) == []", "exactly one collection.managed intent"],
+  "later_liability_and_saved_assertions_reached": false,
+  "cause": "unclassified",
+  "automatic_retry": false,
+  "private_log_retained": true,
+  "transcript_or_record_bodies_in_this_receipt": false
+}

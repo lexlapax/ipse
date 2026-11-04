@@ -33,11 +33,11 @@ defmodule IpseKnowledge.Corpus do
         "commands" =>
           [
             entry("source", "Explicit source lifecycle", source_schema()),
-            entry("query", "Read current cited evidence", query_schema()),
+            entry("query", "Current cited evidence", query_schema()),
             entry("index", "Explicit embedding projection", index_schema())
           ] ++ collection_entries(),
         "tools" =>
-          [entry("query", "Read current cited evidence", query_schema())] ++ collection_entries()
+          [entry("query", "Current cited evidence", query_schema())] ++ collection_entries()
       }
     }
   end
@@ -2409,10 +2409,10 @@ defmodule IpseKnowledge.Corpus do
         end
 
       [
-        entry("query_selected", "Read cited evidence from explicit source IDs", schema),
+        entry("query_selected", "Cited evidence from explicit source IDs", schema),
         entry(
           "generation_job",
-          "Begin, inspect, finalize or abort a supplied shared projection build",
+          "Supplied shared projection builds",
           %{
             "type" => "object",
             "additionalProperties" => false,
@@ -2433,7 +2433,7 @@ defmodule IpseKnowledge.Corpus do
         ),
         entry(
           "projection_selected",
-          "Inspect current supplied shared projections with exact citations",
+          "Current supplied shared projections with exact citations",
           %{
             "type" => "object",
             "additionalProperties" => false,
@@ -2455,7 +2455,7 @@ defmodule IpseKnowledge.Corpus do
         ),
         entry(
           "lexical_index",
-          "Build, rebuild or inspect the catalog-bound namespace lexical index",
+          "Catalog-bound namespace lexical index",
           %{
             "type" => "object",
             "additionalProperties" => false,
@@ -2525,7 +2525,7 @@ defmodule IpseKnowledge.Corpus do
       [
         entry(
           "generation_produce",
-          "Stage explicit facts, produce guarded vector pages or inspect producer progress",
+          "Explicit facts, guarded vector pages, producer progress",
           schema
         )
       ]

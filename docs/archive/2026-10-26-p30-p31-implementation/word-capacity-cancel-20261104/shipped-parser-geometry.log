@@ -1,0 +1,7 @@
+at_bound original_bytes=1048576 main_xml_bytes=66674 extracted_bytes=65536 segments=32 chunks=32 extraction=partial source_payload=ok thumbnail_warning_preserved=true
+bounded_quote paragraph=1 exact_utf8_bytes=53 absolute_start=0 literal_offsets_locator=pass
+bounded_quote paragraph=16 exact_utf8_bytes=54 absolute_start=30720 literal_offsets_locator=pass
+bounded_quote paragraph=32 exact_utf8_bytes=52 absolute_start=63488 literal_offsets_locator=pass
+text_over original_bytes=1048576 main_xml_bytes=66675 extracted_bytes=65537 extraction=partial source_payload=document_source_limit source_selected=false
+original_over original_bytes=1048577 extraction=invalid_or_oversized_input source_selected=false
+shipped_parser_and_profiles_unchanged=true png_crc_and_pixel_valid=true fixture_dispatched=false app_native_model=false

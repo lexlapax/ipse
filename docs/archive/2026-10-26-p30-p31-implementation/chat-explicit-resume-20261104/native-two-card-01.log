@@ -1,0 +1,9 @@
+complete_appdir_bootstrap_dependency_priv_helper_bundle_closure=PASS
+Running ExUnit with seed: 269291, max_cases: 1
+
+CHAT_REOFFER_RECEIPT /dev/shm/ipse-reoffer-qualification-50c53e7875fda8330b76a93b445ba608/tmp/ipse-chat-reoffer-087ed4c71747f70bd853a49930243fb2
+.
+Finished in 15.2 seconds (0.00s async, 15.2s sync)
+
+Result: 1 passed
+qualification_root=/dev/shm/ipse-reoffer-qualification-50c53e7875fda8330b76a93b445ba608

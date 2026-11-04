@@ -13,6 +13,8 @@ defmodule Ipse.Session.Saved do
          {:ok, _mode} <- execution_mode(events, id),
          {:ok, _admission} <- semantic_admission(events, id),
          :ok <- Ipse.Session.Input.validate_events(events, id),
+         :ok <- Ipse.Session.PendingNomination.validate_events(events, id),
+         :ok <- Ipse.Session.ChatReviewHandoff.validate_reoffers(events, id),
          :ok <- Ipse.Session.OperatorAssertion.validate_events(events, id),
          :ok <- Ipse.Session.PlanningTransition.validate_events(events, id),
          {:ok, planning_decisions} <- Ipse.Session.PlanningDecisions.restore(events, id),
@@ -244,6 +246,8 @@ defmodule Ipse.Session.Saved do
 
   defp validate_context_events(events) do
     with :ok <- Ipse.Session.Input.validate_events(events),
+         :ok <- Ipse.Session.PendingNomination.validate_events(events, nil),
+         :ok <- Ipse.Session.ChatReviewHandoff.validate_reoffers(events),
          :ok <- Ipse.Session.OperatorAnswer.validate_events(events),
          :ok <- Ipse.Session.PlanningMCP.validate_events(events, nil),
          :ok <- Ipse.Session.DraftAcceptance.validate_observation_uniqueness(events),

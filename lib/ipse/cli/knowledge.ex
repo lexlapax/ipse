@@ -747,7 +747,7 @@ defmodule Ipse.CLI.Knowledge do
             descriptor["id"] == "capture") or
            (descriptor["stage"] == "invoke.tool" and
               (descriptor["id"] in ~w(index read search) or
-                 (experiment && descriptor["id"] == "assess"))) or
+                 (not is_nil(experiment) and descriptor["id"] == "assess"))) or
            (descriptor["stage"] == "event.job" and descriptor["id"] == "recall"))
     end)
     |> Enum.flat_map(fn descriptor ->

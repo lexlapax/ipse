@@ -45,6 +45,7 @@ are refused as busy; they are not queued for later execution.
 | Review/import/select extensions, inspect exact Session sources and complete results, generate vectors, request typed advice, try the lab | [Extensions](extensions.md) |
 | Retain explicit notes, update revisions, expire, forget, export/migrate | [Memory](memory.md) |
 | Review native notes and permission, approve a supported note-derived action, accept a pending proposal, correct or supersede a literal, manage retention or inspect an operation | [Knowledge management](knowledge-permissions.md) |
+| Review an assistant's exact recommendation after its completed reply | [Decision cards during chat](knowledge-permissions.md#review-a-proposed-decision-during-chat) |
 | Store sources and retrieve cited passages | [Corpus](corpus.md) |
 | Set up packaged Word support, acquire a small document and inspect its citations | [Word setup](corpus.md#set-up-packaged-word-support) |
 | Extract attributed facts and follow relationships | [Graph](graph.md) |

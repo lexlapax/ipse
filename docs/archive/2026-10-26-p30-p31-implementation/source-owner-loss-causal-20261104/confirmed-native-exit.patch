@@ -1,0 +1,34 @@
+--- a/test/ipse/extension/managed_collection_call_session_test.exs
++++ b/test/ipse/extension/managed_collection_call_session_test.exs
+@@ -1,6 +1,7 @@
+ Code.require_file("../../support/provider_fixture.ex", __DIR__)
+ Code.require_file("../../support/managed_mcp_http.exs", __DIR__)
+ Code.require_file("../../support/managed_delivery_sink.exs", __DIR__)
++Code.require_file("../../support/native_pipe_scope.exs", __DIR__)
+ 
+ defmodule Ipse.Extension.ManagedCollectionCallSessionTest do
+   use ExUnit.Case, async: false
+@@ -2680,6 +2681,9 @@
+     id = Session.info(pid).id
+     assert :ok = Session.prompt(pid, "Synthetic café observation")
+     assert_receive {:capture_source_owner_closed, true}, 15_000
++    assert_receive {:capture_source_native_owner_exited, source_native_pid}
++                   when is_integer(source_native_pid) and source_native_pid > 0,
++                   15_000
+     assert_receive {:DOWN, ^monitor, :process, ^pid, :normal}, 15_000
+     assert {:ok, events} = Journal.load(c.dir, id)
+     assert capture_results(events) == []
+@@ -2711,7 +2715,12 @@
+     shares = Process.get({Ipse.Session.StoredSources, :shareable_source}) || %{}
+ 
+     case Enum.find(shares, fn {_, share} -> share.session_id == id and share.phase == :shared end) do
+-      {_, %{port: port}} -> send(owner, {:capture_source_owner_closed, Port.close(port)})
++      {_, %{port: port, identity: %{pid: native_pid}}} ->
++        assert {:os_pid, ^native_pid} = Port.info(port, :os_pid)
++        send(owner, {:capture_source_owner_closed, Port.close(port)})
++        assert :ok = Ipse.Test.NativePipeScope.await_native_exit(native_pid)
++        send(owner, {:capture_source_native_owner_exited, native_pid})
++
+       _ -> :ok
+     end
+   end

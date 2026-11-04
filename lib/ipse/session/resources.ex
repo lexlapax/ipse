@@ -112,6 +112,27 @@ defmodule Ipse.Session.Resources do
   end
 
   @doc false
+  def activate_document_effect(worker, peer) when is_pid(worker) and is_pid(peer),
+    do: document_scope_call(worker, {:activate_document_effect, worker, peer})
+
+  def activate_document_effect(_, _), do: {:error, :cleanup_scope_closed}
+
+  @doc false
+  def revoke_document_effects(worker) when is_pid(worker),
+    do: document_scope_call(worker, {:revoke_document_effects, worker})
+
+  def revoke_document_effects(_), do: {:error, :cleanup_scope_closed}
+
+  defp document_scope_call(worker, request) do
+    case Registry.lookup(Ipse.Registry, {__MODULE__, worker}) do
+      [{scope, _}] -> GenServer.call(scope, request)
+      [] -> {:error, :cleanup_scope_closed}
+    end
+  catch
+    :exit, _ -> {:error, :cleanup_scope_closed}
+  end
+
+  @doc false
   def authorized_effect?(worker, caller) when is_pid(worker) and is_pid(caller) do
     case Registry.lookup(Ipse.Registry, {__MODULE__, worker}) do
       [{scope, _}] -> GenServer.call(scope, {:authorized_effect, worker, caller})
@@ -198,6 +219,8 @@ defmodule Ipse.Session.Resources do
          worker_ref: nil,
          tasks: %{},
          effects: %{},
+         document_effects: %{},
+         document_activation_revoked: false,
          lock_guard: guard,
          resources: %{},
          source_replay_cache: replay_cache,
@@ -228,6 +251,8 @@ defmodule Ipse.Session.Resources do
        worker_ref: nil,
        tasks: %{},
        effects: %{},
+       document_effects: %{},
+       document_activation_revoked: false,
        lock_guard: Ipse.Session.Lock.for_owner(owner),
        resources: %{},
        source_replay_cache: nil,
@@ -283,19 +308,64 @@ defmodule Ipse.Session.Resources do
     end
   end
 
-  # Register and start the already Session-bound dormant document effect in one
-  # scope transition, so cancellation cannot leave it waiting for a start signal.
+  # Track before Session registration, keeping the peer unable to start until
+  # that actual Session authorizes activation. Closing can stop dormant peers.
   def handle_call(
         {:track_document_effect, pid},
         {worker, _},
         %{closed: false, worker: worker} = state
       )
       when is_pid(pid) and map_size(state.effects) < 32 do
-    if Process.alive?(pid) and Process.alive?(worker) and Process.alive?(state.owner) do
+    if Process.alive?(pid) and Process.alive?(worker) and Process.alive?(state.owner) and
+         pid != worker and pid != state.owner and
+         not Map.get(state, :document_activation_revoked, false) and
+         not Map.has_key?(state.effects, pid) and
+         not Map.has_key?(Map.get(state, :document_effects, %{}), pid) do
       :ok = Ipse.Session.Lock.track_in(state.lock_guard, pid, :peer)
       effects = Map.put(state.effects, pid, Process.monitor(pid))
-      send(pid, {:begin_file_effect, worker})
-      {:reply, :ok, %{state | effects: effects}}
+      documents = Map.put(Map.get(state, :document_effects, %{}), pid, :dormant)
+      {:reply, :ok, state |> Map.put(:effects, effects) |> Map.put(:document_effects, documents)}
+    else
+      {:reply, {:error, :cleanup_scope_closed}, state}
+    end
+  end
+
+  def handle_call(
+        {:activate_document_effect, worker, peer},
+        {owner, _},
+        %{owner: owner, worker: worker, closed: false} = state
+      ) do
+    documents = Map.get(state, :document_effects, %{})
+
+    if not Map.get(state, :document_activation_revoked, false) and
+         documents[peer] === :dormant and Map.has_key?(state.effects, peer) and
+         Process.alive?(owner) and Process.alive?(worker) and Process.alive?(peer) do
+      next = Map.put(state, :document_effects, Map.put(documents, peer, :active))
+      send(peer, {:begin_file_effect, worker})
+      {:reply, :ok, next}
+    else
+      {:reply, {:error, :cleanup_scope_closed}, state}
+    end
+  end
+
+  def handle_call(
+        {:revoke_document_effects, worker},
+        {owner, _},
+        %{owner: owner, worker: worker, closed: false} = state
+      ),
+      do: {:reply, :ok, Map.put(state, :document_activation_revoked, true)}
+
+  def handle_call(
+        {:discard_dormant_document_effect, peer},
+        {worker, _},
+        %{worker: worker, closed: false} = state
+      ) do
+    if Map.get(state, :document_effects, %{})[peer] === :dormant do
+      next =
+        stop_dormant_document_effect(state, peer, System.monotonic_time(:millisecond) + 4_000)
+
+      result = if next.failed, do: {:error, :cleanup_unconfirmed}, else: :ok
+      {:reply, result, next}
     else
       {:reply, {:error, :cleanup_scope_closed}, state}
     end
@@ -578,7 +648,12 @@ defmodule Ipse.Session.Resources do
             entry.peer == dead and entry.cancelled and is_nil(entry.child)
           end)
 
-        {:noreply, %{state | tasks: tasks, effects: effects, child_tokens: tokens}}
+        {:noreply,
+         state
+         |> Map.put(:tasks, tasks)
+         |> Map.put(:effects, effects)
+         |> Map.put(:document_effects, Map.delete(Map.get(state, :document_effects, %{}), dead))
+         |> Map.put(:child_tokens, tokens)}
     end
   end
 
@@ -598,6 +673,7 @@ defmodule Ipse.Session.Resources do
   defp close_resources(state) do
     deadline = System.monotonic_time(:millisecond) + 4_000
 
+    state = close_dormant_document_effects(state, deadline)
     state = close_source_replay_cache(state, deadline)
 
     state =
@@ -632,7 +708,40 @@ defmodule Ipse.Session.Resources do
         end
       end)
 
-    %{state | tasks: %{}, effects: %{}, failed: failed}
+    state
+    |> Map.put(:tasks, %{})
+    |> Map.put(:effects, %{})
+    |> Map.put(:document_effects, %{})
+    |> Map.put(:failed, failed)
+  end
+
+  defp close_dormant_document_effects(state, deadline) do
+    Enum.reduce(Map.get(state, :document_effects, %{}), state, fn
+      {pid, :dormant}, state ->
+        stop_dormant_document_effect(state, pid, deadline)
+
+      _, state ->
+        state
+    end)
+  end
+
+  defp stop_dormant_document_effect(state, pid, deadline) do
+    case state.effects[pid] do
+      ref when is_reference(ref) ->
+        Process.exit(pid, :kill)
+
+        receive do
+          {:DOWN, ^ref, :process, ^pid, _} ->
+            state
+            |> Map.put(:effects, Map.delete(state.effects, pid))
+            |> Map.put(:document_effects, Map.delete(state.document_effects, pid))
+        after
+          max(deadline - System.monotonic_time(:millisecond), 0) -> %{state | failed: true}
+        end
+
+      _ ->
+        %{state | failed: true}
+    end
   end
 
   defp close_source_replay_cache(%{source_replay_cache: {:borrowed, _}} = state, _deadline),
@@ -1338,7 +1447,8 @@ defmodule Ipse.Session.Resources do
   end
 
   @doc false
-  def document_file_effect(fun, bind) when is_function(fun, 0) and is_function(bind, 1) do
+  def document_file_effect(fun, bind, activate)
+      when is_function(fun, 0) and is_function(bind, 1) and is_function(activate, 1) do
     if Process.get(@effect_key) do
       {:unknown, :nested_effect_unconfirmed}
     else
@@ -1347,15 +1457,44 @@ defmodule Ipse.Session.Resources do
       {pid, ref} = spawn_monitor(fn -> execute_file_effect(owner, scope, fun, true) end)
 
       try do
-        :ok = bind.(pid)
         true = is_pid(scope)
         :ok = GenServer.call(scope, {:track_document_effect, pid})
-        await_file_effect(pid, ref)
       catch
         kind, reason ->
           Process.exit(pid, :kill)
+
+          receive do
+            {:DOWN, ^ref, :process, ^pid, _} -> :ok
+          after
+            1_000 -> :ok
+          end
+
+          :erlang.raise(kind, reason, __STACKTRACE__)
+      end
+
+      try do
+        :ok = bind.(pid)
+      catch
+        kind, reason ->
+          # Binding may fail after caller code requested activation. Ask the
+          # actual scope to discard only a peer it still knows is dormant.
+          try do
+            GenServer.call(scope, {:discard_dormant_document_effect, pid})
+          catch
+            :exit, _ -> :ok
+          end
+
           Process.demonitor(ref, [:flush])
           :erlang.raise(kind, reason, __STACKTRACE__)
+      end
+
+      # The activation reply may be lost after begin. Never kill a possibly
+      # active file effect here; its scope retains cleanup and unknown liability.
+      try do
+        :ok = activate.(pid)
+        await_file_effect(pid, ref)
+      catch
+        _, _ -> exit(:document_effect_activation_unconfirmed)
       end
     end
   end

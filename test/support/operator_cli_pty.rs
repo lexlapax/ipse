@@ -23,11 +23,40 @@ extern "C" {
     fn tcgetattr(fd: i32, value: *mut std::ffi::c_void) -> i32;
 }
 
-fn ready_for_exit(text: &str) -> bool {
-    (text.contains("Finished.") || text.contains("Finished with an error.")) && match (text.rfind("you> "), text.rfind("answer> ")) {
+fn completed_at_active_prompt(text: &str, boundary: &str) -> bool {
+    (text.contains("Finished.") || text.contains("Finished with an error.")) && match (text.rfind("you> "), text.rfind(boundary)) {
         (Some(prompt), Some(answer)) => prompt > answer,
         _ => false,
     }
+}
+
+fn ready_for_exit(text: &str) -> bool { completed_at_active_prompt(text, "answer> ") }
+
+fn ready_chat_planning_exit(text: &str) -> bool {
+    text.contains("CHAT_PLAN_EXIT_MODE_CHECKED") &&
+        text.rsplit_once("Local planning mode exited.").is_some_and(|(_, tail)| tail.contains("you> "))
+}
+
+fn ready_chat_exit(text: &str) -> bool {
+    let Some((_, fresh)) = text.rsplit_once("CHAT_FRESH_RECALL_READY") else { return false; };
+    let (Some(verified), Some(finished)) = (fresh.rfind("CHAT_RECALL_VERIFIED"), fresh.rfind("Finished.")) else { return false; };
+    finished > verified && completed_at_active_prompt(fresh, "Recall the decision I just accepted.")
+}
+
+fn ready_same_followup_exit(text: &str) -> bool {
+    let Some((_, resumed)) = text.rsplit_once("Conversation resumed: ") else { return false; };
+    resumed.contains("CHAT_SAME_FOLLOWUP_SETTLED") &&
+        completed_at_active_prompt(resumed, "Continue with one ordinary sentence about this workspace.")
+}
+
+fn ready_chat_review(text: &str) -> Option<&str> {
+    let (_, card) = text.rsplit_once("Type accept ")?;
+    let code = card.get(..16)?;
+    if !code.bytes().all(|b| b.is_ascii_hexdigit() && !b.is_ascii_uppercase()) ||
+        !card[16..].starts_with(" to confirm,") || !card[16..].contains("approval> ") {
+        return None;
+    }
+    Some(code)
 }
 
 fn main() {
@@ -58,7 +87,11 @@ fn main() {
     let planning_startup = args.first().is_some_and(|a| a == "--planning-startup");
     let planning_crash = args.first().is_some_and(|a| a == "--planning-crash");
     let planning_crash_exit = args.first().is_some_and(|a| a == "--planning-crash-exit");
-    if kill_owner || queued_eof || draft || draft_accept_one || draft_cli || draft_multi || draft_question || draft_mcp || draft_mcp_resume || enhance_cancel || enhance_inline || planning_entry || planning_startup || planning_crash || planning_crash_exit { args.remove(0); }
+    let chat_review = args.first().is_some_and(|a| a == "--chat-review");
+    let chat_review_cancel = args.first().is_some_and(|a| a == "--chat-review-cancel");
+    let chat_review_planning = args.first().is_some_and(|a| a == "--chat-review-planning");
+    let chat_review_followup = args.first().is_some_and(|a| a == "--chat-review-followup");
+    if kill_owner || queued_eof || draft || draft_accept_one || draft_cli || draft_multi || draft_question || draft_mcp || draft_mcp_resume || enhance_cancel || enhance_inline || planning_entry || planning_startup || planning_crash || planning_crash_exit || chat_review || chat_review_cancel || chat_review_planning || chat_review_followup { args.remove(0); }
     let root = std::path::PathBuf::from(args.last().unwrap());
     let check_terminal = slave.try_clone().unwrap();
     let mut original = [0_usize; 64];
@@ -105,6 +138,81 @@ fn main() {
             }
         }
         let text = String::from_utf8_lossy(&output);
+        if chat_review || chat_review_cancel || chat_review_planning || chat_review_followup {
+            if phase == 0 {
+                for (action, prefix) in [
+                    ("folder", "Type one exact choice: folder "),
+                    ("repository", "Type one exact choice: repository "),
+                    ("enable", "Type enable "),
+                ] {
+                    for (index, _) in text.match_indices(prefix) {
+                        let tail = &text[index + prefix.len()..];
+                        let Some(code) = tail.get(..16) else { continue; };
+                        if !code.bytes().all(|b| b.is_ascii_hexdigit() && !b.is_ascii_uppercase()) || !tail[16..].contains("> ") { continue; }
+                        let reply = format!("{action} {code}");
+                        if !codes.contains(&reply) {
+                            master.write_all(format!("{reply}\n").as_bytes()).unwrap();
+                            codes.push(reply);
+                        }
+                    }
+                }
+            }
+            match phase {
+                0 if chat_review_planning && text.contains("you> ") && text.contains("CHAT_INITIAL_AUTHORITY_CHECKED") => {
+                    master.write_all(b"/plan exit\n").unwrap();
+                    phase = 10;
+                },
+                10 if ready_chat_planning_exit(&text) => {
+                    master.write_all(b"Propose a durable decision for this workspace.\n").unwrap();
+                    phase = 1;
+                },
+                0 if text.contains("you> ") && text.contains("CHAT_INITIAL_AUTHORITY_CHECKED") => {
+                    master.write_all(b"Propose a durable decision for this workspace.\n").unwrap();
+                    phase = 1;
+                },
+                1 => {
+                    if let Some(code) = ready_chat_review(&text) {
+                        if chat_review_cancel {
+                            master.write_all(b"cancel\n").unwrap();
+                        } else {
+                            master.write_all(format!("accept {code}\n").as_bytes()).unwrap();
+                        }
+                        phase = 2;
+                    }
+                },
+                2 => {
+                    if let Some(resumed) = text.rsplit("Conversation resumed: ").next().filter(|_| text.contains("Conversation resumed: ")) {
+                        if resumed.contains("you> ") && text.contains("CHAT_RESUME_AUTHORITY_CHECKED") {
+                            if chat_review_followup {
+                                master.write_all(b"Continue with one ordinary sentence about this workspace.\n").unwrap();
+                                phase = 6;
+                            } else {
+                                master.write_all(b"/exit\n").unwrap();
+                                phase = 3;
+                            }
+                        }
+                    }
+                },
+                3 => {
+                    if let Some(fresh) = text.rsplit("CHAT_FRESH_RECALL_READY").next().filter(|_| text.contains("CHAT_FRESH_RECALL_READY")) {
+                        if fresh.contains("you> ") {
+                            master.write_all(b"Recall the decision I just accepted.\n").unwrap();
+                            phase = 4;
+                        }
+                    }
+                },
+                4 if ready_chat_exit(&text) => {
+                    master.write_all(b"/exit\n").unwrap();
+                    phase = 5;
+                },
+                6 if ready_same_followup_exit(&text) => {
+                    master.write_all(b"/exit\n").unwrap();
+                    phase = 7;
+                },
+                _ => {},
+            }
+            continue;
+        }
         if draft_accept_one {
             if phase == 0 {
                 if let Some(part) = text.split("Type accept ").nth(1) {
@@ -437,6 +545,8 @@ fn main() {
     }
     if queued_eof { assert_eq!(phase, 5); assert!(status.success()); }
     if draft_accept_one { assert_eq!(phase, 1); assert!(status.success()); }
+    if chat_review || chat_review_cancel || chat_review_planning { assert_eq!(phase, 5); assert!(status.success()); }
+    if chat_review_followup { assert_eq!(phase, 7); assert!(status.success()); }
     if enhance_cancel { assert_eq!(phase, 11); assert!(status.success()); }
     if enhance_inline { assert_eq!(phase, 5); assert!(status.success()); }
     if draft_mcp { assert_eq!(phase, 6); assert!(status.success()); }
@@ -449,7 +559,66 @@ fn main() {
 
 #[cfg(test)]
 mod tests {
-    use super::ready_for_exit;
+    use super::{ready_for_exit, ready_chat_review, ready_chat_exit, ready_chat_planning_exit, ready_same_followup_exit};
+
+    #[test]
+    fn same_followup_requires_its_own_prompt_and_actual_settlement() {
+        assert!(ready_same_followup_exit("Conversation resumed: original\nCHAT_RESUME_AUTHORITY_CHECKED\nyou> Continue with one ordinary sentence about this workspace.\nyou> \nFinished with an error.\nCHAT_SAME_FOLLOWUP_SETTLED"));
+        assert!(ready_same_followup_exit("Conversation resumed: original\nCHAT_RESUME_AUTHORITY_CHECKED\nyou> Continue with one ordinary sentence about this workspace.\nCHAT_SAME_FOLLOWUP_SETTLED\nFinished.\nyou> "));
+        assert!(!ready_same_followup_exit("Finished.\nyou> \nConversation resumed: original\nCHAT_RESUME_AUTHORITY_CHECKED\nyou> Continue with one ordinary sentence about this workspace.\nyou> \nCHAT_SAME_FOLLOWUP_SETTLED"));
+        assert!(!ready_same_followup_exit("Conversation resumed: original\nCHAT_RESUME_AUTHORITY_CHECKED\nyou> Continue with one ordinary sentence about this workspace.\nFinished with an error.\nyou> "));
+    }
+    #[test]
+    fn chat_prompt_before_answer_is_ready() {
+        assert!(ready_chat_exit("CHAT_FRESH_RECALL_READY\nyou> Recall the decision I just accepted.\nyou> \nCHAT_RECALL_VERIFIED\nFinished."));
+    }
+    #[test]
+    fn chat_prompt_after_answer_is_ready() {
+        assert!(ready_chat_exit("CHAT_FRESH_RECALL_READY\nyou> Recall the decision I just accepted.\nCHAT_RECALL_VERIFIED\nFinished.\nyou> "));
+    }
+    #[test]
+    fn chat_historical_completion_does_not_close_a_fresh_prompt() {
+        assert!(!ready_chat_exit("you> Recall the decision I just accepted.\nyou> \nCHAT_RECALL_VERIFIED\nFinished.\nCHAT_FRESH_RECALL_READY\nyou> "));
+    }
+    #[test]
+    fn chat_initial_prompt_is_not_a_post_input_prompt() {
+        assert!(!ready_chat_exit("CHAT_FRESH_RECALL_READY\nyou> Recall the decision I just accepted.\nCHAT_RECALL_VERIFIED\nFinished."));
+    }
+    #[test]
+    fn chat_sentinel_without_completion_is_not_ready() {
+        assert!(!ready_chat_exit("CHAT_FRESH_RECALL_READY\nyou> Recall the decision I just accepted.\nyou> \nCHAT_RECALL_VERIFIED"));
+    }
+    #[test]
+    fn chat_static_card_is_not_input_ready() {
+        assert_eq!(ready_chat_review("Type accept 0123456789abcdef to confirm, or anything else to cancel.\n> "), None);
+    }
+    #[test]
+    fn chat_activated_card_is_input_ready() {
+        assert_eq!(ready_chat_review("Type accept 0123456789abcdef to confirm, or anything else to cancel.\n> \napproval> "), Some("0123456789abcdef"));
+    }
+    #[test]
+    fn earlier_input_prompt_does_not_activate_the_current_card() {
+        assert_eq!(ready_chat_review("approval> old\nType accept 0123456789abcdef to confirm, or anything else to cancel.\n> "), None);
+    }
+    #[test]
+    fn refreshed_card_requires_its_own_input_prompt() {
+        assert_eq!(ready_chat_review("Type accept 0123456789abcdef to confirm, or anything else to cancel.\n> \napproval> \nType accept fedcba9876543210 to confirm, or anything else to cancel.\n> "), None);
+    }
+    #[test]
+    fn malformed_chat_challenge_is_not_input_ready() {
+        assert_eq!(ready_chat_review("Type accept 0123456789abcdeF to confirm, or anything else to cancel.\n> \napproval> "), None);
+    }
+    #[test]
+    fn planning_exit_requires_live_mode_check_and_new_prompt() {
+        assert!(ready_chat_planning_exit("you> /plan exit\nCHAT_PLAN_EXIT_MODE_CHECKED\nLocal planning mode exited.\nyou> "));
+        assert!(ready_chat_planning_exit("you> /plan exit\nLocal planning mode exited.\nyou> \nCHAT_PLAN_EXIT_MODE_CHECKED"));
+    }
+    #[test]
+    fn planning_exit_refuses_missing_boundary_or_old_prompt() {
+        assert!(!ready_chat_planning_exit("you> \nCHAT_PLAN_EXIT_MODE_CHECKED"));
+        assert!(!ready_chat_planning_exit("you> /plan exit\nLocal planning mode exited.\nCHAT_PLAN_EXIT_MODE_CHECKED"));
+        assert!(!ready_chat_planning_exit("Local planning mode exited.\nyou> "));
+    }
     #[test]
     fn complete_then_active_prompt() { assert!(ready_for_exit("answer> done\nFinished.\nyou> ")); }
     #[test]

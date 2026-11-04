@@ -1,0 +1,2 @@
+independent_frozen_source_runtime_helpers_fixtures_exit=0
+prior_independent_verifier_wrong_cwd_refused_before_checks=1

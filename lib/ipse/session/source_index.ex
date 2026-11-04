@@ -219,6 +219,30 @@ defmodule Ipse.Session.SourceIndex do
 
   def assertion_request(_, _), do: @error
 
+  @doc false
+  def answer_request(%__MODULE__{} = index, turn, request_id, quote)
+      when is_binary(quote) and byte_size(quote) in 1..1024 do
+    with true <- String.valid?(quote),
+         [item] <-
+           Enum.filter(Map.values(index.entries), fn item ->
+             item.kind == "answer.original" and item.origin == "assistant_proposal" and
+               item.coverage == "available" and item.provenance["turn_id"] === turn and
+               item.provenance["request_id"] === request_id
+           end),
+         true <- is_binary(item.text),
+         {:ok, {offset, _}} <- unique_match(item.text, quote),
+         request = %{"handle" => token(index, "read", item, offset), "quote" => quote},
+         {:ok, _} <- __MODULE__.quote(index, request) do
+      {:ok, request}
+    else
+      _ -> @error
+    end
+  rescue
+    _ -> @error
+  end
+
+  def answer_request(_, _, _, _), do: @error
+
   @doc "Only an admitted original visible answer is indexed; presentation and reasoning are excluded."
   def admit_answer(index, answer, assistant \\ nil)
 

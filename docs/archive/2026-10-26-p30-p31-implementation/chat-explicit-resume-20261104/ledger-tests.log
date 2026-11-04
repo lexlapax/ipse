@@ -1,0 +1,9 @@
+isolated_home_real_priv_helper_verified
+Running ExUnit with seed: 995183, max_cases: 1
+Excluding tags: [:native_sandbox, :macos_sandbox, :macos_filesystem, :memory_scope, :workspace_word_native, :controlled_tty_bridge, :controlled_tty_loss]
+
+....
+Finished in 7.7 seconds (0.00s async, 7.7s sync)
+
+Result: 4 passed
+fixture_root=/dev/shm/ipse-reoffer-policy-ddae91b3bd5937b32d0f29f7e5defb20

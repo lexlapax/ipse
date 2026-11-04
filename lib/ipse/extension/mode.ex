@@ -151,6 +151,17 @@ defmodule Ipse.Extension.Mode do
     end
   end
 
+  @doc false
+  # An inert outer callback is separate from the classes a saved effect mapping
+  # may grant. It admits no host action, read, publication or inference.
+  def nomination(value) do
+    if valid?(value) and value["headless"] === false and
+         value["ceiling"] === "normal" and value["enclosing_ceiling"] === "normal" and
+         value["knowledge"] === "available" and value["approval"] in ~w(ask allow),
+       do: :ok,
+       else: {:error, :knowledge_mode_denied}
+  end
+
   @doc "Preserve normal approval for unrelated effects; saved consent is not consulted."
   def ordinary(value, mutating?) when is_boolean(mutating?) do
     cond do

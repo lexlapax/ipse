@@ -65,6 +65,8 @@ defmodule Ipse.Extension.Invocation do
     with true <- valid_intent?(intent),
          {:ok, value} <- Catalog.validate_response(intent["descriptor"], response),
          true <-
+           get_in(intent, ["semantic_binding", "class"]) !== "nomination.select" or actions === [],
+         true <-
            is_list(actions) and
              length(actions) <= Ipse.Extension.Actions.limit(intent["identity"]),
          true <- Enum.all?(actions, &Ipse.Extension.Actions.valid_result?/1),
@@ -89,6 +91,7 @@ defmodule Ipse.Extension.Invocation do
 
   def build_saved_result(intent, delivery, actions, elapsed_ms) do
     with true <- valid_intent?(intent),
+         true <- get_in(intent, ["semantic_binding", "class"]) !== "nomination.select",
          true <- is_list(actions),
          true <- length(actions) <= Ipse.Extension.Actions.limit(intent["identity"]),
          true <- Enum.all?(actions, &Ipse.Extension.Actions.valid_result?/1),
@@ -159,8 +162,15 @@ defmodule Ipse.Extension.Invocation do
 
   def validate_events(events) do
     with [%{"metadata" => metadata} | _] <- events,
+         :ok <- Ipse.Session.PendingNomination.validate_events(events, nil),
          {:ok, catalog} <- Catalog.from_metadata(metadata),
-         {:ok, sources} <- ResultSource.restore(events) do
+         {:ok, sources} <- ResultSource.restore(events),
+         {:ok, timeline} <-
+           Ipse.Session.PlanningTransition.mode_timeline(
+             events,
+             get_in(metadata, ["source_origin", "session_id"]) ||
+               get_in(metadata, ["semantic_admission", "pin", "session_id"])
+           ) do
       identities = Map.new(Map.get(metadata, "extensions", []), &{&1["instance"], &1})
 
       initial = %{
@@ -180,14 +190,18 @@ defmodule Ipse.Extension.Invocation do
         sources: sources
       }
 
-      Enum.reduce_while(events, {:ok, initial}, fn event, {:ok, state} ->
+      Enum.reduce_while(events, {:ok, initial, timeline, 0}, fn event,
+                                                                {:ok, state, timeline, position} ->
+        {mode, timeline} = Ipse.Session.PlanningTransition.mode_at(timeline, position)
+        state = %{state | metadata: Map.put(metadata, "execution_mode", mode)}
+
         case validate_event(event, state, identities, catalog) do
-          {:ok, next} -> {:cont, {:ok, next}}
+          {:ok, next} -> {:cont, {:ok, next, timeline, position + 1}}
           _ -> {:halt, @error}
         end
       end)
       |> case do
-        {:ok, _} -> :ok
+        {:ok, _, _, _} -> :ok
         _ -> @error
       end
     else
@@ -363,6 +377,27 @@ defmodule Ipse.Extension.Invocation do
     if Ipse.Session.WorkerInput.record?(event), do: {:ok, state}, else: @error
   end
 
+  # The complete host nomination/managed-release chain was validated before
+  # this replay. Bind its marker to this validator's already completed callback;
+  # it does not start an invocation or grant a publication/review capability.
+  defp validate_event(%{"type" => "pending_proposal_nominated"} = event, state, _, _) do
+    id = event["invocation_id"]
+
+    with true <- is_nil(state.active),
+         intent when is_map(intent) <- state.intents[id],
+         result when is_map(result) <- state.results[id],
+         true <- event["session_id"] === state.session_id,
+         true <- event["turn_id"] === intent["payload"]["turn_id"],
+         true <- event["parent_call_id"] === intent["parent_call_id"],
+         true <- event["parent_request_id"] === intent["parent_request_id"],
+         true <- event["intent_sha256"] === Ipse.JSON.digest([intent]),
+         true <- event["result_sha256"] === Ipse.JSON.digest([result]) do
+      {:ok, state}
+    else
+      _ -> @error
+    end
+  end
+
   defp validate_event(event, state, _, _) do
     if Map.has_key?(event, "invocation_id"), do: @error, else: {:ok, state}
   end
@@ -510,6 +545,9 @@ defmodule Ipse.Extension.Invocation do
            is_integer(event["action_count"]) and
              event["action_count"] in 0..Ipse.Extension.Actions.limit(event["identity"]),
          true <-
+           get_in(event, ["semantic_binding", "class"]) !== "nomination.select" or
+             (event["action_count"] === 0 and event["actions_sha256"] === Ipse.JSON.digest([])),
+         true <-
            is_binary(event["actions_sha256"]) and
              Regex.match?(~r/\A[a-f0-9]{64}\z/, event["actions_sha256"]),
          {:ok, _} <-
@@ -533,6 +571,7 @@ defmodule Ipse.Extension.Invocation do
 
   defp valid_saved_result?(event) do
     with true <- Enum.sort(Map.keys(event)) == Enum.sort(intent_keys(event) ++ @saved_keys),
+         true <- get_in(event, ["semantic_binding", "class"]) !== "nomination.select",
          true <- event["type"] == "extension_invocation_result" and event["version"] in [2, 4],
          true <- valid_intent?(result_intent(event)),
          true <- event["identity"]["sdk"] === 2,

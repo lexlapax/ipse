@@ -1,6 +1,6 @@
 defmodule Ipse.Session.ManagedLineage do
   @moduledoc "Host-derived producer lineage; current eligibility belongs to a separate owned barrier."
-  alias Ipse.{JSON, Session.ManagedReference}
+  alias Ipse.{JSON, Session, Session.ManagedReference}
   @error {:error, :managed_lineage_unavailable}
   @capacity_cache {__MODULE__, :capacity_cache}
   @capacity_cache_entries 64
@@ -247,6 +247,28 @@ defmodule Ipse.Session.ManagedLineage do
   defp replay_preflight_projection(
          state,
          messages,
+         %{"type" => "managed_root_transition", "version" => 2} = event,
+         binding
+       ) do
+    with {:ok, expected, projected, reference, next} <-
+           management_root_projection(
+             state,
+             messages,
+             binding,
+             event["fresh_observation"],
+             event["inspection"],
+             event["management"]
+           ),
+         true <- expected === event do
+      {:ok, %{messages: projected, state: reference, lineage: next}}
+    else
+      _ -> @error
+    end
+  end
+
+  defp replay_preflight_projection(
+         state,
+         messages,
          %{"type" => "managed_root_transition"} = event,
          binding
        ) do
@@ -319,8 +341,12 @@ defmodule Ipse.Session.ManagedLineage do
                  with [target] when is_binary(target) <- targets,
                       guard when is_map(guard) <- state.dictionary[target],
                       true <- state.root_observations[target] === true,
-                      true <- guard in dependencies,
-                      old = Enum.reject(dependencies, &(&1 === guard)),
+                      {carried, old} =
+                        Enum.split_with(dependencies, fn dependency ->
+                          dependency["version"] === 3 and
+                            dependency["collection"] === guard["collection"]
+                        end),
+                      true <- carried != [] and current_root_prerequisites?(state, carried, guard),
                       {:ok, action} <- root_candidate(state, old),
                       true <- action["operation_id"] === operation do
                    [action]
@@ -339,6 +365,151 @@ defmodule Ipse.Session.ManagedLineage do
   end
 
   def root_projection_candidate(_, _), do: @error
+
+  @doc false
+  def management_root_candidate(%__MODULE__{unavailable: false} = state, dependencies) do
+    with {:ok, ^dependencies} <- ManagedReference.union([dependencies]),
+         true <- dependencies != [],
+         pin = state.admission["pin"],
+         binding = %{"pin" => pin, "namespace" => pin["namespace"]},
+         metadata = Enum.filter(dependencies, &(&1["version"] === 3)),
+         true <-
+           Enum.all?(metadata, fn dependency ->
+             Session.ManagedReads.cached_root_history?(
+               dependency,
+               state.root_observations,
+               binding,
+               dependency["collection"]["generation"]
+             )
+           end),
+         candidates =
+           Enum.flat_map(state.root_writes, fn {_, value} ->
+             action = value["action"]
+             handoff = value["handoff"]
+
+             with true <- is_map(handoff) and Session.ChatReviewHandoff.valid_event?(handoff),
+                  true <-
+                    handoff["pin"] === pin and
+                      handoff["session_id"] === state.reference.session_id,
+                  true <-
+                    handoff["capture_intent_sha256"] === value["parent_sha256"] and
+                      handoff["capture_result_sha256"] === value["result_sha256"] and
+                      handoff["pending_key"] === value["result_pending_key"],
+                  true <- root_write_union?(state, action, value["dependencies"]),
+                  link_key = String.replace_prefix(handoff["pending_key"], "pending.", "accept."),
+                  true <-
+                    Enum.any?(
+                      dependencies,
+                      &(get_in(&1, ["subject", "acceptance", "link", "key"]) === link_key)
+                    ),
+                  true <-
+                    Enum.any?(metadata, fn dependency ->
+                      dependency in value["dependencies"] or
+                        capture_successor_metadata?(state, value, dependency)
+                    end) do
+               [%{action: action, handoff: handoff}]
+             else
+               _ -> []
+             end
+           end),
+         [candidate | _] <-
+           Enum.sort_by(
+             candidates,
+             &get_in(&1.action, ["outcome", "value", "receipt", "generation"]),
+             :desc
+           ),
+         1 <-
+           Enum.count(
+             candidates,
+             &(get_in(&1.action, ["outcome", "value", "receipt", "generation"]) ===
+                 get_in(candidate.action, ["outcome", "value", "receipt", "generation"]))
+           ) do
+      {:ok, candidate}
+    else
+      _ -> @error
+    end
+  rescue
+    _ -> @error
+  end
+
+  def management_root_candidate(_, _), do: @error
+
+  defp capture_successor_metadata?(state, value, dependency) do
+    Enum.any?(value["dependencies"], fn prior ->
+      target = state.root_transitions[JSON.digest([prior])]
+      guard = state.dictionary[target]
+
+      is_map(guard) and dependency["version"] === 3 and
+        dependency["collection"] === guard["collection"] and
+        guard["collection"]["floor_anchor"] === value["action"]["operation_id"]
+    end)
+  end
+
+  @doc false
+  def management_root_projection(state, messages, binding, observation, inspection, management) do
+    with {:ok, plan} <- ManagedReference.plan(state.reference, messages),
+         {:ok, dependencies} <- dependencies(state, messages),
+         true <- plan.dependencies === dependencies,
+         {:ok, candidate} <- management_root_candidate(state, dependencies),
+         true <- Enum.sort(Map.keys(management)) === ~w(event handoff intent result),
+         true <- management["handoff"]["event"] === candidate.handoff,
+         action = candidate.action,
+         receipt = get_in(action, ["outcome", "value", "receipt"]),
+         true <- inspection["operation"] === receipt,
+         true <-
+           Enum.sort(Map.keys(inspection)) ===
+             ~w(floor floor_anchor generation operation project version),
+         true <- observation["value"] === Map.delete(inspection, "operation"),
+         pin = state.admission["pin"],
+         {:ok, guard} <-
+           Ipse.Extension.Collection.ObservedRead.root_dependency(
+             %{"op" => "snapshot"},
+             observation,
+             pin
+           ),
+         value = state.root_writes[action["operation_id"]],
+         true <-
+           Enum.all?(Enum.filter(dependencies, &(&1["version"] === 3)), fn dependency ->
+             dependency["collection"] === guard["collection"] or
+               dependency in value["dependencies"] or
+               capture_successor_metadata?(state, value, dependency)
+           end),
+         evidence = %{
+           "fresh_dependency" => guard,
+           "fresh_observation" => observation,
+           "inspection" => inspection,
+           "operation_id" => action["operation_id"],
+           "own_action_sha256" => JSON.digest([action]),
+           "receipt_sha256" => JSON.digest([receipt]),
+           "management" => management
+         },
+         {:ok, event, projected, reference} <-
+           ManagedReference.project_root_history(plan, binding, evidence),
+         next = apply_root_transition(state, action["operation_id"], guard) do
+      {:ok, event, projected, reference, next}
+    else
+      _ -> @error
+    end
+  rescue
+    _ -> @error
+  end
+
+  # Later root-only reads remain current prerequisites. A matching generation
+  # alone is insufficient: each must be a committed host-classified read under
+  # the exact own-write successor and pinned collection identity.
+  defp current_root_prerequisites?(state, dependencies, guard) do
+    pin = get_in(state.admission, ["pin"])
+    binding = %{"pin" => pin, "namespace" => guard["namespace"]}
+
+    Enum.all?(dependencies, fn dependency ->
+      Ipse.Session.ManagedReads.cached_root_prerequisite?(
+        dependency,
+        state.root_observations,
+        binding,
+        guard["collection"]["generation"]
+      )
+    end)
+  end
 
   @doc false
   def root_projection(state, messages, binding, observation, inspection) do
@@ -989,7 +1160,11 @@ defmodule Ipse.Session.ManagedLineage do
          {:ok, deps} <- invocation_dependencies(state, id) do
       state =
         if event["outcome"]["status"] == "ok" do
-          {:ok, state} = put_refs(state, :effects, event["operation_id"], deps)
+          source_producer =
+            deps != [] or
+              Session.SourceWindow.source_effect_operation?(event["request"]["op"])
+
+          {:ok, state} = put_refs(state, :effects, event["operation_id"], deps, source_producer)
 
           if event["request"]["op"] == "context.publish" do
             {:ok, state} = put_refs(state, :publishers, entry.instance, deps)
@@ -1027,6 +1202,8 @@ defmodule Ipse.Session.ManagedLineage do
 
       release = if state.output_release, do: %{state.output_release | raw: event}, else: nil
 
+      state = bind_root_capture_result(state, event)
+
       {:ok,
        %{
          state
@@ -1036,6 +1213,23 @@ defmodule Ipse.Session.ManagedLineage do
            output_release: release
        }}
     end
+  end
+
+  defp inputs(state, %{"type" => "pending_chat_review_handoff"} = event, _) do
+    writes =
+      Map.new(state.root_writes, fn {operation, value} ->
+        bound =
+          Session.ChatReviewHandoff.valid_event?(event) and
+            event["session_id"] === state.reference.session_id and
+            event["pin"] === state.admission["pin"] and
+            event["capture_intent_sha256"] === value["parent_sha256"] and
+            event["capture_result_sha256"] === value["result_sha256"] and
+            event["pending_key"] === value["result_pending_key"]
+
+        {operation, if(bound, do: Map.put(value, "handoff", event), else: value)}
+      end)
+
+    {:ok, checked(%{state | root_writes: writes})}
   end
 
   defp inputs(state, %{"type" => "managed_output_release_intent"} = event, _) do
@@ -1591,7 +1785,7 @@ defmodule Ipse.Session.ManagedLineage do
     end
   end
 
-  defp put_refs(state, field, id, deps) do
+  defp put_refs(state, field, id, deps, source_producer \\ true) do
     {state, refs} = pack(state, deps)
 
     values =
@@ -1602,7 +1796,7 @@ defmodule Ipse.Session.ManagedLineage do
     state = Map.put(state, field, values)
 
     state =
-      if field in [:requests, :outputs, :effects] and is_binary(id),
+      if source_producer and field in [:requests, :outputs, :effects] and is_binary(id),
         do: %{state | source_producers: Map.put(state.source_producers, "#{field}:#{id}", true)},
         else: state
 
@@ -1679,11 +1873,38 @@ defmodule Ipse.Session.ManagedLineage do
          event["outcome"]["status"] === "ok" and
          Ipse.Extension.ManagedCollectionCall.new_capture?(request) and
          root_write_union?(state, event, dependencies) do
-      value = %{"action" => event, "dependencies" => dependencies}
+      parent = get_in(state.invocations, [event["parent_invocation_id"], :parent])
+
+      value = %{
+        "action" => event,
+        "dependencies" => dependencies,
+        "parent_sha256" => JSON.digest([parent])
+      }
+
       checked(%{state | root_writes: Map.put(state.root_writes, event["operation_id"], value)})
     else
       state
     end
+  end
+
+  defp bind_root_capture_result(state, result) do
+    writes =
+      Map.new(state.root_writes, fn {operation, value} ->
+        if value["action"]["parent_invocation_id"] === result["invocation_id"] and
+             result["value"]["status"] in ~w(saved existing) and
+             is_binary(result["value"]["key"]) and
+             String.starts_with?(result["value"]["key"], "pending.") do
+          {operation,
+           Map.merge(value, %{
+             "result_sha256" => JSON.digest([result]),
+             "result_pending_key" => result["value"]["key"]
+           })}
+        else
+          {operation, value}
+        end
+      end)
+
+    checked(%{state | root_writes: writes})
   end
 
   defp root_write_union?(state, action, dependencies) do

@@ -5,8 +5,9 @@ defmodule Ipse.CLI.DoctorTest do
 
   @ids ~w(runtime.build home.layout config.files config.provider credentials.selected sandbox.native mcp.config extensions.selection sessions.store provider.reachability)
 
-  setup do
-    root = Path.join(System.tmp_dir!(), "ipse-doctor-" <> Ipse.Usage.id())
+  setup context do
+    temporary_root = if context[:native_workspace], do: "/tmp", else: System.tmp_dir!()
+    root = Path.join(temporary_root, "ipse-doctor-" <> Ipse.Usage.id())
     cwd = Path.join(root, "workspace")
     home = Path.join(root, "operator")
     File.mkdir_p!(cwd)
@@ -288,6 +289,7 @@ defmodule Ipse.CLI.DoctorTest do
     refute File.exists?(Path.join(c.home, "extensions"))
   end
 
+  @tag native_workspace: true
   test "native policy availability is distinct from enforcement and requested policy", c do
     if :os.type() in [{:unix, :linux}, {:unix, :darwin}] do
       {0, report} = doctor(c)

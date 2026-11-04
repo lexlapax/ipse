@@ -1,0 +1,10 @@
+query: "Read current cited evidence" -> "Current cited evidence"; aggregate_saved=10
+query_selected: "Read cited evidence from explicit source IDs" -> "Cited evidence from explicit source IDs"; aggregate_saved=10
+generation_job: "Begin, inspect, finalize or abort a supplied shared projection build" -> "Supplied shared projection builds"; aggregate_saved=70
+projection_selected: "Inspect current supplied shared projections with exact citations" -> "Current supplied shared projections with exact citations"; aggregate_saved=16
+lexical_index: "Build, rebuild or inspect the catalog-bound namespace lexical index" -> "Catalog-bound namespace lexical index"; aggregate_saved=60
+generation_produce: "Stage explicit facts, produce guarded vector pages or inspect producer progress" -> "Explicit facts, guarded vector pages, producer progress"; aggregate_saved=48
+saved_bytes=214
+predicted_manifest_bytes=16183
+predicted_headroom=201
+prediction_scope=export text only; unchanged inventory field widths must be confirmed by real build

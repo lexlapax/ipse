@@ -27,6 +27,8 @@ defmodule Ipse.Extension.Consent do
   @error {:error, :consent_unavailable}
 
   def resources, do: @resources
+  @doc false
+  def operation_limit, do: @entries
   def zero, do: Map.new(@resources, &{&1, 0})
 
   def valid_policy?(p) do
@@ -138,6 +140,38 @@ defmodule Ipse.Extension.Consent do
   end
 
   def with_policy(_, _, _, _, _, _), do: {:error, :consent_read_refused}
+
+  @doc "Retain an existing pinned policy and only selected operation receipts for a trusted read-only callback."
+  def with_policy_operations(root, project, epoch, policy_sha256, now, ids, fun)
+      when is_function(fun, 1) do
+    with true <- uint?(epoch) and JSON.sha256?(policy_sha256) and uint?(now),
+         true <-
+           is_list(ids) and length(ids) <= @entries and length(Enum.uniq(ids)) === length(ids),
+         true <- Enum.all?(ids, &id?/1) do
+      existing_transaction(root, project, fn state ->
+        if is_map(state) and policy_matches?(state, epoch, policy_sha256, now) do
+          operations =
+            Enum.reduce(ids, %{}, fn id, found ->
+              case existing(state, id) do
+                nil -> found
+                operation -> Map.put(found, id, operation)
+              end
+            end)
+
+          existing_callback(
+            fun,
+            Map.put(Map.take(state, ~w(epoch policy)), "operations", operations)
+          )
+        else
+          {:error, :consent_read_refused}
+        end
+      end)
+    else
+      _ -> {:error, :consent_read_refused}
+    end
+  end
+
+  def with_policy_operations(_, _, _, _, _, _, _), do: {:error, :consent_read_refused}
 
   @doc "Retain the exact admitted experiment reservation while a protected send is checked."
   def with_experiment_ticket(root, project, ticket, now, fun) when is_function(fun, 1) do

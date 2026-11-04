@@ -1,0 +1,4 @@
+core_closure=241 bootstrap=pass dormant_exports=pass
+artifact_files=27 static_imports=64 native_document_digest=9677e436d7969da90bb3c752c473489eb218c224f609cdcba852f1849a473fb7
+selected_cases=2 registration_cancel=0 capacity_boundary=2 other_cases_excluded=true
+source_fixture_parse=pass application_started=false native_tty_fixture_dispatched=false

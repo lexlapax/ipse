@@ -1,0 +1,12 @@
+Running ExUnit with seed: 0, max_cases: 1
+Excluding tags: [:test]
+Including tags: [clock_consent_recall: true]
+
+NATIVE_CLOCK_LIFECYCLE_ROOT=/dev/shm/ipse-expiry-renewal-native-d3-20261104-03/tmp/ipse-native-clock-renewal-recall-86d56ec04e3dbc24fdc651357f5d7843
+NATIVE_CLOCK_LIBRARY_SHA256=c9e614c891fb81661cdebba4b58ada033d39360451a743cc189f037aa0e8a7f2
+NATIVE_CLOCK_DRIVER_SHA256=2d0c2e2009fe602103720743dac453aab2f15810831b6941533ee0816c1d59d2
+NATIVE_CLOCK_STDIO_RUNTIME=/home/lexlapax/projects/lexlapax/ipse/_build/verification/ipse-expiry-current-d3-20261104-02/clock-runtime/stdio-runtime/ipse/ebin
+.
+Finished in 12.5 seconds (0.00s async, 12.5s sync)
+
+Result: 1 passed, 4 excluded

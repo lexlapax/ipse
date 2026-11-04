@@ -1,0 +1,22 @@
+{
+  "consumer_created": false,
+  "current_permission_qualified": false,
+  "date": "2026-11-04",
+  "dependency_inventory_sha256": "0b6259fd08e77e53861d66323f99833d006c2ef538ca3986e79cf5fe9b4de767",
+  "kind": "retained_revision_ledger_readonly_prevalidation",
+  "normal_renewal_performed": false,
+  "original_control_bytes": 606376,
+  "original_control_epoch": 1,
+  "original_control_sha256": "6ffc314e2ab1025c5c0bb1615d20c0fd6492fae12a300441fe1f844dbc63e242",
+  "original_control_unmodified": true,
+  "private_complete_evidence_manifest_sha256": "2cac70c3473ba0c5909bfc361640bc43f6973c414fa6214ef9f7ba3d5d4c5956",
+  "private_originals_after_inventory_sha256": "b525ac60d0cf613e79099c164c0db4c00828caa398b57d361438a28a9c81bcb1",
+  "private_originals_before_inventory_sha256": "b525ac60d0cf613e79099c164c0db4c00828caa398b57d361438a28a9c81bcb1",
+  "recall_qualified": false,
+  "reviewed_revision_helper_sha256": "288fba318d2a3da84d8a24f2006e66519a9aa09aaaf23d9e60b2ab7c1b20df03",
+  "run_script_sha256": "3c0b585c929376f8ef98f5a2e1b313097a222c435cc6b221c52a98f203570bfe",
+  "runtime_inventory_sha256": "403e9f9b62f9fb947e64e66b0728fd93c0130d7ef170b54b9d34f161d8d3680d",
+  "scope": "373 fingerprinted original journals produce exactly 2000 historical publication revisions; all 4890 original filesystem objects remain identical. This is a read-only prerequisite, not a Session, source-use, policy-renewal, or recall qualification.",
+  "source_inventory_sha256": "f76087a3d90f49d19872609b845b0d3123d571a78ef2326104afa9564e1825c3",
+  "version": 1
+}

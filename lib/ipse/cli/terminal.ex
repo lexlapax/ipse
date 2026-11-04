@@ -842,6 +842,22 @@ defmodule Ipse.CLI.Terminal do
         unless s.cancelling, do: puts(:stderr, "Running…")
         client_loop(s)
 
+      {:ipse, ^pid, {:decision_card_unavailable, :post_reply_review_unavailable}} ->
+        puts(
+          :stderr,
+          "Decision card unavailable. The answer is saved; no acceptance was attempted."
+        )
+
+        client_loop(s)
+
+      {:ipse, ^pid, {:pending_chat_review, token}} when is_reference(token) and s.cancelling ->
+        puts(:stderr, "Decision review was not started after cancellation.")
+        client_loop(s)
+
+      {:ipse, ^pid, {:pending_chat_review, token}}
+      when is_reference(token) and s.interactive and s.input_mode == :native ->
+        finish_pending_chat_review(s, token)
+
       {:ipse, ^pid, {:draft_ready, id, revision}} ->
         unless s.cancelling do
           puts(
@@ -1437,12 +1453,110 @@ defmodule Ipse.CLI.Terminal do
 
   def help, do: puts(String.replace(@help, "Ipse VERSION", "Ipse " <> Ipse.version()))
 
-  def interact(pid, ref, interactive, prompt, cwd) do
-    input = if interactive, do: Ipse.CLI.Input.start(pid), else: {:ok, nil, nil, :none}
-    interact_input(input, pid, ref, interactive, prompt, cwd)
+  defp finish_pending_chat_review(s, token) do
+    discard_queue(s)
+
+    if s.queued !== [],
+      do:
+        puts(
+          :stderr,
+          "Queued input was discarded for decision review. Send it again after the conversation resumes."
+        )
+
+    if s.exit do
+      puts(:stderr, "The proposal remains pending. No acceptance was attempted after exit.")
+      0
+    else
+      case Ipse.CLI.Input.stop_confirmed(s.reader, s.pid, s.input_channel) do
+        :ok ->
+          {:pending_chat_review, token}
+
+        _ ->
+          puts(
+            :stderr,
+            "Terminal cleanup is unconfirmed. Decision review was not started; inspect the saved conversation before continuing."
+          )
+
+          1
+      end
+    end
   end
 
-  defp interact_input({:error, _}, _pid, _ref, _interactive, _prompt, _cwd) do
+  defp start_chat_reoffer(s, startup) do
+    puts(:stderr, "Checking pending decision review before chat starts.")
+
+    case startup.(s.input_channel) do
+      {:reoffer, snapshot, preflight} when is_function(preflight, 0) ->
+        result =
+          try do
+            preflight.()
+          rescue
+            _ -> {:unknown, :chat_review_reoffer_unconfirmed}
+          catch
+            _, _ -> {:unknown, :chat_review_reoffer_unconfirmed}
+          end
+
+        complete_chat_reoffer(s, snapshot, result)
+
+      _ ->
+        client_loop(s)
+    end
+  end
+
+  defp complete_chat_reoffer(s, snapshot, {:ok, %{original: original, revision: revision}}) do
+    case Ipse.Session.activate_chat_reoffer(
+           s.pid,
+           s.input_channel,
+           snapshot.ref,
+           original,
+           revision
+         ) do
+      {:ok, token} ->
+        pid = s.pid
+
+        receive do
+          {:ipse, ^pid, {:pending_chat_review, ^token}} -> finish_pending_chat_review(s, token)
+        after
+          1000 ->
+            puts(:stderr, "Decision review readiness is unconfirmed; no card was opened.")
+            1
+        end
+
+      {:error, _} ->
+        Ipse.Session.abort_chat_reoffer(s.pid, s.input_channel, snapshot.ref)
+        puts(:stderr, "Pending decision review is unavailable in the current conversation state.")
+        client_loop(s)
+    end
+  end
+
+  defp complete_chat_reoffer(s, snapshot, :none) do
+    Ipse.Session.abort_chat_reoffer(s.pid, s.input_channel, snapshot.ref)
+    client_loop(s)
+  end
+
+  defp complete_chat_reoffer(s, snapshot, {:error, :chat_review_permission_unavailable}) do
+    Ipse.Session.abort_chat_reoffer(s.pid, s.input_channel, snapshot.ref)
+    puts(:stderr, "Pending decision review is unavailable under the current saved permission.")
+    client_loop(s)
+  end
+
+  defp complete_chat_reoffer(s, snapshot, _) do
+    Ipse.Session.abort_chat_reoffer(s.pid, s.input_channel, snapshot.ref)
+
+    puts(
+      :stderr,
+      "Pending decision review in conversation #{snapshot.session_id} is unconfirmed. Inspect its reservations and management journals before resuming; no review was retried."
+    )
+
+    1
+  end
+
+  def interact(pid, ref, interactive, prompt, cwd, startup \\ nil) do
+    input = if interactive, do: Ipse.CLI.Input.start(pid), else: {:ok, nil, nil, :none}
+    interact_input(input, pid, ref, interactive, prompt, cwd, startup)
+  end
+
+  defp interact_input({:error, _}, _pid, _ref, _interactive, _prompt, _cwd, _startup) do
     puts(
       :stderr,
       "Operator input is unavailable. The terminal channel could not be verified; no alternate reader was started."
@@ -1451,14 +1565,14 @@ defmodule Ipse.CLI.Terminal do
     1
   end
 
-  defp interact_input({:ok, reader, channel, mode}, pid, ref, interactive, prompt, cwd) do
+  defp interact_input({:ok, reader, channel, mode}, pid, ref, interactive, prompt, cwd, startup) do
     if interactive,
       do: puts("Type a task, $review, or /help. Use /cancel while work is running.")
 
     try do
       if prompt, do: dispatch_prompt(pid, prompt)
 
-      client_loop(%{
+      state = %{
         pid: pid,
         ref: ref,
         interactive: interactive,
@@ -1489,7 +1603,11 @@ defmodule Ipse.CLI.Terminal do
         queued: [],
         exit: false,
         cwd: cwd
-      })
+      }
+
+      if is_function(startup, 1) and mode === :native and is_nil(prompt),
+        do: start_chat_reoffer(state, startup),
+        else: client_loop(state)
     catch
       :exit, _ ->
         puts(

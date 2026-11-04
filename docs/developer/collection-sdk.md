@@ -197,6 +197,11 @@ A read request is:
 The closed inner read operations are `status`, `snapshot`, `get`, `inspect` and
 `scan`, with the argument schemas of
 [`Collection.valid_request?/1`](../../lib/ipse/extension/collection.ex).
+`CollectionCall` separately admits metadata-only `index` requests with exactly
+`op`, `prefix`, `cursor` and `limit`: start with a null cursor and a limit of
+1..32, then use the returned opaque cursor. The cursor binds that index scope
+and root. Descriptors do not establish source eligibility or authorize reading
+their values.
 `scan` narrows the internal limit to 1..4. It keeps complete records and returns
 an actual last-key continuation when the complete action reply would exceed
 16 KiB. It never slices a value. Follow that returned key with the same generation;
@@ -370,6 +375,20 @@ These [reader](../archive/2026-10-26-p30-p31-implementation/document-held-reader
 and [complete-value](../archive/2026-10-26-p30-p31-implementation/document-held-value.md)
 primitives establish owned transport, not source eligibility, inference permission
 or whole-workload memory qualification.
+
+Workspace-file publication also retains a Session-registered snapshot reader.
+`WorkspaceDocumentGuard` first registers its file-effect peer as dormant in the
+actual task's `Resources` scope. Tracking does not start the effect. Session
+checks the exact live job, action, reader, peer and unused token before asking
+its scope to activate that peer once. The effect still performs the existing
+current-file and guarded publication checks; registration grants no write.
+
+Cancellation revokes activation before scope cleanup. A still-dormant document
+peer can be terminated and its DOWN confirmed without entering the effect.
+After activation, the ordinary completion and unknown-outcome rules apply:
+neither a lost activation reply nor failed cleanup proves that nothing happened.
+Generic file effects retain their separate cleanup behavior. Do not reuse the
+dormant classification to terminate active work or replay an interrupted action.
 
 ### Decide expiry at the actual native owner
 
@@ -854,6 +873,17 @@ journal bytes still match. Cached Writer reads also recheck the canonical
 directory and private parent, so moving the directory behind a symlink or
 making it public cannot retain source authority.
 
+For a single literal `get`, `ManagedRead` distinguishes the known refusal
+`collection_record_expired` only after those current policy, original-source,
+signed-metadata and exact-root checks. `ObservedRead.expired_managed_literal?/6`
+reuses the existing recipe/record consistency checks and the signed ordinary
+retention predicate at actual host time; it returns a boolean, never an eligible
+dependency. No note body or successful read receipt is released. The bundled
+recall loop can skip that record within its existing read/page bounds and report
+partial coverage while checking later notes. A scan, malformed record,
+unverifiable expiry or generic source/policy failure cannot take this branch. Expiry
+classification performs no reclamation or clock renewal.
+
 Accepted decisions use a distinct version-6 observation. The host discovers the
 immutable link, retains the original committed management journal outside
 Identity/Consent and obtains the original Session source. The final protected
@@ -1188,6 +1218,8 @@ From a coherent built checkout, start with the boundary your change affects:
 ```sh
 mix test test/ipse/extension/collection_deadline_gate_test.exs
 mix test test/ipse/extension/notes_publication_admission_test.exs
+mix test test/ipse/extension/collection_normalizer_v3_integration_test.exs --only typed_expiry
+mix test test/extensions/knowledge/knowledge_recall_test.exs
 mix test test/ipse/session/managed_tool_use_test.exs --only publication_prerequisite
 mix test test/ipse/extension/managed_collection_call_session_test.exs --only legacy_managed_refusal --only registered_capture_lifecycle --only registered_competing --only publication_identity_loss --max-cases 1
 mix test test/ipse/extension/collection_document_stage_test.exs --only document_decision_restoration

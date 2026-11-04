@@ -1,0 +1,70 @@
+{
+  "aggregate_probe_detail": {
+    "path": "/home/lexlapax/projects/lexlapax/ipse/_build/verification/regression-group-launcher-20261104-01/capacity-shm-qualification-01/storage-proof.txt",
+    "sha256": "c646ac64889914986b38836e963d96edbb837129e8044d629af30907a2ae36aa"
+  },
+  "aggregate_probe_receipt": {
+    "path": "/home/lexlapax/projects/lexlapax/ipse/_build/verification/regression-group-launcher-20261104-01/capacity-shm-qualification-01/status.txt",
+    "sha256": "c112077a8ec7192011cb08e037a40ad2fa2eafa67ffdc8dfff08f421bfd7cf79"
+  },
+  "aggregate_quota_probe": "passed",
+  "app_module_count": 241,
+  "cached_paths_sha256": "c0fd43d87202015219e5395d63c7687e105189fea224420d847588f376389fab",
+  "candidate_kind": "frozen_head_cached_index_and_worktree_overlay_not_final_renewal_runtime",
+  "capacity_receipt": {
+    "path": "/home/lexlapax/projects/lexlapax/ipse/_build/verification/regression-group-launcher-20261104-01/capacity-readonly-20261104.txt",
+    "sha256": "1a2fc20862023f50874546465ded7c9ef5d1f47835f2c39163d1a4043afa2786"
+  },
+  "cow_canary_receipt": {
+    "path": "/home/lexlapax/projects/lexlapax/ipse/_build/verification/regression-group-launcher-20261104-01/capacity-cow-canary-01/status.txt",
+    "sha256": "13bc3d031005f1b35ad24e2c99dfa32b315307875b373a4db085b89ea8747307"
+  },
+  "dependency_files": {
+    "path": "/home/lexlapax/projects/lexlapax/ipse/_build/verification/regression-group-launcher-20261104-01/candidate-packet-02/dependencies.sha256",
+    "sha256": "0b6259fd08e77e53861d66323f99833d006c2ef538ca3986e79cf5fe9b4de767"
+  },
+  "destination": "/home/lexlapax/projects/lexlapax/ipse/_build/verification/regression-groups-frozen-20261104-02",
+  "git_head": "d3dab913c96fcf4455120470b6a157bebe4547e8",
+  "git_index_sha256": "4e8d663f996bc2658d248f3639f3899824da84c83773bbab73b0ba91f7763f1d",
+  "group_manifest": {
+    "path": "/home/lexlapax/projects/lexlapax/ipse/_build/verification/regression-partitions-review-20261104-01/unified-testfile-manifest.json",
+    "sha256": "a16d86ded011a860178f2d38d75a1963c09b4e55fbbebdfeb07e4dcd5d8cbb3d"
+  },
+  "hex_archive_files": {
+    "path": "/home/lexlapax/projects/lexlapax/ipse/_build/verification/regression-group-launcher-20261104-01/candidate-packet-02/hex-archives.sha256",
+    "sha256": "d323d73c6a788a5de2f29dea1f17397d4d204addf091007a0d007c8f8a383083"
+  },
+  "known_hex_archives": "/home/lexlapax/.mix/archives",
+  "launcher_source": {
+    "path": "/home/lexlapax/projects/lexlapax/ipse/_build/verification/regression-group-launcher-20261104-01/run-group-utf8-02.sh",
+    "sha256": "216228c3825779af6475aef8c35ec9084c1a52e67d0f849861900e407f1d26fb"
+  },
+  "preflight_source": {
+    "path": "/home/lexlapax/projects/lexlapax/ipse/_build/verification/regression-group-launcher-20261104-01/preflight.exs",
+    "sha256": "e0e4b84d10456b2412f49e69e6cfd4f720e40b121f90d2e8d3d5a4c08f612235"
+  },
+  "preparer_source": {
+    "path": "/home/lexlapax/projects/lexlapax/ipse/_build/verification/regression-group-launcher-20261104-01/prepare-serial-utf8-02.exs",
+    "sha256": "ff187726260294e4699f9bcc4019129debc205474f92bb744924feb2691d202c"
+  },
+  "protected_tmp_parent": "/dev/shm",
+  "reviewed_capacity_and_candidate": true,
+  "runtime_files": {
+    "path": "/home/lexlapax/projects/lexlapax/ipse/_build/verification/regression-group-launcher-20261104-01/candidate-packet-02/runtime.sha256",
+    "sha256": "081ce49843ef40eb1f9f0807fbb28ac6742bad15222b1b9bd18a8f4c556283c9"
+  },
+  "runtime_links": {
+    "path": "/home/lexlapax/projects/lexlapax/ipse/_build/verification/regression-group-launcher-20261104-01/candidate-packet-02/runtime.links",
+    "sha256": "45aeb8b70faba5ef2fa0d3217215e462358e84e2643465f693186dca73e77cb4"
+  },
+  "source_files": {
+    "path": "/home/lexlapax/projects/lexlapax/ipse/_build/verification/regression-group-launcher-20261104-01/candidate-packet-02/source.sha256",
+    "sha256": "f76087a3d90f49d19872609b845b0d3123d571a78ef2326104afa9564e1825c3"
+  },
+  "source_links": {
+    "path": "/home/lexlapax/projects/lexlapax/ipse/_build/verification/regression-group-launcher-20261104-01/candidate-packet-02/source.links",
+    "sha256": "baace3495254f81a987e6ad5ac2ddd28c2656e369a103f7175e82930f2c5418f"
+  },
+  "source_root": "/home/lexlapax/projects/lexlapax/ipse",
+  "version": 1
+}

@@ -122,6 +122,11 @@ defmodule Ipse.Session.Turn do
               event_after_started: false
           }
 
+          s = Map.delete(s, :pending_nomination)
+          s = Map.delete(s, :pending_chat_review)
+          s = Map.put(s, :chat_reoffer_snapshot, nil)
+          s = Map.delete(s, :post_reply_answer_recorded)
+
           Enum.each(names, &Session.notify(s, {:skill, &1}))
           s = Session.persist_skills(s, s.skills)
 
@@ -1656,6 +1661,13 @@ defmodule Ipse.Session.Turn do
     after_plans = Subscriptions.declarations(s.config, "after_turn")
     s = record_source_answer(s, status, after_plans)
 
+    case Session.start_post_reply_capture(s, status) do
+      {:ok, next} -> next
+      :skip -> finish_recorded(s, status, after_plans)
+    end
+  end
+
+  defp finish_recorded(s, status, after_plans) do
     if status == :ok and s.event_received != nil and s.event_turn == s.turn_id and
          not s.event_after_started and after_plans != [] do
       Session.record(s, %{
@@ -1733,10 +1745,11 @@ defmodule Ipse.Session.Turn do
   defp record_source_answer(s, status, after_plans) do
     assistant = List.last(s.messages)
 
-    if not match?(
-         %{status: draft_status} when draft_status in [:pending, :completed, :accepted],
-         Map.get(s, :draft)
-       ) and Ipse.Session.SourceWindow.enabled?(s.config) and
+    if Map.get(s, :post_reply_answer_recorded) !== {s.turn_id, s.last_request_id} and
+         not match?(
+           %{status: draft_status} when draft_status in [:pending, :completed, :accepted],
+           Map.get(s, :draft)
+         ) and Ipse.Session.SourceWindow.enabled?(s.config) and
          status == :ok and
          not Enum.any?(after_plans, &(&1.declaration["event"] == "answer.committed")) and
          is_map(assistant) and assistant["role"] == "assistant" and

@@ -1,0 +1,11 @@
+f5077f3862d786ea3274e9fb313e9493c866b94b356549d86b44d66be699711c  /home/lexlapax/projects/lexlapax/ipse/_build/verification/ipse-p30-pending-current-use-20261104-01/execution-02/entry.exs
+016e95e5bbdf39111ebedb6191c998a82a743adf307b989ef1e4572c2b4d82eb  /home/lexlapax/projects/lexlapax/ipse/_build/verification/ipse-p30-pending-current-use-20261104-01/execution-02/run-once.sh
+1390c660874dbe5a01b2987d6da1977d73feb1e23f10d75dcaa5ad811ea54438  /home/lexlapax/projects/lexlapax/ipse/_build/verification/ipse-p30-pending-current-use-20261104-01/pending-current-use-v2.patch
+d5c7165e3a2773618121f6eeff019824ab5ffd8680fdd6cc151f8359ff373d9a  /home/lexlapax/projects/lexlapax/ipse/_build/verification/ipse-p30-pending-current-use-20261104-01/day8-service-alias-v2.patch
+f4949c3af60785cb4ee37995be892491db149b265695c3a29ea8dfcf612e1c4d  /home/lexlapax/projects/lexlapax/ipse/_build/verification/ipse-p30-pending-current-use-20261104-01/source-v2/test/extensions/knowledge/pending_assessment_current_use_test.exs
+a7c7d3231e3012f102301c29cdee626c0f74e00c7b5cfbe9f5013fc942b1d36c  /home/lexlapax/projects/lexlapax/ipse/_build/verification/ipse-p30-pending-current-use-20261104-01/source-v2/test/support/shadow_pending_candidate_cli.exs
+0092d34f9e3adeed2bf184e3ab48feabd79eeacd2b5f0e5c1b5c654ceba2dcc1  /home/lexlapax/projects/lexlapax/ipse/_build/verification/ipse-p30-pending-current-use-20261104-01/source-v2/test/support/provider_fixture.ex
+71ee6667f1389f6315fca305a6d4af819f26f8f8db0da7ff61552ca39723e104  /home/lexlapax/projects/lexlapax/ipse/_build/verification/ipse-p30-pending-current-use-20261104-01/source-v2/test/support/managed_clock_lifecycle.exs
+07828b7e1fe9e878d46e4df4ef3a1a4d5d5d65cc7c84c1fdd2acbeb3d9be421c  /home/lexlapax/projects/lexlapax/ipse/dev/fixtures/process_clock.rs
+21a78892e9868328faf1f3cb0b353734012a6b33e414a898acd5ba50c996ed71  /home/lexlapax/projects/lexlapax/ipse/test/support/operator_pty.rs
+c0d00551b3b4381663b3605cf9307d056e76f2127d1ed10746ad37c5dd95b34b  /home/lexlapax/projects/lexlapax/ipse/lib/ipse/runner.ex

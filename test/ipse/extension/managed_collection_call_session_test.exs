@@ -1,6 +1,7 @@
 Code.require_file("../../support/provider_fixture.ex", __DIR__)
 Code.require_file("../../support/managed_mcp_http.exs", __DIR__)
 Code.require_file("../../support/managed_delivery_sink.exs", __DIR__)
+Code.require_file("../../support/native_pipe_scope.exs", __DIR__)
 
 defmodule Ipse.Extension.ManagedCollectionCallSessionTest do
   use ExUnit.Case, async: false
@@ -161,6 +162,8 @@ defmodule Ipse.Extension.ManagedCollectionCallSessionTest do
           call(%{"op" => "tool.call", "name" => "write", "timeout_ms" => 1000, "arguments" => %{"path" => "forbidden", "content" => "denied"}}, Map.put(state, "step", "done"))
         state["mode"] in ["capture_ab", "capture_ab_publication"] ->
           call(%{"op" => "collection.call", "request" => %{"op" => "snapshot"}}, Map.put(state, "step", "ab_snapshot"))
+        state["mode"] == "capture_ab_literal_root_publication_hold" ->
+          call(%{"op" => "collection.call", "request" => %{"op" => "snapshot"}}, Map.put(state, "step", "ab_literal_root_snapshot"))
         state["mode"] in ["capture_ab_literal", "capture_ab_literal_publication", "capture_ab_literal_publication_hold"] ->
           call(%{"op" => "collection.call", "request" => %{"op" => "get", "key" => state["literal_key"]}}, Map.put(state, "step", "ab_literal_read"))
         String.starts_with?(state["mode"], "host_ordinary:") ->
@@ -310,6 +313,9 @@ defmodule Ipse.Extension.ManagedCollectionCallSessionTest do
       defp advance("ab_snapshot", %{"status" => "ok", "value" => snapshot}, state) do
         call(%{"op" => "collection.call", "request" => %{"op" => "scan", "after" => nil, "generation" => snapshot["generation"], "limit" => 4}}, Map.put(state, "step", "ab_read"))
       end
+      defp advance("ab_literal_root_snapshot", %{"status" => "ok"}, state) do
+        call(%{"op" => "collection.call", "request" => %{"op" => "get", "key" => state["literal_key"]}}, Map.put(state, "step", "ab_literal_read"))
+      end
       defp advance("ab_literal_read", %{"status" => "ok", "value" => %{"record" => %{"value" => _}}} = outcome, state) do
         advance("ab_read", outcome, state)
       end
@@ -318,7 +324,7 @@ defmodule Ipse.Extension.ManagedCollectionCallSessionTest do
         advance("ab_read", Map.put(outcome, "value", value), state)
       end
       defp advance("ab_read", %{"status" => "ok", "value" => %{"records" => [_ | _]}} = outcome, state) do
-        if state["mode"] not in ["capture_ab_publication", "capture_ab_literal_publication", "capture_ab_literal_publication_hold"] do
+        if state["mode"] not in ["capture_ab_publication", "capture_ab_literal_publication", "capture_ab_literal_publication_hold", "capture_ab_literal_root_publication_hold"] do
         File.write!(state["trace"], "ab-held\\n", [:append])
         wait = fn wait, n ->
           cond do
@@ -390,7 +396,7 @@ defmodule Ipse.Extension.ManagedCollectionCallSessionTest do
       defp advance("quote", %{"status" => "ok", "value" => quote}, state) do
         {:ok, proof} = Ipse.Extension.source_proof(state["page"], quote, "Synthetic café observation")
         state = state |> Map.put("step", "snapshot") |> Map.put("proof", proof)
-        if state["mode"] in ["capture_ab_publication", "capture_ab_literal_publication_hold"] do
+        if state["mode"] in ["capture_ab_publication", "capture_ab_literal_publication_hold", "capture_ab_literal_root_publication_hold"] do
           File.write!(state["trace"], "candidate-held\\n", [:append])
           wait = fn wait, n ->
             cond do
@@ -404,7 +410,7 @@ defmodule Ipse.Extension.ManagedCollectionCallSessionTest do
         cond do
           state["mode"] in ["capture_unobserved", "conflict_unobserved"] ->
             advance("snapshot", %{"status" => "ok", "value" => %{"generation" => 0}}, state)
-          state["mode"] in ["capture_ab_literal", "capture_ab_publication", "capture_ab_literal_publication", "capture_ab_literal_publication_hold"] ->
+          state["mode"] in ["capture_ab_literal", "capture_ab_publication", "capture_ab_literal_publication", "capture_ab_literal_publication_hold", "capture_ab_literal_root_publication_hold"] ->
             advance("snapshot", %{"status" => "ok", "value" => state["prior_a"]["value"]}, state)
           true ->
             call(%{"op" => "collection.call", "request" => %{"op" => "snapshot"}}, state)
@@ -675,7 +681,7 @@ defmodule Ipse.Extension.ManagedCollectionCallSessionTest do
 
     unless c[:native_root_approval] || c[:literal_v4_ab] || c[:worker_input_capacity] ||
              c[:registered_capture_sequence] ||
-             c[:registered_competing] || c[:protected_outer_cancel],
+             c[:registered_competing] || c[:protected_outer_cancel] || c[:managed_ab_diagnostic],
            do: on_exit(fn -> File.rm_rf!(root) end)
 
     if c[:registered_capture_sequence], do: IO.puts("REGISTERED_CAPTURE_ROOT=" <> root)
@@ -1098,6 +1104,18 @@ defmodule Ipse.Extension.ManagedCollectionCallSessionTest do
 
         responses =
           cond do
+            c[:registered_ab_root_publication] ->
+              candidate =
+                hd(responses)
+                |> Jason.decode!()
+                |> put_in(
+                  ["message", "tool_calls", Access.at(0), "function", "arguments", "mode"],
+                  "capture_ab_literal_root_publication_hold"
+                )
+                |> Jason.encode!()
+
+              [candidate <> "\n", hd(responses), List.last(responses)]
+
             c[:registered_ab_publication] ->
               candidate =
                 hd(responses)
@@ -1315,7 +1333,9 @@ defmodule Ipse.Extension.ManagedCollectionCallSessionTest do
     {:ok, ordinary_namespace} = SemanticConsent.namespace(binding["project_id"], "capture")
     namespace = if literal_seed, do: literal_seed["namespace"], else: ordinary_namespace
     {:ok, catalog} = Catalog.snapshot(config)
-    descriptors = catalog["entries"]
+
+    descriptors =
+      Enum.filter(catalog["entries"], &(&1["instance"] === entry.identity["instance"]))
 
     constraints = constraints(c)
 
@@ -2661,6 +2681,11 @@ defmodule Ipse.Extension.ManagedCollectionCallSessionTest do
     id = Session.info(pid).id
     assert :ok = Session.prompt(pid, "Synthetic café observation")
     assert_receive {:capture_source_owner_closed, true}, 15_000
+
+    assert_receive {:capture_source_native_owner_exited, source_native_pid}
+                   when is_integer(source_native_pid) and source_native_pid > 0,
+                   15_000
+
     assert_receive {:DOWN, ^monitor, :process, ^pid, :normal}, 15_000
     assert {:ok, events} = Journal.load(c.dir, id)
     assert capture_results(events) == []
@@ -2692,8 +2717,14 @@ defmodule Ipse.Extension.ManagedCollectionCallSessionTest do
     shares = Process.get({Ipse.Session.StoredSources, :shareable_source}) || %{}
 
     case Enum.find(shares, fn {_, share} -> share.session_id == id and share.phase == :shared end) do
-      {_, %{port: port}} -> send(owner, {:capture_source_owner_closed, Port.close(port)})
-      _ -> :ok
+      {_, %{port: port, identity: %{pid: native_pid}}} ->
+        assert {:os_pid, ^native_pid} = Port.info(port, :os_pid)
+        send(owner, {:capture_source_owner_closed, Port.close(port)})
+        assert :ok = Ipse.Test.NativePipeScope.await_native_exit(native_pid)
+        send(owner, {:capture_source_native_owner_exited, native_pid})
+
+      _ ->
+        :ok
     end
   end
 
@@ -2726,48 +2757,75 @@ defmodule Ipse.Extension.ManagedCollectionCallSessionTest do
   end
 
   @tag managed_ab_probe: true,
+       managed_ab_diagnostic: true,
+       worker_inherited_union: true,
+       literal_v4_ab: true,
        metadata_version: 3,
        registered_main: true,
        capture_write: true,
-       registered_ab_publication: true
-  test "publication cannot discard an earlier stale managed A while citing current source B", c do
-    seed = start(c)
-    assert :ok = Session.prompt(seed, "Synthetic café observation")
-    assert_receive {:ipse, ^seed, {:done, :ok}}, 15_000
-    seed_id = Session.info(seed).id
-    assert :ok = Session.close_confirmed(seed)
-    assert {:ok, initial} = Journal.load(c.dir, seed_id)
-
-    assert Enum.any?(
-             initial,
-             &(&1["type"] == "extension_action_result" and
-                 &1["request"]["op"] == "collection.managed" and &1["outcome"]["status"] == "ok")
-           )
-
-    consumer = start(c, %{fixture_mode: "capture_ab_publication"})
+       registered_ab_root_publication: true
+  test "publication cannot discard earlier stale root metadata while citing current source B",
+       c do
+    seed = c.literal_seed
+    seed_id = seed["session_id"]
+    assert JSON.sha256(File.read!(seed["source_journal"])) == seed["source_sha256"]
+    before = collection_read(c, %{"op" => "snapshot"})
+    assert {:ok, before_ledger} = Consent.snapshot(c.control, c.binding["project_id"])
+    consumer = start(c)
     assert :ok = Session.prompt(consumer, "Synthetic café observation")
-    await_marker(c.trace, "candidate-held", 500)
+    IO.puts("MANAGED_AB_DIAGNOSTIC_ROOT=" <> c.root)
+    await_ab_candidate(c, consumer, System.monotonic_time(:millisecond) + 5_000)
     id = Session.info(consumer).id
     assert {:ok, before_events} = Journal.load(c.dir, id)
 
-    [scan] =
+    [root_snapshot] =
       Enum.filter(before_events, fn event ->
         event["type"] == "extension_action_result" and
-          get_in(event, ["request", "request", "op"]) == "scan"
+          get_in(event, ["request", "request", "op"]) == "snapshot"
       end)
 
-    assert scan["outcome"]["status"] == "ok"
-    [record_a] = get_in(scan, ["outcome", "value", "records"])
+    assert root_snapshot["outcome"]["status"] == "ok"
+    assert root_snapshot["outcome"]["value"]["generation"] == before["generation"]
+
+    root_read =
+      Enum.find(
+        before_events,
+        &(&1["type"] == "managed_read_observed" and
+            &1["operation_id"] == root_snapshot["operation_id"])
+      )
+
+    assert [root_dependency] = root_read["dependencies"]
+    assert root_dependency["version"] == 3
+    assert root_dependency["subject"]["kind"] == "root_observation"
+    assert root_dependency["collection"]["generation"] == before["generation"]
+
+    [literal_read] =
+      Enum.filter(before_events, fn event ->
+        event["type"] == "extension_action_result" and
+          get_in(event, ["request", "request", "op"]) == "get"
+      end)
+
+    assert literal_read["outcome"]["status"] == "ok"
+
+    assert Enum.find_index(before_events, &(&1 == root_snapshot)) <
+             Enum.find_index(before_events, &(&1 == literal_read))
+
+    record_a = get_in(literal_read, ["outcome", "value", "record"])
+    assert record_a["key"] == seed["key"]
     [source_a] = get_in(record_a, ["value", "evidence", "sources"])
     assert source_a["session_id"] == seed_id
+    assert source_a["origin"] == "native_operator_assertion"
 
     read_a =
       Enum.find(
         before_events,
-        &(&1["type"] == "managed_read_observed" and &1["operation_id"] == scan["operation_id"])
+        &(&1["type"] == "managed_read_observed" and
+            &1["operation_id"] == literal_read["operation_id"])
       )
 
-    assert read_a["dependencies"] != []
+    assert [literal_dependency] = read_a["dependencies"]
+    assert literal_dependency["version"] == 4
+    assert literal_dependency["subject"]["key"] == seed["key"]
 
     [quote_b] =
       Enum.filter(before_events, fn event ->
@@ -2799,6 +2857,7 @@ defmodule Ipse.Extension.ManagedCollectionCallSessionTest do
     state = :sys.get_state(consumer)
     assert {:ok, dependencies} = Session.ManagedToolUse.invocation_dependencies(state)
     assert dependencies != []
+    assert root_dependency in dependencies
     assert Enum.all?(read_a["dependencies"], &(&1 in dependencies))
 
     module = Session.ManagedToolUse
@@ -2822,7 +2881,17 @@ defmodule Ipse.Extension.ManagedCollectionCallSessionTest do
     assert_receive {:ipse, ^concurrent, {:done, :ok}}, 15_000
     assert :ok = Session.close_confirmed(concurrent)
     after_winner = collection_read(c, %{"op" => "snapshot"})
-    assert after_winner["generation"] == 2
+    assert after_winner["generation"] == before["generation"] + 1
+    assert root_dependency["collection"]["generation"] < after_winner["generation"]
+
+    after_winner_witness =
+      collection_witness(SemanticAdmission.collection_root(c.home), c.namespace)
+
+    assert {:ok, after_winner_ledger} = Consent.snapshot(c.control, c.binding["project_id"])
+
+    assert map_size(after_winner_ledger["operations"]) ==
+             map_size(before_ledger["operations"]) + 1
+
     File.write!(c.trace <> ".candidate-release", "release")
 
     assert_receive {:trace, ^consumer, :call,
@@ -2838,7 +2907,7 @@ defmodule Ipse.Extension.ManagedCollectionCallSessionTest do
            ]
 
     # Shape admission preserves the full union; the retained current-use
-    # check must still reject A before reservation or native publication.
+    # check must still reject the stale root before reservation or native publication.
     assert_receive {:trace, ^consumer, :return_from, {^module, :publication_prerequisites?, 3},
                     true},
                    15_000
@@ -2864,6 +2933,12 @@ defmodule Ipse.Extension.ManagedCollectionCallSessionTest do
     refute Enum.any?(writes, &(&1["outcome"]["status"] == "ok"))
     assert quote_b in events
     assert collection_read(c, %{"op" => "snapshot"}) == after_winner
+
+    assert collection_witness(SemanticAdmission.collection_root(c.home), c.namespace) ==
+             after_winner_witness
+
+    assert collection_read(c, %{"op" => "get", "key" => seed["key"]})["record"] == record_a
+    assert JSON.sha256(File.read!(seed["source_journal"])) == seed["source_sha256"]
     assert {:ok, saved} = Session.Saved.restore(events, id)
     assert :ok = Session.close_confirmed(consumer)
     path = Path.join(c.dir, id <> ".jsonl")
@@ -2876,13 +2951,13 @@ defmodule Ipse.Extension.ManagedCollectionCallSessionTest do
     assert :ok = Session.close_confirmed(resumed)
     assert File.read!(c.trace) == trace
     assert {:ok, ledger} = Consent.snapshot(c.control, c.binding["project_id"])
-    assert map_size(ledger["operations"]) == 2
+    assert ledger["operations"] == after_winner_ledger["operations"]
 
     assert Enum.all?(ledger["operations"], fn {_, operation} ->
              operation["status"] == "settled"
            end)
 
-    assert length(Task.await(c.provider_server, 5000)) == 5
+    assert length(Task.await(c.provider_server, 5000)) == 3
   end
 
   @tag managed_question_ordinary: true
@@ -10538,6 +10613,97 @@ defmodule Ipse.Extension.ManagedCollectionCallSessionTest do
       Process.sleep(10)
       await_worker_input_settlement(pid, remaining - 1)
     end
+  end
+
+  defp await_ab_candidate(c, consumer, deadline) do
+    ready = fn ->
+      File.exists?(c.trace) and String.contains?(File.read!(c.trace), "candidate-held")
+    end
+
+    cond do
+      ready.() ->
+        :ok
+
+      System.monotonic_time(:millisecond) >= deadline ->
+        record_ab_failure(c, consumer, :marker_timeout)
+
+        flunk(
+          "actual consumer did not reach the retained candidate marker within its original deadline"
+        )
+
+      true ->
+        receive do
+          {:ipse, ^consumer, {kind, reason}} = notification when kind in [:error, :done] ->
+            if ready.() do
+              send(self(), notification)
+              :ok
+            else
+              record_ab_failure(c, consumer, {kind, reason})
+
+              flunk(
+                "actual consumer stopped before the retained candidate marker; inspect its safe diagnostic and original journal"
+              )
+            end
+        after
+          min(10, max(deadline - System.monotonic_time(:millisecond), 0)) ->
+            await_ab_candidate(c, consumer, deadline)
+        end
+    end
+  end
+
+  defp record_ab_failure(c, consumer, reason) do
+    info =
+      try do
+        Session.info(consumer)
+      catch
+        :exit, _ -> nil
+      end
+
+    journal =
+      if is_map(info), do: Journal.load(c.dir, info.id), else: {:error, :session_unavailable}
+
+    records =
+      case journal do
+        {:ok, records} -> records
+        _ -> nil
+      end
+
+    class =
+      cond do
+        is_atom(reason) -> Atom.to_string(reason)
+        is_tuple(reason) and is_atom(elem(reason, 0)) -> Atom.to_string(elem(reason, 0))
+        true -> "other"
+      end
+
+    diagnostic = %{
+      "reason_class" => class,
+      "reason_sha256" => JSON.sha256(:erlang.term_to_binary(reason, [:deterministic])),
+      "phase" => if(is_map(info), do: Atom.to_string(info.phase), else: "unavailable"),
+      "journal_available" => is_list(records),
+      "record_count" => if(is_list(records), do: length(records)),
+      "publication_intent" =>
+        if(is_list(records),
+          do:
+            Enum.any?(
+              records,
+              &(&1["type"] == "extension_action_intent" and
+                  get_in(&1, ["request", "op"]) == "collection.managed")
+            )
+        ),
+      "publication_result" =>
+        if(is_list(records),
+          do:
+            Enum.any?(
+              records,
+              &(&1["type"] == "extension_action_result" and
+                  get_in(&1, ["request", "op"]) == "collection.managed")
+            )
+        )
+    }
+
+    path = Path.join(c.root, "candidate-diagnostic.json")
+    File.write!(path, Jason.encode!(diagnostic), [:write, :exclusive])
+    File.chmod!(path, 0o600)
   end
 
   defp await_marker(_, _, 0), do: flunk("synthetic worker marker was not reached")

@@ -209,7 +209,10 @@ defmodule Ipse.Session.Invocation do
   end
 
   def open_output(s, offer) do
-    with true <- output_timely?(s) and s.extension_output_clock != nil,
+    with false <-
+           get_in(s.invocation.parent || %{}, ["semantic_binding", "class"]) ===
+             "nomination.select",
+         true <- output_timely?(s) and s.extension_output_clock != nil,
          true <- is_nil(s.invocation.action) and not s.invocation.interrupted,
          true <- Ipse.Extension.Registry.live?(s.invocation.parent["identity"]),
          {:ok, event, source, index} <-
@@ -510,6 +513,14 @@ defmodule Ipse.Session.Invocation do
         {:reply, {:error, :document_source_use_refused}, Ipse.Session.DocumentEmbedding.poison(s)}
     end
   end
+
+  def begin_action(
+        %{invocation: %{parent: %{"semantic_binding" => %{"class" => "nomination.select"}}}} = s,
+        _request,
+        _from,
+        _phase
+      ),
+      do: {:reply, {:error, :nomination_effect_refused}, s}
 
   def begin_action(s, request, from, phase) do
     mutation = Ipse.Extension.Actions.mutating?(request)
@@ -1386,6 +1397,11 @@ defmodule Ipse.Session.Invocation do
     s = release_output(s)
     s = Session.managed_event(s, event)
 
+    handoff =
+      if s.phase == :extension_command and is_map(Map.get(s, :post_reply_capture)),
+        do: Ipse.Session.ChatReviewHandoff.prepare(s, s.invocation.parent, event),
+        else: :not_applicable
+
     s = %{
       s
       | managed_outputs:
@@ -1397,15 +1413,38 @@ defmodule Ipse.Session.Invocation do
     if s.phase == :tool do
       Turn.accept_tool_result(s, hd(s.calls), Invocation.tool_message(event))
     else
-      display =
-        Map.merge(
-          %{"name" => event["descriptor"]["name"], "stage" => event["descriptor"]["stage"]},
-          Invocation.delivery(event)
-        )
+      case handoff do
+        :not_applicable ->
+          complete_command_result(s, event)
 
-      Session.notify(s, {:extension_result, display})
-      Turn.finish(%{s | extension_result: display}, :ok)
+        result ->
+          finish_chat_review(s, result)
+      end
     end
+  end
+
+  @doc false
+  def finish_chat_review(s, {:ok, ready}) do
+    s
+    |> Map.delete(:post_reply_capture)
+    |> Session.ready_chat_review(ready)
+    |> Turn.finish(:ok)
+  end
+
+  def finish_chat_review(s, {:error, _}) do
+    Session.notify(s, {:decision_card_unavailable, :post_reply_review_unavailable})
+    Turn.finish(Map.delete(s, :post_reply_capture), :ok)
+  end
+
+  defp complete_command_result(s, event) do
+    display =
+      Map.merge(
+        %{"name" => event["descriptor"]["name"], "stage" => event["descriptor"]["stage"]},
+        Invocation.delivery(event)
+      )
+
+    Session.notify(s, {:extension_result, display})
+    Turn.finish(%{s | extension_result: display}, :ok)
   end
 
   @doc false
@@ -1970,6 +2009,7 @@ defmodule Ipse.Session.Invocation do
            ),
          true <- expected == event and Ipse.Extension.Registry.live?(intent["identity"]) do
       Session.record(s, event)
+      s = Ipse.Session.PendingNomination.record_result(s, intent, event)
       {:noreply, complete_invocation_result(s, event)}
     else
       _ ->

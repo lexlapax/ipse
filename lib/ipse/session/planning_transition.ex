@@ -64,7 +64,26 @@ defmodule Ipse.Session.PlanningTransition do
   end
 
   @doc false
-  def reconstruct([%{"metadata" => metadata} | events], session) when is_map(metadata) do
+  def reconstruct(events, session) do
+    with {:ok, state, _timeline} <- replay(events, session) do
+      {:ok, state.mode, state.entry}
+    end
+  end
+
+  @doc "Validated sparse historical modes; this restores no live permission."
+  def mode_timeline(events, session \\ nil) do
+    with {:ok, _state, timeline} <- replay(events, session) do
+      {:ok, timeline}
+    end
+  end
+
+  @doc false
+  def mode_at([{_, _}, {next, _} | _] = timeline, position) when next <= position,
+    do: mode_at(tl(timeline), position)
+
+  def mode_at([{_, mode} | _] = timeline, _position), do: {mode, timeline}
+
+  defp replay([%{"metadata" => metadata} | events], session) when is_map(metadata) do
     initial = metadata["execution_mode"]
 
     marker = metadata["planning_local_start"]
@@ -78,14 +97,22 @@ defmodule Ipse.Session.PlanningTransition do
         entry: marker
       }
 
-      Enum.reduce_while(events, {:ok, state}, fn event, {:ok, state} ->
+      Enum.reduce_while(events, {:ok, state, [{0, initial}], 1}, fn event,
+                                                                    {:ok, state, timeline,
+                                                                     position} ->
         case step(state, event) do
-          {:ok, next} -> {:cont, {:ok, next}}
-          error -> {:halt, error}
+          {:ok, next} ->
+            timeline =
+              if next.mode === state.mode, do: timeline, else: [{position, next.mode} | timeline]
+
+            {:cont, {:ok, next, timeline, position + 1}}
+
+          error ->
+            {:halt, error}
         end
       end)
       |> case do
-        {:ok, state} -> {:ok, state.mode, state.entry}
+        {:ok, state, timeline, _position} -> {:ok, state, Enum.reverse(timeline)}
         error -> error
       end
     else
@@ -95,7 +122,7 @@ defmodule Ipse.Session.PlanningTransition do
     _ -> @mode_error
   end
 
-  def reconstruct(_, _), do: @mode_error
+  defp replay(_, _), do: @mode_error
 
   defp step(state, %{"type" => "execution_mode_resumed"} = event) do
     previous = state.mode

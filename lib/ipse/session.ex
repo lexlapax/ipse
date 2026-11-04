@@ -263,14 +263,184 @@ defmodule Ipse.Session do
 
   @doc false
   def managed_empty?(s) do
+    managed_input_dependencies(s) == {:ok, []}
+  end
+
+  defp managed_input_dependencies(s) do
     with {:ok, active} <- Ipse.Session.ManagedLineage.dependencies(s.managed_lineage, s.messages),
          {:ok, inherited} <-
            Ipse.Session.ManagedLineage.invocation_dependencies(
              s.managed_lineage,
              if(s.invocation.parent, do: s.invocation.parent["invocation_id"])
            ),
-         {:ok, []} <-
+         {:ok, dependencies} <-
            Ipse.Session.ManagedReference.union([active, inherited, s.invocation.managed_reads]) do
+      {:ok, dependencies}
+    else
+      _ -> {:error, :managed_lineage_unavailable}
+    end
+  rescue
+    _ -> {:error, :managed_lineage_unavailable}
+  end
+
+  # Root-only observations contain no selected note bytes. Their committed
+  # classification does not replace the capture's independent current-use and
+  # publication barriers.
+  @doc false
+  def post_reply_capture_inputs?(s) do
+    case managed_input_dependencies(s) do
+      {:ok, []} -> true
+      {:ok, dependencies} -> Ipse.Session.ManagedToolUse.root_only?(s, dependencies)
+      _ -> false
+    end
+  end
+
+  # The ordinary reply has completed and its original source is durable before
+  # this host-owned capture begins. Its result selects a candidate for a later,
+  # independent native review; it never accepts or publishes that candidate.
+  @doc false
+  def start_post_reply_capture(s, :ok) do
+    attempts = Map.get(s, :post_reply_capture_attempts, %{})
+    answer_key = {s.turn_id, s.last_request_id}
+
+    if Map.has_key?(attempts, answer_key) or
+         not is_map(Map.get(s, :pending_nomination)) do
+      if Map.get(s, :pending_nomination) in [:conflicted, :unavailable],
+        do: notify(s, {:decision_card_unavailable, :post_reply_review_unavailable})
+
+      :skip
+    else
+      with %{event: nomination, arguments: arguments} <- s.pending_nomination,
+           true <- Ipse.Session.PendingNomination.arguments?(arguments),
+           nil <- s.draft,
+           nil <- s.text_stream,
+           true <- post_reply_capture_inputs?(s),
+           false <- Ipse.Extension.Host.enabled?(s.config, "transform.presentation"),
+           [] <- Ipse.Extension.Subscriptions.declarations(s.config, "after_turn"),
+           {:ok, mode} <- Ipse.Extension.Mode.capture(s.config),
+           false <- mode["headless"],
+           :ok <- Ipse.Extension.Mode.knowledge(mode, "collection.publish"),
+           %{client: client, reader: reader} <- s.operator_channel,
+           true <- Process.alive?(client) and Process.alive?(reader),
+           {:ok, request} <-
+             Writer.source_query(
+               s.journal_writer,
+               {:answer_request, s.turn_id, s.last_request_id, arguments["text"]}
+             ),
+           {:ok, %{"proof" => proof}} <- Writer.source_query(s.journal_writer, {:proof, request}),
+           true <-
+             proof["kind"] === "answer.original" and
+               proof["origin"] === "assistant_proposal" and
+               proof["content_sha256"] === Ipse.JSON.sha256(s.final),
+           true <- map_size(attempts) < Ipse.Extension.Invocation.limit(),
+           {:ok, attempt} <-
+             Ipse.Session.PendingNomination.capture_attempt(
+               s.id,
+               s.turn_id,
+               s.last_request_id,
+               nomination,
+               proof
+             ) do
+        record(s, attempt)
+
+        next =
+          s
+          |> Map.put(
+            :post_reply_capture_attempts,
+            Map.put(attempts, answer_key, attempt["capture_attempt_id"])
+          )
+          |> Map.put(:post_reply_answer_recorded, {s.turn_id, s.last_request_id})
+          |> Map.put(:post_reply_capture, %{proof: proof})
+
+        capture = %{
+          "text" => arguments["text"],
+          "category" => arguments["category"],
+          "reason" => arguments["reason"],
+          "event_at_ms" => nil,
+          "source" => request
+        }
+
+        case CurrentInvocation.invoke_export(next, :command, "ext__knowledge__capture", capture) do
+          {:reply, :ok, started} ->
+            {:ok, started}
+
+          _ ->
+            notify(next, {:decision_card_unavailable, :post_reply_review_unavailable})
+            {:ok, Turn.finish(next, :ok)}
+        end
+      else
+        _ ->
+          notify(s, {:decision_card_unavailable, :post_reply_review_unavailable})
+          :skip
+      end
+    end
+  end
+
+  def start_post_reply_capture(_, _), do: :skip
+
+  @doc false
+  def ready_chat_review(s, event) do
+    source = record_source(s, event)
+    binding = %{"event" => event, "source" => source}
+    token = make_ref()
+
+    next =
+      Map.put(s, :pending_chat_review, %{
+        state: :ready,
+        token: token,
+        event: binding,
+        input_generation: s.input_generation
+      })
+
+    notify(next, {:pending_chat_review, token})
+    next
+  end
+
+  defp chat_review_current?(s, pending) do
+    event = pending.event["event"]
+
+    with true <- pending.input_generation === s.input_generation,
+         true <-
+           event["session_id"] === s.id and chat_review_focus_current?(s, pending),
+         %{id: channel, generation: generation, client: client} <- s.operator_channel,
+         true <-
+           Process.alive?(client) and
+             Ipse.Session.ChatReviewHandoff.client_id(pending.event) === channel and
+             Ipse.Session.ChatReviewHandoff.client_generation(pending.event) === generation,
+         nil <- s.draft,
+         {:ok, mode} <- Ipse.Extension.Mode.capture(s.config),
+         false <- mode["headless"],
+         :ok <- Ipse.Extension.Mode.knowledge(mode, "collection.publish"),
+         admission = s.config[:semantic_admission],
+         true <-
+           Ipse.Extension.SemanticAdmission.valid?(admission, s.id) and
+             admission["pin"] === event["pin"] do
+      true
+    else
+      _ -> false
+    end
+  rescue
+    _ -> false
+  end
+
+  defp chat_review_focus_current?(s, %{focus: focus, event: %{"version" => 2, "review" => review}}),
+       do:
+         focus.turn === s.turn_id and focus.request === s.last_request_id and
+           focus.id === review["focus_id"]
+
+  defp chat_review_focus_current?(s, %{event: %{"event" => event}}),
+    do: event["turn_id"] === s.turn_id and event["request_id"] === s.last_request_id
+
+  defp reoffer_snapshot_current?(s, snapshot, client, channel) do
+    with %{id: ^channel, client: ^client, reader: reader, generation: generation} <-
+           s.operator_channel,
+         true <- Process.alive?(client) and Process.alive?(reader),
+         true <- snapshot.channel === channel and snapshot.generation === generation,
+         true <- snapshot.input_generation === s.input_generation,
+         true <- snapshot.turn === s.turn_id and snapshot.request === s.last_request_id,
+         {:ok, mode} <- Ipse.Extension.Mode.capture(s.config),
+         true <- mode === snapshot.mode and Ipse.Extension.Mode.nomination(mode) === :ok,
+         true <- Ipse.Extension.SemanticAdmission.valid?(s.config[:semantic_admission], s.id) do
       true
     else
       _ -> false
@@ -290,16 +460,38 @@ defmodule Ipse.Session do
 
         result =
           if is_map(candidate) and Enum.any?(verdicts, &(&1["status"] != "eligible")) do
-            case Ipse.Session.ManagedUse.root_transition_observation(
-                   context,
-                   dependencies,
-                   candidate
-                 ) do
-              {:ok, %{observation: observation, inspected: inspection}} ->
-                {:root_transition, observation, inspection}
+            case candidate do
+              %{management: selected} ->
+                if management_root_verdicts?(dependencies, verdicts) do
+                  case Ipse.Session.ManagedUse.management_root_transition_observation(
+                         context,
+                         dependencies,
+                         selected
+                       ) do
+                    {:ok,
+                     %{observation: observation, inspected: inspection, management: management}} ->
+                      {:management_root_transition, observation, inspection,
+                       Map.new(management, fn {key, value} -> {Atom.to_string(key), value} end)}
+
+                    _ ->
+                      verdicts
+                  end
+                else
+                  verdicts
+                end
 
               _ ->
-                verdicts
+                case Ipse.Session.ManagedUse.root_transition_observation(
+                       context,
+                       dependencies,
+                       candidate
+                     ) do
+                  {:ok, %{observation: observation, inspected: inspection}} ->
+                    {:root_transition, observation, inspection}
+
+                  _ ->
+                    verdicts
+                end
             end
           else
             verdicts
@@ -316,6 +508,24 @@ defmodule Ipse.Session do
     end
   catch
     :exit, _ -> {:error, :managed_reference_projection_unsafe}
+  end
+
+  @doc false
+  def management_root_verdicts?(dependencies, verdicts) do
+    by_id = Map.new(verdicts, &{&1["dependency_sha256"], &1})
+    now = System.system_time(:millisecond)
+
+    length(verdicts) === map_size(by_id) and length(verdicts) === length(dependencies) and
+      Enum.all?(dependencies, fn dependency ->
+        verdict = by_id[Ipse.JSON.digest([dependency])]
+
+        is_map(verdict) and
+          (dependency["version"] === 3 or
+             (verdict["status"] === "eligible" and
+                Ipse.Session.ManagedReference.current?(dependency, verdict["current"], now)))
+      end)
+  rescue
+    _ -> false
   end
 
   defp managed_preflight_view(s, phase) do
@@ -408,8 +618,19 @@ defmodule Ipse.Session do
                    else:
                      Ipse.Session.ManagedLineage.root_candidate(lineage, snapshot.dependencies)
                  ) do
-              {:ok, action} -> action
-              _ -> nil
+              {:ok, action} ->
+                action
+
+              _ ->
+                if phase == "model" do
+                  case Ipse.Session.ManagedLineage.management_root_candidate(
+                         lineage,
+                         snapshot.dependencies
+                       ) do
+                    {:ok, selected} -> %{management: selected}
+                    _ -> nil
+                  end
+                end
             end
 
           {:reply, {:ok, context, snapshot.dependencies, intent, candidate},
@@ -485,6 +706,26 @@ defmodule Ipse.Session do
              binding,
              observation,
              inspection
+           ),
+         do: {:ok, event},
+         else: (_ -> {:error, :managed_reference_projection_unsafe})
+  end
+
+  defp managed_projection(
+         s,
+         _,
+         {:management_root_transition, observation, inspection, management},
+         binding,
+         "model"
+       ) do
+    with {:ok, event, _, _, _} <-
+           Ipse.Session.ManagedLineage.management_root_projection(
+             s.managed_lineage,
+             s.messages,
+             binding,
+             observation,
+             inspection,
+             management
            ),
          do: {:ok, event},
          else: (_ -> {:error, :managed_reference_projection_unsafe})
@@ -681,6 +922,31 @@ defmodule Ipse.Session do
   def invoke_export(pid, kind, name, arguments),
     do: GenServer.call(pid, {:invoke_export, kind, name, arguments})
 
+  @doc false
+  def release_input_read(pid, channel),
+    do: GenServer.call(pid, {:release_input_read, channel}, 5_000)
+
+  @doc false
+  def chat_reoffer_snapshot(pid, channel),
+    do: GenServer.call(pid, {:chat_reoffer_snapshot, channel})
+
+  @doc false
+  def abort_chat_reoffer(pid, channel, ref),
+    do: GenServer.call(pid, {:abort_chat_reoffer, channel, ref})
+
+  @doc false
+  def activate_chat_reoffer(pid, channel, ref, original, revision),
+    do:
+      GenServer.call(
+        pid,
+        {:activate_chat_reoffer, channel, ref, original, revision},
+        10_000
+      )
+
+  @doc false
+  def claim_chat_review(pid, token),
+    do: GenServer.call(pid, {:claim_chat_review, token}, 5_000)
+
   @impl true
 
   # Header creation can outlive a dead Session through its file-server peer.
@@ -791,6 +1057,7 @@ defmodule Ipse.Session do
          {:ok, skills, skills_saved} <- Workspace.restore_skills(events, discovered),
          {:ok, source_runtime} <- Ipse.Session.RuntimeLifecycle.restore(events, id),
          {:ok, source_tools} <- Ipse.Session.ToolLifecycle.restore(events, id),
+         {:ok, capture_attempts} <- Ipse.Session.PendingNomination.capture_attempts(events, id),
          {:ok, writer} <- startup_writer(dir, id, config, release_owner) do
       :ok = Writer.install_source_window(writer, source_window)
 
@@ -836,6 +1103,11 @@ defmodule Ipse.Session do
         planning_decisions: saved.planning_decisions,
         planning_save_active: nil,
         managed_supersession: nil,
+        pending_acceptance_layout: get_in(hd(events), ["metadata", "pending_acceptance_layout"]),
+        post_reply_capture_attempts: capture_attempts,
+        chat_review_reoffer: Keyword.get(opts, :chat_review_reoffer, false) === true,
+        chat_reoffer_choices: Ipse.Session.ChatReviewHandoff.reoffer_choices(events),
+        chat_reoffer_snapshot: nil,
         operator_answers: %{},
         operator_pieces: [],
         planning_entry: if(startup_mode["ceiling"] == "planning", do: planning_entry),
@@ -1109,6 +1381,171 @@ defmodule Ipse.Session do
 
   # Core approval and private extension protocols seal Session state before
   # queuing the Writer drain. Cancellation quarantines an exported share.
+  def handle_call(
+        {:chat_reoffer_snapshot, channel},
+        {client, _},
+        %{
+          phase: :idle,
+          task: nil,
+          share_barrier: nil,
+          chat_review_reoffer: true,
+          operator_channel: %{id: channel, client: client, reader: reader, generation: generation}
+        } = s
+      ) do
+    next = %{s | chat_review_reoffer: false}
+
+    with true <- Process.alive?(reader),
+         nil <- Map.get(s, :pending_chat_review),
+         nil <- s.draft,
+         {:ok, mode} <- Ipse.Extension.Mode.capture(s.config),
+         :ok <- Ipse.Extension.Mode.nomination(mode) do
+      if s.chat_reoffer_choices === [] do
+        {:reply, :none, next}
+      else
+        snapshot = %{
+          ref: make_ref(),
+          channel: channel,
+          generation: generation,
+          input_generation: s.input_generation,
+          turn: s.turn_id,
+          request: s.last_request_id,
+          focus_id: Ipse.Usage.id(),
+          mode: mode,
+          choices: s.chat_reoffer_choices
+        }
+
+        {:reply, {:ok, %{ref: snapshot.ref, session_id: s.id, choices: snapshot.choices}},
+         %{next | chat_reoffer_snapshot: snapshot}}
+      end
+    else
+      _ -> {:reply, {:error, :chat_review_unavailable}, next}
+    end
+  end
+
+  def handle_call({:chat_reoffer_snapshot, _}, _, s), do: {:reply, :none, s}
+
+  def handle_call(
+        {:abort_chat_reoffer, channel, ref},
+        {client, _},
+        %{operator_channel: %{id: channel, client: client}} = s
+      ) do
+    current =
+      case s.chat_reoffer_snapshot do
+        %{ref: ^ref} = snapshot -> reoffer_snapshot_current?(s, snapshot, client, channel)
+        _ -> false
+      end
+
+    next =
+      case s.chat_reoffer_snapshot do
+        %{ref: ^ref} -> %{s | chat_reoffer_snapshot: nil}
+        _ -> s
+      end
+
+    {:reply, {:ok, if(current, do: :current, else: :stale)}, next}
+  end
+
+  def handle_call({:abort_chat_reoffer, _, _}, _, s), do: {:reply, {:ok, :stale}, s}
+
+  def handle_call(
+        {:activate_chat_reoffer, channel, ref, original, revision},
+        {client, _},
+        %{
+          phase: :idle,
+          task: nil,
+          share_barrier: nil,
+          operator_channel: %{id: channel, client: client},
+          chat_reoffer_snapshot: %{ref: ref} = snapshot
+        } = s
+      ) do
+    next = %{s | chat_reoffer_snapshot: nil}
+
+    with true <- reoffer_snapshot_current?(s, snapshot, client, channel),
+         true <-
+           Ipse.Session.ChatReviewHandoff.valid?(original) and
+             Enum.sort(Map.keys(original)) === ~w(event source),
+         true <-
+           Enum.any?(
+             snapshot.choices,
+             &(&1.sha256 === Ipse.JSON.digest([original["event"]]) and
+                 &1.key === original["event"]["pending_key"])
+           ),
+         {:ok, event} <-
+           Ipse.Session.ChatReviewHandoff.reoffer(
+             original,
+             channel,
+             snapshot.generation,
+             snapshot.focus_id,
+             revision,
+             snapshot.mode
+           ),
+         source = record_source(next, event),
+         {:ok, binding} <- Ipse.Session.ChatReviewHandoff.wrap_reoffer(original, event, source) do
+      token = make_ref()
+
+      pending = %{
+        state: :ready,
+        token: token,
+        event: binding,
+        input_generation: s.input_generation,
+        focus: %{turn: snapshot.turn, request: snapshot.request, id: snapshot.focus_id}
+      }
+
+      notify(next, {:pending_chat_review, token})
+      {:reply, {:ok, token}, Map.put(next, :pending_chat_review, pending)}
+    else
+      _ -> {:reply, {:error, :chat_review_unavailable}, next}
+    end
+  end
+
+  def handle_call({:activate_chat_reoffer, _, _, _, _}, _, s),
+    do: {:reply, {:error, :chat_review_unavailable}, s}
+
+  def handle_call(
+        {:release_input_read, channel},
+        {client, _},
+        %{
+          phase: :idle,
+          task: nil,
+          share_barrier: nil,
+          pending_chat_review: %{state: state} = pending,
+          operator_channel: %{id: channel, client: client}
+        } = s
+      )
+      when state in [:ready, :claimed] do
+    if chat_review_current?(s, pending),
+      do: {:reply, Ipse.Session.Input.release_for_output(), s},
+      else: {:reply, {:error, :operator_input_unavailable}, Map.delete(s, :pending_chat_review)}
+  end
+
+  def handle_call({:release_input_read, _}, _, s),
+    do: {:reply, {:error, :operator_input_unavailable}, s}
+
+  def handle_call(
+        {:claim_chat_review, token},
+        {client, _},
+        %{
+          phase: :idle,
+          task: nil,
+          share_barrier: nil,
+          pending_chat_review: %{state: :ready, token: token, event: event} = pending,
+          operator_channel: %{client: client, id: channel, generation: generation}
+        } = s
+      )
+      when is_reference(token) do
+    with true <- Ipse.Session.ChatReviewHandoff.client_id(event) === channel,
+         true <- Ipse.Session.ChatReviewHandoff.client_generation(event) === generation,
+         true <- chat_review_current?(s, pending),
+         {:ok, mode} <- Ipse.Extension.Mode.capture(s.config),
+         :ok <- Ipse.Extension.Mode.nomination(mode) do
+      {:reply, {:ok, event, mode}, %{s | pending_chat_review: %{pending | state: :claimed}}}
+    else
+      _ -> {:reply, {:error, :chat_review_unavailable}, Map.delete(s, :pending_chat_review)}
+    end
+  end
+
+  def handle_call({:claim_chat_review, _}, _, s),
+    do: {:reply, {:error, :chat_review_unavailable}, s}
+
   def handle_call({:managed_capture_prepare, ref, intent}, {caller, _}, %{job_ref: ref} = s)
       when ref != nil,
       do: {:reply, Ipse.Session.ManagedCapture.prepare(s, caller, intent), s}
@@ -2223,7 +2660,7 @@ defmodule Ipse.Session do
         {reader, _},
         %{phase: :managed_approval, operator_channel: %{id: channel, reader: reader}} = s
       ),
-      do: {:reply, {:error, :operator_input_busy}, s}
+      do: {:reply, {:error, :operator_input_busy}, %{s | chat_reoffer_snapshot: nil}}
 
   def handle_call(command, _from, %{share_barrier: barrier} = s)
       when command in [:cancel, :cancel_draft] and not is_nil(barrier),
@@ -3015,7 +3452,7 @@ defmodule Ipse.Session do
     if is_nil(action[:workspace_snapshot_reader]) and
          Ipse.Extension.Collection.WorkspaceDocumentGuard.guarded_request?(intent["request"]) and
          Ipse.Session.Resources.authorized_task?(worker, reader) and
-         Process.alive?(peer) and peer != worker and
+         Process.alive?(peer) and peer != worker and peer != self() and
          match?({:reply, :ok, ^s}, CurrentInvocation.document_current(s, intent)) do
       bound = %{reader: reader, token: token, peer: peer, bound: false, used: false}
 
@@ -3027,6 +3464,30 @@ defmodule Ipse.Session do
   end
 
   def handle_call({:extension_workspace_snapshot_register, _, _, _, _, _}, _, s),
+    do: {:reply, {:error, :document_store_refused}, s}
+
+  # Only this actual Session can activate the already tracked dormant peer.
+  def handle_call(
+        {:extension_workspace_snapshot_activate, ref, intent, reader, peer, token},
+        {worker, _},
+        %{
+          job_ref: ref,
+          task: %{pid: worker},
+          invocation: %{action: %{intent: intent, workspace_snapshot_reader: bound}}
+        } = s
+      )
+      when ref != nil and is_pid(reader) and is_pid(peer) and is_reference(token) do
+    if peer != worker and peer != self() and
+         bound === %{reader: reader, token: token, peer: peer, bound: false, used: false} and
+         Ipse.Session.Resources.authorized_task?(worker, reader) and
+         Ipse.Session.Resources.authorized_effect?(worker, peer) and
+         match?({:reply, :ok, ^s}, CurrentInvocation.document_current(s, intent)) and
+         Ipse.Session.Resources.activate_document_effect(worker, peer) === :ok,
+       do: {:reply, :ok, s},
+       else: {:reply, {:error, :document_store_refused}, s}
+  end
+
+  def handle_call({:extension_workspace_snapshot_activate, _, _, _, _, _}, _, s),
     do: {:reply, {:error, :document_store_refused}, s}
 
   # Derive the peer from the actual caller, never from an embedded PID.
@@ -3811,6 +4272,7 @@ defmodule Ipse.Session do
        %{
          s
          | operator_channel: channel,
+           chat_reoffer_snapshot: nil,
            operator_render: nil,
            draft_render: nil,
            assertion_render: nil,
@@ -3831,6 +4293,8 @@ defmodule Ipse.Session do
         {reader, _},
         %{operator_channel: %{id: channel, reader: reader}} = s
       ) do
+    s = %{s | chat_reoffer_snapshot: nil}
+
     case if(s.phase == :managed_approval, do: :busy, else: operator_request(s, request)) do
       :busy ->
         {:reply, {:error, :operator_input_busy}, s}
@@ -3875,7 +4339,8 @@ defmodule Ipse.Session do
         {client, _},
         %{operator_channel: %{id: channel, client: client}} = s
       ) do
-    {:reply, Ipse.Session.Input.stage(witness, text, operator_binding(s, "prompt", nil)), s}
+    result = Ipse.Session.Input.stage(witness, text, operator_binding(s, "prompt", nil))
+    {:reply, result, if(match?({:ok, _}, result), do: %{s | chat_reoffer_snapshot: nil}, else: s)}
   end
 
   def handle_call({:stage_input, _, _, _}, _, s),
@@ -4214,7 +4679,7 @@ defmodule Ipse.Session do
         {client, _},
         %{operator_channel: %{id: channel, client: client}} = s
       ) do
-    {:reply, Ipse.Session.Input.discard(witness), s}
+    {:reply, Ipse.Session.Input.discard(witness), %{s | chat_reoffer_snapshot: nil}}
   end
 
   def handle_call({:discard_input, _, _}, _, s), do: {:reply, {:error, :invalid_input_witness}, s}
@@ -5116,7 +5581,21 @@ defmodule Ipse.Session do
          feed_reason \\ "cancelled",
          keep_queued \\ false
        ) do
-    s = Ipse.Session.ManagedToolUse.interrupted(s)
+    document_revocation =
+      if s.task && s.invocation.action &&
+           Ipse.Extension.Collection.WorkspaceDocumentGuard.guarded_request?(
+             s.invocation.action.intent["request"]
+           ),
+         do: Ipse.Session.Resources.revoke_document_effects(s.task.pid),
+         else: :ok
+
+    s =
+      s
+      |> Map.delete(:pending_chat_review)
+      |> Map.put(:chat_reoffer_snapshot, nil)
+      |> Map.delete(:post_reply_capture)
+      |> Map.delete(:pending_nomination)
+      |> Ipse.Session.ManagedToolUse.interrupted()
 
     :ok =
       if keep_queued, do: Ipse.Session.Input.cancel_read(), else: Ipse.Session.Input.invalidate()
@@ -5156,7 +5635,9 @@ defmodule Ipse.Session do
     Ipse.Session.WorkerInput.interrupt(s)
 
     task_cleanup =
-      if s.task, do: [Ipse.Session.Resources.close_task(s.task.pid)], else: []
+      if s.task,
+        do: [document_revocation, Ipse.Session.Resources.close_task(s.task.pid)],
+        else: []
 
     if s.task, do: Task.shutdown(s.task, :brutal_kill)
 
@@ -5731,6 +6212,22 @@ defmodule Ipse.Session do
     end
   end
 
+  def handle_info(
+        {:DOWN, ref, :process, reader, _},
+        %{
+          phase: :idle,
+          task: nil,
+          pending_chat_review: %{state: state},
+          operator_channel: %{reader: reader, reader_monitor: ref} = channel
+        } = s
+      )
+      when state in [:ready, :claimed] do
+    # Preserve the authenticated client/channel identity through confirmed
+    # reader shutdown. Input cancellation is separately acknowledged before
+    # the client can claim this handoff; client death still invalidates it.
+    {:noreply, %{s | operator_channel: Map.put(channel, :reader_closed, true)}}
+  end
+
   def handle_info({:DOWN, ref, :process, _pid, _}, %{operator_channel: channel} = s)
       when is_map(channel) and (ref == channel.client_monitor or ref == channel.reader_monitor) do
     :ok = Ipse.Session.Input.invalidate()
@@ -5741,6 +6238,7 @@ defmodule Ipse.Session do
      %{
        s
        | operator_channel: nil,
+         chat_reoffer_snapshot: nil,
          draft_render: nil,
          operator_render: nil,
          assertion_render: nil,
@@ -7524,6 +8022,7 @@ defmodule Ipse.Session do
                  "cwd" => cwd,
                  "reference_layout" => Ipse.Session.Reference.layout(),
                  "source_layout" => Ipse.Session.SourceWindow.layout(),
+                 "pending_acceptance_layout" => Ipse.Session.PendingAcceptance.layout(),
                  "source_origin_layout" => Ipse.Journal.SourceOrigin.layout(),
                  "release_receipt_layout" =>
                    if(lock_mode in [:header_v1, :header_share_v2],

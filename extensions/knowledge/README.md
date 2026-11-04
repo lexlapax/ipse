@@ -9,8 +9,8 @@ The `knowledge/native` preset is a protected-capture integration component. It
 builds independently with empty profile registries and uses Session source proofs
 and saved collection consent. Use the [standalone permission review](../../docs/operator/knowledge-permissions.md)
 to select it for a new session; importing its artifact alone grants no saved
-permission. Automatic capture, managed recall and lifecycle management remain
-under implementation. Follow the [capture training path](../../docs/developer/knowledge-extensions.md#follow-protected-capture-from-a-session-source)
+permission. That procedure describes supported capture, review, recall and resume flows
+and their current limits. Follow the [capture training path](../../docs/developer/knowledge-extensions.md#follow-protected-capture-from-a-session-source)
 for its actual SDK Session test and current limits.
 
 Follow the complete user procedures for [Corpus](../../docs/operator/corpus.md),

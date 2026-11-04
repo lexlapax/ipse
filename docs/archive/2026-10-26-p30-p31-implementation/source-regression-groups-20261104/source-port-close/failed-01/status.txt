@@ -1,0 +1,3 @@
+component_exit=1
+input_post=0
+runtime_post=0

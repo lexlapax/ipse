@@ -1,0 +1,5 @@
+old_alias_origin_matches_new_listener=false
+old_active_nil=true queue_count=0
+retained_state_rebind=service_identity_conflict
+new_phase_alias_only=accepted_pure
+ledger_written=false app_started=false

@@ -310,6 +310,13 @@ defmodule Ipse.Extension.Actions do
     {:ok, usage_reads} = Ipse.Extension.UsageRead.restore(events)
     {:ok, child_usage} = Ipse.Extension.ChildUsage.restore(events)
 
+    {:ok, timeline} =
+      Ipse.Session.PlanningTransition.mode_timeline(
+        events,
+        get_in(metadata, ["source_origin", "session_id"]) ||
+          get_in(metadata, ["semantic_admission", "pin", "session_id"])
+      )
+
     initial = %{
       parent: nil,
       usage_reads: usage_reads,
@@ -347,14 +354,20 @@ defmodule Ipse.Extension.Actions do
       inference_source: nil
     }
 
-    Enum.reduce_while(events, {:ok, initial}, fn event, {:ok, state} ->
+    Enum.reduce_while(events, {:ok, initial, timeline, 0}, fn event,
+                                                              {:ok, state, timeline, position} ->
+      {mode, timeline} = Ipse.Session.PlanningTransition.mode_at(timeline, position)
+      state = %{state | metadata: Map.put(metadata, "execution_mode", mode)}
+
       case validate_event(event, state, metadata["cwd"]) do
-        {:ok, next} -> {:cont, {:ok, next}}
+        {:ok, next} -> {:cont, {:ok, next, timeline, position + 1}}
         _ -> {:halt, @error}
       end
     end)
     |> case do
-      {:ok, state} ->
+      {:ok, state, _timeline, _position} ->
+        state = %{state | metadata: metadata}
+
         state =
           if is_map(state.worker_input) do
             %{
@@ -1286,6 +1299,9 @@ defmodule Ipse.Extension.Actions do
   @doc false
   def allowed_under_outer?(parent, request) do
     case get_in(parent, ["semantic_binding", "class"]) do
+      "nomination.select" ->
+        false
+
       "collection.read" ->
         not mutating?(request)
 

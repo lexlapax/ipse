@@ -116,6 +116,10 @@ defmodule Ipse.Session.ResourcesAuthorityTest do
             send(parent, {:dormant_document_peer, peer})
             receive do: (:allow_document_registration -> :ok)
             :ok
+          end,
+          fn peer ->
+            send(parent, {:request_document_activation, self(), peer})
+            receive do: ({:document_activation_reply, result} -> result)
           end
         )
       end)
@@ -145,6 +149,9 @@ defmodule Ipse.Session.ResourcesAuthorityTest do
     worker_ref = Process.monitor(worker)
     true = :erlang.suspend_process(peer)
     send(worker, :allow_document_registration)
+    assert_receive {:request_document_activation, ^worker, ^peer}, 2_000
+    assert :ok = Resources.activate_document_effect(worker, peer)
+    send(worker, {:document_activation_reply, :ok})
 
     queued =
       Enum.reduce_while(1..200, false, fn _, _ ->

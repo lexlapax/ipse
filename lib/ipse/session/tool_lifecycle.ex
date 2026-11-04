@@ -313,6 +313,16 @@ defmodule Ipse.Session.ToolLifecycle do
   end
 
   def restore(events, session \\ nil) do
+    {metadata, mode_events, position} =
+      case events do
+        [%{"metadata" => metadata} | _] when is_map(metadata) -> {metadata, events, 0}
+        _ -> {%{}, [%{"metadata" => %{}} | events], 1}
+      end
+
+    mode_session =
+      session || get_in(metadata, ["source_origin", "session_id"]) ||
+        get_in(metadata, ["semantic_admission", "pin", "session_id"])
+
     initial = %{
       session: session,
       epoch: nil,
@@ -327,12 +337,26 @@ defmodule Ipse.Session.ToolLifecycle do
       metadata: %{}
     }
 
-    Enum.reduce_while(events, {:ok, initial}, fn e, {:ok, s} ->
-      case step(e, s) do
-        {:ok, next} -> {:cont, {:ok, next}}
-        _ -> {:halt, @error}
+    with {:ok, timeline} <-
+           Ipse.Session.PlanningTransition.mode_timeline(mode_events, mode_session) do
+      Enum.reduce_while(events, {:ok, initial, timeline, position}, fn e,
+                                                                       {:ok, s, timeline,
+                                                                        position} ->
+        {mode, timeline} = Ipse.Session.PlanningTransition.mode_at(timeline, position)
+        s = %{s | metadata: Map.put(metadata, "execution_mode", mode)}
+
+        case step(e, s) do
+          {:ok, next} -> {:cont, {:ok, next, timeline, position + 1}}
+          _ -> {:halt, @error}
+        end
+      end)
+      |> case do
+        {:ok, saved, _, _} -> {:ok, %{saved | metadata: metadata}}
+        _ -> @error
       end
-    end)
+    else
+      _ -> @error
+    end
   rescue
     _ -> @error
   end

@@ -109,6 +109,24 @@ after the new pending proposal is saved, the turn can stop with an unknown Worke
 input. Inspect the saved proposal and operation before new work. Do not repeat the
 capture to recover its lost delivery; idle resume recreates neither attempt.
 
+For a decision card offered immediately after an assistant reply, keep the
+original conversation ID and the printed knowledge reservation and management
+journal IDs. The conversation closes before the protected review and reopens
+under the same ID only after a confirmed result or known refusal. If reader
+cleanup, closure, the review or reopening is unconfirmed, the interaction stops.
+The pending proposal or accepted decision may already exist. Inspect its
+management operation with the command below before new work; use the reservation
+ID if no management journal was created. Explicit resume starts no old capture
+or acceptance and restores no live code. Interactive resume without an initial
+task checks eligible pending decisions before the first chat prompt. It can
+offer a fresh card only after previous matching reservations have known
+dispositions and the original source, pending value and current permission
+validate again. Missing or uncertain receipts stop this review. The automatic
+return to chat after review does not reopen the card. After inspection, a
+still-pending proposal can also receive a fresh code through explicit
+`knowledge review KEY`. Preserve
+the original custom sessions directory as well as `IPSE_HOME/knowledge-management`.
+
 Keep the original Ipse home, protected control/identity/collection files and
 Session journal. A lost confirmation can leave a saved grant, a durable note,
 pending liability or a prepared first-use domain. It does not prove absence.
@@ -165,8 +183,10 @@ private files local; report sanitized codes and operation IDs instead of their
 contents. [Knowledge permissions](knowledge-permissions.md) explains known
 configuration conflicts that can be resolved with a fresh review.
 
-Standalone knowledge management prints a separate journal ID before the
-forget, retention, pending-rejection or pending-correction review and effect. Preserve that ID and `$IPSE_HOME/knowledge-management`
+Knowledge management prints a separate journal ID before its acceptance,
+forget, retention, pending-rejection or pending-correction review and effect.
+The same rule applies when chat opens the review for a nominated reply.
+Preserve that ID and `$IPSE_HOME/knowledge-management`
 with the protected state, then inspect it using the original workspace and
 configuration:
 
@@ -291,7 +311,13 @@ resume/export; [upgrading](install.md#upgrade-without-losing-recovery-options)
 explains switching and rollback. Extension-free sessions still require matching
 configuration.
 
-Idle resume starts no inference, callbacks, children, or tools. Pending questions
+Idle resume repeats no inference, callbacks, children, or tools. Interactive
+resume without an initial task may first check an eligible pending decision
+and offer a fresh native review, as described in
+[decision recovery](#inspect-unconfirmed-protected-knowledge). Wait for its new
+`approval>` or the first `you>` prompt; ordinary chat input is not armed during
+that startup check. It cannot replay a capture or an unresolved acceptance.
+Pending questions
 reappear for an explicit answer. A recorded answer survives interruption, but
 ordinary resume still starts idle. Use interactive chat for questions; headless
 `run` cannot answer them. `/context refresh` changes instructions/skills only,

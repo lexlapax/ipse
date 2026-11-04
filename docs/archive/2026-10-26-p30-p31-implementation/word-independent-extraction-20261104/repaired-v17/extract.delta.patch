@@ -1,0 +1,56 @@
+--- _build/verification/word-independent-adapter-20261104-01/extract.exs	2026-11-04 06:50:59.694530280 -0800
++++ _build/verification/word-independent-adapter-20261104-01/v17/extract.exs	2026-11-04 07:16:32.082471422 -0800
+@@ -1,5 +1,5 @@
+ defmodule Ipse.Development.DocumentFirstOutcomes do
+-  @bundle_digest "9677e436d7969da90bb3c752c473489eb218c224f609cdcba852f1849a473fb7"
++  @bundle_digest "63f9a7cd4acd16ae256a7bcf3e8a30748d8c4a047c45d15e9074e0391db312d4"
+   @input_digest "e5922164601ea8af398a59e7bc8eafc7b963390a760485717d03ac701ed6a68c"
+   @root "/home/lexlapax/projects/lexlapax/ipse"
+ 
+@@ -16,9 +16,11 @@
+     for row <- rows, do: source!(row)
+ 
+     true = Application.spec(:ipse) != nil
+-    {:ok, bundles} = Ipse.Extension.Bundles.inventory()
+-    bundle = Enum.find(bundles, &(&1.id == "corpus-collection-documents"))
+-    true = bundle.digest == @bundle_digest
++    path = Path.join(@root, "_build/verification/ipse-word-style-fallback-20261104-01/corpus-collection-documents")
++    manifest_bytes = File.read!(Path.join(path, "extension.json"))
++    true = Ipse.JSON.sha256(manifest_bytes) == @bundle_digest
++    {:ok, manifest} = Ipse.Extension.Artifact.decode(manifest_bytes)
++    bundle = %{path: path, manifest: manifest, digest: @bundle_digest}
+ 
+     for row <- bundle.manifest["files"] do
+       path = Path.join(bundle.path, row["path"])
+@@ -29,7 +31,7 @@
+ 
+     {:module, IpseKnowledge.Documents} = Code.ensure_loaded(IpseKnowledge.Documents)
+     true = String.starts_with?(List.to_string(:code.which(IpseKnowledge.Documents)), bundle.path <> "/")
+-    true = IpseKnowledge.Documents.version("docx") == "ipse-documents-v16"
++    true = IpseKnowledge.Documents.version("docx") == "ipse-documents-v17"
+     false = Enum.any?(Application.started_applications(), &(elem(&1, 0) == :ipse))
+ 
+     case {mode, rest} do
+@@ -46,8 +48,9 @@
+           "loader_sha256" => Ipse.JSON.sha256(File.read!(Path.join(__DIR__, "load.exs"))),
+           "input_manifest_sha256" => digest,
+           "bundle_sha256" => bundle.digest,
+-          "recipe" => "ipse-documents-v16",
+-          "scope" => "pure_shipped_extraction_and_collection_payload_only",
++          "recipe" => "ipse-documents-v17",
++          "scope" => "pure_repaired_candidate_extraction_and_collection_payload_only",
++          "repair_attempt" => 1,
+           "gold_read" => false,
+           "model_or_native_service_dispatched" => false
+         })
+@@ -81,8 +84,8 @@
+         end
+ 
+         for row <- rows, do: source!(row)
+-        write!(output, "completion.json", %{"first_outcomes" => 12, "source_post" => "pass", "gold_read" => false})
+-        IO.puts("first_extraction_outcomes=12 source_post=pass semantic_or_installed_acceptance=false")
++        write!(output, "completion.json", %{"repaired_outcomes" => 12, "source_post" => "pass", "gold_read" => false})
++        IO.puts("repaired_extraction_outcomes=12 source_post=pass semantic_or_installed_acceptance=false")
+     end
+   end
+ 

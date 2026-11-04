@@ -1,0 +1,5 @@
+test_exit=0
+source_postcheck=0
+runtime_postcheck=0
+links_postcheck=0
+artifact_postcheck=0

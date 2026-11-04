@@ -465,6 +465,9 @@ defmodule Ipse.Journal.Writer do
         {:stored_proof, proof} ->
           Ipse.Session.SourceIndex.revalidate_stored(window.index, proof)
 
+        {:answer_request, turn, request, quote} ->
+          Ipse.Session.SourceIndex.answer_request(window.index, turn, request, quote)
+
         {:assertion_request, id} ->
           Ipse.Session.SourceIndex.assertion_request(window.index, id)
 

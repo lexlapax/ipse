@@ -1,0 +1,4 @@
+173e130d617b45a15e87d2f4e8b1683e61a30485736e431ed1f6a0b0bdfc6b68  _build/verification/ipse-source-port-close-boundary-20261104-03/observe.exs
+64a8ccc4b4cd58a640fff4f553f15122b7ae75f819beb7829b65b19810e66f2f  _build/verification/ipse-source-port-close-boundary-20261104-03/run-once.sh
+1d91f39b8fd3e1b4a33415db7f7ce1d118fe9c534ec4f878b2892b4314be71be  test/support/native_pipe_scope.exs
+c0d00551b3b4381663b3605cf9307d056e76f2127d1ed10746ad37c5dd95b34b  lib/ipse/runner.ex

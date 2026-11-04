@@ -1,0 +1,5 @@
+actual_committed_receipt_different_selection_binding=REFUSED
+retained_baseline=46949556d7652ae6680c3717674ba8b6 saved_sources_handoff_attempts_prior_accepted_unchanged=PASS
+retained_baseline=ac363f92e801072f71986a16170b10f4 saved_sources_handoff_attempts_prior_refused_unchanged=PASS
+
+00:55:16.693 [notice] Application ipse exited: :stopped

@@ -138,6 +138,19 @@ limited to 32 entries of at most 16 KiB of arguments each. If a grant is refused
 you can still approve the proposal once. `--accept-edits` is restricted to chat
 and cannot combine with `--yes`; headless behavior is unchanged.
 
+A native knowledge decision card uses its own fresh `accept CODE`. With the
+reviewed knowledge selection, the model can nominate an exact recommendation
+from its completed reply. The host captures it as pending, closes the original
+conversation for protected review, then resumes the same conversation after a
+confirmed result. This closure ends native edit and shell grants; the configured
+ordinary approval policy, including an explicit `--yes`, still applies. Follow
+[review a proposed decision during chat](knowledge-permissions.md#review-a-proposed-decision-during-chat)
+for prerequisites, bounded source support and recovery. An explicit interactive
+resume without an initial task can check a known pending decision before the
+first chat prompt and offer a fresh code. It never repeats its capture or an
+uncertain review. Accepting a decision
+grants no file, shell or service permission.
+
 A question uses a different prefix, `answer CODE VALUE`. Choose an option number
 or ID, comma-separated choices, or free text as requested. Recommendations are
 not submitted automatically. To submit literal slash-command text, use the
@@ -194,6 +207,9 @@ to inspect retained IDs and status, including after resuming the same Session.
 Up to sixteen decisions can be retained per Session. This records your own words;
 acceptance of an assistant-proposed decision remains a separate, unimplemented
 planning path.
+
+Ordinary-chat [decision cards](knowledge-permissions.md#review-a-proposed-decision-during-chat)
+require normal execution ceilings and remain unavailable while planning.
 
 For the save journey, start in the admitted project with the saved provider and
 configuration used for its native knowledge selection. The earlier `--provider

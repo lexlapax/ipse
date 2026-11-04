@@ -1,0 +1,118 @@
+{
+  "core_change": false,
+  "failures": [
+    {
+      "classified_cause": "isolated_environment_latin1_locale",
+      "cleanup_eexist": false,
+      "json_warning_prefix_byte": true,
+      "module": "Ipse.SharedProducerGuardSessionTest",
+      "source_refs": [
+        "test/extensions/knowledge/shared_producer_guard_session_test.exs:1541",
+        "test/extensions/knowledge/shared_producer_guard_session_test.exs:1976",
+        "test/extensions/knowledge/shared_producer_guard_session_test.exs:1574"
+      ]
+    },
+    {
+      "classified_cause": "isolated_environment_latin1_locale",
+      "cleanup_eexist": false,
+      "json_warning_prefix_byte": true,
+      "module": "Ipse.SharedProducerGuardSessionTest",
+      "source_refs": [
+        "test/extensions/knowledge/shared_producer_guard_session_test.exs:1468",
+        "test/extensions/knowledge/shared_producer_guard_session_test.exs:1976",
+        "test/extensions/knowledge/shared_producer_guard_session_test.exs:1501"
+      ]
+    },
+    {
+      "classified_cause": "isolated_environment_latin1_locale",
+      "cleanup_eexist": false,
+      "json_warning_prefix_byte": true,
+      "module": "Ipse.SharedProducerGuardSessionTest",
+      "source_refs": [
+        "test/extensions/knowledge/shared_producer_guard_session_test.exs:1647",
+        "test/extensions/knowledge/shared_producer_guard_session_test.exs:1976",
+        "test/extensions/knowledge/shared_producer_guard_session_test.exs:1678"
+      ]
+    },
+    {
+      "classified_cause": "isolated_environment_latin1_locale",
+      "cleanup_eexist": false,
+      "json_warning_prefix_byte": true,
+      "module": "Ipse.SharedProducerGuardSessionTest",
+      "source_refs": [
+        "test/extensions/knowledge/shared_producer_guard_session_test.exs:1759",
+        "test/extensions/knowledge/shared_producer_guard_session_test.exs:1976",
+        "test/extensions/knowledge/shared_producer_guard_session_test.exs:1784"
+      ]
+    },
+    {
+      "classified_cause": "isolated_environment_latin1_locale",
+      "cleanup_eexist": false,
+      "json_warning_prefix_byte": true,
+      "module": "Ipse.SharedProducerGuardSessionTest",
+      "source_refs": [
+        "test/extensions/knowledge/shared_producer_guard_session_test.exs:1546",
+        "test/extensions/knowledge/shared_producer_guard_session_test.exs:1976",
+        "test/extensions/knowledge/shared_producer_guard_session_test.exs:1574"
+      ]
+    },
+    {
+      "classified_cause": "isolated_environment_latin1_locale",
+      "cleanup_eexist": false,
+      "json_warning_prefix_byte": true,
+      "module": "Ipse.SharedProducerGuardSessionTest",
+      "source_refs": [
+        "test/extensions/knowledge/shared_producer_guard_session_test.exs:1395",
+        "test/extensions/knowledge/shared_producer_guard_session_test.exs:1976",
+        "test/extensions/knowledge/shared_producer_guard_session_test.exs:1423"
+      ]
+    },
+    {
+      "classified_cause": "isolated_environment_latin1_locale",
+      "cleanup_eexist": false,
+      "json_warning_prefix_byte": true,
+      "module": "Ipse.SharedProducerGuardSessionTest",
+      "source_refs": [
+        "test/extensions/knowledge/shared_producer_guard_session_test.exs:1230",
+        "test/extensions/knowledge/shared_producer_guard_session_test.exs:1976",
+        "test/extensions/knowledge/shared_producer_guard_session_test.exs:1261"
+      ]
+    },
+    {
+      "classified_cause": "isolated_environment_latin1_locale",
+      "cleanup_eexist": false,
+      "json_warning_prefix_byte": true,
+      "module": "Ipse.SharedProducerGuardSessionTest",
+      "source_refs": [
+        "test/extensions/knowledge/shared_producer_guard_session_test.exs:1390",
+        "test/extensions/knowledge/shared_producer_guard_session_test.exs:1976",
+        "test/extensions/knowledge/shared_producer_guard_session_test.exs:1423"
+      ]
+    },
+    {
+      "classified_cause": "isolated_environment_latin1_locale",
+      "cleanup_eexist": false,
+      "json_warning_prefix_byte": true,
+      "module": "Ipse.SharedProducerGuardSessionTest",
+      "source_refs": [
+        "test/extensions/knowledge/shared_producer_guard_session_test.exs:1473",
+        "test/extensions/knowledge/shared_producer_guard_session_test.exs:1976",
+        "test/extensions/knowledge/shared_producer_guard_session_test.exs:1501"
+      ]
+    },
+    {
+      "classified_cause": "isolated_environment_latin1_locale",
+      "cleanup_eexist": true,
+      "json_warning_prefix_byte": false,
+      "module": "Ipse.ParallelDelegationTest",
+      "source_refs": [
+        "test/ipse/tools/delegation_parallel_test.exs:399"
+      ]
+    }
+  ],
+  "json_control": "locale-control-01/result.json",
+  "unicode_cleanup_controls": [
+    "locale-control-01/delete-old.json",
+    "locale-control-01/delete-fixed.json"
+  ]
+}

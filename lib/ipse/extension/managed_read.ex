@@ -53,6 +53,7 @@ defmodule Ipse.Extension.ManagedRead do
 
                         admit.(first.observation["value"], dependencies)
                       else
+                        {:error, :collection_record_expired} = expired -> expired
                         _ -> @error
                       end
                     end)
@@ -231,9 +232,12 @@ defmodule Ipse.Extension.ManagedRead do
   end
 
   defp authenticate(c, i, notes, first, verified, cap, catalog, journals) do
+    single_get? = length(notes) == 1 and i["request"]["request"]["op"] == "get"
+
     Enum.reduce_while(notes, {:ok, []}, fn note, {:ok, dependencies} ->
       case authenticate_record(c, i, note, first, verified, cap, catalog, journals) do
         {:ok, dependency} -> {:cont, {:ok, dependencies ++ [dependency]}}
+        {:error, :collection_record_expired} = expired when single_get? -> {:halt, expired}
         _ -> {:halt, @error}
       end
     end)
@@ -259,16 +263,10 @@ defmodule Ipse.Extension.ManagedRead do
          true <- managed["observation"]["witness"] === first.observation["witness"],
          true <- managed["observation"]["value"]["record"] === note.record,
          {:ok, dependency} <-
-           ObservedRead.managed_dependency(
-             request,
-             managed,
-             i["effect_binding"]["pin"],
-             note.recipe,
-             Enum.map(verified, & &1["proof"]),
-             System.system_time(:millisecond)
-           ) do
+           literal_dependency(i, request, managed, note, verified) do
       {:ok, dependency}
     else
+      {:error, :collection_record_expired} = expired -> expired
       _ -> @error
     end
   end
@@ -359,6 +357,41 @@ defmodule Ipse.Extension.ManagedRead do
       )
     else
       _ -> @error
+    end
+  end
+
+  defp literal_dependency(i, request, managed, note, verified) do
+    proofs = Enum.map(verified, & &1["proof"])
+    now = System.system_time(:millisecond)
+
+    case ObservedRead.managed_dependency(
+           request,
+           managed,
+           i["effect_binding"]["pin"],
+           note.recipe,
+           proofs,
+           now
+         ) do
+      {:ok, _} = dependency ->
+        dependency
+
+      _ ->
+        # The caller already holds current consent and original source ownership,
+        # and authenticated this exact record's signed metadata and root witness.
+        with true <- i["request"]["request"]["op"] == "get",
+             true <-
+               ObservedRead.expired_managed_literal?(
+                 request,
+                 managed,
+                 i["effect_binding"]["pin"],
+                 note.recipe,
+                 proofs,
+                 now
+               ) do
+          {:error, :collection_record_expired}
+        else
+          _ -> @error
+        end
     end
   end
 

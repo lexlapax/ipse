@@ -437,6 +437,7 @@ defmodule Ipse.CLI do
                 cwd: opts[:cwd] || default_cwd(),
                 state_dir: state_dir(opts),
                 id: opts[:resume],
+                chat_review_reoffer: interactive and is_binary(opts[:resume]) and is_nil(prompt),
                 subscriber: self(),
                 owner: self()
               ] ++ handoff_opts}
@@ -537,24 +538,177 @@ defmodule Ipse.CLI do
       if handoff_opts != [],
         do: Terminal.puts(:stderr, Ipse.Session.Saved.handoff_notice(handoff_opts[:handoff]))
 
-      result = Terminal.interact(pid, ref, interactive, prompt, info.cwd)
-
-      cleanup = Ipse.Session.close_confirmed(pid)
-      Process.demonitor(ref, [:flush])
-
-      if cleanup == :ok do
-        result
-      else
-        Terminal.puts(
-          :stderr,
-          "Owned work cleanup could not be confirmed; inspect saved receipts and running processes."
-        )
-
-        max(result, 1)
-      end
+      interact_session(pid, ref, interactive, prompt, %{
+        config: config,
+        cwd: info.cwd,
+        state_dir: Path.expand(state_dir(opts)),
+        id: info.id,
+        reoffer: interactive and is_binary(opts[:resume]) and is_nil(prompt)
+      })
     else
       {:error, reason} ->
         Terminal.puts(:stderr, "Cannot start: #{format_error(reason)}")
+        1
+    end
+  end
+
+  defp interact_session(pid, ref, interactive, prompt, context) do
+    startup =
+      if context.reoffer, do: fn channel -> prepare_chat_reoffer(pid, channel, context) end
+
+    case Terminal.interact(pid, ref, interactive, prompt, context.cwd, startup) do
+      {:pending_chat_review, token} ->
+        continue_chat_review(pid, ref, token, context)
+
+      result when is_integer(result) ->
+        finish_session(pid, ref, result)
+    end
+  end
+
+  defp prepare_chat_reoffer(pid, channel, context) do
+    case Ipse.Session.chat_reoffer_snapshot(pid, channel) do
+      {:ok, snapshot} ->
+        {:reoffer, snapshot,
+         fn ->
+           Ipse.CLI.Knowledge.Management.chat_reoffer_preflight(
+             context.config,
+             context.cwd,
+             context.state_dir,
+             snapshot
+           )
+         end}
+
+      :none ->
+        :ok
+
+      {:error, _} ->
+        Terminal.puts(
+          :stderr,
+          "Pending decision review is unavailable in the current conversation mode."
+        )
+
+        :ok
+    end
+  end
+
+  defp finish_session(pid, ref, result) do
+    cleanup = Ipse.Session.close_confirmed(pid)
+    Process.demonitor(ref, [:flush])
+
+    if cleanup == :ok do
+      result
+    else
+      Terminal.puts(
+        :stderr,
+        "Owned work cleanup could not be confirmed; inspect saved receipts and running processes."
+      )
+
+      max(result, 1)
+    end
+  end
+
+  defp continue_chat_review(pid, ref, token, context) do
+    alias Ipse.Session.ChatReviewHandoff
+
+    case ChatReviewHandoff.take(pid, token) do
+      {:ok, handle} ->
+        with {:ok, config} <- ChatReviewHandoff.runtime_config(handle, context.config) do
+          context = %{context | config: config}
+          closed = ChatReviewHandoff.close(handle)
+          Process.demonitor(ref, [:flush])
+
+          if closed == :ok do
+            case ChatReviewHandoff.review(handle, context.config, context.cwd, context.state_dir) do
+              {:ok, result} ->
+                Terminal.puts(
+                  "Accepted the selected proposal as your decision; original provenance remains."
+                )
+
+                Terminal.puts(Jason.encode!(result))
+                resume_after_chat_review(context)
+
+              {:error, :chat_review_reoffer_unconfirmed} ->
+                Terminal.puts(
+                  :stderr,
+                  "Earlier decision review is unconfirmed. Inspect its reservation and management journal before resuming; no review was retried."
+                )
+
+                1
+
+              {:error, _} ->
+                Terminal.puts(
+                  :stderr,
+                  "No acceptance was confirmed. The conversation will resume without retrying review."
+                )
+
+                resume_after_chat_review(context)
+
+              _ ->
+                Terminal.puts(
+                  :stderr,
+                  "Decision review is unconfirmed. Inspect the management journal and protected storage before explicitly resuming this conversation; nothing was retried."
+                )
+
+                1
+            end
+          else
+            Terminal.puts(
+              :stderr,
+              "Conversation cleanup is unconfirmed. Decision review was not started; inspect saved receipts before continuing."
+            )
+
+            1
+          end
+        else
+          _ ->
+            Terminal.puts(
+              :stderr,
+              "Decision review mode was not confirmed. No acceptance was attempted."
+            )
+
+            finish_session(pid, ref, 1)
+        end
+
+      _ ->
+        Terminal.puts(
+          :stderr,
+          "Decision review handoff was not confirmed. No acceptance was attempted."
+        )
+
+        finish_session(pid, ref, 1)
+    end
+  end
+
+  defp resume_after_chat_review(context) do
+    context = %{context | config: Map.put(context.config, :accept_edits, false), reoffer: false}
+
+    case DynamicSupervisor.start_child(
+           Ipse.Sessions,
+           {Ipse.Session,
+            config: context.config,
+            cwd: context.cwd,
+            state_dir: context.state_dir,
+            id: context.id,
+            subscriber: self(),
+            owner: self()}
+         ) do
+      {:ok, pid} ->
+        ref = Process.monitor(pid)
+        Terminal.puts(:stderr, "Conversation resumed: #{context.id}")
+
+        Terminal.puts(
+          :stderr,
+          "Session grants ended when decision review closed the conversation. Your configured approval policy still applies to new actions."
+        )
+
+        interact_session(pid, ref, true, nil, context)
+
+      _ ->
+        Terminal.puts(
+          :stderr,
+          "The conversation could not be reopened. Review was not repeated; explicitly resume the saved conversation after inspecting its state."
+        )
+
         1
     end
   end

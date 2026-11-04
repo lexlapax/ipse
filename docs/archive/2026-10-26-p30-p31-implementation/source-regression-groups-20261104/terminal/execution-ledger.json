@@ -1,0 +1,84 @@
+{
+  "automatic_retries": false,
+  "candidate": "frozen d3 HEAD plus exact packet02 dirty overlay",
+  "exact_groups": [
+    245,
+    77,
+    76,
+    75
+  ],
+  "operator_owner": "released_to_session_corrected_causal_control",
+  "runs": [
+    {
+      "group": "serial_original",
+      "handle": 35553,
+      "integrity_post": 0,
+      "status": "failed_locale_setup",
+      "test_exit": 1
+    },
+    {
+      "group": "parallel1_original",
+      "handle": 18474,
+      "integrity_post": 0,
+      "passed": 599,
+      "status": "failed_locale_setup_10_exact_causes",
+      "total": 609
+    },
+    {
+      "elapsed_seconds": 266.4,
+      "group": "parallel2",
+      "handle": 53580,
+      "integrity_post": 0,
+      "passed": 648,
+      "skipped": 4,
+      "status": "passed"
+    },
+    {
+      "elapsed_seconds": 1211.2,
+      "excluded": 1,
+      "group": "parallel3",
+      "handle": 59380,
+      "integrity_post": 0,
+      "passed": 588,
+      "skipped": 1,
+      "status": "passed"
+    },
+    {
+      "elapsed_seconds": 100.4,
+      "excluded": 4,
+      "group": "canonical33",
+      "handle": 58141,
+      "integrity_post": 0,
+      "passed": 1,
+      "status": "passed"
+    },
+    {
+      "elapsed_seconds": 5815.3,
+      "excluded": 122,
+      "group": "serial02",
+      "handle": 52971,
+      "integrity_field_count": 11,
+      "integrity_post": 0,
+      "launcher_pid": 2107156,
+      "observed_failure_receipt": "regression-groups-frozen-20261104-02/serial/evidence/failure-01-safe.json",
+      "observed_failures": 1,
+      "passed": 2173,
+      "skipped": 121,
+      "status": "failed_one_owner_loss_assertion_pending_causal_control",
+      "test_exit": 2,
+      "total": 2174
+    },
+    {
+      "elapsed_seconds": 1156.0,
+      "group": "parallel1_utf8_02",
+      "handle": 79130,
+      "integrity_post": 0,
+      "launcher_pid": 3251297,
+      "passed": 609,
+      "skipped": 2,
+      "status": "passed",
+      "test_exit": 0
+    }
+  ],
+  "test_file_count": 473
+}

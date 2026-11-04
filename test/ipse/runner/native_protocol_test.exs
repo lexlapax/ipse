@@ -2,7 +2,7 @@ defmodule Ipse.NativeHelperBoundaryTest do
   use ExUnit.Case, async: false
 
   setup do
-    root = Path.join(System.tmp_dir!(), "ipse-helper-boundary-#{Ipse.Usage.id()}")
+    root = Path.join("/tmp", "ipse-helper-boundary-#{Ipse.Usage.id()}")
     cwd = Path.join(root, "workspace")
     File.mkdir_p!(cwd)
     previous = System.get_env("IPSE_RUNNER_PATH")
@@ -18,6 +18,7 @@ defmodule Ipse.NativeHelperBoundaryTest do
     %{root: root, cwd: cwd}
   end
 
+  @tag native_workspace: true
   test "native shell and stdio refuse a workspace helper before executing it", ctx do
     helper = Path.join(ctx.cwd, "supervisor")
     marker = Path.join(ctx.root, "must-not-run")
@@ -49,6 +50,7 @@ defmodule Ipse.NativeHelperBoundaryTest do
     refute File.exists?(marker)
   end
 
+  @tag native_workspace: true
   test "native resolution rejects helper aliases and the active application", ctx do
     helper = Path.join(ctx.root, "supervisor")
     File.cp!(Path.join(:code.priv_dir(:ipse), "ipse-runner"), helper)

@@ -1,0 +1,119 @@
+{
+  "app_spec_sha256": "48e5caade486fc302e5313395f43f107f2785e90b6486d07a471b67825e23ab1",
+  "bundles": [
+    {
+      "id": "corpus-collection-documents",
+      "manifest_sha256": "9677e436d7969da90bb3c752c473489eb218c224f609cdcba852f1849a473fb7",
+      "path": "corpus-collection-documents"
+    },
+    {
+      "id": "corpus-state-documents",
+      "manifest_sha256": "b95dcb9b1ca4417a6ecbd3de5f1d8eb32973f42ee96f41f5fa58d62c9902861f",
+      "path": "corpus-state-documents"
+    },
+    {
+      "id": "knowledge",
+      "manifest_sha256": "a9e5c64aeaa08253a3d018fd495791cd9ee06814302227b911fa74a617b52d3c",
+      "path": "knowledge"
+    },
+    {
+      "id": "knowledge-decision-shadow",
+      "manifest_sha256": "979b692c316fcf345aa302b3e27e27f8f8fd6ea83acc288d353b923ae4cf1949",
+      "path": "knowledge-decision-shadow"
+    }
+  ],
+  "canonical_assertions": [
+    "33 natively reviewed short statements",
+    "all33 full marker texts in actual provider request",
+    "33 successful get results",
+    "coverage complete and included33",
+    "successful provider completion",
+    "strict Saved restore",
+    "confirmed consumer close"
+  ],
+  "canonical_helper_sha256": "08d175d301136364d9152c2cab9577957adf3beac441a9a2c7295a8300ba46fe",
+  "catalog_sha256": "d3ea113cf5b1d7c16ee9abafeaa8745b9fb5079d0b7fcf8fbe91d52c517cba05",
+  "kind": "fresh_current_canonical_first33_positive",
+  "native_helper_sha256": "ac424d10e2ce6809cedcb157acd70092b00ca68aa7a48201a6007ac5dccbf33b",
+  "no_claims": [
+    "retained2000 qualification",
+    "sparse/reappearing source case",
+    "arbitrary note sizes",
+    "installed package or human interaction",
+    "provider request retained on disk"
+  ],
+  "seed_assertions": 33,
+  "selected_case": "first33_positive",
+  "sessions": [
+    {
+      "assertions": 0,
+      "counts": {
+        "extension_action_intent": 39,
+        "request_usage_observed": 1,
+        "managed_output_release_intent": 1,
+        "worker_input_result": 37,
+        "turn_finished": 1,
+        "extension_event_result": 1,
+        "inference_dispatch_intent": 1,
+        "lifecycle_prompt_received": 1,
+        "extension_context_snapshot": 1,
+        "input_received": 1,
+        "message": 2,
+        "managed_read_observed": 36,
+        "extension_action_result": 39,
+        "lifecycle_epoch_closed": 1,
+        "managed_output_release_result": 1,
+        "session_release_owner_started": 1,
+        "lifecycle_prompt_committed": 1,
+        "request_admitted": 1,
+        "workspace_context_snapshot": 1,
+        "managed_preflight_intent": 1,
+        "lifecycle_epoch_started": 1,
+        "request_measured": 1,
+        "session_release_intent": 1,
+        "skill_catalog_snapshot": 1,
+        "session": 1,
+        "extension_invocation_result": 1,
+        "source_answer_committed": 1,
+        "extension_invocation_intent": 1,
+        "managed_output_release_cleanup": 1,
+        "request_finished": 1,
+        "worker_input_intent": 37,
+        "managed_preflight_result": 1,
+        "reference_admitted": 1,
+        "source_window_opened": 1,
+        "extension_event_intent": 1,
+        "reference_envelope": 1
+      },
+      "journal_sha256": "b62b2e8f08574068beacf4392dad6ab51c2db814a5e4c4c59ca852d3fe6cc862",
+      "successful_gets": 33
+    },
+    {
+      "assertions": 33,
+      "counts": {
+        "extension_action_intent": 165,
+        "extension_action_result": 165,
+        "extension_invocation_intent": 33,
+        "extension_invocation_result": 33,
+        "managed_output_release_cleanup": 33,
+        "managed_output_release_intent": 33,
+        "managed_output_release_result": 33,
+        "managed_read_observed": 66,
+        "operator_assertion": 33,
+        "session": 1,
+        "session_release_intent": 1,
+        "session_release_owner_started": 1,
+        "skill_catalog_snapshot": 1,
+        "source_window_opened": 1,
+        "turn_finished": 33,
+        "worker_input_intent": 99,
+        "worker_input_result": 99,
+        "worker_input_root_transition": 33,
+        "workspace_context_snapshot": 1
+      },
+      "journal_sha256": "ac2541d9bb0e0ec0c647a98c240e99787fd0d3c64a5870df630e429962722c23",
+      "successful_gets": 66
+    }
+  ],
+  "sparse_or_reappear_run": false
+}

@@ -496,7 +496,22 @@ defmodule Ipse.Session.ManagedOutput do
   @doc false
   def complete(s, id) do
     with p when is_map(p) <- s.managed_output_release,
-         true <- p.intent["release_id"] == id and p.cleanup == "confirmed" do
+         true <- p.intent["release_id"] == id and p.cleanup == "confirmed",
+         true <- completion_bound?(s, p) do
+      s =
+        if p.admission["decision"] == "current",
+          do: Session.PendingNomination.record_result(s, p.parent, p.raw),
+          else: s
+
+      handoff =
+        if s.phase == :extension_command and is_map(Map.get(s, :post_reply_capture)) do
+          if known_capture?(s, p),
+            do: Session.ChatReviewHandoff.prepare(s, p.parent, p.raw),
+            else: {:error, :chat_review_unavailable}
+        else
+          :not_applicable
+        end
+
       next = CurrentInvocation.release_output(s)
 
       next = %{
@@ -507,14 +522,20 @@ defmodule Ipse.Session.ManagedOutput do
           invocation: %CurrentInvocation{}
       }
 
-      if p.raw["descriptor"]["stage"] == "invoke.tool",
-        do: {:noreply, Session.Turn.next_tool(next)},
-        else:
+      cond do
+        handoff != :not_applicable ->
+          {:noreply, CurrentInvocation.finish_chat_review(next, handoff)}
+
+        p.raw["descriptor"]["stage"] == "invoke.tool" ->
+          {:noreply, Session.Turn.next_tool(next)}
+
+        true ->
           {:noreply,
            Session.Turn.finish(
              next,
              if(p.admission["decision"] == "withdrawn", do: :error, else: :ok)
            )}
+      end
     else
       _ ->
         {:noreply,
@@ -524,6 +545,41 @@ defmodule Ipse.Session.ManagedOutput do
          )}
     end
   end
+
+  defp completion_bound?(s, p) do
+    s.job_ref == p.job and s.invocation.parent === p.parent and
+      is_nil(s.invocation.action) and not s.invocation.interrupted and
+      JSON.digest(s.invocation.results) == p.actions_sha and Registry.live?(p.parent["identity"]) and
+      valid_admission?(p.admission, p.intent, p.raw, write_facts(s.invocation.results))
+  end
+
+  defp known_capture?(_s, %{admission: %{"decision" => "current"}}), do: true
+
+  # A known completed write may outlive its earlier root observation. It selects
+  # a review target only; Management must reread and authenticate that target and
+  # its original source before any card or publication authority exists.
+  defp known_capture?(s, %{admission: %{"decision" => "historical_write"}} = p) do
+    with %{"status" => "saved", "key" => "pending." <> _ = key, "receipt" => receipt} <-
+           p.raw["value"],
+         [fact] <- p.admission["write_facts"],
+         true <- fact["record_key"] === key,
+         [action] <-
+           Enum.filter(s.invocation.results, &(&1["operation_id"] === fact["operation_id"])),
+         true <- action["parent_invocation_id"] === p.parent["invocation_id"],
+         true <- Ipse.Extension.Actions.valid_result?(action),
+         true <- Ipse.Extension.ManagedCollectionCall.new_capture?(action["request"]),
+         true <- Ipse.Extension.ManagedCollectionCall.bound_outcome?(action),
+         true <- action["outcome"]["status"] === "ok",
+         true <- action["outcome"]["value"] === receipt,
+         true <- write_facts([action]) === [fact],
+         [%{"key" => ^key, "expected_revision" => 0}] <- action["request"]["request"]["changes"] do
+      true
+    else
+      _ -> false
+    end
+  end
+
+  defp known_capture?(_, _), do: false
 
   @doc false
   def complete_event(s, caller, id) do

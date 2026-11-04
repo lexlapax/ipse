@@ -1,0 +1,9 @@
+9ceaec7d4f591407fe885b218455a13355988ce531bff68d67b728e306960b53  _build/verification/word-independent-adapter-20261104-01/v17/load.exs
+8d19a4a1e5af5a898a4cdf759bd3904d27213657d1e92d5f177212368f4f33b2  _build/verification/word-independent-adapter-20261104-01/v17/extract.exs
+b13a225402cd6ab31efede556917df70eb51f854d14042459ea2bb81819d3ad3  _build/verification/word-independent-adapter-20261104-01/v17/PROTOCOL.md
+6bb4b74eb9b25dc2ea894672fba710dd64c13a6bed89898228c92776e7fc1936  _build/verification/word-independent-adapter-20261104-01/v17/support-check.exs
+f2ddb27a5342575b2008580dce4d359bea35428d18f53812e195d5753fa294bf  _build/verification/word-independent-adapter-20261104-01/v17/support-selection-frozen.json
+f8b96975c05839afec8d5b92aa11f60974dfc62d03170ad6c3b762097ed4818f  _build/verification/word-independent-adapter-20261104-01/v17/run-once.sh
+ff0bea1112170f1757c1294a0498b5987e87b4c68550b37d3daf13037c4d30b3  _build/verification/word-independent-adapter-20261104-01/v17/loader.delta.patch
+1dda545f346bb40e315fa5c915265577db4e337d7fba610133ca195fd76feb6d  _build/verification/word-independent-adapter-20261104-01/v17/extract.delta.patch
+32453e22793239d123e35e9843b0f366c1bd95507274cb37da71bbb6e016ed5e  _build/verification/ipse-p31-next-lanes-20261104-01/word-input-pins.json

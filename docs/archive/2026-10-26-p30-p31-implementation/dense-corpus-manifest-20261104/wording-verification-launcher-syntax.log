@@ -1,0 +1,8 @@
+** (SyntaxError) invalid syntax found on _build/verification/ipse-dense-build-diagnostic-20261104-01/verify-wording.exs:85:81:
+    error: unexpected token: )
+    │
+ 85 │ IO.puts("remaining_build_stages=#{length(Path.wildcard(output <> ".building-*")))}")
+    │                                                                                 ^
+    │
+    └─ _build/verification/ipse-dense-build-diagnostic-20261104-01/verify-wording.exs:85:81
+    (elixir 1.20.4) lib/code.ex:1639: Code.require_file/2

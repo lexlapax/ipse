@@ -1,0 +1,11 @@
+index=34 type=extension_event_result keys=cleanup_confirmed,delivery_id,intent_sha256,outcome,type,version
+index=35 type=reference_admitted keys=base_sha256,catalog_sha256,epoch,header,header_sha256,reason,session_id,type,version
+reason_class=binary reason_sha=3d55c4f02b1ffa5a982d4e6248612ee340030bbaa9fcac97ffc40b2a44a09899
+index=36 type=reference_envelope keys=content,content_sha256,epoch,policy_generation,position,session_id,source_generation,turn_id,type,version
+index=37 type=request_admitted keys=admitted_at_ms,attempt,attempt_id,billing_mode,endpoint_sha256,kind,model,parent_request_id,parent_session_id,provider,request_id,selected_profile,session_id,turn_id,type,version
+index=38 type=extension_context_snapshot keys=content,content_sha256,context_sha256,request_id,type,version
+index=39 type=managed_preflight_intent keys=admission_sha256,before_sha256,checked_at_ms,deadline_ms,dependencies_sha256,input_sha256,intent_id,phase,policy_generation,request_id,route_sha256,session_id,snapshot_sha256,source_generation,tools_sha256,turn_id,type,version
+index=40 type=managed_preflight_result keys=intent_id,projection,type,verdicts,version
+index=41 type=request_measured keys=duration_ms,kind,outcome,type
+index=42 type=request_finished keys=attempt_id,duration_ms,finality,outcome,reported_model,request_id,type,usage,version
+index=43 type=turn_finished keys=status,type

@@ -472,6 +472,13 @@ defmodule Ipse.Extension.Host do
     entry = Map.put(entry, :worker_input_context, {owner, job_ref})
 
     entry =
+      Map.put(
+        entry,
+        :nomination_only,
+        get_in(intent, ["semantic_binding", "class"]) === "nomination.select"
+      )
+
+    entry =
       if Enum.any?(
            ~w(host.usage.scan host.state.scan host.results host.sources host.collection.read host.actions.mixed),
            &(&1 in entry.identity["capabilities"])
@@ -637,6 +644,10 @@ defmodule Ipse.Extension.Host do
   end
 
   defp outer_current(_, _), do: :ok
+
+  defp continue(_, %{"kind" => kind}, %{nomination_only: true}, _, _, _)
+       when kind in ["host_call", "result_producer"],
+       do: {:error, :nomination_effect_refused}
 
   defp continue(worker, %{"kind" => "host_call"} = response, entry, owner, job_ref, actions) do
     with {:ok, request} <- Actions.proposal(response, entry.identity),

@@ -1,0 +1,635 @@
+diff --git a/extensions/knowledge/src/knowledge.ex b/extensions/knowledge/src/knowledge.ex
+index cc25c27e..4c35b781 100644
+--- a/extensions/knowledge/src/knowledge.ex
++++ b/extensions/knowledge/src/knowledge.ex
+@@ -132,11 +132,12 @@ defmodule IpseKnowledge.Knowledge do
+         %{
+           "outcome" => %{
+             "status" => "failed",
+-            "value" => %{"code" => "collection_original_source_missing"}
++            "value" => %{"code" => code}
+           }
+         },
+         %{phase: :recall_read} = state
+-      ),
++      )
++      when code in ~w(collection_original_source_missing collection_record_expired),
+       do: recall_next(%{state | ctx: Map.update!(state.ctx, :unavailable, &(&1 + 1))})
+ 
+   def handle("host.actions", %{"outcome" => _}, %{phase: :recall_read} = state),
+diff --git a/lib/ipse/extension/collection/observed_read.ex b/lib/ipse/extension/collection/observed_read.ex
+index 6568db48..991bc1ed 100644
+--- a/lib/ipse/extension/collection/observed_read.ex
++++ b/lib/ipse/extension/collection/observed_read.ex
+@@ -109,17 +109,7 @@ defmodule Ipse.Extension.Collection.ObservedRead do
+ 
+   @doc "Structurally bind a record-only observation; the caller must authenticate every supplied fact."
+   def record_dependency(request, observation, pin, validity, publication_policy \\ nil) do
+-    with {:ok, _, :get_record} <- select(request),
+-         true <- SemanticConsent.pin?(pin),
+-         true <- exact?(observation, ~w(version request_sha256 result_sha256 value witness)),
+-         :ok <- JSON.validate_object(observation),
+-         true <- observation["version"] === 1,
+-         true <- observation["request_sha256"] === JSON.digest([request]),
+-         value = observation["value"],
+-         true <-
+-           exact?(value, ["record"]) and observation["result_sha256"] === JSON.digest([value]),
+-         {:ok, collection} <- root_identity(observation["witness"], pin["namespace"]),
+-         {:ok, record} <- record_identity(value["record"], request["key"], collection),
++    with {:ok, collection, record} <- record_facts(request, observation, pin),
+          true <- if(is_nil(record), do: is_nil(validity), else: is_map(validity)),
+          dependency = %{
+            "version" => 4,
+@@ -155,29 +145,17 @@ defmodule Ipse.Extension.Collection.ObservedRead do
+   does not obtain current consent, source eligibility or a live root lease.
+   """
+   def managed_dependency(request, managed, pin, recipe, verified_sources, now) do
+-    with true <- exact?(managed, ~w(observation metadata)),
+-         metadata = managed["metadata"],
+-         true <-
+-           exact?(
+-             Map.delete(metadata, "choice"),
+-             ~w(lineage recipe_sha256 policy_sha256 first_admitted_ms valid_until_ms category)
+-           ),
+-         true <- SemanticConsent.pin?(pin) and ManagedRecipe.valid?(recipe),
+-         true <-
+-           recipe["kind"] == "literal_source" and
+-             JSON.digest([recipe]) === metadata["recipe_sha256"],
+-         true <- JSON.sha256?(metadata["policy_sha256"]) and JSON.safe_uint?(now),
++    with {:ok, facts} <- managed_literal_facts(request, managed, pin, recipe, verified_sources),
++         %{metadata: metadata, candidate: candidate, value_sha256: value_sha256} = facts,
++         true <- JSON.safe_uint?(now),
+          true <-
+            JSON.safe_uint?(metadata["first_admitted_ms"]) and metadata["first_admitted_ms"] <= now,
+          true <- valid_deadline?(metadata["valid_until_ms"], metadata["first_admitted_ms"], now),
+          observation = managed["observation"],
+-         value when is_map(value) <- get_in(observation, ["value", "record", "value"]),
+-         {:ok, candidate} <-
+-           ManagedRecipe.extract(recipe, request["key"], value, verified_sources),
+          true <-
+            ManagedRetention.eligible_metadata?(
+              candidate,
+-             JSON.sha256(Migration.encode(value)),
++             value_sha256,
+              metadata,
+              now
+            ),
+@@ -202,6 +180,78 @@ defmodule Ipse.Extension.Collection.ObservedRead do
+     _ -> @error
+   end
+ 
++  @doc """
++  Consistency only: identify an expired finite ordinary literal without releasing it.
++
++  The caller must authenticate the exact signed observation and hold current
++  consent, root and original source ownership. This predicate grants no authority,
++  builds no dependency, and never substitutes a historical time for current gates.
++  """
++  def expired_managed_literal?(request, managed, pin, recipe, verified_sources, now) do
++    with {:ok, facts} <- managed_literal_facts(request, managed, pin, recipe, verified_sources),
++         {:ok, _, record} <- record_facts(request, managed["observation"], pin),
++         true <- is_map(record) do
++      ManagedRetention.expired_metadata?(
++        facts.candidate,
++        facts.value_sha256,
++        facts.metadata,
++        now
++      )
++    else
++      _ -> false
++    end
++  rescue
++    _ -> false
++  end
++
++  defp managed_literal_facts(request, managed, pin, recipe, verified_sources) do
++    with true <- exact?(managed, ~w(observation metadata)),
++         metadata = managed["metadata"],
++         true <-
++           exact?(
++             Map.delete(metadata, "choice"),
++             ~w(lineage recipe_sha256 policy_sha256 first_admitted_ms valid_until_ms category)
++           ),
++         true <- SemanticConsent.pin?(pin) and ManagedRecipe.valid?(recipe),
++         true <-
++           recipe["kind"] == "literal_source" and
++             JSON.digest([recipe]) === metadata["recipe_sha256"],
++         true <- JSON.sha256?(metadata["policy_sha256"]),
++         observation = managed["observation"],
++         value when is_map(value) <- get_in(observation, ["value", "record", "value"]),
++         {:ok, candidate} <-
++           ManagedRecipe.extract(recipe, request["key"], value, verified_sources) do
++      {:ok,
++       %{
++         metadata: metadata,
++         candidate: candidate,
++         value_sha256: JSON.sha256(Migration.encode(value))
++       }}
++    else
++      _ -> @error
++    end
++  rescue
++    _ -> @error
++  end
++
++  defp record_facts(request, observation, pin) do
++    with {:ok, _, :get_record} <- select(request),
++         true <- SemanticConsent.pin?(pin),
++         true <- exact?(observation, ~w(version request_sha256 result_sha256 value witness)),
++         :ok <- JSON.validate_object(observation),
++         true <- observation["version"] === 1,
++         true <- observation["request_sha256"] === JSON.digest([request]),
++         value = observation["value"],
++         true <-
++           exact?(value, ["record"]) and observation["result_sha256"] === JSON.digest([value]),
++         {:ok, collection} <- root_identity(observation["witness"], pin["namespace"]),
++         {:ok, record} <- record_identity(value["record"], request["key"], collection) do
++      {:ok, collection, record}
++    else
++      _ -> @error
++    end
++  end
++
+   @doc """
+   Bind a trusted signed historical observation to a distinct history dependency.
+ 
+diff --git a/lib/ipse/extension/collection_call.ex b/lib/ipse/extension/collection_call.ex
+index d9d57d15..4fe5adbb 100644
+--- a/lib/ipse/extension/collection_call.ex
++++ b/lib/ipse/extension/collection_call.ex
+@@ -5,7 +5,7 @@ defmodule Ipse.Extension.CollectionCall do
+   @reads ~w(status snapshot get inspect scan index)
+   @binding ~w(kind version namespace pin inner_op request_sha256)
+   @summary ~w(version project generation floor floor_anchor)
+-  @failures ~w(collection_unavailable collection_consent_denied collection_source_refused collection_original_source_missing collection_policy_refused collection_deadline_unavailable collection_result_limit collection_capacity collection_filesystem_unsupported collection_writer_fenced collection_duplicate)
++  @failures ~w(collection_unavailable collection_consent_denied collection_source_refused collection_original_source_missing collection_record_expired collection_policy_refused collection_deadline_unavailable collection_result_limit collection_capacity collection_filesystem_unsupported collection_writer_fenced collection_duplicate)
+   @error {:error, :invalid_extension_collection_call}
+ 
+   def operation?(request), do: is_map(request) and request["op"] == "collection.call"
+@@ -635,6 +635,8 @@ defmodule Ipse.Extension.CollectionCall do
+   defp normalize({:error, :collection_original_source_missing}),
+     do: failed("collection_original_source_missing")
+ 
++  defp normalize({:error, :collection_record_expired}), do: failed("collection_record_expired")
++
+   defp normalize({:error, :collection_source_refused}), do: failed("collection_source_refused")
+   defp normalize({:error, _}), do: failed("collection_consent_denied")
+   defp normalize(_), do: :unknown
+diff --git a/lib/ipse/extension/managed_read.ex b/lib/ipse/extension/managed_read.ex
+index 29786a1b..c5afcba0 100644
+--- a/lib/ipse/extension/managed_read.ex
++++ b/lib/ipse/extension/managed_read.ex
+@@ -53,6 +53,7 @@ defmodule Ipse.Extension.ManagedRead do
+ 
+                         admit.(first.observation["value"], dependencies)
+                       else
++                        {:error, :collection_record_expired} = expired -> expired
+                         _ -> @error
+                       end
+                     end)
+@@ -231,9 +232,12 @@ defmodule Ipse.Extension.ManagedRead do
+   end
+ 
+   defp authenticate(c, i, notes, first, verified, cap, catalog, journals) do
++    single_get? = length(notes) == 1 and i["request"]["request"]["op"] == "get"
++
+     Enum.reduce_while(notes, {:ok, []}, fn note, {:ok, dependencies} ->
+       case authenticate_record(c, i, note, first, verified, cap, catalog, journals) do
+         {:ok, dependency} -> {:cont, {:ok, dependencies ++ [dependency]}}
++        {:error, :collection_record_expired} = expired when single_get? -> {:halt, expired}
+         _ -> {:halt, @error}
+       end
+     end)
+@@ -259,16 +263,10 @@ defmodule Ipse.Extension.ManagedRead do
+          true <- managed["observation"]["witness"] === first.observation["witness"],
+          true <- managed["observation"]["value"]["record"] === note.record,
+          {:ok, dependency} <-
+-           ObservedRead.managed_dependency(
+-             request,
+-             managed,
+-             i["effect_binding"]["pin"],
+-             note.recipe,
+-             Enum.map(verified, & &1["proof"]),
+-             System.system_time(:millisecond)
+-           ) do
++           literal_dependency(i, request, managed, note, verified) do
+       {:ok, dependency}
+     else
++      {:error, :collection_record_expired} = expired -> expired
+       _ -> @error
+     end
+   end
+@@ -362,6 +360,41 @@ defmodule Ipse.Extension.ManagedRead do
+     end
+   end
+ 
++  defp literal_dependency(i, request, managed, note, verified) do
++    proofs = Enum.map(verified, & &1["proof"])
++    now = System.system_time(:millisecond)
++
++    case ObservedRead.managed_dependency(
++           request,
++           managed,
++           i["effect_binding"]["pin"],
++           note.recipe,
++           proofs,
++           now
++         ) do
++      {:ok, _} = dependency ->
++        dependency
++
++      _ ->
++        # The caller already holds current consent and original source ownership,
++        # and authenticated this exact record's signed metadata and root witness.
++        with true <- i["request"]["request"]["op"] == "get",
++             true <-
++               ObservedRead.expired_managed_literal?(
++                 request,
++                 managed,
++                 i["effect_binding"]["pin"],
++                 note.recipe,
++                 proofs,
++                 now
++               ) do
++          {:error, :collection_record_expired}
++        else
++          _ -> @error
++        end
++    end
++  end
++
+   defp root(c), do: SemanticAdmission.collection_root(c.config[:home])
+ 
+   defp root_dependency(i, first),
+diff --git a/test/extensions/knowledge/knowledge_recall_test.exs b/test/extensions/knowledge/knowledge_recall_test.exs
+index 9de386e9..b70204dc 100644
+--- a/test/extensions/knowledge/knowledge_recall_test.exs
++++ b/test/extensions/knowledge/knowledge_recall_test.exs
+@@ -107,6 +107,8 @@ defmodule IpseKnowledge.KnowledgeRecallTest do
+               {%{"status" => "failed", "value" => %{"code" => "collection_consent_denied"}}, items}
+             key in Keyword.get(opts, :refused_keys, []) ->
+               {%{"status" => "failed", "value" => %{"code" => "collection_source_refused"}}, items}
++            key in Keyword.get(opts, :expired_keys, []) ->
++              {%{"status" => "failed", "value" => %{"code" => "collection_record_expired"}}, items}
+             Keyword.get(opts, :unavailable, false) or key in Keyword.get(opts, :unavailable_keys, []) ->
+               {%{"status" => "failed", "value" => %{"code" => "collection_original_source_missing"}}, items}
+             true ->
+@@ -170,6 +172,31 @@ defmodule IpseKnowledge.KnowledgeRecallTest do
+       assert Enum.all?(items, &(get_in(&1, ["source", "kind"]) == "assertion"))
+     end
+ 
++    @tag :typed_expiry
++    test "known expiry skips to a live neighbor but preserves bounds and final generation checks" do
++      records = for n <- 1..34, do: record(n, "synthetic eligible neighbor #{n}")
++      expired = records |> Enum.take(33) |> Enum.map(& &1["key"])
++      live = List.last(records)
++      {result, _, calls, items} = drive(start(), records, expired_keys: expired, page_size: 32)
++      assert result["coverage"] == "partial" and result["unavailable"] == 33
++      assert result["included"] == 1 and decoded_notes(items) == %{live["key"] => live["value"]["text"]}
++      assert Enum.count(calls, &(get_in(&1, ["request", "op"]) == "get")) == 34
++      assert length(calls) < 512
++      assert List.last(Enum.filter(calls, &(get_in(&1, ["request", "op"]) == "index")))["request"]["limit"] == 1
++
++      {changed, _, _, changed_items} = drive(start(), records, expired_keys: expired,
++        page_size: 32, verify_generation: 2)
++      assert changed["coverage"] == "unavailable" and changed["included"] == 0
++      refute Map.has_key?(decoded_notes(changed_items), live["key"])
++
++      for opts <- [[denied_keys: [hd(records)["key"]]], [refused_keys: [hd(records)["key"]]]] do
++        {failed, _, failed_calls, failed_items} = drive(start(), records, opts)
++        assert failed["coverage"] == "unavailable" and failed["included"] == 0
++        assert Enum.count(failed_calls, &(get_in(&1, ["request", "op"]) == "get")) == 1
++        assert decoded_notes(failed_items) == %{}
++      end
++    end
++
+     test "search coverage is partial when any indexed record is unavailable or pages remain" do
+       {:ok, state} = K.init(options())
+       search = fn -> K.handle("invoke.tool", %{"id" => "search", "arguments" => %{"query" => "note", "cursor" => nil}}, state) end
+@@ -834,7 +861,7 @@ defmodule IpseKnowledge.KnowledgeRecallTest do
+       )
+ 
+     assert status == 0, output
+-    assert output =~ "27 passed"
++    assert output =~ "28 passed"
+     refute :code.is_loaded(IpseKnowledge.Knowledge)
+   end
+ end
+diff --git a/test/ipse/extension/collection_normalizer_v3_integration_test.exs b/test/ipse/extension/collection_normalizer_v3_integration_test.exs
+index c94f6594..07456d6f 100644
+--- a/test/ipse/extension/collection_normalizer_v3_integration_test.exs
++++ b/test/ipse/extension/collection_normalizer_v3_integration_test.exs
+@@ -79,6 +79,171 @@ defmodule Ipse.Extension.CollectionNormalizerV3IntegrationTest do
+     end
+   end
+ 
++  @tag :typed_expiry_execute
++  test "the full managed read preserves only authenticated expiry across its nested callbacks",
++       c do
++    {:ok, namespace} =
++      Ipse.Extension.SemanticConsent.namespace(c.binding["project_id"], "notes")
++
++    c = %{
++      c
++      | root: Ipse.Extension.SemanticAdmission.collection_root(c.home),
++        namespace: namespace
++    }
++
++    opts = options(1, 0)
++    assert {:ok, _} = publish(c, opts, scope(c), first: true)
++    [proof] = opts.verified_sources
++    key = hd(opts.request["changes"])["key"]
++    now = System.system_time(:millisecond)
++
++    policy =
++      Ipse.Test.ManagedPolicy.policy()
++      |> Map.put("project", c.binding["project_id"])
++      |> Map.put("expires_at_ms", now + 60_000)
++      |> put_in(["settings", "namespace"], namespace)
++
++    control = Ipse.Extension.SemanticAdmission.control_root(c.home)
++    assert Ipse.Extension.SemanticConsent.policy?(policy)
++
++    assert {:ok, %{"epoch" => 1}} =
++             Ipse.Extension.Consent.replace(control, c.binding["project_id"], 0, policy, now)
++
++    pin =
++      Map.new(~w(identity_sha256 routes_sha256 source_sha256), &{&1, JSON.sha256(&1)})
++      |> Map.merge(Map.take(c.binding, ~w(project_id worktree_id binding_sha256)))
++      |> Map.merge(%{
++        "version" => 1,
++        "session_id" => proof["session_id"],
++        "namespace" => namespace,
++        "epoch" => 1,
++        "policy_sha256" => JSON.digest([policy])
++      })
++
++    owner = self()
++    job = make_ref()
++
++    context = %{
++      session_id: proof["session_id"],
++      owner: owner,
++      job_ref: job,
++      config: %{home: c.home, semantic_admission: %{"policy" => policy, "pin" => pin}}
++    }
++
++    intent = %{
++      "namespace" => namespace,
++      "request" => %{"request" => %{"op" => "get", "key" => key}},
++      "effect_binding" => %{"pin" => pin}
++    }
++
++    protect = fn domain?, callback ->
++      read = fn cap, catalog ->
++        Ipse.Extension.Consent.with_policy(
++          control,
++          c.binding["project_id"],
++          1,
++          JSON.digest([policy]),
++          System.system_time(:millisecond),
++          fn _ -> callback.(cap, catalog) end
++        )
++      end
++
++      if domain?,
++        do:
++          Identity.with_existing_domain_auth(
++            c.home,
++            c.cwd,
++            c.binding,
++            %{namespace: namespace, format: "managed-metadata-v3"},
++            read
++          ),
++        else: read.(nil, nil)
++    end
++
++    invoke = fn ->
++      Ipse.Extension.ManagedRead.execute(context, intent, [opts.recipe], protect, fn _, _ ->
++        send(owner, :expired_body_admitted)
++        {:ok, :unexpected}
++      end)
++    end
++
++    verified = [
++      %{
++        "version" => 1,
++        "window_id" => Ipse.Usage.id(),
++        "generation" => 1,
++        "policy_generation" => 1,
++        "proof" => proof
++      }
++    ]
++
++    # The owning Session boundary supplies trusted local source facts here;
++    # actual source journals and terminal admission have separate journey controls.
++    task = Task.async(invoke)
++
++    for _ <- 1..2 do
++      assert_receive {:"$gen_call", from, {:extension_stored_sources, ^job, ^intent, [^proof]}},
++                     5_000
++
++      GenServer.reply(from, {:ok, verified})
++    end
++
++    assert Task.await(task, 5_000) == {:error, :collection_record_expired}
++    refute_received :expired_body_admitted
++
++    unknown = Task.async(invoke)
++
++    assert_receive {:"$gen_call", from, {:extension_stored_sources, ^job, ^intent, [^proof]}},
++                   5_000
++
++    GenServer.reply(from, {:error, :source_index_refused})
++    assert Task.await(unknown, 5_000) == {:error, :source_index_refused}
++    refute_received :expired_body_admitted
++
++    assert {:ok, %{"epoch" => 2}} =
++             Ipse.Extension.Consent.revoke(control, c.binding["project_id"], 1)
++
++    assert {:error, :consent_read_refused} = Task.await(Task.async(invoke), 5_000)
++    refute_received {:"$gen_call", _, _}
++    refute_received :expired_body_admitted
++
++    expiring_at = System.system_time(:millisecond) + 1_000
++    expiring = Map.put(policy, "expires_at_ms", expiring_at)
++
++    assert {:ok, %{"epoch" => 3}} =
++             Ipse.Extension.Consent.replace(
++               control,
++               c.binding["project_id"],
++               2,
++               expiring,
++               System.system_time(:millisecond)
++             )
++
++    Process.sleep(1_100)
++
++    expired_protect = fn _, _ ->
++      Ipse.Extension.Consent.with_policy(
++        control,
++        c.binding["project_id"],
++        3,
++        JSON.digest([expiring]),
++        System.system_time(:millisecond),
++        fn _ -> flunk("expired policy entered a read callback") end
++      )
++    end
++
++    assert {:error, :consent_read_refused} =
++             Ipse.Extension.ManagedRead.execute(
++               context,
++               intent,
++               [opts.recipe],
++               expired_protect,
++               fn _, _ -> flunk("expired policy admitted content") end
++             )
++
++    refute_received {:"$gen_call", _, _}
++  end
++
+   test "native absence initializes then actual active literal/proposal publications retain MAC provenance",
+        c do
+     assert {:ok, first} = publish(c, options(1, 0), scope(c), first: true)
+@@ -4689,6 +4854,7 @@ defmodule Ipse.Extension.CollectionNormalizerV3IntegrationTest do
+   end
+ 
+   @tag :held_target_regression
++  @tag :typed_expiry
+   test "one checked view binds the literal record to its authenticated live and anchor pages",
+        c do
+     opts = options(1, 0)
+@@ -4795,6 +4961,133 @@ defmodule Ipse.Extension.CollectionNormalizerV3IntegrationTest do
+                first["metadata"]["valid_until_ms"]
+              )
+ 
++    deadline = first["metadata"]["valid_until_ms"]
++
++    refute ObservedRead.expired_managed_literal?(
++             request,
++             first,
++             pin,
++             opts.recipe,
++             opts.verified_sources,
++             deadline - 1
++           )
++
++    assert ObservedRead.expired_managed_literal?(
++             request,
++             first,
++             pin,
++             opts.recipe,
++             opts.verified_sources,
++             deadline
++           )
++
++    assert ObservedRead.expired_managed_literal?(
++             request,
++             first,
++             pin,
++             opts.recipe,
++             opts.verified_sources,
++             deadline + 1
++           )
++
++    [proof] = opts.verified_sources
++    other_proof = Map.put(proof, "occurrence_id", String.duplicate("f", 32))
++
++    refute ObservedRead.expired_managed_literal?(
++             request,
++             first,
++             pin,
++             opts.recipe,
++             [other_proof],
++             deadline
++           )
++
++    for sources <- [[], [proof, other_proof]] do
++      original_record = first["observation"]["value"]["record"]
++      value = put_in(original_record["value"], opts.recipe["evidence_path"], sources)
++      bytes = Migration.encode(value)
++
++      record =
++        Map.merge(original_record, %{
++          "value" => value,
++          "bytes" => byte_size(bytes),
++          "sha256" => JSON.sha256(bytes)
++        })
++
++      changed = put_in(first, ["observation", "value", "record"], record)
++
++      changed =
++        put_in(
++          changed,
++          ["observation", "result_sha256"],
++          JSON.digest([changed["observation"]["value"]])
++        )
++
++      refute ObservedRead.expired_managed_literal?(
++               request,
++               changed,
++               pin,
++               opts.recipe,
++               [proof, other_proof],
++               deadline
++             )
++    end
++
++    refute ObservedRead.expired_managed_literal?(request, first, pin, opts.recipe, [], deadline)
++
++    refute ObservedRead.expired_managed_literal?(
++             request,
++             first,
++             %{},
++             opts.recipe,
++             opts.verified_sources,
++             deadline
++           )
++
++    refute ObservedRead.expired_managed_literal?(
++             request,
++             first,
++             Map.put(pin, "namespace", JSON.sha256("wrong namespace")),
++             opts.recipe,
++             opts.verified_sources,
++             deadline
++           )
++
++    refute ObservedRead.expired_managed_literal?(
++             %{"op" => "get_record", "key" => "note." <> JSON.sha256("other")},
++             first,
++             pin,
++             opts.recipe,
++             opts.verified_sources,
++             deadline
++           )
++
++    for changed <- [
++          put_in(first, ["metadata", "lineage"], JSON.sha256("foreign")),
++          put_in(first, ["metadata", "recipe_sha256"], JSON.sha256("foreign recipe")),
++          put_in(first, ["metadata", "valid_until_ms"], deadline + 1),
++          put_in(first, ["metadata", "first_admitted_ms"], deadline + 1),
++          put_in(first, ["metadata", "category"], "current"),
++          put_in(first, ["metadata", "valid_until_ms"], nil),
++          put_in(first, ["observation", "result_sha256"], JSON.sha256("foreign result")),
++          put_in(first, ["observation", "request_sha256"], JSON.sha256("foreign request")),
++          put_in(
++            first,
++            ["observation", "value", "record", "sha256"],
++            JSON.sha256("foreign value")
++          ),
++          put_in(first, ["observation", "witness", "root_sha256"], JSON.sha256("foreign root"))
++        ] do
++      refute ObservedRead.expired_managed_literal?(
++               request,
++               changed,
++               pin,
++               opts.recipe,
++               opts.verified_sources,
++               deadline + 2
++             )
++    end
++
+     assert {:error, :collection_observation_refused} =
+              ObservedRead.managed_dependency(
+                request,

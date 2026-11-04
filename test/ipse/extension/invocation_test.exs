@@ -294,6 +294,16 @@ defmodule Ipse.Extension.InvocationTest do
     assert result["value"]["text"] == "invoke.tool: hello"
     assert result["parent_call_id"] == "native-extension-call"
     assert :ok = Invocation.validate_events(events)
+    # Unknown invocation-correlated markers remain invalid, even after a real
+    # callback has completed. A nomination name alone cannot authorize one.
+    for marker <- [
+          %{"type" => "unknown_host_marker", "invocation_id" => intent["invocation_id"]},
+          %{"type" => "pending_proposal_nominated", "invocation_id" => intent["invocation_id"]}
+        ] do
+      assert {:error, :invalid_extension_invocation} =
+               Invocation.validate_events(events ++ [marker])
+    end
+
     assert File.read!(ctx.marker) == "loaded\n"
     assert {:ok, messages} = Session.restore_context(events)
     assert Enum.count(messages, &(&1["role"] == "tool")) == 1

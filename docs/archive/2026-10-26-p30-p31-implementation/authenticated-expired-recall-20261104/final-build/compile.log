@@ -1,0 +1,5 @@
+Compiling 195 files (.ex)
+Compiling lib/ipse/session.ex (it's taking more than 10s)
+Compiling lib/ipse/provider.ex (it's taking more than 10s)
+Compiling lib/ipse/journal/writer.ex (it's taking more than 10s)
+Generated ipse app

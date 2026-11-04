@@ -1,0 +1,12 @@
+build_exit=0
+full_sdk_and_helper_preflight=pass
+manifest_bytes=16183
+headroom=201
+file_count=27
+artifact_decode=pass
+manifest_oversize_and_sdk_16k_guards=pass
+artifact_import_lookup=pass
+artifact_digest=109dcde62860d1d18dd867dedf18fbb1e867308a6d1d42565d6a4bfdc97d987e
+native_lock_cleanup=pass
+main_inputs_unchanged=true
+remaining_build_stages=0

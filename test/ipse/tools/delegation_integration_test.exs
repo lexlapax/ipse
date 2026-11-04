@@ -120,10 +120,12 @@ defmodule Ipse.DelegationSessionTest do
     end
   end
 
-  setup do
+  setup context do
+    temporary_root = if context[:native_workspace], do: "/tmp", else: System.tmp_dir!()
+
     root =
       Path.join(
-        System.tmp_dir!(),
+        temporary_root,
         "ipse-delegation-session-#{System.unique_integer([:positive])}"
       )
 
@@ -158,6 +160,7 @@ defmodule Ipse.DelegationSessionTest do
     assert {:ok, _} = Session.Saved.restore(child_events, child_id)
   end
 
+  @tag native_workspace: true
   test "parent approval precedes child start and exact child mutation approval is forwarded",
        ctx do
     parent =

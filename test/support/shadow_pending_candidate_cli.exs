@@ -16,6 +16,9 @@ revoked? = scenario == "save_managed_approval_revoked_grant"
 low_confidence? = scenario == "save_managed_approval_low_confidence"
 deferred? = scenario == "save_managed_approval_defer_candidate"
 output_source_lost? = scenario == "save_managed_approval_output_source_lost"
+output_revoked? = scenario == "save_managed_approval_output_revoked"
+pending_deadline_seed? = scenario == "save_managed_approval_pending_deadline_seed"
+pending_deadline_expired? = scenario == "save_managed_approval_pending_deadline_expired"
 input_source_lost? = scenario == "save_managed_approval_input_source_lost"
 unknown? = scenario == "save_managed_approval_unknown"
 mixed? = scenario == "save_managed_approval_mixed_v4_v7"
@@ -25,6 +28,13 @@ dir = Path.join(root, "sessions")
 File.mkdir_p!(home)
 File.mkdir_p!(cwd)
 File.chmod!(home, 0o700)
+
+if pending_deadline_seed? or pending_deadline_expired? do
+  File.mkdir_p!(Path.join(root, "work"))
+  Code.require_file("managed_clock_lifecycle.exs", __DIR__)
+  Ipse.Test.ManagedClockLifecycle.check_stdio_clock(root)
+end
+
 File.write!(Path.join(cwd, "synthetic.txt"), "Synthetic local observation.\n")
 System.put_env("IPSE_HOME", home)
 
@@ -34,7 +44,12 @@ System.put_env("IPSE_HOME", home)
 {:ok, {_, port}} = :inet.sockname(listener)
 base = "http://127.0.0.1:#{port}"
 {:ok, calls} = Agent.start_link(fn -> [] end)
-{:ok, assessed_key} = Agent.start_link(fn -> nil end)
+
+deadline_seed =
+  if pending_deadline_expired?,
+    do: root |> Path.join("pending-deadline-seed.json") |> File.read!() |> Jason.decode!()
+
+{:ok, assessed_key} = Agent.start_link(fn -> if deadline_seed, do: deadline_seed["key"] end)
 
 server =
   Task.async(fn ->
@@ -157,10 +172,11 @@ server =
       end
     end
 
-    loop.(loop, 0)
+    loop.(loop, if(pending_deadline_expired?, do: 4, else: 0))
   end)
 
 config_path = Path.join(home, "config.json")
+service_id = if pending_deadline_expired?, do: "fixture_day8", else: "fixture"
 
 config = %{
   "version" => 1,
@@ -179,12 +195,12 @@ config = %{
       "operation" => "decision",
       "provider" => "system_one_compatible",
       "model" => "synthetic",
-      "service_id" => "fixture",
+      "service_id" => service_id,
       "base_url" => base,
       "timeout_ms" => 3000
     }
   },
-  "inference_services" => %{"fixture" => %{"version" => 1, "origins" => [base]}}
+  "inference_services" => %{service_id => %{"version" => 1, "origins" => [base]}}
 }
 
 File.write!(config_path, Jason.encode!(config))
@@ -229,6 +245,175 @@ client = %{
 }
 
 {:ok, runtime} = Ipse.Config.runtime(effective, client)
+
+if pending_deadline_expired? do
+  alias Ipse.Extension.{Collection, ProjectIdentity, SemanticAdmission}
+  alias Ipse.Extension.Collection.ObservedRead
+  alias Ipse.Session.{ManagedReference, Saved}
+  now = System.system_time(:millisecond)
+  assert now >= deadline_seed["seed_wall_ms"] + 8 * 86_400_000
+  assert now < deadline_seed["seed_wall_ms"] + 9 * 86_400_000
+  assert now > deadline_seed["valid_until_ms"]
+  assert snapshot["policy"]["expires_at_ms"] > now
+  source_path = Path.join(dir, deadline_seed["source_session_id"] <> ".jsonl")
+  source_stat = File.stat!(source_path)
+  assert source_stat.inode == deadline_seed["source_inode"]
+  assert source_stat.major_device == deadline_seed["source_device"]
+  assert Ipse.JSON.sha256(File.read!(source_path)) == deadline_seed["source_sha256"]
+  assert {:ok, source_events} = Ipse.Journal.load(dir, deadline_seed["source_session_id"])
+  assert {:ok, _} = Saved.restore(source_events, deadline_seed["source_session_id"])
+
+  {:ok, consumer} =
+    DynamicSupervisor.start_child(
+      Ipse.Sessions,
+      {Ipse.Session, config: runtime, cwd: cwd, state_dir: dir, subscriber: self()}
+    )
+
+  id = Ipse.Session.info(consumer).id
+  state = :sys.get_state(consumer)
+  admission = state.config.semantic_admission
+  assert admission["status"] == "active"
+  pin = admission["pin"]
+  assert pin["namespace"] == deadline_seed["namespace"]
+
+  {_, recipe} =
+    Enum.find(admission["policy"]["settings"]["recipes"], fn {_, r} ->
+      r["kind"] == "proposal" and r["key_prefix"] == "pending."
+    end)
+
+  request = %{"op" => "get_record", "key" => deadline_seed["key"]}
+  collection = SemanticAdmission.collection_root(home)
+
+  assert {:ok, before} =
+           Collection.execute(
+             collection,
+             pin["namespace"],
+             %{"op" => "snapshot"},
+             Ipse.Usage.id()
+           )
+
+  # The signed record is still authentic. This pure comparison isolates its
+  # deadline predicate; its constructed dependency grants no live authority.
+  assert {:ok, :deadline_is_the_difference} =
+           ProjectIdentity.with_existing_domain_auth(
+             home,
+             cwd,
+             binding,
+             %{namespace: pin["namespace"], format: "managed-metadata-v3"},
+             fn cap, catalog ->
+               assert {:ok, managed} =
+                        ObservedRead.managed_proposal(
+                          collection,
+                          pin["namespace"],
+                          request,
+                          cap,
+                          catalog,
+                          recipe
+                        )
+
+               assert managed["observation"]["value"]["record"] == deadline_seed["record"]
+               assert managed["metadata"]["valid_until_ms"] == deadline_seed["valid_until_ms"]
+               proofs = get_in(deadline_seed, ["record", "value", "evidence", "sources"])
+
+               assert {:ok, prior_shape} =
+                        ObservedRead.proposal_dependency(
+                          request,
+                          managed,
+                          pin,
+                          recipe,
+                          proofs,
+                          deadline_seed["valid_until_ms"] - 1
+                        )
+
+               assert ManagedReference.dependency?(prior_shape)
+
+               assert {:error, _} =
+                        ObservedRead.proposal_dependency(
+                          request,
+                          managed,
+                          pin,
+                          recipe,
+                          proofs,
+                          now
+                        )
+
+               {:ok, :deadline_is_the_difference}
+             end
+           )
+
+  assert :ok =
+           Ipse.Session.prompt(
+             consumer,
+             "Assess the previously saved synthetic note " <> deadline_seed["key"] <> "."
+           )
+
+  assert_receive {:ipse, ^consumer, {:done, _}}, 20_000
+  assert {:ok, events} = Ipse.Journal.load(dir, id)
+
+  assert [read] =
+           Enum.filter(
+             events,
+             &(get_in(&1, ["request", "purpose"]) == "decision_shadow_pending_v1" and
+                 &1["type"] == "extension_action_result")
+           )
+
+  assert read["outcome"] == %{
+           "status" => "failed",
+           "value" => %{"code" => "collection_source_refused"}
+         }
+
+  refute Enum.any?(events, fn event ->
+           event["type"] == "managed_read_observed" and
+             Enum.any?(event["dependencies"] || [], &(&1["version"] == 7))
+         end)
+
+  refute Enum.any?(
+           events,
+           &(get_in(&1, ["request", "op"]) in ["decision.create", "collection.managed"])
+         )
+
+  refute Enum.any?(Agent.get(calls, & &1), &(elem(&1, 0) == :decision))
+  assert {:ok, final} = Ipse.Extension.Consent.existing_snapshot(control, binding["project_id"])
+  assert final["policy"] == snapshot["policy"]
+  refute Enum.any?(final["operations"], fn {_, op} -> op["reserved"]["model_calls"] > 0 end)
+
+  assert {:ok, ^before} =
+           Collection.execute(
+             collection,
+             pin["namespace"],
+             %{"op" => "snapshot"},
+             Ipse.Usage.id()
+           )
+
+  assert {:ok, %{"record" => record}} =
+           Collection.execute(
+             collection,
+             pin["namespace"],
+             %{"op" => "get", "key" => deadline_seed["key"]},
+             Ipse.Usage.id()
+           )
+
+  assert record == deadline_seed["record"]
+  assert {:ok, _} = Saved.restore(events, id)
+  assert :ok = Ipse.Session.close_confirmed(consumer)
+  calls_before = Agent.get(calls, & &1)
+
+  assert {:ok, resumed} =
+           DynamicSupervisor.start_child(
+             Ipse.Sessions,
+             {Ipse.Session, config: runtime, cwd: cwd, state_dir: dir, subscriber: self(), id: id}
+           )
+
+  assert Ipse.Session.info(resumed).phase == :idle
+  assert Agent.get(calls, & &1) == calls_before
+  assert :ok = Ipse.Session.close_confirmed(resumed)
+  assert Ipse.JSON.sha256(File.read!(source_path)) == deadline_seed["source_sha256"]
+  assert File.stat!(source_path).inode == deadline_seed["source_inode"]
+  :gen_tcp.close(listener)
+  Task.shutdown(server, :brutal_kill)
+  IO.puts("PENDING_PROPOSAL_OWN_DEADLINE_EXPIRED_PASSED")
+  System.halt(0)
+end
 
 # This separate scenario creates a literal through the real native assertion
 # channel so a later protected input can include both v4 and v7 source owners.
@@ -318,6 +503,45 @@ Agent.update(assessed_key, fn _ -> key end)
 refute Enum.any?(Agent.get(calls, & &1), &(elem(&1, 0) == :decision))
 assert :ok = Ipse.Session.close_confirmed(seed)
 
+if pending_deadline_seed? do
+  collection = Ipse.Extension.SemanticAdmission.collection_root(home)
+
+  assert {:ok, %{"record" => record}} =
+           Ipse.Extension.Collection.execute(
+             collection,
+             namespace,
+             %{"op" => "get", "key" => key},
+             Ipse.Usage.id()
+           )
+
+  normalization = get_in(seed_write, ["outcome", "value", "normalization"])
+  assert normalization["eligibility"] == "never_current"
+  assert normalization["valid_until_ms"] - normalization["first_admitted_ms"] == 7 * 86_400_000
+  source_path = Path.join(dir, seed_id <> ".jsonl")
+  stat = File.stat!(source_path)
+
+  manifest = %{
+    "version" => 1,
+    "key" => key,
+    "namespace" => namespace,
+    "source_session_id" => seed_id,
+    "source_inode" => stat.inode,
+    "source_device" => stat.major_device,
+    "source_sha256" => Ipse.JSON.sha256(File.read!(source_path)),
+    "seed_wall_ms" => System.system_time(:millisecond),
+    "record" => record,
+    "valid_until_ms" => normalization["valid_until_ms"]
+  }
+
+  path = Path.join(root, "pending-deadline-seed.json")
+  File.write!(path, Jason.encode!(manifest), [:exclusive])
+  File.chmod!(path, 0o600)
+  :gen_tcp.close(listener)
+  Task.shutdown(server, :brutal_kill)
+  IO.puts("PENDING_PROPOSAL_OWN_DEADLINE_SEED_PASSED")
+  System.halt(0)
+end
+
 collection = Ipse.Extension.SemanticAdmission.collection_root(home)
 
 assert {:ok, before_assessment} =
@@ -403,7 +627,7 @@ end
     wait_file.(wait_file, Path.join(root, "managed-approval-input-ready"), 1500)
     assert :sys.get_state(pid).phase == :managed_approval
 
-    if expiry? or output_source_lost? or input_source_lost? do
+    if expiry? or output_source_lost? or input_source_lost? or output_revoked? do
       watcher = self()
 
       hook = fn
@@ -425,7 +649,7 @@ end
           {:managed_output_prepare, _, :inline,
            %{"value" => %{"status" => "assessed", "key" => ^key, "experimental" => true}}}}},
         _
-        when output_source_lost? ->
+        when output_source_lost? or output_revoked? ->
           send(watcher, {:shadow_output_blocked, self()})
           receive do: (:release_shadow_output -> :ok)
           count + 1
@@ -482,27 +706,47 @@ end
       assert restored.major_device == before.major_device and restored.inode == before.inode
       assert Ipse.JSON.sha256(File.read!(journal)) == digest
     else
-      if output_source_lost? do
+      if output_source_lost? or output_revoked? do
         assert_receive {:shadow_output_blocked, ^pid}, 40_000
         assert length(Enum.filter(Agent.get(calls, & &1), &(elem(&1, 0) == :decision))) == 1
-        journal = Path.join(dir, seed_id <> ".jsonl")
-        held = journal <> ".output-source-held"
-        before = File.stat!(journal)
-        digest = Ipse.JSON.sha256(File.read!(journal))
-        refute File.exists?(held)
-        File.rename!(journal, held)
 
-        try do
-          refute File.exists?(journal)
+        if output_revoked? do
+          assert {:ok, admitted} =
+                   Ipse.Extension.Consent.existing_snapshot(control, binding["project_id"])
+
+          assert Enum.any?(admitted["operations"], fn {_, op} ->
+                   op["status"] == "settled" and op["actual"]["model_calls"] == 1
+                 end)
+
+          assert {:ok, _} =
+                   Ipse.Extension.Consent.revoke(
+                     control,
+                     binding["project_id"],
+                     admitted["epoch"]
+                   )
+
           send(pid, :release_shadow_output)
           idle.(idle, 2000)
-        after
-          if File.exists?(held) and not File.exists?(journal), do: File.rename!(held, journal)
-        end
+        else
+          journal = Path.join(dir, seed_id <> ".jsonl")
+          held = journal <> ".output-source-held"
+          before = File.stat!(journal)
+          digest = Ipse.JSON.sha256(File.read!(journal))
+          refute File.exists?(held)
+          File.rename!(journal, held)
 
-        restored = File.stat!(journal)
-        assert restored.major_device == before.major_device and restored.inode == before.inode
-        assert Ipse.JSON.sha256(File.read!(journal)) == digest
+          try do
+            refute File.exists?(journal)
+            send(pid, :release_shadow_output)
+            idle.(idle, 2000)
+          after
+            if File.exists?(held) and not File.exists?(journal), do: File.rename!(held, journal)
+          end
+
+          restored = File.stat!(journal)
+          assert restored.major_device == before.major_device and restored.inode == before.inode
+          assert Ipse.JSON.sha256(File.read!(journal)) == digest
+        end
       else
         idle.(idle, 2000)
       end
@@ -695,9 +939,10 @@ cond do
     assert reservation["status"] == "unknown" and reservation["reserved"]["model_calls"] == 1
     refute Enum.any?(events, &(&1["type"] == "extension_decision_response"))
 
-  output_source_lost? ->
+  output_source_lost? or output_revoked? ->
     assert reservation["status"] == "settled" and reservation["actual"]["model_calls"] == 1
     assert action["outcome"]["status"] == "ok"
+    if output_revoked?, do: assert(is_nil(final["policy"]))
 
     assert [raw] =
              Enum.filter(

@@ -1,0 +1,9 @@
+build_exception=MatchError
+build_frame=extensions/knowledge/build.exs:125:__FILE__
+exports_bytes=11497
+catalog=:ok
+commands=8
+tools=6
+inputs_unchanged=true
+published_output=false
+remaining_build_stages=0

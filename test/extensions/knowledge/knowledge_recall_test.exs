@@ -107,6 +107,8 @@ defmodule IpseKnowledge.KnowledgeRecallTest do
               {%{"status" => "failed", "value" => %{"code" => "collection_consent_denied"}}, items}
             key in Keyword.get(opts, :refused_keys, []) ->
               {%{"status" => "failed", "value" => %{"code" => "collection_source_refused"}}, items}
+            key in Keyword.get(opts, :expired_keys, []) ->
+              {%{"status" => "failed", "value" => %{"code" => "collection_record_expired"}}, items}
             Keyword.get(opts, :unavailable, false) or key in Keyword.get(opts, :unavailable_keys, []) ->
               {%{"status" => "failed", "value" => %{"code" => "collection_original_source_missing"}}, items}
             true ->
@@ -168,6 +170,31 @@ defmodule IpseKnowledge.KnowledgeRecallTest do
       assert hd(calls)["items"] == []
       refute JSON.encode!(items) |> IO.iodata_to_binary() |> String.contains?("withheld source text")
       assert Enum.all?(items, &(get_in(&1, ["source", "kind"]) == "assertion"))
+    end
+
+    @tag :typed_expiry
+    test "known expiry skips to a live neighbor but preserves bounds and final generation checks" do
+      records = for n <- 1..34, do: record(n, "synthetic eligible neighbor #{n}")
+      expired = records |> Enum.take(33) |> Enum.map(& &1["key"])
+      live = List.last(records)
+      {result, _, calls, items} = drive(start(), records, expired_keys: expired, page_size: 32)
+      assert result["coverage"] == "partial" and result["unavailable"] == 33
+      assert result["included"] == 1 and decoded_notes(items) == %{live["key"] => live["value"]["text"]}
+      assert Enum.count(calls, &(get_in(&1, ["request", "op"]) == "get")) == 34
+      assert length(calls) < 512
+      assert List.last(Enum.filter(calls, &(get_in(&1, ["request", "op"]) == "index")))["request"]["limit"] == 1
+
+      {changed, _, _, changed_items} = drive(start(), records, expired_keys: expired,
+        page_size: 32, verify_generation: 2)
+      assert changed["coverage"] == "unavailable" and changed["included"] == 0
+      refute Map.has_key?(decoded_notes(changed_items), live["key"])
+
+      for opts <- [[denied_keys: [hd(records)["key"]]], [refused_keys: [hd(records)["key"]]]] do
+        {failed, _, failed_calls, failed_items} = drive(start(), records, opts)
+        assert failed["coverage"] == "unavailable" and failed["included"] == 0
+        assert Enum.count(failed_calls, &(get_in(&1, ["request", "op"]) == "get")) == 1
+        assert decoded_notes(failed_items) == %{}
+      end
     end
 
     test "search coverage is partial when any indexed record is unavailable or pages remain" do
@@ -796,7 +823,7 @@ defmodule IpseKnowledge.KnowledgeRecallTest do
         }}}, state)
       assert refused["status"] == "refused"
       description = K.describe()
-      assert Enum.map(description["exports"]["tools"], & &1["id"]) == ~w(capture index read search)
+      assert Enum.map(description["exports"]["tools"], & &1["id"]) == ~w(capture nominate index read search)
       assert description["subscriptions"] |> hd() |> Map.take(~w(view schedule mode)) ==
         %{"view" => "metadata", "schedule" => "before_request", "mode" => "job"}
       refute "host.model" in description["capabilities"]
@@ -834,7 +861,7 @@ defmodule IpseKnowledge.KnowledgeRecallTest do
       )
 
     assert status == 0, output
-    assert output =~ "27 passed"
+    assert output =~ "28 passed"
     refute :code.is_loaded(IpseKnowledge.Knowledge)
   end
 end

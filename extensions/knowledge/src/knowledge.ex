@@ -47,6 +47,11 @@ defmodule IpseKnowledge.Knowledge do
           [
             capture,
             entry(
+              "nominate",
+              "Nominate one exact sentence in this turn's final answer for a possible decision card; this does not save or approve it",
+              nomination_schema()
+            ),
+            entry(
               "index",
               "Page the current note metadata index; metadata is unverified until read, and coverage is explicit",
               object(%{"cursor" => nullable_string(2048)})
@@ -132,11 +137,12 @@ defmodule IpseKnowledge.Knowledge do
         %{
           "outcome" => %{
             "status" => "failed",
-            "value" => %{"code" => "collection_original_source_missing"}
+            "value" => %{"code" => code}
           }
         },
         %{phase: :recall_read} = state
-      ),
+      )
+      when code in ~w(collection_original_source_missing collection_record_expired),
       do: recall_next(%{state | ctx: Map.update!(state.ctx, :unavailable, &(&1 + 1))})
 
   def handle("host.actions", %{"outcome" => _}, %{phase: :recall_read} = state),
@@ -250,6 +256,18 @@ defmodule IpseKnowledge.Knowledge do
           }
         ),
       else: refused(state, :invalid_search)
+  end
+
+  defp invoke(%{"id" => "nominate", "arguments" => args}, state) do
+    if exact?(args, ~w(text category reason references)) and
+         text?(args["text"], 1024) and text?(args["reason"], 256) and
+         args["category"] in ~w(ordinary preference current) and args["references"] == [] do
+      finish(state, %{"status" => "nominated"})
+    else
+      refused(state, :invalid_nomination)
+    end
+  rescue
+    _ -> refused(state, :invalid_nomination)
   end
 
   defp invoke(%{"id" => "capture", "arguments" => args}, state) do
@@ -1300,6 +1318,15 @@ defmodule IpseKnowledge.Knowledge do
       "arguments_schema" => schema,
       "result_schema" => %{"type" => "object"}
     }
+
+  defp nomination_schema do
+    object(%{
+      "text" => string(1024),
+      "category" => %{"type" => "string", "enum" => ~w(ordinary preference current)},
+      "reason" => string(256),
+      "references" => %{"type" => "array", "maxItems" => 0, "items" => %{"type" => "object"}}
+    })
+  end
 
   defp capture_schema do
     object(%{

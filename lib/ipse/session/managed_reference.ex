@@ -499,17 +499,24 @@ defmodule Ipse.Session.ManagedReference do
          true <- Ipse.Session.Reference.safe_tail?(plan.messages),
          old = plan.dependencies,
          guard = evidence["fresh_dependency"],
-         prior_dependencies = Enum.reject(old, &(&1 === guard)),
-         true <- root_history_evidence?(prior_dependencies, evidence),
-         prior = Enum.find(prior_dependencies, &(&1["version"] == 3))["collection"],
-         notice = root_history_notice(prior["generation"], guard["collection"]["generation"]),
+         prior_dependencies = Enum.reject(old, &current_root_metadata?(&1, guard)),
+         true <- root_history_evidence?(old, evidence),
+         prior =
+           Enum.filter(prior_dependencies, &(&1["version"] == 3))
+           |> Enum.min_by(& &1["collection"]["generation"]),
+         notice =
+           root_history_notice(
+             prior["collection"]["generation"],
+             guard["collection"]["generation"],
+             evidence["management"]
+           ),
          messages = plan.messages ++ [notice],
-         retained = Enum.reject(prior_dependencies, &(&1["version"] == 3)),
+         retained = Enum.reject(old, &prior_root_metadata?(&1, guard)),
          occurrences =
            Map.new(plan.state.occurrences, fn {id, item} ->
              ids =
                Enum.map(item.dependency_ids, fn dependency_id ->
-                 if plan.state.dependencies[dependency_id]["version"] == 3,
+                 if prior_root_metadata?(plan.state.dependencies[dependency_id], guard),
                    do: digest(guard),
                    else: dependency_id
                end)
@@ -523,7 +530,7 @@ defmodule Ipse.Session.ManagedReference do
          {:ok, _, next} <- admit(next, producer, length(plan.messages), notice, [guard]),
          event = %{
            "type" => "managed_root_transition",
-           "version" => 1,
+           "version" => if(evidence["management"], do: 2, else: 1),
            "session_id" => plan.state.session_id,
            "binding" => binding,
            "plan_sha256" => plan.sha256,
@@ -539,6 +546,11 @@ defmodule Ipse.Session.ManagedReference do
            "fresh_dependency" => guard,
            "notice_sha256" => digest(notice)
          },
+         event =
+           if(evidence["management"],
+             do: Map.put(event, "management", evidence["management"]),
+             else: event
+           ),
          true <- fits?(event, @event_bytes) do
       {:ok, event, messages, next}
     else
@@ -557,24 +569,31 @@ defmodule Ipse.Session.ManagedReference do
     with true <- is_list(old) and old != [] and is_map(evidence),
          true <-
            Enum.sort(Map.keys(evidence)) ==
-             ~w(fresh_dependency fresh_observation inspection operation_id own_action_sha256 receipt_sha256),
+             Enum.sort(
+               ~w(fresh_dependency fresh_observation inspection operation_id own_action_sha256 receipt_sha256) ++
+                 if(evidence["management"], do: ["management"], else: [])
+             ),
          {:ok, ^old} <- union([old]),
-         [first | _] = metadata <- Enum.filter(old, &(&1["version"] == 3)),
+         guard = evidence["fresh_dependency"],
+         true <- dependency?(guard) and guard["version"] === 3,
+         [first | _] = metadata <- Enum.filter(old, &prior_root_metadata?(&1, guard)),
          true <- Enum.all?(old, &(&1["version"] in [3, 4, 5, 6])),
          prior = first["collection"],
          identity = Map.take(first, ~w(project_id namespace pin_sha256 policy_generation)),
          true <-
            Enum.all?(metadata, fn dependency ->
-             dependency["collection"] === prior and
+             (evidence["management"] != nil or dependency["collection"] === prior) and
                Map.take(dependency, ~w(project_id namespace pin_sha256 policy_generation)) ===
                  identity
            end),
          true <- Enum.all?(old, &(Map.take(&1, Map.keys(identity)) === identity)),
-         guard = evidence["fresh_dependency"],
-         true <- dependency?(guard) and guard["version"] === 3,
          true <-
            Map.take(guard, ~w(project_id namespace pin_sha256 policy_generation)) === identity,
-         true <- guard["collection"]["generation"] === prior["generation"] + 1,
+         true <-
+           if(evidence["management"],
+             do: management_root_evidence?(old, evidence),
+             else: guard["collection"]["generation"] === prior["generation"] + 1
+           ),
          true <-
            JSON.sha256?(evidence["own_action_sha256"]) and
              JSON.sha256?(evidence["receipt_sha256"]) and id?(evidence["operation_id"]),
@@ -585,7 +604,59 @@ defmodule Ipse.Session.ManagedReference do
     _ -> false
   end
 
-  defp root_history_notice(old, current) do
+  defp current_root_metadata?(dependency, guard),
+    do: dependency["version"] === 3 and dependency["collection"] === guard["collection"]
+
+  defp prior_root_metadata?(dependency, guard),
+    do: dependency["version"] === 3 and not current_root_metadata?(dependency, guard)
+
+  defp management_root_evidence?(old, evidence) do
+    management = evidence["management"]
+    guard = evidence["fresh_dependency"]
+    capture = evidence["inspection"]["operation"]
+
+    with true <-
+           is_map(management) and
+             Enum.sort(Map.keys(management)) == ~w(event handoff intent result),
+         %{"handoff" => handoff, "event" => accepted, "intent" => intent, "result" => result} <-
+           management,
+         true <- Ipse.Session.ChatReviewHandoff.matches_facts?(handoff, accepted["facts"]),
+         {:ok, ^result} <-
+           Ipse.Session.PendingAcceptance.committed_result(
+             accepted,
+             intent,
+             result["normalized_request"],
+             result["receipt"]
+           ),
+         true <- result["status"] === "committed",
+         true <- capture["generation"] === result["normalized_request"]["expected_generation"],
+         receipt = result["receipt"],
+         true <- guard["collection"]["generation"] === capture["generation"] + 1,
+         true <-
+           guard["collection"]["generation"] === receipt["generation"] and
+             guard["collection"]["floor"] === receipt["floor"] and
+             guard["collection"]["floor_anchor"] === intent["operation_id"],
+         true <- JSON.digest([handoff["event"]["pin"]]) === guard["pin_sha256"],
+         true <-
+           Enum.all?(old, fn dependency ->
+             if dependency["version"] === 3 do
+               root = dependency["collection"]
+
+               root === guard["collection"] or root["generation"] === capture["generation"] - 1 or
+                 (root["generation"] === capture["generation"] and
+                    root["floor"] === capture["floor"] and
+                    root["floor_anchor"] === evidence["operation_id"])
+             else
+               true
+             end
+           end),
+         do: true,
+         else: (_ -> false)
+  rescue
+    _ -> false
+  end
+
+  defp root_history_notice(old, current, nil) do
     %{
       "role" => "user",
       "ipse_root_history" => %{
@@ -595,6 +666,20 @@ defmodule Ipse.Session.ManagedReference do
       },
       "content" =>
         "Host historical metadata notice: Earlier collection root and absence observations describe generation #{old}, before this session's confirmed publication at generation #{current}. They are historical and do not establish current record eligibility. This notice is context, not an operator request or permission."
+    }
+  end
+
+  defp root_history_notice(old, current, management) do
+    %{
+      "role" => "user",
+      "ipse_root_history" => %{
+        "version" => 2,
+        "old_generation" => old,
+        "new_generation" => current,
+        "management_operation_id" => management["intent"]["operation_id"]
+      },
+      "content" =>
+        "Host historical metadata notice: Earlier collection root and absence observations describe generation #{old}, before this conversation's capture and separate confirmed decision acceptance at generation #{current}. They are historical and do not establish current record eligibility. Original conversation and source provenance remain intact. This notice is context, not an operator request or permission."
     }
   end
 

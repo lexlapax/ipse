@@ -3,6 +3,7 @@ defmodule Ipse.Session.SourceWindow do
   alias Ipse.Session.SourceIndex
   alias Ipse.JSON
   @layout "session_sources_v1"
+  @source_effect_ops ~w(mcp.call embedding.create decision.create)
   @pending_bytes 4_194_304
   @pending_count 128
   @derive {Inspect, only: [:coverage, :pending_bytes]}
@@ -20,6 +21,9 @@ defmodule Ipse.Session.SourceWindow do
 
   def layout, do: @layout
   def enabled?(config), do: config[:source_layout] == @layout
+
+  @doc false
+  def source_effect_operation?(operation), do: operation in @source_effect_ops
 
   def opened(w),
     do: %{
@@ -393,7 +397,7 @@ defmodule Ipse.Session.SourceWindow do
          %{"type" => "extension_action_result", "request" => %{"op" => op}} = event,
          _
        )
-       when op in ~w(mcp.call embedding.create decision.create) do
+       when op in @source_effect_ops do
     id = event["operation_id"]
 
     result =

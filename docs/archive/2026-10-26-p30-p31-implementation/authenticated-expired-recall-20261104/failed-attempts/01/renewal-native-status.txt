@@ -1,0 +1,2 @@
+test_exit=1
+postcheck_exit=0

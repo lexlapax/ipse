@@ -174,7 +174,7 @@ defmodule Ipse.CLI.SetupTest do
 
   test "interactive empty provider re-asks and typed write confirms the displayed file", c do
     lines =
-      ["", "demo", ""] ++ if(:os.type() == {:unix, :linux}, do: [""], else: []) ++ ["write", :eof]
+      ["", "demo", ""] ++ ["write", :eof]
 
     {code, output} = interactive(c, lines)
     assert code == 0
@@ -188,7 +188,7 @@ defmodule Ipse.CLI.SetupTest do
 
   test "cancelling the interactive preview writes nothing", c do
     lines =
-      ["demo", ""] ++ if(:os.type() == {:unix, :linux}, do: [""], else: []) ++ ["cancel", :eof]
+      ["demo", ""] ++ ["cancel", :eof]
 
     {0, output} = interactive(c, lines)
     assert output =~ "Setup cancelled; no configuration was written."
@@ -382,7 +382,7 @@ defmodule Ipse.CLI.SetupTest do
 
     lines =
       ["openrouter", "", "org/model", "openai", ""] ++
-        if(:os.type() == {:unix, :linux}, do: [""], else: []) ++ ["write", :eof]
+        ["write", :eof]
 
     {0, output} = interactive(c, lines)
     assert output =~ "Model (required; no default)"
@@ -398,7 +398,7 @@ defmodule Ipse.CLI.SetupTest do
        c do
     lines =
       ["gemini", "gemini-fixture"] ++
-        if(:os.type() == {:unix, :linux}, do: [""], else: []) ++ ["cancel", :eof]
+        ["cancel", :eof]
 
     {0, output} = interactive(c, lines)
     assert output =~ "Model (required; no default)"
@@ -411,7 +411,7 @@ defmodule Ipse.CLI.SetupTest do
   test "interactive compatible setup asks for and saves the explicit loopback endpoint", c do
     lines =
       ["openai_compatible", "local", "http://127.0.0.1:8000/v1"] ++
-        if(:os.type() == {:unix, :linux}, do: [""], else: []) ++ ["write", :eof]
+        ["write", :eof]
 
     {0, output} = interactive(c, lines)
     assert output =~ "Loopback base URL (required)"
@@ -462,7 +462,6 @@ defmodule Ipse.CLI.SetupTest do
   defp interactive(c, lines) do
     {:ok, io} = IOFixture.start_link(self())
     on_exit(fn -> if Process.alive?(io), do: GenServer.stop(io) end)
-    Enum.each(lines, &IOFixture.feed(io, &1))
 
     task =
       Task.Supervisor.async_nolink(Ipse.Tasks, fn ->
@@ -473,7 +472,51 @@ defmodule Ipse.CLI.SetupTest do
 
     Process.group_leader(task.pid, io)
     send(task.pid, :go)
-    code = Task.await(task, 10_000)
+    code = feed_setup(io, task, lines, false, System.monotonic_time(:millisecond) + 10_000)
     {code, IOFixture.output(io)}
+  end
+
+  defp feed_setup(io, task, lines, shell_seen, deadline) do
+    ref = task.ref
+
+    receive do
+      {:io_waiting, ^io, prompt} ->
+        if String.starts_with?(prompt, "Shell policy off/native (default ") do
+          refute shell_seen, "setup requested the shell policy more than once"
+          :ok = IOFixture.feed(io, "off")
+          feed_setup(io, task, lines, true, deadline)
+        else
+          assert Enum.any?(
+                   [
+                     "Provider (no default): ",
+                     "Model (default ",
+                     "Model (required; no default): ",
+                     "OpenRouter upstream slug (required): ",
+                     "Data collection deny/allow (default deny): ",
+                     "Loopback base URL (required): ",
+                     "Run xAI device authorization now? Type yes to continue: ",
+                     "Run ipse login now? Type yes to start browser authorization: ",
+                     "Type write to save, or anything else to cancel: "
+                   ],
+                   &String.starts_with?(prompt, &1)
+                 ),
+                 "setup requested an unexpected prompt"
+
+          assert [line | rest] = lines, "setup requested more input than the fixture supplied"
+          :ok = IOFixture.feed(io, line)
+          feed_setup(io, task, rest, shell_seen, deadline)
+        end
+
+      {^ref, code} ->
+        Process.demonitor(ref, [:flush])
+        assert lines in [[], [:eof]], "setup returned before consuming its expected answers"
+        code
+
+      {:DOWN, ^ref, :process, _, _} ->
+        flunk("setup task stopped before returning its result")
+    after
+      max(deadline - System.monotonic_time(:millisecond), 0) ->
+        flunk("setup did not request its next input or return within its fixture deadline")
+    end
   end
 end

@@ -1,0 +1,680 @@
+{
+  "capture_action": {
+    "approval": "saved_consent",
+    "context_sha256": null,
+    "effect_binding": {
+      "inner_op": "commit",
+      "kind": "collection.managed",
+      "metadata_version": 3,
+      "namespace": "d90e111cd705e25a40f524951be5360652fbba2df5a1a4150995cb493038c66d",
+      "outer_sha256": "cf9f0a54e5190bc3b41039899bcd6c0eee9ffa2367dfa15b2d8b1e55ffd16e53",
+      "pin": {
+        "binding_sha256": "4a087a25c3f34f0c0568f3b82da9f3835f3a451bbf637e87ac9882097b3dc719",
+        "epoch": 1,
+        "identity_sha256": "6b6fc2025fe521b5f90b10cc2804ad57bdf6e761e78abee92cb39a328949826a",
+        "namespace": "d90e111cd705e25a40f524951be5360652fbba2df5a1a4150995cb493038c66d",
+        "policy_sha256": "84e83cd8dbbd07623efef9fdc7a4ac8dc15e788366ec88dd1034b6a98619a89c",
+        "project_id": "d0aab2cc817e173bec080feb0b888a07397775ebe815ec7d3aaadb662673a86c",
+        "routes_sha256": "419809b370a063da662633c08c182412f4f85a6ebda9abf65a3c103ce2fbdb37",
+        "session_id": "5dd260b0dd5b080ec23f6e2e88af85b7",
+        "source_sha256": "098be7eda6b0f8e8efb36093fb7cc6cdde8bb55bc60f9e43567576c0d88fdd77",
+        "version": 1,
+        "worktree_id": "d280106e947c96e2c1e141bc2b3be645d80ca313b7c53741622d614fa519b818"
+      },
+      "recipe_sha256": "d2622a1dd0ede7863d677e7ba76ef22f29509f5fc19fb72096c1b5ff70e7505d",
+      "request_sha256": "fbdec9b765b909b02de9fcf1e2fadb20ac8b5606eaf2998db7cfdf76cf04d73a",
+      "version": 3
+    },
+    "identity_sha256": "6b6fc2025fe521b5f90b10cc2804ad57bdf6e761e78abee92cb39a328949826a",
+    "namespace": "d90e111cd705e25a40f524951be5360652fbba2df5a1a4150995cb493038c66d",
+    "operation_id": "47bfece629d7201101f8c12e046b0034",
+    "outcome": {
+      "status": "ok",
+      "value": {
+        "binding": {
+          "normalization_sha256": "d6e832fc965de515a5a6c90b40d0405f980e4f4c830c689b164885abc9bbe0be",
+          "original_request_sha256": "fbdec9b765b909b02de9fcf1e2fadb20ac8b5606eaf2998db7cfdf76cf04d73a",
+          "recipe_sha256": "d2622a1dd0ede7863d677e7ba76ef22f29509f5fc19fb72096c1b5ff70e7505d",
+          "version": 1
+        },
+        "normalization": {
+          "category": "ordinary",
+          "eligibility": "never_current",
+          "first_admitted_ms": 1793791868051,
+          "format_value_sha256": "51515d854509d14ad353b079bd2eff222de56ad7b79ea50dadf187d9fcc9edd0",
+          "lineage": "288a6f9ac67448226f42e8ef2c1fcf4b50e2294e638b34db0424473579087908",
+          "metadata_changes": [
+            {
+              "expected_revision": 0,
+              "key": "host.validity.format",
+              "value_sha256": "51515d854509d14ad353b079bd2eff222de56ad7b79ea50dadf187d9fcc9edd0"
+            },
+            {
+              "expected_revision": 0,
+              "key": "host.validity.a.0000000000000000000000000000000000000000000000000000000000000000",
+              "value_sha256": "f85e2a93b022819b7bbb8d63bd8fc89b9eee675f15eda376fb5df9e9a0efb53b"
+            },
+            {
+              "expected_revision": 0,
+              "key": "host.validity.l.000000000000000000000000000000000000000000000000000000000000000000",
+              "value_sha256": "fd4181caffade193b03088085d1e56ffe4b1af9ae288eebb846c24dc28d2e0f5"
+            }
+          ],
+          "record_key": "pending.24d8b55da0fc7b2db1a8449e89f9448c78513ee6584347620df473b50c0960e6",
+          "valid_until_ms": 1794396668051,
+          "version": 3
+        },
+        "receipt": {
+          "floor": 1,
+          "generation": 1,
+          "managed_binding_sha256": "a54a0c0815db1e1d3e5dcc1e29e36635cc4b9fd2ceaa09cb11eaf35168ebf115",
+          "request_sha256": "b0398facc2865f8020174441ca652b966654cd8f9011ea14a04fa8887c0a1efe"
+        },
+        "version": 1
+      }
+    },
+    "outcome_sha256": "88f0d99b66c51beaf4d50122a2095988f56171dc17d2ee1af4a0d0edd25e7f14",
+    "parent_invocation_id": "7161cc7bfdc9880b9ccffbcd1081dd0c",
+    "request": {
+      "metadata_version": 3,
+      "op": "collection.managed",
+      "proofs": [
+        {
+          "handle": "eyJnZW5lcmF0aW9uIjo1LCJraW5kIjoicmVhZCIsIm9jY3VycmVuY2UiOiIzYzU1NGUwNWU1MjdhZTVhYWIyNDg4NzUwMjcyNDUxNSIsIm9mZnNldCI6MCwicG9saWN5IjoxLCJzZXNzaW9uIjoiNWRkMjYwYjBkZDViMDgwZWMyM2Y2ZTJlODhhZjg1YjciLCJzb3VyY2VfdmVyc2lvbiI6IjIxZmYwNGUwMDM3NzhjYjkxYjRhOWEwYzM4YjA4NzhhIiwidmVyc2lvbiI6MSwid2luZG93IjoiMTdlOWI0YmNiZGE3ZmM3ZWQzOTZlODM4ZWIzNjczMjMifQ.GZWITm_W3IPSO17RWCebUwL-fO8kj6jInA4ySNlPtWA",
+          "quote": "Use the cedar release channel for this workspace."
+        }
+      ],
+      "recipe_sha256": "d2622a1dd0ede7863d677e7ba76ef22f29509f5fc19fb72096c1b5ff70e7505d",
+      "request": {
+        "advance_floor": true,
+        "changes": [
+          {
+            "expected_revision": 0,
+            "key": "pending.24d8b55da0fc7b2db1a8449e89f9448c78513ee6584347620df473b50c0960e6",
+            "value": {
+              "assigned_category": "ordinary",
+              "created_at_ms": 1793791867568,
+              "event_at_ms": null,
+              "evidence": {
+                "sources": [
+                  {
+                    "content_sha256": "2b53ea0b034d5ecece1dc4b848eaae59520e9434d0e584b0f7ea56f20945796b",
+                    "coverage": "available",
+                    "end_byte": 49,
+                    "kind": "answer.original",
+                    "occurrence_id": "3c554e05e527ae5aab24887502724515",
+                    "origin": "assistant_proposal",
+                    "path": null,
+                    "quote": "Use the cedar release channel for this workspace.",
+                    "quote_sha256": "2b53ea0b034d5ecece1dc4b848eaae59520e9434d0e584b0f7ea56f20945796b",
+                    "receipt_sha256": "2e7abc4f3931a3f87a6a2238eb5b0bbe23fc1986172cb4af13258c9dcb27d83d",
+                    "session_id": "5dd260b0dd5b080ec23f6e2e88af85b7",
+                    "start_byte": 0,
+                    "version": 1,
+                    "version_id": "21ff04e003778cb91b4a9a0c38b0878a"
+                  }
+                ]
+              },
+              "expires_at_ms": 1794396667568,
+              "id": "24d8b55da0fc7b2db1a8449e89f9448c78513ee6584347620df473b50c0960e6",
+              "kind": "proposal",
+              "lineage": "288a6f9ac67448226f42e8ef2c1fcf4b50e2294e638b34db0424473579087908",
+              "reason": "Operator can choose this workspace release preference",
+              "state": "pending",
+              "text": "Use the cedar release channel for this workspace.",
+              "version": 1
+            }
+          }
+        ],
+        "expected_generation": 0,
+        "op": "commit"
+      }
+    },
+    "request_sha256": "0b0d4c0981616a53ee1c384f0a8610d508c8262c1109e2f43f1f82463d554a28",
+    "service": null,
+    "step": 5,
+    "type": "extension_action_result",
+    "version": 3
+  },
+  "capture_parent_sha256": "96bfbd3e18d2ac47c5c28b6f43c83dcfb953fed989bf6fdab50632f1897c9595",
+  "capture_result_sha256": "68d16e7afee50cd657a3f027b99eea028db48c93cf1d01c7426db63d1cb64912",
+  "capture_successor": {
+    "collection": {
+      "floor": 1,
+      "floor_anchor": "47bfece629d7201101f8c12e046b0034",
+      "generation": 1,
+      "manifest_sha256": "67fbe35c4c75404ae756ccabaabf5a0a206e45c2347d3896d95a2f23cf72817e",
+      "project": "d90e111cd705e25a40f524951be5360652fbba2df5a1a4150995cb493038c66d",
+      "root_sha256": "615b622ac362eddb21fe7e73b26269a78d86ce97386a22a9ea0d0e865ec6a775",
+      "root_state": "present"
+    },
+    "namespace": "d90e111cd705e25a40f524951be5360652fbba2df5a1a4150995cb493038c66d",
+    "pin_sha256": "a88f2915ab6ef4f45390eaad0cc647b5b3bdccdb510910a627ec26e4f46db028",
+    "policy_generation": 1,
+    "project_id": "d0aab2cc817e173bec080feb0b888a07397775ebe815ec7d3aaadb662673a86c",
+    "subject": {
+      "kind": "root_observation",
+      "request_sha256": "850e5bcefcad41c805070afa09bd0c2474994a94210604995a466638301743cb",
+      "result_sha256": "cbb33ac70499a700320961b708e193c357e30376d33c5e832048a50fc09987cf"
+    },
+    "version": 3
+  },
+  "current_dependencies": [
+    {
+      "collection": {
+        "floor": 2,
+        "floor_anchor": "de6d43a37174030cdcef3e92ea1709a6",
+        "generation": 2,
+        "manifest_sha256": "9a3c87133b7e64992185d9dbbc013403f7ba16ddba3a659f072a89d92c90f727",
+        "project": "d90e111cd705e25a40f524951be5360652fbba2df5a1a4150995cb493038c66d",
+        "root_sha256": "b74341e7af04351afb73236a752e29c5d6166a86862fcef93e1f4e5398673474",
+        "root_state": "present"
+      },
+      "namespace": "d90e111cd705e25a40f524951be5360652fbba2df5a1a4150995cb493038c66d",
+      "pin_sha256": "a88f2915ab6ef4f45390eaad0cc647b5b3bdccdb510910a627ec26e4f46db028",
+      "policy_generation": 1,
+      "project_id": "d0aab2cc817e173bec080feb0b888a07397775ebe815ec7d3aaadb662673a86c",
+      "subject": {
+        "kind": "root_observation",
+        "request_sha256": "279a4ccc9d8934a9fdad2b4822a41b2df53bb1631bd5672e54e9ad3cf3f80282",
+        "result_sha256": "c055215baa4191a27770c1756be6f4b8e4e6bc17fc6b6a8d808904a57af90077"
+      },
+      "version": 3
+    },
+    {
+      "collection": {
+        "floor": 2,
+        "floor_anchor": "de6d43a37174030cdcef3e92ea1709a6",
+        "generation": 2,
+        "manifest_sha256": "9a3c87133b7e64992185d9dbbc013403f7ba16ddba3a659f072a89d92c90f727",
+        "project": "d90e111cd705e25a40f524951be5360652fbba2df5a1a4150995cb493038c66d",
+        "root_sha256": "b74341e7af04351afb73236a752e29c5d6166a86862fcef93e1f4e5398673474",
+        "root_state": "present"
+      },
+      "namespace": "d90e111cd705e25a40f524951be5360652fbba2df5a1a4150995cb493038c66d",
+      "pin_sha256": "a88f2915ab6ef4f45390eaad0cc647b5b3bdccdb510910a627ec26e4f46db028",
+      "policy_generation": 1,
+      "project_id": "d0aab2cc817e173bec080feb0b888a07397775ebe815ec7d3aaadb662673a86c",
+      "subject": {
+        "acceptance": {
+          "event_sha256": "a0ba301faecc11983236ce85d39d00b64e8083b1723c2cad0f38d1fa0a792201",
+          "journal_id": "8f390ec640c4d0b8e553ecaf8e9569bb",
+          "journal_kind": "knowledge_management",
+          "link": {
+            "key": "accept.24d8b55da0fc7b2db1a8449e89f9448c78513ee6584347620df473b50c0960e6",
+            "revision": 2,
+            "value_sha256": "8bb0ee2321ff0acfef067758274f09bfcc642b2f2f6281e9dfe4ca0c626f2f23"
+          }
+        },
+        "key": "note.60f94eb74f96f3746819fb42e3f672ba7926d380bb768de0a5bf8c413dd60c53",
+        "kind": "accepted_decision_observation",
+        "publication_policy_sha256": "84e83cd8dbbd07623efef9fdc7a4ac8dc15e788366ec88dd1034b6a98619a89c",
+        "record": {
+          "key": "note.60f94eb74f96f3746819fb42e3f672ba7926d380bb768de0a5bf8c413dd60c53",
+          "revision": 2,
+          "value_sha256": "a62e090b0c677a242263a53e4018247877b17e833fe616c84397caa4234d4330"
+        },
+        "request_sha256": "1ab8287682cc749897b3bd38799744a01ee75b760e18d4a9c86d0c458f3cf423",
+        "result_sha256": "a0646af61baa1d6a80e81f79818cc2d8899269869c686becd90d48d7896c9143",
+        "validity": {
+          "dependencies": [
+            {
+              "key": "accept.24d8b55da0fc7b2db1a8449e89f9448c78513ee6584347620df473b50c0960e6",
+              "revision": 2,
+              "value_sha256": "8bb0ee2321ff0acfef067758274f09bfcc642b2f2f6281e9dfe4ca0c626f2f23"
+            }
+          ],
+          "lineage": "60f94eb74f96f3746819fb42e3f672ba7926d380bb768de0a5bf8c413dd60c53",
+          "recipe_sha256": "818634825cb494606d25195a6601971a17542ed2caa22f28d1e18b1971b18cf7",
+          "source_versions": [
+            {
+              "id": "3c554e05e527ae5aab24887502724515",
+              "version": "21ff04e003778cb91b4a9a0c38b0878a"
+            }
+          ],
+          "status": "eligible",
+          "valid_until_ms": 1801567868852
+        }
+      },
+      "version": 6
+    },
+    {
+      "collection": {
+        "floor": 2,
+        "floor_anchor": "de6d43a37174030cdcef3e92ea1709a6",
+        "generation": 2,
+        "manifest_sha256": "9a3c87133b7e64992185d9dbbc013403f7ba16ddba3a659f072a89d92c90f727",
+        "project": "d90e111cd705e25a40f524951be5360652fbba2df5a1a4150995cb493038c66d",
+        "root_sha256": "b74341e7af04351afb73236a752e29c5d6166a86862fcef93e1f4e5398673474",
+        "root_state": "present"
+      },
+      "namespace": "d90e111cd705e25a40f524951be5360652fbba2df5a1a4150995cb493038c66d",
+      "pin_sha256": "a88f2915ab6ef4f45390eaad0cc647b5b3bdccdb510910a627ec26e4f46db028",
+      "policy_generation": 1,
+      "project_id": "d0aab2cc817e173bec080feb0b888a07397775ebe815ec7d3aaadb662673a86c",
+      "subject": {
+        "kind": "root_observation",
+        "request_sha256": "64b409c61fbf73a278c1529b3d4de5a405226ac2cdfb975c41c2768ed51493de",
+        "result_sha256": "c055215baa4191a27770c1756be6f4b8e4e6bc17fc6b6a8d808904a57af90077"
+      },
+      "version": 3
+    }
+  ],
+  "description": "Typed metadata from one synthetic cedar decision control; no conversation transcript or current authority.",
+  "handoff": {
+    "capture_intent_sha256": "96bfbd3e18d2ac47c5c28b6f43c83dcfb953fed989bf6fdab50632f1897c9595",
+    "capture_result_sha256": "68d16e7afee50cd657a3f027b99eea028db48c93cf1d01c7426db63d1cb64912",
+    "category": "ordinary",
+    "client_generation": "358b31d65ab607c991c54753f390d435",
+    "client_id": "711e14d86c10602ab6c25b581087b506",
+    "handoff_id": "d10d0bc68e67aaf95bff70c0763771e6",
+    "nomination_sha256": "65b97cdc2912349cb5e8cd59eae16ebf5731b814b4a001486a061661498badcc",
+    "pending_key": "pending.24d8b55da0fc7b2db1a8449e89f9448c78513ee6584347620df473b50c0960e6",
+    "pin": {
+      "binding_sha256": "4a087a25c3f34f0c0568f3b82da9f3835f3a451bbf637e87ac9882097b3dc719",
+      "epoch": 1,
+      "identity_sha256": "6b6fc2025fe521b5f90b10cc2804ad57bdf6e761e78abee92cb39a328949826a",
+      "namespace": "d90e111cd705e25a40f524951be5360652fbba2df5a1a4150995cb493038c66d",
+      "policy_sha256": "84e83cd8dbbd07623efef9fdc7a4ac8dc15e788366ec88dd1034b6a98619a89c",
+      "project_id": "d0aab2cc817e173bec080feb0b888a07397775ebe815ec7d3aaadb662673a86c",
+      "routes_sha256": "419809b370a063da662633c08c182412f4f85a6ebda9abf65a3c103ce2fbdb37",
+      "session_id": "5dd260b0dd5b080ec23f6e2e88af85b7",
+      "source_sha256": "098be7eda6b0f8e8efb36093fb7cc6cdde8bb55bc60f9e43567576c0d88fdd77",
+      "version": 1,
+      "worktree_id": "d280106e947c96e2c1e141bc2b3be645d80ca313b7c53741622d614fa519b818"
+    },
+    "reason": "Operator can choose this workspace release preference",
+    "request_id": "c70192d6b7c86968318423fc6b230f51",
+    "session_id": "5dd260b0dd5b080ec23f6e2e88af85b7",
+    "source_proof": {
+      "content_sha256": "2b53ea0b034d5ecece1dc4b848eaae59520e9434d0e584b0f7ea56f20945796b",
+      "coverage": "available",
+      "end_byte": 49,
+      "kind": "answer.original",
+      "occurrence_id": "3c554e05e527ae5aab24887502724515",
+      "origin": "assistant_proposal",
+      "path": null,
+      "quote": "Use the cedar release channel for this workspace.",
+      "quote_sha256": "2b53ea0b034d5ecece1dc4b848eaae59520e9434d0e584b0f7ea56f20945796b",
+      "receipt_sha256": "2e7abc4f3931a3f87a6a2238eb5b0bbe23fc1986172cb4af13258c9dcb27d83d",
+      "session_id": "5dd260b0dd5b080ec23f6e2e88af85b7",
+      "start_byte": 0,
+      "version": 1,
+      "version_id": "21ff04e003778cb91b4a9a0c38b0878a"
+    },
+    "text": "Use the cedar release channel for this workspace.",
+    "turn_id": "e81c37b919d2e3e8fab94690d2261e75",
+    "type": "pending_chat_review_handoff",
+    "version": 1
+  },
+  "management": {
+    "event": {
+      "facts": {
+        "assigned_category": "ordinary",
+        "binding_sha256": "4a087a25c3f34f0c0568f3b82da9f3835f3a451bbf637e87ac9882097b3dc719",
+        "candidate_id": "24d8b55da0fc7b2db1a8449e89f9448c78513ee6584347620df473b50c0960e6",
+        "capture_epoch": 1,
+        "client_id": "711e14d86c10602ab6c25b581087b506",
+        "first_admitted_ms": 1793791868051,
+        "journal_id": "8f390ec640c4d0b8e553ecaf8e9569bb",
+        "kind": "pending_proposal_card",
+        "lineage": "288a6f9ac67448226f42e8ef2c1fcf4b50e2294e638b34db0424473579087908",
+        "namespace": "d90e111cd705e25a40f524951be5360652fbba2df5a1a4150995cb493038c66d",
+        "operation_id": "de6d43a37174030cdcef3e92ea1709a6",
+        "pending_key": "pending.24d8b55da0fc7b2db1a8449e89f9448c78513ee6584347620df473b50c0960e6",
+        "policy_sha256": "84e83cd8dbbd07623efef9fdc7a4ac8dc15e788366ec88dd1034b6a98619a89c",
+        "project_id": "d0aab2cc817e173bec080feb0b888a07397775ebe815ec7d3aaadb662673a86c",
+        "publication_policy_sha256": "84e83cd8dbbd07623efef9fdc7a4ac8dc15e788366ec88dd1034b6a98619a89c",
+        "reason": "Operator can choose this workspace release preference",
+        "recipe_sha256": "d2622a1dd0ede7863d677e7ba76ef22f29509f5fc19fb72096c1b5ff70e7505d",
+        "record_revision": 1,
+        "record_schema_version": 1,
+        "record_sha256": "5bee93af1d2c33a301a8c6c3377ba32ceea527621f03c41f5a5495e1c1d22d98",
+        "render_revision": 1,
+        "root_sha256": "615b622ac362eddb21fe7e73b26269a78d86ce97386a22a9ea0d0e865ec6a775",
+        "session_id": null,
+        "source_proof": {
+          "content_sha256": "2b53ea0b034d5ecece1dc4b848eaae59520e9434d0e584b0f7ea56f20945796b",
+          "coverage": "available",
+          "end_byte": 49,
+          "kind": "answer.original",
+          "occurrence_id": "3c554e05e527ae5aab24887502724515",
+          "origin": "assistant_proposal",
+          "path": null,
+          "quote": "Use the cedar release channel for this workspace.",
+          "quote_sha256": "2b53ea0b034d5ecece1dc4b848eaae59520e9434d0e584b0f7ea56f20945796b",
+          "receipt_sha256": "2e7abc4f3931a3f87a6a2238eb5b0bbe23fc1986172cb4af13258c9dcb27d83d",
+          "session_id": "5dd260b0dd5b080ec23f6e2e88af85b7",
+          "start_byte": 0,
+          "version": 1,
+          "version_id": "21ff04e003778cb91b4a9a0c38b0878a"
+        },
+        "text": "Use the cedar release channel for this workspace.",
+        "text_sha256": "2b53ea0b034d5ecece1dc4b848eaae59520e9434d0e584b0f7ea56f20945796b",
+        "valid_until_ms": 1794396668051,
+        "version": 1
+      },
+      "review": {
+        "challenge": "0b2e2c95af98ad1d",
+        "command": "accept",
+        "display_sha256": "8de2f366669ee39ffaf83acd9926f81db9fa2f51b5aaee22e40f14265d175708",
+        "event_id": "a3b046a1d63a7b98d997389989546bf2",
+        "facts_sha256": "a2a2b51a5edc7fdfc09d765883b6f9bac5e81c09816f853537c2dede12e3687e",
+        "input_sha256": "e7df59ec174f79ae2c84fe2d2da737e247e03ef4c229969e771ff2330ca20e40",
+        "kind": "native_review",
+        "observed_at_ms": 1793791868852,
+        "version": 1
+      },
+      "type": "pending_proposal_accepted",
+      "version": 1
+    },
+    "handoff": {
+      "event": {
+        "capture_intent_sha256": "96bfbd3e18d2ac47c5c28b6f43c83dcfb953fed989bf6fdab50632f1897c9595",
+        "capture_result_sha256": "68d16e7afee50cd657a3f027b99eea028db48c93cf1d01c7426db63d1cb64912",
+        "category": "ordinary",
+        "client_generation": "358b31d65ab607c991c54753f390d435",
+        "client_id": "711e14d86c10602ab6c25b581087b506",
+        "handoff_id": "d10d0bc68e67aaf95bff70c0763771e6",
+        "nomination_sha256": "65b97cdc2912349cb5e8cd59eae16ebf5731b814b4a001486a061661498badcc",
+        "pending_key": "pending.24d8b55da0fc7b2db1a8449e89f9448c78513ee6584347620df473b50c0960e6",
+        "pin": {
+          "binding_sha256": "4a087a25c3f34f0c0568f3b82da9f3835f3a451bbf637e87ac9882097b3dc719",
+          "epoch": 1,
+          "identity_sha256": "6b6fc2025fe521b5f90b10cc2804ad57bdf6e761e78abee92cb39a328949826a",
+          "namespace": "d90e111cd705e25a40f524951be5360652fbba2df5a1a4150995cb493038c66d",
+          "policy_sha256": "84e83cd8dbbd07623efef9fdc7a4ac8dc15e788366ec88dd1034b6a98619a89c",
+          "project_id": "d0aab2cc817e173bec080feb0b888a07397775ebe815ec7d3aaadb662673a86c",
+          "routes_sha256": "419809b370a063da662633c08c182412f4f85a6ebda9abf65a3c103ce2fbdb37",
+          "session_id": "5dd260b0dd5b080ec23f6e2e88af85b7",
+          "source_sha256": "098be7eda6b0f8e8efb36093fb7cc6cdde8bb55bc60f9e43567576c0d88fdd77",
+          "version": 1,
+          "worktree_id": "d280106e947c96e2c1e141bc2b3be645d80ca313b7c53741622d614fa519b818"
+        },
+        "reason": "Operator can choose this workspace release preference",
+        "request_id": "c70192d6b7c86968318423fc6b230f51",
+        "session_id": "5dd260b0dd5b080ec23f6e2e88af85b7",
+        "source_proof": {
+          "content_sha256": "2b53ea0b034d5ecece1dc4b848eaae59520e9434d0e584b0f7ea56f20945796b",
+          "coverage": "available",
+          "end_byte": 49,
+          "kind": "answer.original",
+          "occurrence_id": "3c554e05e527ae5aab24887502724515",
+          "origin": "assistant_proposal",
+          "path": null,
+          "quote": "Use the cedar release channel for this workspace.",
+          "quote_sha256": "2b53ea0b034d5ecece1dc4b848eaae59520e9434d0e584b0f7ea56f20945796b",
+          "receipt_sha256": "2e7abc4f3931a3f87a6a2238eb5b0bbe23fc1986172cb4af13258c9dcb27d83d",
+          "session_id": "5dd260b0dd5b080ec23f6e2e88af85b7",
+          "start_byte": 0,
+          "version": 1,
+          "version_id": "21ff04e003778cb91b4a9a0c38b0878a"
+        },
+        "text": "Use the cedar release channel for this workspace.",
+        "turn_id": "e81c37b919d2e3e8fab94690d2261e75",
+        "type": "pending_chat_review_handoff",
+        "version": 1
+      },
+      "source": {
+        "byte_offset": 149669,
+        "event_id": "4c8517efe273748302b9a7ef593f2a29",
+        "record_sha256": "2cf03695525a6c1f740455e131fc793865409f45d3aa7fedb4fbac72a1ea30f0",
+        "session_id": "5dd260b0dd5b080ec23f6e2e88af85b7",
+        "version": 1
+      }
+    },
+    "intent": {
+      "acceptance_sha256": "a0ba301faecc11983236ce85d39d00b64e8083b1723c2cad0f38d1fa0a792201",
+      "journal_id": "8f390ec640c4d0b8e553ecaf8e9569bb",
+      "operation_id": "de6d43a37174030cdcef3e92ea1709a6",
+      "request": {
+        "advance_floor": true,
+        "changes": [
+          {
+            "expected_revision": 1,
+            "key": "pending.24d8b55da0fc7b2db1a8449e89f9448c78513ee6584347620df473b50c0960e6",
+            "value": null
+          },
+          {
+            "expected_revision": 0,
+            "key": "note.60f94eb74f96f3746819fb42e3f672ba7926d380bb768de0a5bf8c413dd60c53",
+            "value": {
+              "acceptance_event_sha256": "a0ba301faecc11983236ce85d39d00b64e8083b1723c2cad0f38d1fa0a792201",
+              "acceptance_link_sha256": "8bb0ee2321ff0acfef067758274f09bfcc642b2f2f6281e9dfe4ca0c626f2f23",
+              "accepted_at_ms": 1793791868852,
+              "candidate_id": "24d8b55da0fc7b2db1a8449e89f9448c78513ee6584347620df473b50c0960e6",
+              "category": "ordinary",
+              "kind": "accepted_decision",
+              "lineage": "60f94eb74f96f3746819fb42e3f672ba7926d380bb768de0a5bf8c413dd60c53",
+              "reason": "Operator can choose this workspace release preference",
+              "source_proof": {
+                "content_sha256": "2b53ea0b034d5ecece1dc4b848eaae59520e9434d0e584b0f7ea56f20945796b",
+                "coverage": "available",
+                "end_byte": 49,
+                "kind": "answer.original",
+                "occurrence_id": "3c554e05e527ae5aab24887502724515",
+                "origin": "assistant_proposal",
+                "path": null,
+                "quote": "Use the cedar release channel for this workspace.",
+                "quote_sha256": "2b53ea0b034d5ecece1dc4b848eaae59520e9434d0e584b0f7ea56f20945796b",
+                "receipt_sha256": "2e7abc4f3931a3f87a6a2238eb5b0bbe23fc1986172cb4af13258c9dcb27d83d",
+                "session_id": "5dd260b0dd5b080ec23f6e2e88af85b7",
+                "start_byte": 0,
+                "version": 1,
+                "version_id": "21ff04e003778cb91b4a9a0c38b0878a"
+              },
+              "text": "Use the cedar release channel for this workspace.",
+              "valid_until_ms": 1801567868852,
+              "version": 1
+            }
+          },
+          {
+            "expected_revision": 0,
+            "key": "accept.24d8b55da0fc7b2db1a8449e89f9448c78513ee6584347620df473b50c0960e6",
+            "value": {
+              "acceptance_event_sha256": "a0ba301faecc11983236ce85d39d00b64e8083b1723c2cad0f38d1fa0a792201",
+              "accepted_note_key": "note.60f94eb74f96f3746819fb42e3f672ba7926d380bb768de0a5bf8c413dd60c53",
+              "candidate_id": "24d8b55da0fc7b2db1a8449e89f9448c78513ee6584347620df473b50c0960e6",
+              "journal_id": "8f390ec640c4d0b8e553ecaf8e9569bb",
+              "journal_kind": "knowledge_management",
+              "kind": "candidate_acceptance_link",
+              "original_lineage": "288a6f9ac67448226f42e8ef2c1fcf4b50e2294e638b34db0424473579087908",
+              "pending_key": "pending.24d8b55da0fc7b2db1a8449e89f9448c78513ee6584347620df473b50c0960e6",
+              "pending_revision": 1,
+              "pending_value_sha256": "5bee93af1d2c33a301a8c6c3377ba32ceea527621f03c41f5a5495e1c1d22d98",
+              "source_proof_sha256": "dcc21b0e5b03220a439745a65c1736e1b365b49fe2328ab4fa6deb08c379ad0d",
+              "version": 1
+            }
+          }
+        ],
+        "expected_generation": 1,
+        "op": "commit"
+      },
+      "request_sha256": "9e917cfe3698a8a27fb79f50645401f44d1a0694217e99ed67268854c98eaec3",
+      "root_sha256": "615b622ac362eddb21fe7e73b26269a78d86ce97386a22a9ea0d0e865ec6a775",
+      "type": "pending_acceptance_intent",
+      "version": 1
+    },
+    "result": {
+      "intent_sha256": "0abe2654259ef19487623e00f7f0501cc0f6a2dbf861d0af6154d915f625c6c4",
+      "journal_id": "8f390ec640c4d0b8e553ecaf8e9569bb",
+      "normalized_request": {
+        "advance_floor": true,
+        "changes": [
+          {
+            "expected_revision": 1,
+            "key": "pending.24d8b55da0fc7b2db1a8449e89f9448c78513ee6584347620df473b50c0960e6",
+            "value": null
+          },
+          {
+            "expected_revision": 0,
+            "key": "note.60f94eb74f96f3746819fb42e3f672ba7926d380bb768de0a5bf8c413dd60c53",
+            "value": {
+              "acceptance_event_sha256": "a0ba301faecc11983236ce85d39d00b64e8083b1723c2cad0f38d1fa0a792201",
+              "acceptance_link_sha256": "8bb0ee2321ff0acfef067758274f09bfcc642b2f2f6281e9dfe4ca0c626f2f23",
+              "accepted_at_ms": 1793791868852,
+              "candidate_id": "24d8b55da0fc7b2db1a8449e89f9448c78513ee6584347620df473b50c0960e6",
+              "category": "ordinary",
+              "kind": "accepted_decision",
+              "lineage": "60f94eb74f96f3746819fb42e3f672ba7926d380bb768de0a5bf8c413dd60c53",
+              "reason": "Operator can choose this workspace release preference",
+              "source_proof": {
+                "content_sha256": "2b53ea0b034d5ecece1dc4b848eaae59520e9434d0e584b0f7ea56f20945796b",
+                "coverage": "available",
+                "end_byte": 49,
+                "kind": "answer.original",
+                "occurrence_id": "3c554e05e527ae5aab24887502724515",
+                "origin": "assistant_proposal",
+                "path": null,
+                "quote": "Use the cedar release channel for this workspace.",
+                "quote_sha256": "2b53ea0b034d5ecece1dc4b848eaae59520e9434d0e584b0f7ea56f20945796b",
+                "receipt_sha256": "2e7abc4f3931a3f87a6a2238eb5b0bbe23fc1986172cb4af13258c9dcb27d83d",
+                "session_id": "5dd260b0dd5b080ec23f6e2e88af85b7",
+                "start_byte": 0,
+                "version": 1,
+                "version_id": "21ff04e003778cb91b4a9a0c38b0878a"
+              },
+              "text": "Use the cedar release channel for this workspace.",
+              "valid_until_ms": 1801567868852,
+              "version": 1
+            }
+          },
+          {
+            "expected_revision": 0,
+            "key": "accept.24d8b55da0fc7b2db1a8449e89f9448c78513ee6584347620df473b50c0960e6",
+            "value": {
+              "acceptance_event_sha256": "a0ba301faecc11983236ce85d39d00b64e8083b1723c2cad0f38d1fa0a792201",
+              "accepted_note_key": "note.60f94eb74f96f3746819fb42e3f672ba7926d380bb768de0a5bf8c413dd60c53",
+              "candidate_id": "24d8b55da0fc7b2db1a8449e89f9448c78513ee6584347620df473b50c0960e6",
+              "journal_id": "8f390ec640c4d0b8e553ecaf8e9569bb",
+              "journal_kind": "knowledge_management",
+              "kind": "candidate_acceptance_link",
+              "original_lineage": "288a6f9ac67448226f42e8ef2c1fcf4b50e2294e638b34db0424473579087908",
+              "pending_key": "pending.24d8b55da0fc7b2db1a8449e89f9448c78513ee6584347620df473b50c0960e6",
+              "pending_revision": 1,
+              "pending_value_sha256": "5bee93af1d2c33a301a8c6c3377ba32ceea527621f03c41f5a5495e1c1d22d98",
+              "source_proof_sha256": "dcc21b0e5b03220a439745a65c1736e1b365b49fe2328ab4fa6deb08c379ad0d",
+              "version": 1
+            }
+          },
+          {
+            "expected_revision": 1,
+            "key": "host.validity.a.0000000000000000000000000000000000000000000000000000000000000000",
+            "value": {
+              "data": "SU1CAgICACiKb5rGdEgib0Lo7ywfz0tQ4ilOY4s02wQkRzV5CHkIDJP5zrKaNICIsqACAAAAYPlOt0-W83RoGftC4_Zyunkm04C7do3gpb-MQT3WDFMDtP_Ospo0gLDx-xwAAA",
+              "mac": "SVZzBj1pAEHP3I9M-mYWQlwAQ_-cNK9v-c5akmroOT8",
+              "version": 3
+            }
+          },
+          {
+            "expected_revision": 1,
+            "key": "host.validity.l.000000000000000000000000000000000000000000000000000000000000000000",
+            "value": {
+              "data": "SU1CAgABAoGGNIJctJRgbSUZWmYBlxoXVC7SyqIvKNHhixlxsYz3hOg82Nu9B2I-_vn9x6SsjcFeeINm7IjdEDS2qYYZqJwBYPlOt0-W83RoGftC4_Zyunkm04C7do3gpb-MQT3WDFNg-U63T5bzdGgZ-0Lj9nK6eSbTgLt2jeClv4xBPdYMU6YuCQsMZ3okImOlPkAYJHh3sX6DP-YWyEOXyqQjTUMwAAEBtP_Ospo0gLDx-xwAAw",
+              "mac": "eArEsqWOPG1li4PEMpu1bsb6eokyAcmwbnzOoKIm5Nk",
+              "version": 3
+            }
+          }
+        ],
+        "expected_generation": 1,
+        "op": "commit"
+      },
+      "operation_id": "de6d43a37174030cdcef3e92ea1709a6",
+      "receipt": {
+        "floor": 2,
+        "generation": 2,
+        "managed_binding_sha256": "bcaaa942a673b89f2accf2febf41de2b3b2ebcb823176b5d097e3a74a7241084",
+        "request_sha256": "ba4c379e7c0085e651977e05754b81a9ba97587afecfd107ebb5e92483de0f13"
+      },
+      "status": "committed",
+      "type": "pending_acceptance_result",
+      "version": 1
+    }
+  },
+  "old_dependencies": [
+    {
+      "collection": {
+        "floor": 0,
+        "floor_anchor": null,
+        "generation": 0,
+        "manifest_sha256": null,
+        "project": "d90e111cd705e25a40f524951be5360652fbba2df5a1a4150995cb493038c66d",
+        "root_sha256": null,
+        "root_state": "absent"
+      },
+      "namespace": "d90e111cd705e25a40f524951be5360652fbba2df5a1a4150995cb493038c66d",
+      "pin_sha256": "a88f2915ab6ef4f45390eaad0cc647b5b3bdccdb510910a627ec26e4f46db028",
+      "policy_generation": 1,
+      "project_id": "d0aab2cc817e173bec080feb0b888a07397775ebe815ec7d3aaadb662673a86c",
+      "subject": {
+        "kind": "root_observation",
+        "request_sha256": "279a4ccc9d8934a9fdad2b4822a41b2df53bb1631bd5672e54e9ad3cf3f80282",
+        "result_sha256": "89cb9d147e050a937c19e37f61c201be127c72b377aa52789ca5314ea3dcbffc"
+      },
+      "version": 3
+    },
+    {
+      "collection": {
+        "floor": 0,
+        "floor_anchor": null,
+        "generation": 0,
+        "manifest_sha256": null,
+        "project": "d90e111cd705e25a40f524951be5360652fbba2df5a1a4150995cb493038c66d",
+        "root_sha256": null,
+        "root_state": "absent"
+      },
+      "namespace": "d90e111cd705e25a40f524951be5360652fbba2df5a1a4150995cb493038c66d",
+      "pin_sha256": "a88f2915ab6ef4f45390eaad0cc647b5b3bdccdb510910a627ec26e4f46db028",
+      "policy_generation": 1,
+      "project_id": "d0aab2cc817e173bec080feb0b888a07397775ebe815ec7d3aaadb662673a86c",
+      "subject": {
+        "kind": "root_observation",
+        "request_sha256": "64b409c61fbf73a278c1529b3d4de5a405226ac2cdfb975c41c2768ed51493de",
+        "result_sha256": "89cb9d147e050a937c19e37f61c201be127c72b377aa52789ca5314ea3dcbffc"
+      },
+      "version": 3
+    },
+    {
+      "collection": {
+        "floor": 0,
+        "floor_anchor": null,
+        "generation": 0,
+        "manifest_sha256": null,
+        "project": "d90e111cd705e25a40f524951be5360652fbba2df5a1a4150995cb493038c66d",
+        "root_sha256": null,
+        "root_state": "absent"
+      },
+      "namespace": "d90e111cd705e25a40f524951be5360652fbba2df5a1a4150995cb493038c66d",
+      "pin_sha256": "a88f2915ab6ef4f45390eaad0cc647b5b3bdccdb510910a627ec26e4f46db028",
+      "policy_generation": 1,
+      "project_id": "d0aab2cc817e173bec080feb0b888a07397775ebe815ec7d3aaadb662673a86c",
+      "subject": {
+        "kind": "root_observation",
+        "request_sha256": "c3e7e987a6069d3c9f7432c515af1eceddb5d711ec719e6038df2a22a6302b8a",
+        "result_sha256": "04a4d63ca7cd7ce14dde954d1d6ddd59c455def9d181b4597d44c8b9154eed4f"
+      },
+      "version": 3
+    },
+    {
+      "collection": {
+        "floor": 0,
+        "floor_anchor": null,
+        "generation": 0,
+        "manifest_sha256": null,
+        "project": "d90e111cd705e25a40f524951be5360652fbba2df5a1a4150995cb493038c66d",
+        "root_sha256": null,
+        "root_state": "absent"
+      },
+      "namespace": "d90e111cd705e25a40f524951be5360652fbba2df5a1a4150995cb493038c66d",
+      "pin_sha256": "a88f2915ab6ef4f45390eaad0cc647b5b3bdccdb510910a627ec26e4f46db028",
+      "policy_generation": 1,
+      "project_id": "d0aab2cc817e173bec080feb0b888a07397775ebe815ec7d3aaadb662673a86c",
+      "subject": {
+        "kind": "root_observation",
+        "request_sha256": "596fca20c5615faa769f5a7d19606c6b8b1d835e75b81a6b50e547fc34888fec",
+        "result_sha256": "8a9d25f1d06df97a56267b3634628b19f1cda7b2aa9b5bfdf4bf084481dd40b5"
+      },
+      "version": 3
+    }
+  ]
+}

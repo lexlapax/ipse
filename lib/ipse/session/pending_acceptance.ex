@@ -123,7 +123,8 @@ defmodule Ipse.Session.PendingAcceptance do
 
     marker = metadata["pending_acceptance_layout"]
 
-    with true <- (is_nil(marker) and selected === []) or id?(journal_id),
+    with :ok <- Ipse.Session.ChatReviewHandoff.validate_management(events),
+         true <- (is_nil(marker) and selected === []) or id?(journal_id),
          true <- is_nil(marker) or marker === @layout,
          true <- marker === @layout or (selected === [] and effect_events === []),
          {:ok, _} <-
@@ -465,7 +466,9 @@ defmodule Ipse.Session.PendingAcceptance do
          true <- result["status"] === "committed",
          {:ok, ^result} <-
            committed_result(event, intent, result["normalized_request"], result["receipt"]) do
-      {:ok, %{event: event, intent: intent, result: result}}
+      resolved = %{event: event, intent: intent, result: result}
+      handoff = get_in(List.first(events) || %{}, ["metadata", "chat_review_handoff"])
+      {:ok, if(handoff, do: Map.put(resolved, :chat_handoff, handoff), else: resolved)}
     else
       _ -> @error
     end

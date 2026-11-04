@@ -3,7 +3,7 @@ defmodule Ipse.LinuxSandboxTest do
   alias Ipse.Runner
 
   setup_all do
-    root = Path.join(System.tmp_dir!(), "ipse-linux-probe-#{System.unique_integer([:positive])}")
+    root = Path.join("/tmp", "ipse-linux-probe-#{System.unique_integer([:positive])}")
     File.mkdir_p!(root)
     on_exit(fn -> File.rm_rf!(root) end)
     source = Path.join(root, "probe.rs")
@@ -14,7 +14,7 @@ defmodule Ipse.LinuxSandboxTest do
 
   setup ctx do
     root =
-      Path.join(System.tmp_dir!(), "ipse-linux-sandbox-#{System.unique_integer([:positive])}")
+      Path.join("/tmp", "ipse-linux-sandbox-#{System.unique_integer([:positive])}")
 
     cwd = Path.join(root, "workspace")
     File.mkdir_p!(cwd)
@@ -40,6 +40,7 @@ defmodule Ipse.LinuxSandboxTest do
     %{root: root, cwd: cwd}
   end
 
+  @tag native_workspace: true
   test "protected workspace refusal names only the overlapping category", ctx do
     home = Path.join(ctx.root, "private-account")
     state = Path.join(ctx.root, "private-state")

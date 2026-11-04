@@ -1,0 +1,10 @@
+d9dded530710db282fd3f35cbc3c1471950fe3cc6efd891b258d1473f4f9e5c4  /home/lexlapax/projects/lexlapax/ipse/_build/verification/ipse-p30-pending-current-use-20261104-01/execution-01/entry.exs
+1c8b0a61a9d6f3bab83f82f5acc8395ea9199523d693b6708966a6390aaf85bb  /home/lexlapax/projects/lexlapax/ipse/_build/verification/ipse-p30-pending-current-use-20261104-01/execution-01/run-once.sh
+fb9012ccac67eb34750dc6411a3c2fa9b270125f1c53a34c26ce41b5b5deab44  /home/lexlapax/projects/lexlapax/ipse/_build/verification/ipse-p30-pending-current-use-20261104-01/pending-current-use.patch
+f4949c3af60785cb4ee37995be892491db149b265695c3a29ea8dfcf612e1c4d  /home/lexlapax/projects/lexlapax/ipse/_build/verification/ipse-p30-pending-current-use-20261104-01/source/test/extensions/knowledge/pending_assessment_current_use_test.exs
+11f2f10a9afedac694e8111a088c233d748711db43e6bc839427cf93bcb561e4  /home/lexlapax/projects/lexlapax/ipse/_build/verification/ipse-p30-pending-current-use-20261104-01/source/test/support/shadow_pending_candidate_cli.exs
+0092d34f9e3adeed2bf184e3ab48feabd79eeacd2b5f0e5c1b5c654ceba2dcc1  /home/lexlapax/projects/lexlapax/ipse/_build/verification/ipse-p30-pending-current-use-20261104-01/source/test/support/provider_fixture.ex
+71ee6667f1389f6315fca305a6d4af819f26f8f8db0da7ff61552ca39723e104  /home/lexlapax/projects/lexlapax/ipse/_build/verification/ipse-p30-pending-current-use-20261104-01/source/test/support/managed_clock_lifecycle.exs
+07828b7e1fe9e878d46e4df4ef3a1a4d5d5d65cc7c84c1fdd2acbeb3d9be421c  /home/lexlapax/projects/lexlapax/ipse/dev/fixtures/process_clock.rs
+21a78892e9868328faf1f3cb0b353734012a6b33e414a898acd5ba50c996ed71  /home/lexlapax/projects/lexlapax/ipse/test/support/operator_pty.rs
+c0d00551b3b4381663b3605cf9307d056e76f2127d1ed10746ad37c5dd95b34b  /home/lexlapax/projects/lexlapax/ipse/lib/ipse/runner.ex

@@ -9,6 +9,31 @@ defmodule Ipse.CLI.Input do
     end
   end
 
+  @doc false
+  def stop_confirmed(reader, session, channel)
+      when is_pid(reader) and is_pid(session) and is_binary(channel) and reader != self() do
+    monitor = Process.monitor(reader)
+    Process.exit(reader, :kill)
+
+    try do
+      receive do
+        {:DOWN, ^monitor, :process, ^reader, _} ->
+          with {:ok, ticket} <- Ipse.Session.release_input_read(session, channel),
+               :ok <- Ipse.Session.Input.await_output_release(ticket),
+               do: :ok,
+               else: (_ -> {:error, :operator_cleanup_unconfirmed})
+      after
+        1_000 -> {:error, :operator_cleanup_unconfirmed}
+      end
+    catch
+      :exit, _ -> {:error, :operator_cleanup_unconfirmed}
+    after
+      Process.demonitor(monitor, [:flush])
+    end
+  end
+
+  def stop_confirmed(_, _, _), do: {:error, :operator_cleanup_unconfirmed}
+
   defp start_reader(client, _session, :pipe) do
     reader = spawn(fn -> pipe(client, Process.monitor(client)) end)
     {:ok, reader, nil, :pipe}

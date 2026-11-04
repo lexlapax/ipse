@@ -1,0 +1,25 @@
+--- a/test/support/shadow_pending_candidate_cli.exs
++++ b/test/support/shadow_pending_candidate_cli.exs
+@@ -176,6 +176,7 @@
+   end)
+ 
+ config_path = Path.join(home, "config.json")
++service_id = if pending_deadline_expired?, do: "fixture_day8", else: "fixture"
+ 
+ config = %{
+   "version" => 1,
+@@ -194,12 +195,12 @@
+       "operation" => "decision",
+       "provider" => "system_one_compatible",
+       "model" => "synthetic",
+-      "service_id" => "fixture",
++      "service_id" => service_id,
+       "base_url" => base,
+       "timeout_ms" => 3000
+     }
+   },
+-  "inference_services" => %{"fixture" => %{"version" => 1, "origins" => [base]}}
++  "inference_services" => %{service_id => %{"version" => 1, "origins" => [base]}}
+ }
+ 
+ File.write!(config_path, Jason.encode!(config))

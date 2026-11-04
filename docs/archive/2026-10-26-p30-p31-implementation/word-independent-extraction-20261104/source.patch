@@ -1,0 +1,441 @@
+--- a/extensions/knowledge/src/documents.ex
++++ b/extensions/knowledge/src/documents.ex
+@@ -28,7 +28,7 @@
+   def version, do: "ipse-documents-v2"
+ 
+   @doc "Return the immutable extraction recipe selected for a result format."
+-  def version("docx"), do: "ipse-documents-v16"
++  def version("docx"), do: "ipse-documents-v17"
+   def version(format) when format in ~w(text markdown pdf), do: version()
+ 
+   @doc "Project an extracted DOCX into the bounded explicit source-put contract."
+@@ -47,6 +47,7 @@
+            document["extraction_version"] in [
+              "ipse-documents-v14",
+              "ipse-documents-v15",
++             "ipse-documents-v16",
+              version("docx")
+            ],
+          do: pack_blocks(segments, chunk_bytes, document["extraction_version"]),
+@@ -108,7 +109,8 @@
+ 
+         plain =
+           is_map(base) and
+-            (not Map.has_key?(locator, "numbering") or recipe == "ipse-documents-v16") and
++            (not Map.has_key?(locator, "numbering") or
++               recipe in ~w(ipse-documents-v16 ipse-documents-v17)) and
+             ((Enum.sort(Map.keys(base)) == ~w(kind paragraph part) and
+                 base["kind"] == "paragraph") or
+                (Enum.sort(Map.keys(base)) == ~w(cell kind paragraph part row table) and
+--- a/extensions/knowledge/src/documents/docx.ex
++++ b/extensions/knowledge/src/documents/docx.ex
+@@ -1402,16 +1402,24 @@
+   end
+ 
+   def check(styles, id, type) when is_binary(id) and byte_size(id) in 1..256 do
+-    chain(styles, id, type, MapSet.new())
++    selected_chain(styles, id, type)
+     :ok
+   end
+ 
+   def check(_, _, _), do: fail(:unsupported_docx_style_visibility)
+ 
+   def hidden?(styles, paragraph, character) do
++    # An undefined explicit reference applies no style. Its interaction with a
++    # visibility-bearing default paragraph style remains outside this subset.
++    # Document defaults and valid paragraph/character styles still apply below.
++    if paragraph != nil and not Map.has_key?(styles.styles, paragraph) and styles.default do
++      flags = chain(styles, styles.default, "paragraph", MapSet.new())
++      if Enum.any?(flags, &(not is_nil(&1))), do: fail(:unsupported_docx_style_visibility)
++    end
++
+     paragraph = paragraph || styles.default
+-    p = if paragraph, do: chain(styles, paragraph, "paragraph", MapSet.new()), else: []
+-    c = if character, do: chain(styles, character, "character", MapSet.new()), else: []
++    p = if paragraph, do: selected_chain(styles, paragraph, "paragraph"), else: []
++    c = if character, do: selected_chain(styles, character, "character"), else: []
+     # Word and ISO differ for multi-level toggle interactions. This supported
+     # subset accepts only a single effective inherited declaration; direct run
+     # overrides remain absolute, but never make an invalid style graph valid.
+@@ -1431,6 +1439,12 @@
+     end
+   end
+ 
++  defp selected_chain(styles, id, type) do
++    if type in ~w(paragraph character) and not Map.has_key?(styles.styles, id),
++      do: [],
++      else: chain(styles, id, type, MapSet.new())
++  end
++
+   defp chain(state, id, type, seen, selected? \\ true) do
+     if MapSet.size(seen) >= 64 or MapSet.member?(seen, id),
+       do: fail(:unsupported_docx_style_visibility)
+--- a/extensions/knowledge/src/evidence.ex
++++ b/extensions/knowledge/src/evidence.ex
+@@ -14,7 +14,8 @@
+   @collection_chunking %{"version" => 2, "max_bytes" => 4096}
+   @document_span_fields ~w(paragraph start_byte end_byte quote_start_byte quote_end_byte table row cell)
+   @numbered_document_span_fields @document_span_fields ++ ~w(numbering)
+-  @document_block_recipes ~w(ipse-documents-v14 ipse-documents-v15 ipse-documents-v16)
++  @document_block_recipes ~w(ipse-documents-v14 ipse-documents-v15 ipse-documents-v16 ipse-documents-v17)
++  @numbered_document_recipes ~w(ipse-documents-v16 ipse-documents-v17)
+ 
+   def safe_integer_max, do: @safe
+   def safe_uint?(value), do: is_integer(value) and value in 0..@safe
+@@ -1650,7 +1651,7 @@
+       (not Map.has_key?(locator, "region") or locator["region"] in ~w(header footer)) and
+       (not Map.has_key?(locator, "annotation_id") or identifier?(locator["annotation_id"], 64)) and
+       (not Map.has_key?(locator, "numbering") or
+-         (recipe == "ipse-documents-v16" and numbering?(locator["numbering"]))) and
++         (recipe in @numbered_document_recipes and numbering?(locator["numbering"]))) and
+       (not Map.has_key?(locator, "reference_site") or
+          reference_locator?(locator["reference_site"], ~w(byte_offset), recipe)) and
+       (not Map.has_key?(locator, "reference_range") or
+@@ -1909,7 +1910,7 @@
+ 
+       rows ->
+         rows =
+-          if receipt["extraction_version"] == "ipse-documents-v16" do
++          if receipt["extraction_version"] in @numbered_document_recipes do
+             Enum.map(rows, fn [paragraph, left, right, quote_left, quote_right | coordinates] ->
+               [paragraph, left, right, quote_left, quote_right] ++
+                 fixed_span_coordinates(coordinates)
+@@ -1927,7 +1928,9 @@
+     end
+   end
+ 
+-  defp document_span_fields("ipse-documents-v16"), do: @numbered_document_span_fields
++  defp document_span_fields(recipe) when recipe in @numbered_document_recipes,
++    do: @numbered_document_span_fields
++
+   defp document_span_fields(_), do: @document_span_fields
+ 
+   defp fixed_span_coordinates([]), do: [nil, nil, nil, nil]
+@@ -1937,19 +1940,23 @@
+   defp fixed_span_coordinates([table, row, cell, %{} = numbering]),
+     do: [table, row, cell, numbering]
+ 
+-  defp span_locator(part, paragraph, [nil, nil, nil, nil], "ipse-documents-v16"),
+-    do: block_locator(part, [paragraph, 0])
+-
+-  defp span_locator(part, paragraph, [nil, nil, nil, %{} = numbering], "ipse-documents-v16"),
+-    do: block_locator(part, [paragraph, 0, numbering])
+-
+-  defp span_locator(part, paragraph, [table, row, cell, nil], "ipse-documents-v16"),
+-    do: block_locator(part, [paragraph, 0, table, row, cell])
+-
+-  defp span_locator(part, paragraph, [table, row, cell, %{} = numbering], "ipse-documents-v16"),
+-    do: block_locator(part, [paragraph, 0, table, row, cell, numbering])
++  defp span_locator(part, paragraph, [nil, nil, nil, nil], recipe)
++       when recipe in @numbered_document_recipes,
++       do: block_locator(part, [paragraph, 0])
++
++  defp span_locator(part, paragraph, [nil, nil, nil, %{} = numbering], recipe)
++       when recipe in @numbered_document_recipes,
++       do: block_locator(part, [paragraph, 0, numbering])
++
++  defp span_locator(part, paragraph, [table, row, cell, nil], recipe)
++       when recipe in @numbered_document_recipes,
++       do: block_locator(part, [paragraph, 0, table, row, cell])
++
++  defp span_locator(part, paragraph, [table, row, cell, %{} = numbering], recipe)
++       when recipe in @numbered_document_recipes,
++       do: block_locator(part, [paragraph, 0, table, row, cell, numbering])
+ 
+-  defp span_locator(_, _, _, "ipse-documents-v16"), do: nil
++  defp span_locator(_, _, _, recipe) when recipe in @numbered_document_recipes, do: nil
+ 
+   defp span_locator(part, paragraph, coordinates, _),
+     do: block_locator(part, [paragraph, 0 | coordinates])
+--- a/test/extensions/knowledge/documents_test.exs
++++ b/test/extensions/knowledge/documents_test.exs
+@@ -54,7 +54,7 @@
+     assert D.version("markdown")=="ipse-documents-v2"
+     assert D.version("text")=="ipse-documents-v2"
+     assert D.version("pdf")=="ipse-documents-v2"
+-    assert D.version("docx")=="ipse-documents-v16"
++    assert D.version("docx")=="ipse-documents-v17"
+     assert Enum.map(result["segments"],& &1["text"])==["# Café\r","保持 exact",""]
+     for segment <- result["segments"] do
+       l=segment["locator"]
+@@ -133,7 +133,7 @@
+     entries=[{"word/document.xml",main},{"word/_rels/document.xml.rels",relations},{"[Content_Types].xml",types},{"word/header1.xml",header},{"word/footer1.xml",footer},{"word/orphan.xml","not parsed"}]
+     {:ok,result}=D.extract(zip.(entries),"headers.docx")
+     assert result["status"]=="partial"
+-    assert result["extraction_version"]=="ipse-documents-v16"
++    assert result["extraction_version"]=="ipse-documents-v17"
+     assert Enum.map(result["segments"],& &1["text"])==["body","heading","footer"]
+     assert Enum.map(result["segments"],& &1["locator"]["region"])==[nil,"header","footer"]
+     assert %{"code"=>"header_footer_layout_unresolved","part"=>"word/document.xml"} in result["warnings"]
+--- a/test/extensions/knowledge/documents_fidelity_test.exs
++++ b/test/extensions/knowledge/documents_fidelity_test.exs
+@@ -103,7 +103,7 @@
+       assert result["status"]=="complete" and result["warnings"]==[]
+       assert result["revision_policy"]=="insertions_included_deletions_excluded"
+       assert result["visibility_policy"]=="bounded_style_and_direct_hidden_excluded"
+-      assert result["extraction_version"]=="ipse-documents-v16"
++      assert result["extraction_version"]=="ipse-documents-v17"
+     end
+     for value <- ["false","0","off"] do
+       {:ok,result}=D.extract(doc.("<w:p><w:r><w:rPr><w:vanish w:val=\"#{value}\"/></w:rPr><w:t>visible</w:t></w:r></w:p>"),"a.docx")
+@@ -234,7 +234,7 @@
+     body=list.(7,"First α")<>"<w:p>"<>run.("interlude")<>"</w:p>"<>list.(7,"Second β")<>list.(8,"Restart γ")<>list.(7,"Third δ")
+     bytes=zip.([{"word/document.xml",xml.(body)},{"word/numbering.xml",numbering}])
+     {:ok,result}=D.extract(bytes,"numbered.docx")
+-    assert result["extraction_version"]=="ipse-documents-v16"
++    assert result["extraction_version"]=="ipse-documents-v17"
+     assert result["status"]=="partial"
+     assert Enum.map(result["segments"],& &1["text"])==["First α","interlude","Second β","Restart γ","Third δ"]
+     [first,plain,second,restart,third]=result["segments"]
+@@ -293,6 +293,19 @@
+     changed=put_in(crossing,["document","spans",Access.at(0),Access.at(8),"label"],"4.")
+     refute E.valid_span?(packed_source,changed)
+ 
++    legacy16=put_in(packed,["document","extraction_version"],"ipse-documents-v16")
++    assert E.valid_document?(legacy16["document"],legacy16["text"])
++    legacy_receipt=E.document_storage_receipt!(legacy16["document"])
++    legacy_attrs=packed_attrs |> put_in(["origin","receipt"],legacy_receipt)
++    legacy_attrs=if legacy_receipt["version"]==4, do: Map.put(legacy_attrs,"document",legacy16["document"]), else: Map.delete(legacy_attrs,"document")
++    {:ok,legacy_source}=E.source(legacy_attrs)
++    {:ok,[legacy_chunk|_]}=E.chunks(legacy_source)
++    {:ok,legacy_crossing}=E.citation(legacy_source,legacy_chunk,0,byte_size(crossing_text))
++    assert legacy_crossing["document"]["extraction_version"]=="ipse-documents-v16"
++    assert List.last(legacy_crossing["document"]["span_fields"])=="numbering"
++    assert E.valid_span?(legacy_source,legacy_crossing)
++    refute E.valid_span?(legacy_source,put_in(legacy_crossing,["document","spans",Access.at(0),Access.at(8),"label"],"9."))
++
+     table=fn content -> "<w:tbl><w:tr><w:tc>"<>content<>"</w:tc></w:tr></w:tbl>" end
+     mixed_body="<w:p>"<>run.("Plain")<>"</w:p>"<>list.(7,"Numbered")<>
+       table.("<w:p>"<>run.("Table plain")<>"</w:p>"<>list.(7,"Table numbered"))<>
+@@ -412,6 +425,84 @@
+     ''')
+   end
+ 
++  test "undefined selected paragraph and character styles preserve Unicode and exact citations" do
++    pure(~S'''
++    alias IpseKnowledge.Evidence, as: E
++    body="<w:p><w:pPr><w:pStyle w:val=\"Heading1\"/></w:pPr><w:r><w:rPr><w:rStyle w:val=\"MissingChar\"/></w:rPr><w:t>Résumé 雪 evidence.</w:t></w:r></w:p>"
++    bytes=doc.(body)
++    {:ok,result}=D.extract(bytes,"undefined.docx")
++    assert result["extraction_version"]=="ipse-documents-v17"
++    assert result["status"]=="complete" and result["warnings"]==[]
++    assert [%{"text"=>"Résumé 雪 evidence.","style"=>"Heading1"}]=result["segments"]
++    {:ok,payload}=D.source_payload(result)
++    {:ok,source}=E.source(%{"source_id"=>"undefined:styles","partition"=>"notes","generation"=>1,
++      "title"=>"Undefined references","text"=>payload["text"],"uri"=>"provided:undefined.docx",
++      "observed_at_ms"=>10,"event_at_ms"=>nil,"expires_at_ms"=>nil,
++      "origin"=>%{"kind"=>"provided","store_profile"=>"notes","partition_or_scope"=>"notes",
++        "receipt"=>E.document_storage_receipt!(payload["document"]),"historical"=>false}})
++    {:ok,[chunk]}=E.chunks(source)
++    {start,length}=:binary.match(payload["text"],"雪 evidence.")
++    {:ok,citation}=E.citation(source,chunk,start,start+length)
++    assert citation["quote"]=="雪 evidence."
++    assert citation["document"]["original_sha256"]==E.sha256(bytes)
++    assert citation["document"]["start_byte"]==byte_size("Résumé ")
++    assert citation["document"]["extraction_version"]=="ipse-documents-v17"
++    assert E.valid_span?(source,citation)
++    refute E.valid_span?(source,put_in(citation,["document","start_byte"],start+1))
++    ''')
++  end
++
++  test "undefined style references cannot reveal hidden defaults, paragraph styles or direct properties" do
++    pure(~S'''
++    style=fn type,id,body -> "<w:style w:type=\"#{type}\" w:styleId=\"#{id}\">#{body}</w:style>" end
++    hidden="<w:rPr><w:vanish/></w:rPr>"
++    unknown_run="<w:r><w:rPr><w:rStyle w:val=\"MissingChar\"/></w:rPr><w:t>secret</w:t></w:r>"
++    visible="<w:r><w:rPr><w:rStyle w:val=\"MissingChar\"/><w:vanish w:val=\"false\"/></w:rPr><w:t>visible café 雪</w:t></w:r>"
++    extract=fn styles,pstyle,runs ->
++      D.extract(zip.([{"word/styles.xml","<w:styles xmlns:w=\"#{word}\">#{styles}</w:styles>"},{"word/document.xml",xml.("<w:p><w:pPr><w:pStyle w:val=\"#{pstyle}\"/></w:pPr>"<>runs<>"</w:p>")}]),"hidden-undefined.docx")
++    end
++    defaults="<w:docDefaults><w:rPrDefault>#{hidden}</w:rPrDefault></w:docDefaults>"
++    for {styles,pstyle} <- [{defaults,"MissingParagraph"},{style.("paragraph","hidden",hidden),"hidden"}] do
++      {:ok,result}=extract.(styles,pstyle,unknown_run<>visible)
++      assert [%{"text"=>"visible café 雪"}]=result["segments"]
++      refute result["segments"] |> Enum.any?(&String.contains?(&1["text"],"secret"))
++    end
++    runs="<w:r><w:rPr><w:rStyle w:val=\"hidden\"/></w:rPr><w:t>secret</w:t></w:r>"<>run.("visible café 雪")
++    {:ok,result}=extract.(style.("character","hidden",hidden),"MissingParagraph",runs)
++    assert [%{"text"=>"visible café 雪"}]=result["segments"]
++    direct="<w:r><w:rPr><w:rStyle w:val=\"MissingChar\"/><w:vanish/></w:rPr><w:t>secret</w:t></w:r>"<>run.("visible café 雪")
++    {:ok,result}=extract.("","MissingParagraph",direct)
++    assert [%{"text"=>"visible café 雪"}]=result["segments"]
++    for value <- ["true","false"] do
++      default="<w:style w:type=\"paragraph\" w:default=\"1\" w:styleId=\"normal\"><w:rPr><w:vanish w:val=\"#{value}\"/></w:rPr></w:style>"
++      assert {:error,:unsupported_docx_style_visibility}=extract.(default,"MissingParagraph",visible)
++    end
++    harmless="<w:style w:type=\"paragraph\" w:default=\"1\" w:styleId=\"normal\"><w:name w:val=\"Normal\"/></w:style>"
++    assert {:ok,%{"segments"=>[%{"text"=>"visible café 雪"}]}}=extract.(harmless,"MissingParagraph",visible)
++    ''')
++  end
++
++  test "ignoring undefined selections never repairs malformed graphs or wrong style types" do
++    pure(~S'''
++    style=fn type,id,body -> "<w:style w:type=\"#{type}\" w:styleId=\"#{id}\">#{body}</w:style>" end
++    extract=fn styles,pstyle,rstyle ->
++      D.extract(zip.([{"word/styles.xml","<w:styles xmlns:w=\"#{word}\">#{styles}</w:styles>"},{"word/document.xml",xml.("<w:p><w:pPr><w:pStyle w:val=\"#{pstyle}\"/></w:pPr><w:r><w:rPr><w:rStyle w:val=\"#{rstyle}\"/></w:rPr><w:t>must not leak</w:t></w:r></w:p>")}]),"invalid-undefined.docx")
++    end
++    for styles <- [style.("paragraph","unused","<w:basedOn w:val=\"missing\"/>"),
++      style.("paragraph","unused","<w:basedOn w:val=\"unused\"/>"),
++      style.("paragraph","unused","<w:basedOn w:val=\"b\"/>")<>style.("character","b",""),
++      style.("paragraph","unused","")<>style.("paragraph","unused","")] do
++      assert {:error,:unsupported_docx_style_visibility}=extract.(styles,"MissingParagraph","MissingChar")
++    end
++    assert {:error,:unsupported_docx_style_visibility}=extract.(style.("character","known",""),"known","MissingChar")
++    assert {:error,:unsupported_docx_style_visibility}=extract.(style.("paragraph","known",""),"MissingParagraph","known")
++    linked=style.("paragraph","known","<w:link w:val=\"linked\"/>")<>style.("character","linked","")
++    assert {:error,:unsupported_docx_style_visibility}=extract.(linked,"known","MissingChar")
++    table="<w:tbl><w:tblPr><w:tblStyle w:val=\"MissingTable\"/></w:tblPr><w:tr><w:tc><w:p>"<>run.("table")<>"</w:p></w:tc></w:tr></w:tbl>"
++    assert {:error,:unsupported_docx_style_visibility}=D.extract(doc.(table),"unknown-table.docx")
++    ''')
++  end
++
+   @tag :docx_table_style
+   test "nonhidden table styles retain visible Unicode cells and independent table locators" do
+     pure(~S'''
+@@ -424,7 +515,7 @@
+     assert Map.take(first["locator"],~w(kind table row cell))==%{"kind"=>"table_cell","table"=>1,"row"=>1,"cell"=>1}
+     assert Map.take(second["locator"],~w(kind table row cell))==%{"kind"=>"table_cell","table"=>2,"row"=>1,"cell"=>1}
+     assert result["status"]=="complete" and result["warnings"]==[]
+-    assert result["extraction_version"]=="ipse-documents-v16"
++    assert result["extraction_version"]=="ipse-documents-v17"
+     ''')
+   end
+ 
+@@ -476,7 +567,7 @@
+     ] do
+       assert {:error,:unsupported_docx_style_visibility}=extract.(styles,p)
+     end
+-    assert {:error,:unsupported_docx_style_visibility}=D.extract(doc.(p),"missing.docx")
++    assert {:ok,%{"segments"=>[%{"text"=>"never eligible","style"=>"a"}]}}=D.extract(doc.(p),"missing.docx")
+     for body <- [
+       "<w:p>"<>run.("already emitted")<>"<w:pPr><w:pStyle w:val=\"a\"/></w:pPr></w:p>",
+       "<w:p><w:pPr><w:pStyle w:val=\"a\"/><w:pStyle w:val=\"a\"/></w:pPr>"<>run.("duplicate")<>"</w:p>",
+@@ -680,7 +771,7 @@
+       {start,count}=:binary.match(payload["text"],quote)
+       chunk=Enum.find(chunks,&(start >= &1["start_byte"] and start+count <= &1["end_byte"]))
+       {:ok,citation}=E.citation(source,chunk,start,start+count)
+-      assert citation["document"]["extraction_version"]=="ipse-documents-v16"
++      assert citation["document"]["extraction_version"]=="ipse-documents-v17"
+       assert citation["document"]["locator"]["reference_site"]["byte_offset"]==5
+       assert E.valid_span?(source,citation)
+       refute E.valid_span?(source,put_in(citation,["document","locator","reference_site","byte_offset"],4))
+--- a/test/extensions/knowledge/document_paragraph_packing_test.exs
++++ b/test/extensions/knowledge/document_paragraph_packing_test.exs
+@@ -34,6 +34,9 @@
+     {:ok,legacy15_payload}=Documents.source_payload(legacy15,65536)
+     assert legacy15_payload["document"]["extraction_version"]=="ipse-documents-v15"
+     assert Evidence.valid_document?(legacy15_payload["document"],legacy15_payload["text"])
++    legacy16=put_in(document,["extraction_version"],"ipse-documents-v16")
++    {:ok,legacy16_payload}=Documents.source_payload(legacy16,65536)
++    assert Evidence.valid_document?(legacy16_payload["document"],legacy16_payload["text"])
+     receipt = Evidence.document_storage_receipt!(payload["document"])
+     assert receipt["version"] == 4
+     attrs = %{"source_id" => "packing:unicode", "partition" => "notes", "generation" => 1,
+@@ -62,17 +65,17 @@
+     assert crossing["document"]["version"] == 2
+     assert length(crossing["document"]["spans"]) > 1
+     assert Evidence.valid_span?(source, crossing)
+-    for {version, old_payload} <- [{"ipse-documents-v14",legacy_payload},{"ipse-documents-v15",legacy15_payload}] do
++    for {version, old_payload} <- [{"ipse-documents-v14",legacy_payload},{"ipse-documents-v15",legacy15_payload},{"ipse-documents-v16",legacy16_payload}] do
+       legacy_attrs=attrs |> Map.put("document",old_payload["document"])
+         |> put_in(["origin","receipt"],Evidence.document_storage_receipt!(old_payload["document"]))
+       {:ok,legacy_source}=Evidence.source(legacy_attrs)
+       {:ok,[legacy_first|_]}=Evidence.chunks(legacy_source)
+       {:ok,legacy_crossing}=Evidence.citation(legacy_source,legacy_first,0,80)
+       assert legacy_crossing["document"]["extraction_version"]==version
+-      assert Enum.all?(legacy_crossing["document"]["spans"], &(length(&1)==5))
++      assert Enum.all?(legacy_crossing["document"]["spans"], &(length(&1)==if(version=="ipse-documents-v16",do: 9,else: 5)))
+       assert Evidence.valid_span?(legacy_source,legacy_crossing)
+     end
+-    refute Evidence.valid_document?(put_in(payload["document"],["extraction_version"],"ipse-documents-v17"),payload["text"])
++    refute Evidence.valid_document?(put_in(payload["document"],["extraction_version"],"ipse-documents-v18"),payload["text"])
+     refute Evidence.valid_span?(source, put_in(crossing, ["document", "spans", Access.at(0), Access.at(0)], 2))
+     {mixed_start, _} = :binary.match(payload["text"], Enum.at(segments, 16)["text"])
+     {:ok, mixed} = Evidence.citation(source, first, mixed_start, mixed_start + 80)
+--- a/test/extensions/knowledge/document_acquisition_session_test.exs
++++ b/test/extensions/knowledge/document_acquisition_session_test.exs
+@@ -761,7 +761,7 @@
+     [hit] = result["evidence"]
+     citation = hit["citation"]
+     assert citation["document"]["original_sha256"] == JSON.sha256(bytes)
+-    assert citation["document"]["extraction_version"] == "ipse-documents-v16"
++    assert citation["document"]["extraction_version"] == "ipse-documents-v17"
+ 
+     assert citation["quote"] ==
+              binary_part(
+@@ -839,7 +839,7 @@
+       citation = hit["citation"]
+       assert citation["quote"] =~ "orbitalneedle"
+       assert citation["document"]["original_sha256"] == JSON.sha256(bytes)
+-      assert citation["document"]["extraction_version"] == "ipse-documents-v16"
++      assert citation["document"]["extraction_version"] == "ipse-documents-v17"
+ 
+       if citation["document"]["version"] == 2 do
+         assert Enum.any?(citation["document"]["spans"], fn
+@@ -902,7 +902,7 @@
+       refute citation["quote"] =~ "42."
+       doc = citation["document"]
+       assert doc["original_sha256"] == JSON.sha256(bytes)
+-      assert doc["extraction_version"] == "ipse-documents-v16"
++      assert doc["extraction_version"] == "ipse-documents-v17"
+ 
+       if doc["version"] == 2 do
+         assert Enum.any?(doc["spans"], fn
+@@ -1022,7 +1022,7 @@
+           citation = hit["citation"]
+           assert citation["quote"] == text
+           assert citation["document"]["status"] == "complete"
+-          assert citation["document"]["extraction_version"] == "ipse-documents-v16"
++          assert citation["document"]["extraction_version"] == "ipse-documents-v17"
+           assert citation["document"]["original_sha256"] == JSON.sha256(bytes)
+           locator = citation["document"]["locator"]
+           assert locator["part"] == "word/#{part}.xml"
+@@ -1138,7 +1138,7 @@
+       citation = hit["citation"]
+       assert citation["quote"] == text
+       assert citation["document"]["original_sha256"] == JSON.sha256(bytes)
+-      assert citation["document"]["extraction_version"] == "ipse-documents-v16"
++      assert citation["document"]["extraction_version"] == "ipse-documents-v17"
+ 
+       assert citation["document"]["locator"] == %{
+                "kind" => "table_cell",
+@@ -2314,7 +2314,7 @@
+       assert citation["document"]["end_byte"] === byte_size(quote)
+       assert citation["content_sha256"] === JSON.sha256(fixture.text)
+       assert citation["document"]["original_sha256"] === JSON.sha256(fixture.bytes)
+-      assert citation["document"]["extraction_version"] === "ipse-documents-v16"
++      assert citation["document"]["extraction_version"] === "ipse-documents-v17"
+       assert get_in(citation, ["document", "locator", "paragraph"]) === paragraph
+       citation
+     end)
+--- a/test/support/docx_artifact_probe.exs
++++ b/test/support/docx_artifact_probe.exs
+@@ -27,7 +27,7 @@
+ end
+ 
+ run = fn text -> "<w:r><w:t>#{text}</w:t></w:r>" end
+-"ipse-documents-v16" = D.version("docx")
++"ipse-documents-v17" = D.version("docx")
+ 
+ {:error, :unsupported_docx_text_structure} =
+   D.extract(
+@@ -43,7 +43,7 @@
+ 
+ {:ok,
+  %{
+-   "extraction_version" => "ipse-documents-v16",
++   "extraction_version" => "ipse-documents-v17",
+    "segments" => [%{"text" => "visible"}],
+    "status" => "complete"
+  }} = D.extract(make.("<w:p>" <> run.("visible") <> "</w:p>"), "test.docx")
+--- a/test/support/documents_setup.exs
++++ b/test/support/documents_setup.exs
+@@ -361,7 +361,7 @@
+   refute citation["quote"] =~ "4."
+   doc = citation["document"]
+   assert doc["original_sha256"] == Ipse.JSON.sha256(numbered)
+-  assert doc["extraction_version"] == "ipse-documents-v16"
++  assert doc["extraction_version"] == "ipse-documents-v17"
+ 
+   assert doc["version"] == 2, "the installed journey did not return a packed multi-block citation"
+ 

@@ -1,3 +1,5 @@
+Code.require_file("../../support/word_capacity_fixture.ex", __DIR__)
+
 defmodule Ipse.KnowledgeDocumentAcquisitionSessionTest do
   use ExUnit.Case, async: false
   alias Ipse.{Session, Journal, JSON}
@@ -2221,15 +2223,10 @@ defmodule Ipse.KnowledgeDocumentAcquisitionSessionTest do
 
     assert queued
     send(run.pid, :release_document_registration)
-    cancel = Task.await(cancel_task, 10_000)
-    assert cancel in [:ok, {:error, :cleanup_unconfirmed}]
-
-    IO.puts(
-      if(cancel == :ok,
-        do: "DOCUMENT_CANCEL_CONFIRMED",
-        else: "DOCUMENT_CANCEL_CLEANUP_UNCONFIRMED"
-      )
-    )
+    assert :ok = Task.await(cancel_task, 10_000)
+    assert Process.alive?(run.pid)
+    assert Session.info(run.pid).phase === :idle
+    IO.puts("DOCUMENT_CANCEL_CONFIRMED")
 
     assert_receive {:DOWN, ^peer_ref, :process, ^peer, _}, 5_000
     home = Path.dirname(run.dir)
@@ -2247,6 +2244,204 @@ defmodule Ipse.KnowledgeDocumentAcquisitionSessionTest do
              )
 
     assert File.read!(path) == bytes
+  end
+
+  defp capacity_head(run) do
+    home = Path.dirname(run.dir)
+    {:ok, binding} = Ipse.Extension.ProjectIdentity.existing(home, run.cwd)
+    namespace = Ipse.Extension.CollectionStore.namespace(binding["project_id"])
+    key = "source.notes." <> JSON.sha256("workspace:source")
+
+    assert {:ok, %{"record" => record}} =
+             Ipse.Extension.Collection.execute_profile(
+               Ipse.Extension.CollectionStore.root(home),
+               namespace,
+               %{"op" => "get", "key" => key},
+               Ipse.Usage.id(),
+               Ipse.Extension.Collection.Profile.documents()
+             )
+
+    assert is_map(record)
+    assert {:ok, value} = Ipse.Extension.Collection.DocumentStage.decode_packed(record["value"])
+    %{"physical_record" => record, "value" => value}
+  end
+
+  defp finish_capacity(run, result) do
+    Enum.reduce_while(1..40, result, fn _, current ->
+      if current["status"] === "draft",
+        do: {:cont, continue(run, current["continuation"])},
+        else: {:halt, current}
+    end)
+  end
+
+  defp capacity_citations(run, fixture) do
+    Enum.map(fixture.needles, fn {paragraph, needle} ->
+      result =
+        invoke(run, "query_selected", %{
+          "store" => "notes",
+          "retrieval" => "words",
+          "query" => needle,
+          "top_k" => 1,
+          "as_of_ms" => 20,
+          "source_ids" => ["workspace:source"]
+        })
+
+      assert result["status"] in ~w(ok partial), inspect(result)
+      assert [hit] = result["evidence"]
+      citation = hit["citation"]
+      assert result["status"] === "partial"
+      assert citation["document"]["status"] === "partial"
+
+      assert Enum.any?(result["gaps"], fn gap ->
+               gap["code"] === "partial_document" and
+                 Enum.any?(gap["warnings"] || [], fn warning ->
+                   warning["code"] === "internal_relationship_not_examined" and
+                     warning["part"] === "_rels/.rels"
+                 end)
+             end)
+
+      quote = needle <> " preserves résumé 雪 evidence. "
+
+      start =
+        fixture.paragraphs
+        |> Enum.take(paragraph - 1)
+        |> Enum.reduce(0, &(byte_size(&1) + 1 + &2))
+
+      assert citation["quote"] === quote
+      assert citation["start_byte"] === start
+      assert citation["end_byte"] === start + byte_size(quote)
+      assert citation["document"]["start_byte"] === 0
+      assert citation["document"]["end_byte"] === byte_size(quote)
+      assert citation["content_sha256"] === JSON.sha256(fixture.text)
+      assert citation["document"]["original_sha256"] === JSON.sha256(fixture.bytes)
+      assert citation["document"]["extraction_version"] === "ipse-documents-v16"
+      assert get_in(citation, ["document", "locator", "paragraph"]) === paragraph
+      citation
+    end)
+  end
+
+  defp capacity_refused(run, needle) do
+    result =
+      invoke(run, "query_selected", %{
+        "store" => "notes",
+        "retrieval" => "words",
+        "query" => needle,
+        "top_k" => 1,
+        "as_of_ms" => 20,
+        "source_ids" => ["workspace:source"]
+      })
+
+    assert result["status"] === "refused"
+    assert result["evidence"] === [] and result["claims"] === []
+  end
+
+  @tag :workspace_word_native
+  @tag :workspace_word_capacity_boundary
+  @tag timeout: 300_000
+  test "Collection Word reaches its original/text/chunk bounds and recovers citations without replay",
+       c do
+    fixture = Ipse.Test.WordCapacityFixture.build(:at_bound)
+    assert fixture.original_bytes === 1_048_576 and fixture.text_bytes === 65_536
+    run = open(c, "collection-documents")
+    path = Path.join(run.cwd, "source.docx")
+    File.write!(path, fixture.bytes)
+    result = run |> invoke("source", args()) |> then(&finish_capacity(run, &1))
+    assert result["status"] === "ok", inspect(result)
+    head = capacity_head(run)
+    assert head["value"]["text_bytes"] === fixture.text_bytes
+    assert head["value"]["chunks"] === fixture.chunks
+    assert get_in(head, ["value", "lexical", "content_sha256"]) === JSON.sha256(fixture.text)
+    citations = capacity_citations(run, fixture)
+
+    File.write!(path, document("Different original while the retained head remains."))
+    capacity_refused(run, "firstcapacityneedle")
+    assert capacity_head(run) === head
+    File.write!(path, fixture.bytes)
+    assert capacity_citations(run, fixture) === citations
+
+    held = path <> ".held"
+    File.rename!(path, held)
+
+    on_exit(fn ->
+      if File.exists?(held) and not File.exists?(path), do: File.rename!(held, path)
+    end)
+
+    capacity_refused(run, "middlecapacityneedle")
+    id = Session.info(run.pid).id
+    assert {:ok, events} = Journal.load(run.dir, id)
+    assert {:ok, _} = Session.Saved.restore(events, id)
+
+    acquisition_ids =
+      for event <- events,
+          event["type"] === "extension_invocation_intent" and
+            get_in(event, ["payload", "arguments", "action"]) === "read_document",
+          do: event["invocation_id"]
+
+    assert length(acquisition_ids) === 1
+    assert :ok = Session.close_confirmed(run.pid)
+    journal = Path.join(run.dir, id <> ".jsonl")
+    before = File.read!(journal)
+
+    assert {:ok, resumed} =
+             DynamicSupervisor.start_child(
+               Ipse.Sessions,
+               {Session, Keyword.put(run.opts, :id, id)}
+             )
+
+    on_exit(fn -> if Process.alive?(resumed), do: Session.close_confirmed(resumed) end)
+    assert_idle_resume_journal(journal, before, id)
+    live = %{run | pid: resumed}
+    capacity_refused(live, "lastcapacityneedle")
+    File.rename!(held, path)
+    assert capacity_citations(live, fixture) === citations
+    assert capacity_head(live) === head
+    assert {:ok, after_events} = Journal.load(run.dir, id)
+
+    after_ids =
+      for event <- after_events,
+          event["type"] === "extension_invocation_intent" and
+            get_in(event, ["payload", "arguments", "action"]) === "read_document",
+          do: event["invocation_id"]
+
+    assert after_ids === acquisition_ids
+    assert :ok = Session.close_confirmed(resumed)
+  end
+
+  @tag :workspace_word_native
+  @tag :workspace_word_capacity_boundary
+  @tag timeout: 300_000
+  test "one-byte-over Word limits refuse without replacing the published source head", c do
+    fixture = Ipse.Test.WordCapacityFixture.build(:at_bound)
+    run = open(c, "collection-documents")
+    path = Path.join(run.cwd, "source.docx")
+    File.write!(path, fixture.bytes)
+    result = run |> invoke("source", args()) |> then(&finish_capacity(run, &1))
+    assert result["status"] === "ok", inspect(result)
+    head = capacity_head(run)
+    citations = capacity_citations(run, fixture)
+
+    replacement =
+      args()
+      |> put_in(["args", "generation"], 2)
+      |> put_in(["args", "expected_revision"], head["value"]["revision"])
+
+    for kind <- [:text_over, :original_over] do
+      over = Ipse.Test.WordCapacityFixture.build(kind)
+      assert over.text_bytes === if(kind === :text_over, do: 65_537, else: 65_536)
+      assert over.original_bytes === if(kind === :original_over, do: 1_048_577, else: 1_048_576)
+      File.write!(path, over.bytes)
+      selected = put_in(replacement, ["args", "expected_sha256"], JSON.sha256(over.bytes))
+      refused = run |> invoke("source", selected) |> then(&finish_capacity(run, &1))
+      assert refused["status"] === "refused", inspect(refused)
+      assert capacity_head(run) === head
+      File.write!(path, fixture.bytes)
+      assert capacity_citations(run, fixture) === citations
+    end
+
+    id = Session.info(run.pid).id
+    assert {:ok, events} = Journal.load(run.dir, id)
+    assert {:ok, _} = Session.Saved.restore(events, id)
+    assert :ok = Session.close_confirmed(run.pid)
   end
 
   @tag :workspace_word_native

@@ -109,17 +109,7 @@ defmodule Ipse.Extension.Collection.ObservedRead do
 
   @doc "Structurally bind a record-only observation; the caller must authenticate every supplied fact."
   def record_dependency(request, observation, pin, validity, publication_policy \\ nil) do
-    with {:ok, _, :get_record} <- select(request),
-         true <- SemanticConsent.pin?(pin),
-         true <- exact?(observation, ~w(version request_sha256 result_sha256 value witness)),
-         :ok <- JSON.validate_object(observation),
-         true <- observation["version"] === 1,
-         true <- observation["request_sha256"] === JSON.digest([request]),
-         value = observation["value"],
-         true <-
-           exact?(value, ["record"]) and observation["result_sha256"] === JSON.digest([value]),
-         {:ok, collection} <- root_identity(observation["witness"], pin["namespace"]),
-         {:ok, record} <- record_identity(value["record"], request["key"], collection),
+    with {:ok, collection, record} <- record_facts(request, observation, pin),
          true <- if(is_nil(record), do: is_nil(validity), else: is_map(validity)),
          dependency = %{
            "version" => 4,
@@ -155,29 +145,17 @@ defmodule Ipse.Extension.Collection.ObservedRead do
   does not obtain current consent, source eligibility or a live root lease.
   """
   def managed_dependency(request, managed, pin, recipe, verified_sources, now) do
-    with true <- exact?(managed, ~w(observation metadata)),
-         metadata = managed["metadata"],
-         true <-
-           exact?(
-             Map.delete(metadata, "choice"),
-             ~w(lineage recipe_sha256 policy_sha256 first_admitted_ms valid_until_ms category)
-           ),
-         true <- SemanticConsent.pin?(pin) and ManagedRecipe.valid?(recipe),
-         true <-
-           recipe["kind"] == "literal_source" and
-             JSON.digest([recipe]) === metadata["recipe_sha256"],
-         true <- JSON.sha256?(metadata["policy_sha256"]) and JSON.safe_uint?(now),
+    with {:ok, facts} <- managed_literal_facts(request, managed, pin, recipe, verified_sources),
+         %{metadata: metadata, candidate: candidate, value_sha256: value_sha256} = facts,
+         true <- JSON.safe_uint?(now),
          true <-
            JSON.safe_uint?(metadata["first_admitted_ms"]) and metadata["first_admitted_ms"] <= now,
          true <- valid_deadline?(metadata["valid_until_ms"], metadata["first_admitted_ms"], now),
          observation = managed["observation"],
-         value when is_map(value) <- get_in(observation, ["value", "record", "value"]),
-         {:ok, candidate} <-
-           ManagedRecipe.extract(recipe, request["key"], value, verified_sources),
          true <-
            ManagedRetention.eligible_metadata?(
              candidate,
-             JSON.sha256(Migration.encode(value)),
+             value_sha256,
              metadata,
              now
            ),
@@ -200,6 +178,78 @@ defmodule Ipse.Extension.Collection.ObservedRead do
     end
   rescue
     _ -> @error
+  end
+
+  @doc """
+  Consistency only: identify an expired finite ordinary literal without releasing it.
+
+  The caller must authenticate the exact signed observation and hold current
+  consent, root and original source ownership. This predicate grants no authority,
+  builds no dependency, and never substitutes a historical time for current gates.
+  """
+  def expired_managed_literal?(request, managed, pin, recipe, verified_sources, now) do
+    with {:ok, facts} <- managed_literal_facts(request, managed, pin, recipe, verified_sources),
+         {:ok, _, record} <- record_facts(request, managed["observation"], pin),
+         true <- is_map(record) do
+      ManagedRetention.expired_metadata?(
+        facts.candidate,
+        facts.value_sha256,
+        facts.metadata,
+        now
+      )
+    else
+      _ -> false
+    end
+  rescue
+    _ -> false
+  end
+
+  defp managed_literal_facts(request, managed, pin, recipe, verified_sources) do
+    with true <- exact?(managed, ~w(observation metadata)),
+         metadata = managed["metadata"],
+         true <-
+           exact?(
+             Map.delete(metadata, "choice"),
+             ~w(lineage recipe_sha256 policy_sha256 first_admitted_ms valid_until_ms category)
+           ),
+         true <- SemanticConsent.pin?(pin) and ManagedRecipe.valid?(recipe),
+         true <-
+           recipe["kind"] == "literal_source" and
+             JSON.digest([recipe]) === metadata["recipe_sha256"],
+         true <- JSON.sha256?(metadata["policy_sha256"]),
+         observation = managed["observation"],
+         value when is_map(value) <- get_in(observation, ["value", "record", "value"]),
+         {:ok, candidate} <-
+           ManagedRecipe.extract(recipe, request["key"], value, verified_sources) do
+      {:ok,
+       %{
+         metadata: metadata,
+         candidate: candidate,
+         value_sha256: JSON.sha256(Migration.encode(value))
+       }}
+    else
+      _ -> @error
+    end
+  rescue
+    _ -> @error
+  end
+
+  defp record_facts(request, observation, pin) do
+    with {:ok, _, :get_record} <- select(request),
+         true <- SemanticConsent.pin?(pin),
+         true <- exact?(observation, ~w(version request_sha256 result_sha256 value witness)),
+         :ok <- JSON.validate_object(observation),
+         true <- observation["version"] === 1,
+         true <- observation["request_sha256"] === JSON.digest([request]),
+         value = observation["value"],
+         true <-
+           exact?(value, ["record"]) and observation["result_sha256"] === JSON.digest([value]),
+         {:ok, collection} <- root_identity(observation["witness"], pin["namespace"]),
+         {:ok, record} <- record_identity(value["record"], request["key"], collection) do
+      {:ok, collection, record}
+    else
+      _ -> @error
+    end
   end
 
   @doc """

@@ -1,0 +1,31 @@
+phase=day0seed journal=881aefc6f6d728941cc9d2fb6b9d7520.jsonl records=150
+request_admitted=5
+request_finished=5
+inference_dispatch_intent=5
+inference_dispatch_result=0
+extension_invocation_intent=2
+extension_action_intent=10
+extension_action_result=10
+managed_read_observed=4
+managed_preflight_intent=5
+managed_preflight_refused=0
+turn_finished=1
+error=0
+phase=day8consumer journal=bc3e682887a683450af00e2f086cef34.jsonl records=44
+request_admitted=1
+request_finished=1
+inference_dispatch_intent=0
+inference_dispatch_result=0
+extension_invocation_intent=1
+extension_action_intent=5
+extension_action_result=5
+managed_read_observed=2
+managed_preflight_intent=1
+managed_preflight_refused=0
+turn_finished=1
+error=0
+{"index":6,"role":"user","tool_calls":[],"tool_name":null}
+{"index":37,"status":null,"type":"request_admitted","fields":["admitted_at_ms","attempt","attempt_id","billing_mode","endpoint_sha256","kind","model","parent_request_id","parent_session_id","provider","request_id","selected_profile","session_id","turn_id","type","version"],"phase":null,"operation":null,"outcome":null,"finality":null}
+{"index":39,"status":null,"type":"managed_preflight_intent","fields":["admission_sha256","before_sha256","checked_at_ms","deadline_ms","dependencies_sha256","input_sha256","intent_id","phase","policy_generation","request_id","route_sha256","session_id","snapshot_sha256","source_generation","tools_sha256","turn_id","type","version"],"phase":"model","operation":null,"outcome":null,"finality":null}
+{"index":42,"status":null,"type":"request_finished","fields":["attempt_id","duration_ms","finality","outcome","reported_model","request_id","type","usage","version"],"phase":null,"operation":null,"outcome":"failed","finality":"partial"}
+{"index":43,"status":"error","type":"turn_finished","fields":["status","type"],"phase":null,"operation":null,"outcome":null,"finality":null}

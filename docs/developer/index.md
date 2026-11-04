@@ -80,6 +80,7 @@ they must not acquire a host dependency merely to share a small predicate.
 | Restore canonical usage and reserve shared budget liability | [Accounting](accounting.md) |
 | Admit advisory effects, validate native subsets and account for advice | [Typed decisions](decisions.md) |
 | Page committed typed sources, validate quotations, retain managed Worker inputs and trace protected reviews | [Session sources](session-sources.md) |
+| Trace nomination, protected capture, confirmed chat closure and native decision review | [Completed-reply decision handoff](session-sources.md#move-a-completed-reply-into-native-decision-review) |
 | Launch local work, enforce supported OS policy, and confirm cleanup | [Sandbox](sandbox.md) |
 | Bind selected external tools through bounded transports | [MCP](mcp.md) |
 | Project durable/ephemeral sources into text or diagnostic delivery | [Lifecycle events](lifecycle-events.md) |

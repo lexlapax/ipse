@@ -1,0 +1,24 @@
+--- _build/verification/regression-group-launcher-20261104-01/run-group.sh	2026-11-04 04:39:26.224758677 -0800
++++ _build/verification/regression-group-launcher-20261104-01/run-group-utf8-02.sh	2026-11-04 06:26:48.019210597 -0800
+@@ -9,7 +9,11 @@
+ case "$3" in *[!0-9a-f]*|'') exit 64 ;; esac
+ [ "${#3}" -eq 64 ]
+ draft_root=/home/lexlapax/projects/lexlapax/ipse/_build/verification/regression-group-launcher-20261104-01
+-group_root=/home/lexlapax/projects/lexlapax/ipse/_build/verification/regression-groups-frozen-20261104-01/$group_name
++if [ "$group_name" = serial ]; then
++  group_root=/home/lexlapax/projects/lexlapax/ipse/_build/verification/regression-groups-frozen-20261104-02/serial
++else
++  group_root=/home/lexlapax/projects/lexlapax/ipse/_build/verification/regression-groups-frozen-20261104-01/$group_name
++fi
+ evidence=$group_root/evidence
+ printf '%s  %s\n' "$3" "$group_root/run-pins.sha256" | sha256sum --check --status
+ sha256sum --check --status "$group_root/run-pins.sha256"
+@@ -58,7 +62,7 @@
+   printf 'quota_probe=failed\ntest_dispatched=false\n' > "$evidence/status.txt"
+   exit 70
+ fi
+-clean_env=(env -i PATH=/usr/bin:/bin:/home/lexlapax/.cargo/bin HOME="$group_root/home" IPSE_HOME="$group_root/home/.ipse" TMPDIR="$fixture/tmp" MIX_HOME="$group_root/mix-home" HEX_HOME="$group_root/hex-home" MIX_ARCHIVES="$hex_archives" MIX_ENV=test HEX_OFFLINE=1 RUSTUP_HOME=/home/lexlapax/.rustup CARGO_TARGET_DIR="$group_root/cargo-target" ERL_FLAGS='+S 2:2 +A 2' GIT_CONFIG_NOSYSTEM=1 GIT_CONFIG_GLOBAL=/dev/null GIT_OPTIONAL_LOCKS=0)
++clean_env=(env -i LC_ALL=C.utf8 PATH=/usr/bin:/bin:/home/lexlapax/.cargo/bin HOME="$group_root/home" IPSE_HOME="$group_root/home/.ipse" TMPDIR="$fixture/tmp" MIX_HOME="$group_root/mix-home" HEX_HOME="$group_root/hex-home" MIX_ARCHIVES="$hex_archives" MIX_ENV=test HEX_OFFLINE=1 RUSTUP_HOME=/home/lexlapax/.rustup CARGO_TARGET_DIR="$group_root/cargo-target" ERL_FLAGS='+S 2:2 +A 2' GIT_CONFIG_NOSYSTEM=1 GIT_CONFIG_GLOBAL=/dev/null GIT_OPTIONAL_LOCKS=0)
+ "${clean_env[@]}" elixir "${code_paths[@]}" "$draft_root/preflight.exs" > "$evidence/preflight.log" 2>&1
+ (set -C; printf 'one explicit complete Mix group; no automatic retry\n' > "$evidence/test.claim")
+ sync -f "$evidence/test.claim"

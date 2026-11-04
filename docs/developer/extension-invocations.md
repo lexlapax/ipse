@@ -174,6 +174,49 @@ retain the parent and prior sources but reconstruct no timer, approval caller,
 or writer reservation after restart. Publication resources and current domain
 facts remain separate; do not add a competing lifecycle enum.
 
+A completed Knowledge nomination is a selection receipt, not a capture result.
+The exact shipped `nominate` descriptor uses the outer-only `nomination.select`
+receipt after current project, reviewed artifact, policy and normal interactive
+mode checks. This receipt supplies no saved-consent effect mapping or grant.
+The callback must return an inline result with no actions. Host refuses every
+nested host call and output producer before preparing context or recording an
+action intent, including when ordinary edit permission or `--yes` is enabled.
+The generic effect classes stay unchanged.
+
+Saved invocation, action and protected-tool validation use the mode at each
+original event, not the startup mode copied into the Session header.
+`PlanningTransition` replays its existing validated transitions once and supplies
+a sparse timeline containing only the initial mode and actual changes.
+Invocation, Actions and ToolLifecycle consume that timeline in event order
+while retaining the original header as source metadata. A witnessed exit from
+planning can therefore precede a normal
+nomination and capture; a forged, missing or cross-Session transition cannot
+grant normal-mode authority. This historical check does not supply the live
+client mode used for management review or reopen.
+
+`PendingNomination.record_result/3` runs after the exact inline result is durable.
+For a result with managed dependencies, it runs only after current output
+admission and confirmed cleanup; the historical marker validates that exact
+release, tool-message and cleanup chain. A withdrawn or historical nomination
+cannot offer a card.
+Only after the main model completes that same reply does Turn commit its original
+answer source and invoke the existing protected capture command. Capture still
+uses the normal outer admission, worker, action chain and result validation.
+Both ordinary and managed completion prepare the decision handoff while the
+actual parent and ordered results remain available, then clear the parent.
+Managed capture may retain an exact known-write receipt after its earlier root
+observation becomes historical; this selects a pending candidate for fresh review
+and grants no current delivery or acceptance authority.
+The host later reauthenticates the signed pending value before native review.
+After acceptance, same-ID chat history can relate its exact capture and separate
+committed management result to the new root. That projection marks only the
+authenticated cached metadata as historical; it preserves original provider
+calls and every signed-record dependency. It neither reruns the capture callback
+nor supplies current Worker-input or model-dispatch authority.
+Follow [the completed-reply handoff](session-sources.md#move-a-completed-reply-into-native-decision-review)
+for reader shutdown, confirmed close, separate management ownership and same-ID
+reopening. An arbitrary result object with `saved` or `existing` cannot launch it.
+
 ## Reserve capacity and commit publication
 
 Eligible SDK-2 calls share a 120000-ms deadline from original admission, before

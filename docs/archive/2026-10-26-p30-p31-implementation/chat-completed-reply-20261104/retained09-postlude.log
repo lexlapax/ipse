@@ -1,0 +1,2 @@
+mode=accept;selector=top_level;conversation_saved_usage=ok;consumer_saved_usage=ok;handoff_source=ok;accepted_link=ok;consent_all_settled=ok;effect_dispatches=0
+mode=cancel;selector=top_level;conversation_saved_usage=ok;consumer_saved_usage=ok;handoff_source=ok;accepted_link=ok;consent_all_settled=ok;effect_dispatches=0

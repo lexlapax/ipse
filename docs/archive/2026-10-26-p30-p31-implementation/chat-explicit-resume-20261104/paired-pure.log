@@ -1,0 +1,7 @@
+real_priv_and_helper_verified
+Running ExUnit with seed: 113341, max_cases: 2
+
+......
+Finished in 0.2 seconds (0.2s async, 0.00s sync)
+
+Result: 6 passed

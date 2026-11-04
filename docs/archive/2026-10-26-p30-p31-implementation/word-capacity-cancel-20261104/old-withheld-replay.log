@@ -1,0 +1,3 @@
+original_actual strict_saved=pass recorded_withheld_unavailable=true source_markers=10 source_occurrences=0 original_bytes_unchanged=true
+original_actual strict_saved=pass recorded_withheld_unavailable=true source_markers=14 source_occurrences=0 original_bytes_unchanged=true
+failed_actuals_not_relabelled=true automatic_replay=false native_app_model_effects=false

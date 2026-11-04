@@ -19,6 +19,7 @@ defmodule Ipse.CLI.Knowledge.Management do
 
   alias Ipse.Extension.Collection.{ManagedRetention, NormalizerV3, ObservedRead}
   @error {:error, :knowledge_management_refused}
+  @chat_handoff {__MODULE__, :chat_handoff}
 
   @doc false
   def reviewed_publication_admission,
@@ -168,6 +169,12 @@ defmodule Ipse.CLI.Knowledge.Management do
   @doc false
   def review(config, cwd, history_dir, "pending." <> id = key, batch)
       when is_map(config) and is_binary(cwd) and is_binary(history_dir) do
+    review_candidate(config, cwd, history_dir, key, id, batch, nil)
+  end
+
+  def review(_, _, _, _, _), do: @error
+
+  defp review_candidate(config, cwd, history_dir, key, id, batch, handoff) do
     overall = System.monotonic_time(:millisecond) + 120_000
 
     with true <- JSON.sha256?(id) and Path.type(history_dir) === :absolute,
@@ -186,12 +193,20 @@ defmodule Ipse.CLI.Knowledge.Management do
               ) and
                 Enum.at(batch["manifest"]["items"], batch["index"])["pending_key"] === key),
          request = %{
-           "id" => Usage.id(),
+           "id" =>
+             if(handoff,
+               do: Ipse.Session.ChatReviewHandoff.operation_id(handoff),
+               else: Usage.id()
+             ),
            "operation" => "notes.capture",
            "artifact_sha256" => selected.selection.digest,
            "source_sha256" => policy["source_sha256"],
            "policy_sha256" => JSON.digest([policy]),
-           "request_sha256" => acceptance_request_sha256(key, batch),
+           "request_sha256" =>
+             if(handoff,
+               do: chat_review_request_sha256(handoff),
+               else: acceptance_request_sha256(key, batch)
+             ),
            "source_generation" => 0,
            "headless" => false,
            "reserved" =>
@@ -210,13 +225,14 @@ defmodule Ipse.CLI.Knowledge.Management do
           Ipse.CLI.Terminal.puts("Knowledge reservation: #{ticket["id"]}")
 
           result =
-            accept_pending_candidate(
+            accept_candidate(
               config,
               cwd,
               history_dir,
               key,
               overall,
-              %{ticket: ticket, request: request, batch: batch}
+              %{ticket: ticket, request: request, batch: batch},
+              handoff
             )
 
           settle_acceptance_review(control, project, ticket, result)
@@ -233,8 +249,6 @@ defmodule Ipse.CLI.Knowledge.Management do
   rescue
     _ -> {:unknown, :acceptance_publication_unconfirmed}
   end
-
-  def review(_, _, _, _, _), do: @error
 
   defp acceptance_request_sha256(key, nil), do: JSON.digest(["native_pending_review", 1, key])
 
@@ -451,6 +465,7 @@ defmodule Ipse.CLI.Knowledge.Management do
                "Acceptance records your decision, not independent truth or permission for other effects.\n" <>
                  "Proposed accepted-decision retention (null maximum age means no category age limit):\n" <>
                  Jason.encode!(proposed, pretty: true) <> "\n",
+             annotation = chat_handoff_annotation() <> annotation,
              annotation =
                if(Map.has_key?(facts, "batch"),
                  do:
@@ -534,67 +549,536 @@ defmodule Ipse.CLI.Knowledge.Management do
   def accept_pending_candidate(config, cwd, history_dir, key, overall_deadline, accounting)
       when is_map(config) and is_binary(cwd) and is_binary(history_dir) and is_binary(key) and
              is_integer(overall_deadline) do
-    controlled_review_journal_candidate(config, cwd, overall_deadline, fn owned ->
-      Ipse.CLI.Terminal.puts("Management journal: #{owned.id}")
-
-      with true <- System.monotonic_time(:millisecond) < overall_deadline,
-           {:ok, selected} <- acceptance_source_selection(config, cwd, history_dir, owned.id),
-           pin = selected.context.config.semantic_admission["pin"],
-           true <- acceptance_accounting_policy?(accounting, pin),
-           {:ok, reservation} <- Writer.reserve(owned.writer, %{bytes: 131_072, events: 3}) do
-        context = %{
-          "operation_id" => if(is_nil(accounting), do: Usage.id(), else: accounting.ticket["id"]),
-          "journal_id" => owned.id,
-          "client_id" => Ipse.Usage.id(),
-          "session_id" => nil,
-          "project_id" => selected.binding["project_id"],
-          "namespace" => pin["namespace"],
-          "binding_sha256" => selected.binding["binding_sha256"],
-          "policy_sha256" => pin["policy_sha256"],
-          "capture_epoch" => pin["epoch"],
-          "render_revision" => 1,
-          "recipe" => selected.selection.proposal
-        }
-
-        context =
-          if(is_map(accounting) and not is_nil(accounting[:batch]),
-            do: Map.put(context, "batch", accounting.batch),
-            else: context
-          )
-
-        wall =
-          System.system_time(:millisecond) +
-            max(overall_deadline - System.monotonic_time(:millisecond), 0)
-
-        result =
-          with {:ok, {handle, facts}} <-
-                 begin_acceptance_review(config, cwd, history_dir, owned, key, context, wall) do
-            Ipse.Runner.Review.with_management_input("accept", facts, handle, fn permit ->
-              publish_consumed_acceptance(
-                config,
-                cwd,
-                history_dir,
-                owned,
-                reservation,
-                facts,
-                permit,
-                accounting
-              )
-            end)
-          end
-
-        if Writer.release(owned.writer, reservation) == :ok,
-          do: result,
-          else: {:unknown, :acceptance_journal_unconfirmed}
-      else
-        _ -> @error
-      end
-    end)
-  rescue
-    _ -> {:unknown, :acceptance_publication_unconfirmed}
+    accept_candidate(config, cwd, history_dir, key, overall_deadline, accounting, nil)
   end
 
   def accept_pending_candidate(_, _, _, _, _, _), do: @error
+
+  # This host-only wrapper receives a one-use live CLI handoff after confirmed
+  # chat shutdown. Serialized journal selection alone never calls this route.
+  @doc false
+  def accept_chat_candidate(config, cwd, history_dir, handoff) do
+    with true <- Ipse.Session.ChatReviewHandoff.valid?(handoff),
+         :ok <- Ipse.Session.ChatReviewHandoff.claim_management_attempt(handoff),
+         :ok <- chat_review_prior_gate(config, cwd, history_dir, handoff),
+         "pending." <> id = key <- handoff["event"]["pending_key"] do
+      review_candidate(config, cwd, history_dir, key, id, nil, handoff)
+    else
+      {:unknown, _} = unknown -> unknown
+      _ -> @error
+    end
+  end
+
+  @doc false
+  def chat_reoffer_preflight(config, cwd, directory, spec) do
+    with true <-
+           is_map(spec) and is_list(spec.choices) and
+             length(spec.choices) <= Ipse.Extension.Invocation.limit(),
+         {:ok, scope} <- Resources.start(self()) do
+      previous = Resources.bind(scope)
+
+      try do
+        result =
+          Resources.file_effect(fn ->
+            with {:ok, history} <-
+                   Ipse.Session.ChatReviewHandoff.load_reoffer_history(
+                     directory,
+                     spec.session_id,
+                     config[:journal]
+                   ),
+                 originals =
+                   Enum.filter(history.originals, fn wrapper ->
+                     Enum.any?(
+                       spec.choices,
+                       &(&1.sha256 === JSON.digest([wrapper["event"]]) and
+                           &1.key === wrapper["event"]["pending_key"])
+                     )
+                   end),
+                 {:ok, journals} <-
+                   chat_review_journals(config, history.originals ++ history.reviews),
+                 {:ok, states} <-
+                   chat_review_origin_states(config, cwd, history, originals, journals),
+                 {:ok, keys} <- reoffer_pending_keys(config, cwd, nil, nil, MapSet.new()) do
+              reoffer_select(config, cwd, directory, history, originals, states, keys)
+            else
+              {:error, :chat_review_permission_unavailable} = denied -> denied
+              _ -> {:unknown, :chat_review_reoffer_unconfirmed}
+            end
+          end)
+
+        if Resources.finish(scope) === :ok,
+          do: result,
+          else: {:unknown, :chat_review_reoffer_unconfirmed}
+      after
+        Resources.bind(previous)
+        if Process.alive?(scope), do: Resources.close(scope)
+      end
+    else
+      _ -> {:unknown, :chat_review_reoffer_unconfirmed}
+    end
+  rescue
+    _ -> {:unknown, :chat_review_reoffer_unconfirmed}
+  end
+
+  defp reoffer_pending_keys(config, cwd, after_key, generation, keys) do
+    with {:ok, page} <- pending_metadata(config, cwd, after_key),
+         true <- is_nil(generation) or generation === page["generation"],
+         next = Enum.reduce(page["records"], keys, &MapSet.put(&2, &1["key"])),
+         true <- MapSet.size(next) <= 64 do
+      if is_nil(page["next"]),
+        do: {:ok, next},
+        else:
+          if(page["next"] !== after_key,
+            do: reoffer_pending_keys(config, cwd, page["next"], page["generation"], next),
+            else: @error
+          )
+    else
+      _ -> @error
+    end
+  end
+
+  defp reoffer_select(config, cwd, directory, history, originals, states, keys) do
+    contradiction =
+      Enum.any?(originals, fn wrapper ->
+        states[JSON.digest([wrapper])] === :accepted and
+          MapSet.member?(keys, wrapper["event"]["pending_key"])
+      end)
+
+    if contradiction do
+      {:unknown, :chat_review_reoffer_unconfirmed}
+    else
+      originals
+      |> Enum.reverse()
+      |> Enum.reduce_while(:none, fn original, :none ->
+        if MapSet.member?(keys, original["event"]["pending_key"]) do
+          with :ok <-
+                 Ipse.Session.ChatReviewHandoff.verify_source(
+                   original,
+                   directory,
+                   history.records
+                 ),
+               {:ok, target} <- defer(config, cwd, original["event"]["pending_key"]) do
+            if target["status"] === "pending" do
+              revision =
+                history.reviews
+                |> Enum.filter(&(Ipse.Session.ChatReviewHandoff.origin(&1) === original))
+                |> Enum.reduce(1, fn wrapper, previous ->
+                  max(previous, wrapper["review"]["render_revision"])
+                end)
+
+              {:halt, {:ok, %{original: original, revision: revision + 1}}}
+            else
+              {:cont, :none}
+            end
+          else
+            _ -> {:halt, {:unknown, :chat_review_reoffer_unconfirmed}}
+          end
+        else
+          {:cont, :none}
+        end
+      end)
+    end
+  end
+
+  defp chat_review_origin_states(config, cwd, history, originals, journals) do
+    Enum.reduce_while(originals, {:ok, %{}}, fn original, {:ok, states} ->
+      refs = chat_review_prior_refs(history, original, nil)
+
+      case with_review_operation_rows(config, cwd, original, refs, fn rows ->
+             chat_review_states(refs, rows, journals)
+           end) do
+        {:ok, statuses} ->
+          state = if :accepted in statuses, do: :accepted, else: :pending
+          {:cont, {:ok, Map.put(states, JSON.digest([original]), state)}}
+
+        {:error, :chat_review_permission_unavailable} = denied ->
+          {:halt, denied}
+
+        _ ->
+          {:halt, {:unknown, :chat_review_reoffer_unconfirmed}}
+      end
+    end)
+  end
+
+  defp chat_review_prior_refs(history, original, exclude) do
+    Enum.filter(history.originals ++ history.reviews, fn wrapper ->
+      Ipse.Session.ChatReviewHandoff.origin(wrapper) === original and
+        Ipse.Session.ChatReviewHandoff.operation_id(wrapper) !== exclude
+    end)
+  end
+
+  defp with_review_operation_rows(config, cwd, original, refs, fun) do
+    pin = original["event"]["pin"]
+    ids = Enum.map(refs, &Ipse.Session.ChatReviewHandoff.operation_id/1)
+
+    with {:ok, binding} <- ProjectIdentity.existing(config[:home], cwd),
+         true <-
+           binding["project_id"] === pin["project_id"] and
+             binding["binding_sha256"] === pin["binding_sha256"] do
+      ProjectIdentity.with_binding(config[:home], cwd, binding, fn _ ->
+        result =
+          Consent.with_policy_operations(
+            SemanticAdmission.control_root(config[:home]),
+            binding["project_id"],
+            pin["epoch"],
+            pin["policy_sha256"],
+            System.system_time(:millisecond),
+            ids,
+            fn snapshot -> fun.(snapshot["operations"]) end
+          )
+
+        case result do
+          {:ok, _} -> result
+          _ -> denied_review_advisory(config, binding, pin, ids, fun, result)
+        end
+      end)
+    else
+      _ -> @error
+    end
+  end
+
+  # Advisory inspection after a known denial cannot activate or authorize review.
+  defp denied_review_advisory(config, binding, pin, ids, fun, original_error) do
+    root = SemanticAdmission.control_root(config[:home])
+    project = binding["project_id"]
+
+    with {:ok, state} when is_map(state) <- Consent.existing_snapshot(root, project),
+         true <-
+           state["epoch"] !== pin["epoch"] or not is_map(state["policy"]) or
+             JSON.digest([state["policy"]]) !== pin["policy_sha256"] or
+             state["policy"]["expires_at_ms"] <= System.system_time(:millisecond),
+         {:ok, rows} <-
+           Enum.reduce_while(ids, {:ok, %{}}, fn id, {:ok, rows} ->
+             if Map.has_key?(state["operations"], id) or
+                  Map.has_key?(state["compacted"] || %{}, id) do
+               case Consent.operation(root, project, id) do
+                 {:ok, operation} -> {:cont, {:ok, Map.put(rows, id, operation)}}
+                 _ -> {:halt, @error}
+               end
+             else
+               {:cont, {:ok, rows}}
+             end
+           end),
+         {:ok, _known} <- fun.(rows) do
+      {:error, :chat_review_permission_unavailable}
+    else
+      false -> original_error
+      _ -> {:unknown, :chat_review_reoffer_unconfirmed}
+    end
+  end
+
+  defp chat_review_prior_gate(_config, _cwd, _directory, %{"version" => version})
+       when version !== 2, do: :ok
+
+  defp chat_review_prior_gate(_config, _cwd, _directory, handoff)
+       when not is_map_key(handoff, "version"), do: :ok
+
+  defp chat_review_prior_gate(config, cwd, directory, handoff) do
+    with {:ok, history} <-
+           Ipse.Session.ChatReviewHandoff.load_reoffer_history(
+             directory,
+             handoff["event"]["session_id"],
+             config[:journal]
+           ),
+         true <- Ipse.Session.ChatReviewHandoff.current_review?(handoff, history.records),
+         original = Ipse.Session.ChatReviewHandoff.origin(handoff),
+         refs =
+           chat_review_prior_refs(
+             history,
+             original,
+             Ipse.Session.ChatReviewHandoff.operation_id(handoff)
+           ),
+         {:ok, journals} <- chat_review_journals(config, refs),
+         {:ok, statuses} <-
+           with_review_operation_rows(config, cwd, original, refs, fn rows ->
+             chat_review_states(refs, rows, journals)
+           end),
+         false <- :accepted in statuses do
+      :ok
+    else
+      _ -> {:unknown, :chat_review_reoffer_unconfirmed}
+    end
+  end
+
+  defp chat_review_states(refs, rows, journals) do
+    Enum.reduce_while(refs, {:ok, []}, fn wrapper, {:ok, statuses} ->
+      id = Ipse.Session.ChatReviewHandoff.operation_id(wrapper)
+
+      case chat_review_prior_state(wrapper, rows[id], Map.get(journals, id, [])) do
+        {:ok, status} -> {:cont, {:ok, [status | statuses]}}
+        _ -> {:halt, @error}
+      end
+    end)
+  end
+
+  @doc false
+  def chat_review_prior_state(wrapper, nil, []),
+    do: if(Ipse.Session.ChatReviewHandoff.valid?(wrapper), do: {:ok, :unstarted}, else: @error)
+
+  def chat_review_prior_state(wrapper, operation, journals) do
+    pin = wrapper["event"]["pin"]
+    id = Ipse.Session.ChatReviewHandoff.operation_id(wrapper)
+
+    with true <- Ipse.Session.ChatReviewHandoff.valid?(wrapper) and is_map(operation),
+         true <- operation["id"] === id and operation["epoch"] === pin["epoch"],
+         true <-
+           operation["status"] === "settled" and
+             operation["request_sha256"] === chat_review_request_sha256(wrapper),
+         true <- is_list(journals) and length(journals) <= 1,
+         {:ok, outcomes} <- chat_review_journal_outcomes(wrapper, journals) do
+      cond do
+        operation["actual"] === Consent.zero() and
+          receipt_matches?(operation, %{"unstarted" => true}) and journals === [] and
+            operation["receipt_compacted"] !== true ->
+          {:ok, :unstarted}
+
+        operation["actual"] === Consent.zero() and
+          receipt_matches?(operation, %{"refused" => true}) and
+          not Enum.any?(outcomes, &match?({:accepted, _}, &1)) and
+            (operation["receipt_compacted"] !== true or outcomes === [:refused]) ->
+          {:ok, :refused}
+
+        true ->
+          case outcomes do
+            [{:accepted, receipt}] ->
+              if(receipt_matches?(operation, receipt), do: {:ok, :accepted}, else: @error)
+
+            _ ->
+              @error
+          end
+      end
+    else
+      _ -> @error
+    end
+  rescue
+    _ -> @error
+  end
+
+  defp receipt_matches?(%{"receipt_compacted" => true} = operation, receipt),
+    do: operation["receipt_sha256"] === JSON.digest([receipt])
+
+  defp receipt_matches?(operation, receipt), do: operation["receipt"] === receipt
+
+  defp chat_review_journal_outcomes(wrapper, journals) do
+    Enum.reduce_while(journals, {:ok, []}, fn %{id: id, records: records}, {:ok, outcomes} ->
+      with true <- get_in(hd(records), ["metadata", "chat_review_handoff"]) === wrapper,
+           :ok <- Ipse.Session.PendingAcceptance.validate_events(records, id),
+           {:ok, []} <- Ipse.Session.PendingAcceptance.unknown_effects(records, id) do
+        case Enum.filter(
+               records,
+               &(&1["type"] === "pending_acceptance_result" and &1["status"] === "committed")
+             ) do
+          [] ->
+            {:cont, {:ok, [:refused | outcomes]}}
+
+          [result] ->
+            with [event] <- Enum.filter(records, &(&1["type"] === "pending_proposal_accepted")),
+                 true <- Ipse.Session.ChatReviewHandoff.matches_facts?(wrapper, event["facts"]),
+                 digest = JSON.digest([event]),
+                 {:ok, _} <- Ipse.Session.PendingAcceptance.resolve_committed(records, id, digest) do
+              {:cont,
+               {:ok,
+                [
+                  {:accepted,
+                   %{
+                     "journal_id" => id,
+                     "event_sha256" => digest,
+                     "receipt" => result["receipt"]
+                   }}
+                  | outcomes
+                ]}}
+            else
+              _ -> {:halt, @error}
+            end
+
+          _ ->
+            {:halt, @error}
+        end
+      else
+        _ -> {:halt, @error}
+      end
+    end)
+  end
+
+  defp chat_review_journals(config, wrappers) do
+    expected = Map.new(wrappers, &{Ipse.Session.ChatReviewHandoff.operation_id(&1), &1})
+    directory = Path.join(config[:home], "knowledge-management")
+
+    files =
+      case File.ls(directory) do
+        {:ok, files} -> {:ok, Enum.filter(files, &Regex.match?(~r/\A[0-9a-f]{32}\.jsonl\z/, &1))}
+        {:error, :enoent} -> {:ok, []}
+        _ -> @error
+      end
+
+    with {:ok, files} <- files, true <- length(files) <= Consent.operation_limit() do
+      Enum.reduce_while(files, {:ok, %{}}, fn file, {:ok, found} ->
+        id = Path.rootname(file)
+
+        with {:ok, %{"metadata" => metadata}} <- Journal.header(directory, id) do
+          wrapper = metadata["chat_review_handoff"]
+          operation = if is_map(wrapper), do: Ipse.Session.ChatReviewHandoff.operation_id(wrapper)
+
+          if Map.has_key?(expected, operation) do
+            with true <- wrapper === expected[operation],
+                 true <- metadata["kind"] === "knowledge_management" and metadata["version"] === 1,
+                 true <-
+                   metadata["project_id"] === wrapper["event"]["pin"]["project_id"] and
+                     metadata["namespace"] === wrapper["event"]["pin"]["namespace"],
+                 true <- metadata["native_journal_layout"] === Journal.native_owner_layout(),
+                 {:ok, %{events: records, tail: :none}} <-
+                   Journal.read_path(Path.join(directory, file)),
+                 :ok <- Ipse.Journal.SourceOrigin.check_path(directory, id, metadata) do
+              {:cont,
+               {:ok,
+                Map.update(
+                  found,
+                  operation,
+                  [%{id: id, records: records}],
+                  &[%{id: id, records: records} | &1]
+                )}}
+            else
+              _ -> {:halt, @error}
+            end
+          else
+            {:cont, {:ok, found}}
+          end
+        else
+          _ -> {:halt, @error}
+        end
+      end)
+    else
+      _ -> @error
+    end
+  end
+
+  defp chat_review_request_sha256(wrapper), do: JSON.digest(["chat_pending_review", 1, wrapper])
+
+  defp with_chat_policy(config, selected, fun) do
+    pin = selected.context.config.semantic_admission["pin"]
+    root = SemanticAdmission.control_root(config[:home])
+    project = selected.binding["project_id"]
+
+    case Process.get(@chat_handoff) do
+      %{event: %{"version" => 2} = wrapper, history_dir: directory} ->
+        with {:ok, history} <-
+               Ipse.Session.ChatReviewHandoff.load_reoffer_history(
+                 directory,
+                 wrapper["event"]["session_id"],
+                 config[:journal]
+               ),
+             refs =
+               chat_review_prior_refs(
+                 history,
+                 Ipse.Session.ChatReviewHandoff.origin(wrapper),
+                 Ipse.Session.ChatReviewHandoff.operation_id(wrapper)
+               ),
+             {:ok, journals} <- chat_review_journals(config, refs) do
+          ids = Enum.map(refs, &Ipse.Session.ChatReviewHandoff.operation_id/1)
+
+          Consent.with_policy_operations(
+            root,
+            project,
+            pin["epoch"],
+            pin["policy_sha256"],
+            System.system_time(:millisecond),
+            ids,
+            fn snapshot -> fun.(snapshot, %{history: history, refs: refs, journals: journals}) end
+          )
+        else
+          _ -> @error
+        end
+
+      _ ->
+        Consent.with_policy(
+          root,
+          project,
+          pin["epoch"],
+          pin["policy_sha256"],
+          System.system_time(:millisecond),
+          fn snapshot -> fun.(snapshot, nil) end
+        )
+    end
+  end
+
+  defp accept_candidate(config, cwd, history_dir, key, overall_deadline, accounting, handoff) do
+    callback = fn owned ->
+      if handoff, do: Process.put(@chat_handoff, %{event: handoff, history_dir: history_dir})
+
+      try do
+        Ipse.CLI.Terminal.puts("Management journal: #{owned.id}")
+
+        with true <- System.monotonic_time(:millisecond) < overall_deadline,
+             {:ok, selected} <- acceptance_source_selection(config, cwd, history_dir, owned.id),
+             pin = selected.context.config.semantic_admission["pin"],
+             true <- acceptance_accounting_policy?(accounting, pin),
+             {:ok, reservation} <- Writer.reserve(owned.writer, %{bytes: 131_072, events: 3}) do
+          context = %{
+            "operation_id" =>
+              cond do
+                handoff -> Ipse.Session.ChatReviewHandoff.operation_id(handoff)
+                is_nil(accounting) -> Usage.id()
+                true -> accounting.ticket["id"]
+              end,
+            "journal_id" => owned.id,
+            "client_id" =>
+              if(handoff,
+                do: Ipse.Session.ChatReviewHandoff.client_id(handoff),
+                else: Ipse.Usage.id()
+              ),
+            "session_id" => nil,
+            "project_id" => selected.binding["project_id"],
+            "namespace" => pin["namespace"],
+            "binding_sha256" => selected.binding["binding_sha256"],
+            "policy_sha256" => pin["policy_sha256"],
+            "capture_epoch" => pin["epoch"],
+            "render_revision" =>
+              if(handoff, do: Ipse.Session.ChatReviewHandoff.render_revision(handoff), else: 1),
+            "recipe" => selected.selection.proposal
+          }
+
+          context =
+            if(is_map(accounting) and not is_nil(accounting[:batch]),
+              do: Map.put(context, "batch", accounting.batch),
+              else: context
+            )
+
+          wall =
+            System.system_time(:millisecond) +
+              max(overall_deadline - System.monotonic_time(:millisecond), 0)
+
+          result =
+            with {:ok, {handle, facts}} <-
+                   begin_acceptance_review(config, cwd, history_dir, owned, key, context, wall) do
+              Ipse.Runner.Review.with_management_input("accept", facts, handle, fn permit ->
+                publish_consumed_acceptance(
+                  config,
+                  cwd,
+                  history_dir,
+                  owned,
+                  reservation,
+                  facts,
+                  permit,
+                  accounting
+                )
+              end)
+            end
+
+          if Writer.release(owned.writer, reservation) == :ok,
+            do: result,
+            else: {:unknown, :acceptance_journal_unconfirmed}
+        else
+          _ -> @error
+        end
+      after
+        Process.delete(@chat_handoff)
+      end
+    end
+
+    controlled_share_journal(config, cwd, overall_deadline, callback, true, handoff)
+  rescue
+    _ -> {:unknown, :acceptance_publication_unconfirmed}
+  end
 
   defp acceptance_accounting_policy?(nil, _), do: true
 
@@ -716,80 +1200,75 @@ defmodule Ipse.CLI.Knowledge.Management do
 
     ProjectIdentity.with_domain_publication(config[:home], cwd, binding, scope, authorize, fn cap,
                                                                                               catalog ->
-      Consent.with_policy(
-        control,
-        binding["project_id"],
-        pin["epoch"],
-        pin["policy_sha256"],
-        System.system_time(:millisecond),
-        fn snapshot ->
-          ObservedRead.with_managed_proposal_acceptance_plan(
-            SemanticAdmission.collection_root(config[:home]),
-            pin["namespace"],
-            %{"op" => "get_record", "key" => facts["pending_key"]},
-            cap,
-            catalog,
-            selected.selection.proposal,
-            fn observed, read, publish ->
-              context =
-                facts
-                |> Map.take(
-                  ~w(operation_id journal_id client_id session_id project_id namespace binding_sha256 policy_sha256 capture_epoch render_revision batch)
-                )
-                |> Map.put("recipe", selected.selection.proposal)
+      with_chat_policy(config, selected, fn snapshot, review_history ->
+        ObservedRead.with_managed_proposal_acceptance_plan(
+          SemanticAdmission.collection_root(config[:home]),
+          pin["namespace"],
+          %{"op" => "get_record", "key" => facts["pending_key"]},
+          cap,
+          catalog,
+          selected.selection.proposal,
+          fn observed, read, publish ->
+            context =
+              facts
+              |> Map.take(
+                ~w(operation_id journal_id client_id session_id project_id namespace binding_sha256 policy_sha256 capture_epoch render_revision batch)
+              )
+              |> Map.put("recipe", selected.selection.proposal)
 
-              with {:ok, current_selection} <- selection(config[:home]),
-                   true <- current_selection === selected.selection,
-                   {:ok, ^facts} <-
-                     Ipse.Session.PendingAcceptance.prepare(
-                       context,
-                       observed,
-                       [facts["source_proof"]],
-                       System.system_time(:millisecond)
-                     ),
-                   :ok <-
-                     Ipse.Session.PendingAcceptance.check_source_policy(
-                       facts,
-                       snapshot["policy"],
-                       selected.selection.recipe,
-                       System.system_time(:millisecond)
-                     ),
-                   {:ok, preview} <-
-                     Ipse.Session.PendingAcceptance.preview(
-                       permit,
-                       facts,
-                       System.system_time(:millisecond)
-                     ),
-                   {:ok, prepared} <-
-                     Ipse.Session.PendingAcceptance.prepare_storage(
-                       preview,
-                       selected.selection.recipe,
-                       snapshot["policy"]["expires_at_ms"],
-                       observed,
-                       cap,
-                       System.system_time(:millisecond),
-                       read
-                     ) do
-                record_acceptance_effect(
-                  owned,
-                  reservation,
-                  preview,
-                  prepared,
-                  cap,
-                  read,
-                  publish,
-                  permit,
-                  source_lease,
-                  slot,
-                  accounting
-                )
-              else
-                _ -> @error
-              end
+            with {:ok, current_selection} <- selection(config[:home]),
+                 true <- current_selection === selected.selection,
+                 {:ok, ^facts} <-
+                   Ipse.Session.PendingAcceptance.prepare(
+                     context,
+                     observed,
+                     [facts["source_proof"]],
+                     System.system_time(:millisecond)
+                   ),
+                 :ok <-
+                   Ipse.Session.PendingAcceptance.check_source_policy(
+                     facts,
+                     snapshot["policy"],
+                     selected.selection.recipe,
+                     System.system_time(:millisecond)
+                   ),
+                 :ok <- check_chat_handoff(facts, selected, snapshot, review_history),
+                 {:ok, preview} <-
+                   Ipse.Session.PendingAcceptance.preview(
+                     permit,
+                     facts,
+                     System.system_time(:millisecond)
+                   ),
+                 {:ok, prepared} <-
+                   Ipse.Session.PendingAcceptance.prepare_storage(
+                     preview,
+                     selected.selection.recipe,
+                     snapshot["policy"]["expires_at_ms"],
+                     observed,
+                     cap,
+                     System.system_time(:millisecond),
+                     read
+                   ) do
+              record_acceptance_effect(
+                owned,
+                reservation,
+                preview,
+                prepared,
+                cap,
+                read,
+                publish,
+                permit,
+                source_lease,
+                slot,
+                accounting
+              )
+            else
+              {:error, :chat_review_reoffer_unconfirmed} = error -> error
+              _ -> @error
             end
-          )
-        end
-      )
+          end
+        )
+      end)
     end)
   end
 
@@ -898,6 +1377,61 @@ defmodule Ipse.CLI.Knowledge.Management do
   defp acceptance_input_bytes(event, normalized),
     do: byte_size(Jason.encode!(event)) + byte_size(Jason.encode!(normalized))
 
+  defp check_chat_handoff(facts, selected, snapshot, review_history) do
+    case Process.get(@chat_handoff) do
+      nil ->
+        :ok
+
+      %{event: event, history_dir: directory} ->
+        pin = selected.context.config.semantic_admission["pin"]
+
+        with true <- Ipse.Session.ChatReviewHandoff.matches_facts?(event, facts),
+             true <-
+               Map.delete(pin, "session_id") === Map.delete(event["event"]["pin"], "session_id"),
+             {:ok, records} <-
+               if(review_history,
+                 do: {:ok, review_history.history.records},
+                 else: Journal.load(directory, event["event"]["session_id"])
+               ),
+             :ok <- Ipse.Session.ChatReviewHandoff.verify_source(event, directory, records),
+             true <- Ipse.Session.ChatReviewHandoff.current_review?(event, records) do
+          if event["version"] === 2 do
+            case chat_review_states(
+                   review_history.refs,
+                   snapshot["operations"],
+                   review_history.journals
+                 ) do
+              {:ok, statuses} ->
+                if(:accepted in statuses,
+                  do: {:error, :chat_review_reoffer_unconfirmed},
+                  else: :ok
+                )
+
+              _ ->
+                {:error, :chat_review_reoffer_unconfirmed}
+            end
+          else
+            :ok
+          end
+        else
+          _ -> @error
+        end
+    end
+  rescue
+    _ -> @error
+  end
+
+  defp chat_handoff_annotation do
+    case Process.get(@chat_handoff) do
+      %{event: event} ->
+        "Decision from chat Session #{event["event"]["session_id"]}, original client #{event["event"]["client_id"]}; review client #{Ipse.Session.ChatReviewHandoff.client_id(event)}.\n" <>
+          "The completed chat is closed during this protected review; it resumes afterwards.\n"
+
+      _ ->
+        ""
+    end
+  end
+
   defp acceptance_target_read(config, cwd, key, selected, facts_context, fun) do
     binding = selected.binding
     pin = selected.context.config.semantic_admission["pin"]
@@ -905,54 +1439,49 @@ defmodule Ipse.CLI.Knowledge.Management do
 
     ProjectIdentity.with_existing_domain_auth(config[:home], cwd, binding, domain, fn cap,
                                                                                       catalog ->
-      Consent.with_policy(
-        SemanticAdmission.control_root(config[:home]),
-        binding["project_id"],
-        pin["epoch"],
-        pin["policy_sha256"],
-        System.system_time(:millisecond),
-        fn snapshot ->
-          ObservedRead.with_managed_proposal_plan(
-            SemanticAdmission.collection_root(config[:home]),
-            pin["namespace"],
-            %{"op" => "get_record", "key" => key},
-            cap,
-            catalog,
-            selected.selection.proposal,
-            fn observed, read ->
-              with {:ok, current_selection} <- selection(config[:home]),
-                   true <- current_selection === selected.selection,
-                   [proof] <-
-                     get_in(observed, [
-                       "observation",
-                       "value",
-                       "record",
-                       "value",
-                       "evidence",
-                       "sources"
-                     ]),
-                   {:ok, facts} <-
-                     Ipse.Session.PendingAcceptance.prepare(
-                       facts_context,
-                       observed,
-                       [proof],
-                       System.system_time(:millisecond)
-                     ),
-                   :ok <-
-                     Ipse.Session.PendingAcceptance.check_source_policy(
-                       facts,
-                       snapshot["policy"],
-                       selected.selection.recipe,
-                       System.system_time(:millisecond)
-                     ) do
-                fun.(facts, observed, read, cap)
-              else
-                _ -> @error
-              end
+      with_chat_policy(config, selected, fn snapshot, review_history ->
+        ObservedRead.with_managed_proposal_plan(
+          SemanticAdmission.collection_root(config[:home]),
+          pin["namespace"],
+          %{"op" => "get_record", "key" => key},
+          cap,
+          catalog,
+          selected.selection.proposal,
+          fn observed, read ->
+            with {:ok, current_selection} <- selection(config[:home]),
+                 true <- current_selection === selected.selection,
+                 [proof] <-
+                   get_in(observed, [
+                     "observation",
+                     "value",
+                     "record",
+                     "value",
+                     "evidence",
+                     "sources"
+                   ]),
+                 {:ok, facts} <-
+                   Ipse.Session.PendingAcceptance.prepare(
+                     facts_context,
+                     observed,
+                     [proof],
+                     System.system_time(:millisecond)
+                   ),
+                 :ok <-
+                   Ipse.Session.PendingAcceptance.check_source_policy(
+                     facts,
+                     snapshot["policy"],
+                     selected.selection.recipe,
+                     System.system_time(:millisecond)
+                   ),
+                 :ok <- check_chat_handoff(facts, selected, snapshot, review_history) do
+              fun.(facts, observed, read, cap)
+            else
+              {:error, :chat_review_reoffer_unconfirmed} = error -> error
+              _ -> @error
             end
-          )
-        end
-      )
+          end
+        )
+      end)
     end)
   end
 
@@ -1019,7 +1548,7 @@ defmodule Ipse.CLI.Knowledge.Management do
 
   def controlled_review_journal_candidate(_, _, _, _), do: @error
 
-  defp controlled_share_journal(config, cwd, overall_deadline, fun, review?) do
+  defp controlled_share_journal(config, cwd, overall_deadline, fun, review?, handoff \\ nil) do
     deadline = min(overall_deadline, System.monotonic_time(:millisecond) + 5_000)
     operation = :crypto.strong_rand_bytes(16)
 
@@ -1030,9 +1559,14 @@ defmodule Ipse.CLI.Knowledge.Management do
         with {:ok, port} <- Ipse.Runner.open_owner_control() do
           try do
             effect = fn control ->
-              share_journal_owned(config, cwd, fn owned ->
-                with_management_journal_control(owned, control, fun)
-              end)
+              share_journal_owned(
+                config,
+                cwd,
+                fn owned ->
+                  with_management_journal_control(owned, control, fun)
+                end,
+                handoff
+              )
             end
 
             result =
@@ -1803,7 +2337,7 @@ defmodule Ipse.CLI.Knowledge.Management do
     end
   end
 
-  defp share_journal_owned(config, cwd, fun) do
+  defp share_journal_owned(config, cwd, fun, handoff \\ nil) do
     home = config[:home]
 
     with {:ok, binding} when is_map(binding) <- ProjectIdentity.existing(home, cwd),
@@ -1823,6 +2357,8 @@ defmodule Ipse.CLI.Knowledge.Management do
         "source_origin_layout" => Ipse.Journal.SourceOrigin.layout(),
         "native_journal_layout" => Journal.native_owner_layout()
       }
+
+      metadata = if handoff, do: Map.put(metadata, "chat_review_handoff", handoff), else: metadata
 
       result =
         try do
@@ -2064,7 +2600,13 @@ defmodule Ipse.CLI.Knowledge.Management do
          "record_key" => event["facts"]["pending_key"],
          "accepted_note_key" => accepted_note_key,
          "journal_status" => status,
-         "control_status" => acceptance_control_status(config, binding, event),
+         "control_status" =>
+           acceptance_control_status(
+             config,
+             binding,
+             event,
+             get_in(hd(records), ["metadata", "chat_review_handoff"])
+           ),
          "action_sha256" => nil,
          "request_sha256" => if(intent, do: intent["request_sha256"]),
          "replayed" => false,
@@ -2078,7 +2620,7 @@ defmodule Ipse.CLI.Knowledge.Management do
     _ -> @error
   end
 
-  defp acceptance_control_status(config, binding, event) do
+  defp acceptance_control_status(config, binding, event, handoff) do
     facts = event["facts"]
 
     with {:ok, operation} <-
@@ -2090,7 +2632,10 @@ defmodule Ipse.CLI.Knowledge.Management do
          true <- operation["epoch"] === facts["capture_epoch"],
          true <-
            operation["request_sha256"] ===
-             acceptance_request_sha256(facts["pending_key"], facts["batch"]),
+             if(handoff,
+               do: chat_review_request_sha256(handoff),
+               else: acceptance_request_sha256(facts["pending_key"], facts["batch"])
+             ),
          do: operation["status"],
          else: (_ -> "unavailable")
   end

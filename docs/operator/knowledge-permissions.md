@@ -5,22 +5,19 @@ for a project. Setup imports the shipped artifact and saves a protected permissi
 it does not start a model or change your provider configuration. The selected
 tool becomes available in the **next new session**.
 
-The current development source supports new v3 captures through a reviewed
-`/remember` statement and a separate interactive review to forget one existing
-native note on a supported Linux storage profile. An authorized headless client
-can also save an eligible typed host outcome under the knowledge-only grant.
-Model-selected source lookups use selected-source preflight and status-only
-terminal previews. The selected main model can propose a separate pending
-capture after recalling an earlier note; each retains its own source and
-permission requirements. [Synthetic capture and recall evidence](../archive/2026-10-26-p30-p31-implementation/shipped-recall-capture-20261102.md)
-does not qualify automatic-capture quality, every source combination or installed use.
+Choose the interaction that matches the source. `/remember` reviews a statement
+you write yourself. An assistant can nominate an exact sentence in its completed
+reply for a separate decision card. Other attributed text can be captured as a
+pending proposal for later standalone review. Pending proposals stay out of
+current-note recall until explicit acceptance succeeds. An authorized unattended
+client can save an eligible typed host outcome under the knowledge-only grant.
 
-Pending review/editing, retention choices and forgetting have standalone management paths. Interactive
-chat also supports reviewed correction of an ordinary native note and replacement
-of a current statement or preference, as described below.
-Existing-note reads, permission inspection/revocation and elapsed-policy
-reclamation have their own rules. Full capture readiness remains false; saving
-permission and one successful path do not qualify every source or later use.
+Review, editing, retention and forgetting have standalone management procedures
+below. Interactive chat also supports reviewed correction of an ordinary native
+note and replacement of a current statement or preference. All protected writes
+need the supported Linux storage profile and their current source and permission
+checks. Full capture readiness remains false; these bounded paths do not qualify
+automatic extraction quality, every source combination or installed use.
 
 As a temporary containment, a generic managed worker read cannot return a stored
 value unless the selected current-literal recipe authenticates it. This includes
@@ -273,20 +270,12 @@ preserve the Session journal and inspect actual storage before new work. Resume
 does not repeat the statement review or publication, and `--yes` supplies no
 shortcut. The separate [Memory](memory.md) workflow keeps its own authority.
 
-The [terminal control](../archive/2026-10-26-p30-p31-implementation/remember-terminal-headless-controls.md)
-exercises this narrow statement journey. A later
-[direct-client headless control](../archive/2026-10-26-p30-p31-implementation/causal-root-cache.md)
-used a genuine typed host outcome and the saved knowledge-only grant; its read
-was real while ordinary write/shell requests stayed denied. The authorized client
-explicitly invoked capture. The separately
-[reviewed model-selected source path](../archive/2026-10-26-p30-p31-implementation/managed-source-tool-preflight-independent-review.md)
-supports bounded list/read/quote preflight and status-only previews. A later
-[synthetic loopback-model control](../archive/2026-10-26-p30-p31-implementation/combined-notes-current.md)
-captured one literal, performed subsequent source reads and completed its turn.
-This does not qualify every source or provider. If a turn reports an error,
-inspect the stored effect and Session journal before new work; an error does
-not mean nothing was saved, and resume does not repeat capture. General
-end-to-end automatic `run` capture remains unqualified.
+Model-selected source lookups recheck the selected provenance and show only
+status in terminal previews; authenticated content still enters the private
+journal and model continuation. A capture can settle before delivery of its
+result fails. Inspect the stored effect and Session journal after an error;
+an error does not mean nothing was saved, and resume does not repeat capture.
+General end-to-end automatic `run` capture remains unqualified.
 
 Eligible unattended input remains a pending proposal rather than an endorsed
 fact. After native permission setup, a headless task can use the saved grant
@@ -308,9 +297,8 @@ reports an unknown outcome, inspect the Session
 journal and stored state before attempting new work. Do not promote quoted
 reports or unattended task text to endorsed facts.
 
-Use the experimental standalone review below to inspect pending keys and confirm
-one selected decision. Until acceptance succeeds, a candidate stays out of
-current-note recall. Its stored provenance does not establish source freshness.
+Use native decision review to confirm a selected candidate. Its stored provenance
+does not establish source freshness; display and publication check it again.
 
 You can also ask the main model in a later chat turn to queue one of its earlier
 suggestions, for example:
@@ -331,6 +319,93 @@ Existing literal reads still require their signed record and original Session
 source. Keep the original sessions directory and retained lock files. A copy
 cannot substitute for an unavailable original. Historical endorsement establishes
 recorded input, not independent truth or new publication permission.
+
+## Review a proposed decision during chat
+
+Enable the native knowledge selection, then start a new normal interactive chat
+in the same project and private home. Use its saved provider configuration and
+the supported Linux protected-storage profile. For example:
+
+```sh
+ipse knowledge enable --cwd /path/to/project
+ipse chat --cwd /path/to/project
+```
+
+Ask for a recommendation and a decision card, for example:
+
+```text
+Recommend a release channel for this workspace. Nominate your exact recommendation
+in the final reply as a decision for me to review.
+```
+
+The model must choose the nomination tool and include the same exact text once
+in its completed reply. A nomination creates no note and accepts no decision. If the
+host can authenticate that reply and capture succeeds, it opens the native card
+without another user prompt. Read the complete candidate, category, reason,
+source and proposed retention, then enter the displayed `accept CODE` at
+`approval>`. Any other answer cancels. Acceptance records your decision about
+the proposal; it establishes neither the premises' truth nor tool permission.
+
+Keep the printed conversation, reservation and management-journal IDs. Ipse
+stops the chat reader and confirms closure of the conversation before opening
+the protected management review. It resumes the same saved conversation after
+confirmed success or a known refusal. The provider, billing choice, workspace
+and custom sessions directory stay pinned. Reopening uses the conversation's
+confirmed current mode; leaving planning does not reapply its startup flag.
+Session edit and shell
+grants end during closure, including an initial `--accept-edits`. The current
+approval policy still applies; an explicit `--yes` remains an ordinary approval
+choice. Queued chat input is discarded.
+
+Each completed nominated answer can attempt one automatic capture and review,
+with at most 1,024 UTF-8
+bytes of selected text and an available original reply of at most 8 KiB.
+Ambiguous text, supplied references, unfinished replies, planning, request drafts,
+presentation transforms and incompatible extension deliveries refuse the card.
+Replies already dependent on protected recalled notes are outside this first path.
+Native synthetic controls cover a normal interactive start and a chat started
+with `--planning` that completes a witnessed `/plan exit` before nomination.
+Planning itself cannot capture or accept this decision. The exit must return
+to an allowed normal enclosing mode; a configured or inherited enclosing planning ceiling
+cannot be bypassed by requesting a card.
+Another completed answer in a later turn can nominate a separate proposal.
+An interrupted attempt remains spent for its original answer; reopening the
+conversation never repeats that capture. Normal replies remain available as
+original sources. An unavailable card does not mean that its pending capture was absent. Inspect
+pending metadata before new work. Headless input cannot accept a card.
+
+After confirmed acceptance, continue in the resumed conversation and ask a
+followup that uses the accepted decision. Ipse checks its current signed record,
+original answer and separate acceptance journal before delivering it as a
+protected reference. The earlier visible reply alone does not establish that
+the decision remains current. Keep both original journals available. You can
+also use `/exit` and start a fresh chat in the same project to retrieve it from
+a separate conversation. Neither route supplies permission for another effect.
+
+Unconfirmed reader cleanup, close, display, publication or reopening stops this
+automatic interaction. Inspect the original conversation and `knowledge operation
+ID` before continuing, as described in [recovery](recovery.md#inspect-unconfirmed-protected-knowledge).
+Resume restores no live decision code or review handle and repeats no capture
+or acceptance. After a known cancellation, close the chat with `/exit` and
+explicitly resume it without an initial task to review its pending decision:
+
+```sh
+ipse chat --resume SESSION_ID --state-dir /private/path/sessions --cwd /path/to/project
+```
+
+Keep the original provider configuration, Ipse home and state directory. Before
+the first `you>` prompt, Ipse prints `Checking pending decision review before
+chat starts.` It checks the original source, current pending value, saved
+permission and the outcomes of earlier review reservations. An eligible pending
+proposal receives a new card and fresh code, with its original provenance and
+pending identity. It is not captured again. The return to chat immediately after
+a review does not reopen the card automatically.
+
+Wait for `approval>` or `you>` before entering input. Ordinary chat input is not
+armed during the startup check. A missing or uncertain earlier outcome stops
+review and requires inspection; a known permission denial opens no card. A
+still-pending candidate can also be selected through the standalone procedure
+below after inspection. Neither path reuses an old code or reservation.
 
 ## Review a pending proposal
 
@@ -370,9 +445,9 @@ The accepted decision's category age starts at confirmation, subject to the
 saved policy expiry and any earlier lineage limits. Acceptance records your
 decision; it does not prove the source's premises or authorize other effects.
 
-Historical display can succeed while the original source is unavailable.
-Publication freshly checks that source, current permission and the unchanged
-signed target. A confirmed success removes the pending row and stores an
+Display and publication independently check the original source, current
+permission and unchanged signed target. A source or permission change after
+display can therefore refuse publication. A confirmed success removes the pending row and stores an
 accepted decision with its original proof and immutable acceptance link.
 A successful result prints `accepted_note_key`; keep that complete `note.` key
 for later management, including [forgetting](#forget-a-selected-native-note).
@@ -574,9 +649,10 @@ installed, human or live-model workflows, or replacement of accepted decisions.
 
 ## Use bounded current-note recall
 
-For notes already stored, close the source conversation with `/exit` and start a new
-chat with the same project, home and reviewed selection. Ask a question that
-uses one of the saved facts or preferences. Before its first model request,
+Use the same project, home and reviewed selection. After a decision card returns
+to its resumed chat, you can ask a followup there; a new chat can also retrieve
+stored notes. Ask a question that uses one of the saved facts or preferences.
+Before the first model request of each turn,
 the native selection prepares a turn-local Reference from current authenticated
 notes without another model service. Notes remain attributed derived evidence;
 recall does not promote them to new operator statements.
@@ -600,9 +676,12 @@ the first 32 eligible notes before choosing whole notes for the available space;
 host limits can stop it sooner.
 The pass reports partial coverage when it stops early, omits notes or encounters
 an unavailable original. On Linux, a confirmed missing original Session journal
-can be skipped while later notes are checked. Other source, ownership or permission
-failures withhold the pass when the cause cannot be established safely. Missing
-source text is never supplied.
+can be skipped while later notes are checked. A protected single-note read can
+also confirm that a literal's signed ordinary retention deadline has elapsed;
+the pass skips its text and continues to later notes with partial coverage.
+This neither deletes the stored record nor renews its lifetime. Other source,
+ownership or permission failures withhold the pass when the cause cannot be
+established safely. Missing or expired source text is never supplied.
 
 Inspect coverage and use the declared index/read tools for further pages rather
 than treating an incomplete pass as proof that no note exists. A skipped journal

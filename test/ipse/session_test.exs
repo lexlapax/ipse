@@ -58,8 +58,9 @@ defmodule Ipse.SessionTest do
     end
   end
 
-  setup do
-    root = Path.join(System.tmp_dir!(), "ipse-session-#{System.unique_integer([:positive])}")
+  setup context do
+    temporary_root = if context[:native_workspace], do: "/tmp", else: System.tmp_dir!()
+    root = Path.join(temporary_root, "ipse-session-#{System.unique_integer([:positive])}")
     File.mkdir_p!(root)
     on_exit(fn -> File.rm_rf!(root) end)
     %{root: root, dir: Path.join(root, "state")}
@@ -396,6 +397,7 @@ defmodule Ipse.SessionTest do
     assert Ipse.Session.info(pid).runtime.reported_model == nil
   end
 
+  @tag native_workspace: true
   test "resume refuses silently weakening the saved shell sandbox policy", ctx do
     pid = session(ctx, %{sandbox: :native, scenario: :identity})
     id = Ipse.Session.info(pid).id

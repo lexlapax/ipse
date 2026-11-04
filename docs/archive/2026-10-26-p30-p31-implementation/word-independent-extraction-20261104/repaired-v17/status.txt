@@ -1,0 +1,8 @@
+extraction_exit=0
+support_exit=0
+inputs_post=0
+runtime_post=0
+candidate_source_post=0
+artifact_post=0
+pathset_post=0
+links_post=0

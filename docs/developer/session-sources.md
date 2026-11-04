@@ -200,6 +200,152 @@ real resource-scope controls; `review_native_test.exs` exercises actual native
 PTY receipts separately. A Session effect must still journal its intent before
 execution. Standalone review does not manufacture a conversation or source entry.
 
+## Move a completed reply into native decision review
+
+The bundled Knowledge tool can nominate one exact sentence for a decision card
+without saving or accepting it. Trace this host-owned continuation separately
+from ordinary source tools and native statement endorsement:
+
+| Boundary | Owner and required evidence |
+| --- | --- |
+| Main-model nomination | `PendingNomination` binds the admitted tool descriptor/artifact, same turn, actual call and successful invocation result, exact text/category/reason and any confirmed current output-release chain |
+| Completed original answer | `Turn.finish/2` commits the original answer before `Session.start_post_reply_capture/2` resolves its unique quote through Writer's owner-only `answer_request` query |
+| Capture attempt | Session appends `pending_chat_capture_started` before invoking capture; its identity binds that turn, final request, nomination and exact answer proof |
+| Pending capture | `Session.Invocation.invoke_export/4` runs the real protected capture command with its ordinary saved-consent and action checks |
+| Confirmed capture result | `ChatReviewHandoff.prepare/3` binds the actual invocation/result and selected pending key to the original proof, semantic pin and registered client/channel generation |
+| Durable handoff | Session appends `pending_chat_review_handoff` with a real Writer source receipt; the client receives only an opaque one-use reference |
+| Terminal ownership | `CLI.Input.stop_confirmed/3` stops and observes the reader, then obtains the actual Session's native input-release acknowledgement before `ChatReviewHandoff.close/1` confirms Session closure |
+| Native decision review | The existing management actor owns its own Writer and retains the now-inactive original source, current Identity, Consent and Collection owners |
+| Return to chat | A confirmed result or known refusal permits a new process for the same saved conversation; uncertain cleanup, review or reopening stops without retry |
+
+A worker's `saved` or `existing` key selects a candidate only. Before showing
+the card, management reopens the original journal under its retained source
+lock, validates the full Saved chain and exact handoff source receipt, then
+reauthenticates the signed pending value. Text, category, reason, source proof
+and current semantic pin must match the handoff. Publication repeats those
+checks under fresh current owners. An unchanged key or matching text alone
+cannot substitute for that comparison.
+
+`ChatReviewHandoff.take/2` accepts only the actual registered client and live
+Session reference. Its private handle records confirmed close and spends its
+management attempt once; JSON reconstruction supplies no handle. The ordinary
+management facts retain `session_id: nil`. The header stores the exact chat
+event and Writer source receipt, and the operation ID commits their digest.
+The native code therefore selects those exact facts and original client, while
+the acceptance receipt continues to describe a management operation. Saved
+Consent reservation, admission, measured settlement and unknown liability use
+the same path as explicit `knowledge review`.
+
+Claiming the handoff also captures the actual validated live Mode. The private
+owner/ref checked handle projects only `Mode.config/1` into the retained CLI
+configuration, checks the Mode roundtrip and clears startup planning and
+session edit flags. Management review repeats that projection, and same-ID
+reopening uses it. Provider and billing choices do not change. The CLI's original
+startup mode is not authority for a conversation that has since completed a
+witnessed `/plan exit`.
+
+The ordinary assistant reply keeps its normal terminal delivery. Native card
+display and exact fresh input remain independently required before a Review
+permit exists. No second model extracts or accepts the decision. The original
+Session has released its Writer and lock before this management transaction
+starts; the existing inactive-source publication guard remains unchanged.
+
+The automatic path attempts one capture and review per completed nominated answer, a unique
+quote of at most 1,024 UTF-8 bytes and an available original answer within the
+existing 8-KiB bound. It refuses protected-note record dependencies; an exact
+union of cached root-only prerequisites is supported without dropping lineage
+or replacing the capture's current-use and publication gates. It also refuses presentation
+transforms, selected text consumers, after-turn delivery, active drafts,
+references, planning and headless acceptance. These refusals do not upgrade a
+historical selection into authority. The bounded attempt ledger restores spent
+answer identities, including attempts whose capture result is unknown. Later
+completed answers have separate identities; they cannot reuse the earlier
+operation or make its outcome known. Legacy capture-start records reconstruct
+the same inert fence from their preceding nomination and committed answer.
+Resume reconstructs no handoff reference,
+code or old capture. An explicit interactive resume without an initial task
+may create a fresh review of an existing pending candidate. This separate
+startup path runs synchronously after registering the waiting native reader,
+before `Terminal.refresh_reader/1` can arm its first read or print `you>`.
+It uses the existing confirmed reader stop and Session close before management
+review; it adds no Input protocol or background preflight process. An authorized
+`observe_channel` request invalidates the idle snapshot before any read dispatch.
+Foreign requests cannot invalidate that snapshot or activate review.
+
+The original version-1 handoff and source receipt stay unchanged. A version-2
+management wrapper includes a fresh `pending_chat_review_reoffered` record and
+its actual Writer receipt, binding a new client/channel generation, review ID,
+opaque focus ID, chronological normal mode and render revision. An idle resumed
+Session need not have a current turn or request; the original pair remains
+provenance rather than invented live focus. Structural receipts create no
+capability. Original and reoffer byte receipts are checked under the existing
+source ownership at display, publication and later use.
+
+Preflight reads only bounded current metadata and earlier management journals.
+`Consent.with_policy_operations/7` projects selected existing operation rows,
+including compacted receipts, under the existing pinned policy transaction.
+It creates no ledger or grant and preserves the old `with_policy/6` callback.
+Every earlier review of that original candidate must have an authenticated
+known disposition. Hashes without the required matching journal cannot turn an
+uncertain attempt into a cancellation. Accepted candidates are not offered
+again; unresolved, missing or contradictory accounting stops review. The allowed
+path repeats selected-row and current-source checks under held policy before
+reserve, display and publication. A known permission denial is reported
+separately from uncertainty and cannot authorize another review.
+
+Each review receives a new operation, reservation and native code; it never
+recaptures the original answer. Internal same-ID reopening disables this startup
+check, so a cancellation does not cause an automatic review loop.
+Native edit and command grants end on the internal close;
+same-ID reopening does not renew an initial `--accept-edits` grant.
+The separately configured ordinary approval policy remains in force, including
+an explicit `--yes`; closing session grants does not revoke that choice.
+
+For a worked native exercise, build the matching bundle and run:
+
+```sh
+mix test test/ipse/cli/chat_review_test.exs --only chat_review --max-cases 1
+```
+
+The synthetic loopback main route nominates in one tool call and completes the
+same reply in its ordinary continuation. Inspect the actual card, exact input,
+capture and management receipts, unchanged conversation ID, current provider
+configuration and final accounting. After same-ID reopening, ask a followup
+and inspect its actual model request for the currently authenticated version-6
+accepted-decision Reference. Ordinary retained answer text alone cannot prove
+current recall. Then close the conversation and retrieve the decision from a
+fresh chat to exercise a separate consumer. Cancellation must leave the proposal
+pending and create no acceptance intent. Neither mode establishes installed,
+live-model or human qualification.
+The native synthetic journeys cover both normal startup and startup planning
+followed by a witnessed exit before nomination. The latter verifies the live
+normal/enclosing mode, native acceptance, same-ID normal reopening with ended
+session grants, and current recall from a fresh chat. Planning itself remains
+ineligible for nomination, capture and acceptance. Sparse mode replay separately
+rejects missing, future, forged and cross-Session exits while preserving the
+original planning header.
+The per-answer ledger's focused replay controls separately check duplicate,
+foreign-answer and unknown-prefix refusal; they do not establish a native
+multi-card journey by themselves.
+
+Run the explicit-resume exercise separately:
+
+```sh
+mix test test/ipse/session/chat_reoffer_test.exs
+mix test test/ipse/extension/policy_operations_test.exs
+mix test test/ipse/cli/chat_reoffer_test.exs --only chat_reoffer --max-cases 1
+```
+
+The two-card synthetic native control cancels the first card, closes the
+internally reopened conversation, explicitly resumes the same ID, accepts a
+different fresh code and retrieves the accepted decision from a fresh chat.
+It checks one capture, distinct management operations, preserved original
+provenance, actual source receipts, ended session grants and a version-6 current
+read. It also checks that no ordinary `you>` prompt appears before the startup
+card. This qualifies the pre-first-read flow; it does not promise to preserve
+typeahead entered before an input prompt, accept a pending card after an
+uncertain reservation, or establish installed, human or live-model behavior.
+
 ## Read through a real synthetic Session
 
 Run this fixture in `iex -S mix` from a built checkout. The provider override is a
@@ -252,7 +398,12 @@ Session obtains a one-use preflight bound to the exact task/job/call and argumen
 even when its original dependency list is empty. Writer privately resolves the
 actual SourceIndex query and derives provenance for every selected row; a list
 cannot classify just its first result. Known empty producer lineage differs from
-a missing producer mapping. The complete original-plus-selected union must be
+a missing producer mapping. Markers for known-empty effect sources follow the
+same host classifier that admits MCP, embedding and decision sources into
+SourceWindow. Internal file snapshot pages and Collection actions with empty
+lineage create no quotable source occurrence; their protocol history remains
+recorded, and every nonempty action dependency stays in the causal union.
+The complete original-plus-selected union must be
 canonical and use supported dependency versions 3–6. This structural check grants
 no read: the actual query reacquires current policy, roots, signed records and
 original source owners through `ManagedToolUse.with_effect`. Result release
@@ -284,6 +435,20 @@ same historical notice. Signed records remain separate obligations, including
 their original source journals and deadlines. Another metadata root or an
 unrecorded fresh guard cannot join this case. Worker transition requires all
 original metadata members to describe the same old root.
+
+Decision acceptance can advance the root again while the chat is closed.
+`ManagedLineage.management_root_candidate/2` selects only the cached capture
+prerequisites tied to that exact handoff, original parent/result commitments
+and pending key. `ManagedUse.management_root_transition_observation/3` retains
+the committed acceptance journal, verifies its original source and matching
+capture-to-acceptance generation chain, and checks the current native root and
+capture operation. The version-2 `managed_root_transition` records that evidence
+for chronological replay. Matching a root hash alone is insufficient: unrelated,
+missing or uncertain management evidence cannot classify an old observation.
+Only those payload-free metadata prerequisites become historical. Every record
+dependency remains in the complete union, and original messages, opaque provider
+calls and tool-call/result pairs stay unchanged. The next model request still
+requires fresh current-use checks over the full union.
 
 Result preparation independently rederives the actual returned query and selected
 provenance before its dependencies and version-2 observation are committed.
@@ -400,6 +565,14 @@ Future occurrences/generations and mixed historical windows refuse. This is
 consistency checking of a protected journal, not a cryptographically signed
 transcript resistant to coherent rewriting by arbitrary same-user code.
 
+Chat handoff validation uses that same replay-only operation. Reconstruct the
+window immediately before the original capture intent and resolve its recorded
+`source.quote` request with `saved_query_provenances/4`. Compare the singleton
+occurrence/version/kind/origin, original turn/request/receipt and exact stored
+proof. A fresh `answer_request` handle cannot reproduce the old token: every
+SourceIndex restore creates a new volatile secret. Rebinding checks historical
+consistency and supplies no current read or publication capability.
+
 Stored managed-note proofs use a separate host path. `StoredSources` resolves
 only the consuming Session's selected state directory. The current owner checks
 its Writer descriptor and exact committed proof under the active collection
@@ -408,8 +581,28 @@ journal and retained lock; the reader holds that lock while validating the full
 Saved prefix and checking the proof. Copies and legacy origins refuse, as do an
 active other owner, incomplete tail, changed version or different protected
 project/namespace. This path never repairs, relocates or resumes the source.
-It monitors the actual retained native lock and refuses after ownership loss,
-even if the journal and lock path did not change. Writer rechecks its full
+
+For a chat-derived accepted decision, the retained management-journal resolver
+also supplies its exact chat handoff provenance. `ManagedUse` carries that
+selection into `StoredSources`; while the original source is locked, the reader
+checks the real handoff source page and complete historical chain before the
+use callback. The operation digest binds this metadata to the signed acceptance
+facts. A readable original quote with a missing or altered handoff cannot supply
+current accepted-decision evidence. This adds no new source-lease type or effect
+permission.
+
+For historical preflight of a version-6 reference whose original source is the
+consuming Session itself, `ManagedUse.inspect_accepted_reference/2` uses the
+existing job/snapshot-bound Writer queries through `StoredSources.with_verified`.
+It checks the exact active proof before and after inspection and verifies the
+original chat handoff chain. It creates no transferable source lease. The
+returned inspection is historical: Worker delivery, model dispatch and effect
+use must separately retain and revalidate their complete current dependency
+union through their existing owner adapters. Another active Session's source
+still cannot be borrowed through this path.
+
+Inactive-source resolution monitors the actual retained native lock and refuses
+after ownership loss, even if the journal and lock path did not change. Writer rechecks its full
 recorded origin and private parent on cached queries and append boundaries.
 The private transferable-source API can verify distinct proofs from inactive
 original Sessions while retaining one lock per Session. Its grouped form returns

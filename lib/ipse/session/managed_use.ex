@@ -51,7 +51,12 @@ defmodule Ipse.Session.ManagedUse do
   returned inspection is historical and must not authorize an effect or send.
   """
   def inspect_accepted_reference(context, %{"version" => 6} = dependency) do
-    accepted_reference(context, dependency, fn inspection, _, _ -> {:ok, inspection} end, :import)
+    accepted_reference(
+      context,
+      dependency,
+      fn inspection, _, _ -> {:ok, inspection} end,
+      :historical
+    )
   end
 
   def inspect_accepted_reference(_, _), do: @error
@@ -167,8 +172,9 @@ defmodule Ipse.Session.ManagedUse do
         link,
         fn resolved, journal_lease ->
           proof = resolved.event["facts"]["source_proof"]
+          context = chat_source_context(context, %{original: resolved})
 
-          StoredSources.with_shareable_verified(context, proof, fn source, source_lease ->
+          with_inspected_source(context, proof, lease_mode, fn source, source_owner ->
             with true <- source["proof"] === proof do
               protected(context, [%{"version" => 4}], fn cap, catalog, policy ->
                 ObservedRead.with_accepted_decision(
@@ -211,6 +217,12 @@ defmodule Ipse.Session.ManagedUse do
                             "dependency" => dependency
                           }
 
+                          source_lease =
+                            case source_owner do
+                              {:inactive, token} -> token
+                              :active_snapshot -> nil
+                            end
+
                           fun.(inspection, journal_lease, source_lease)
                         else
                           _ -> @error
@@ -224,11 +236,13 @@ defmodule Ipse.Session.ManagedUse do
                           transaction,
                           journal_lease,
                           fn ->
-                            Ipse.Runner.Transaction.with_source_lease(
-                              transaction,
-                              source_lease,
-                              use
-                            )
+                            case source_owner do
+                              {:inactive, token} ->
+                                Ipse.Runner.Transaction.with_source_lease(transaction, token, use)
+
+                              :active_snapshot ->
+                                use.()
+                            end
                           end
                         )
                       end
@@ -247,6 +261,32 @@ defmodule Ipse.Session.ManagedUse do
     else
       _ -> @error
     end
+  end
+
+  # Historical preflight may inspect this Session's own source through its
+  # actual job/snapshot-bound Writer queries. No transferable source lease is
+  # created; later delivery still acquires its ordinary current-use authority.
+  defp with_inspected_source(
+         %{session_id: id} = context,
+         %{"session_id" => id} = proof,
+         :historical,
+         fun
+       ) do
+    case context[:source_binding] do
+      {purpose, _, _} when purpose in [:snapshot, :inference] ->
+        StoredSources.with_verified(context, nil, [proof], fn [source] ->
+          fun.(source, :active_snapshot)
+        end)
+
+      _ ->
+        @error
+    end
+  end
+
+  defp with_inspected_source(context, proof, _lease_mode, fun) do
+    StoredSources.with_shareable_verified(context, proof, fn source, token ->
+      fun.(source, {:inactive, token})
+    end)
   end
 
   def with_dependencies(_context, [], fun) when is_function(fun, 1), do: fun.([])
@@ -268,6 +308,8 @@ defmodule Ipse.Session.ManagedUse do
   end
 
   defp with_dependencies_owned(context, dependencies, fun, journals) do
+    context = chat_source_context(context, journals)
+
     with {:ok, first} <-
            protected(context, dependencies, fn cap, catalog, _ ->
              observe(context, dependencies, cap, catalog, journals)
@@ -352,6 +394,8 @@ defmodule Ipse.Session.ManagedUse do
          {:ok, ^dependencies} <- ManagedReference.union([dependencies]),
          true <- bounded?(dependencies) and Enum.all?(dependencies, &bound?(&1, context)) do
       with_input_journals(context, dependencies, :worker, fn journals, journal_leases ->
+        context = chat_source_context(context, journals)
+
         with {:ok, first} <-
                protected(context, dependencies, fn cap, catalog, policy ->
                  with {:ok, observed} <- observe(context, dependencies, cap, catalog, journals),
@@ -446,6 +490,8 @@ defmodule Ipse.Session.ManagedUse do
          true <- bounded?(dependencies) and Enum.all?(dependencies, &bound?(&1, context)) do
       Resources.file_effect(fn ->
         with_input_journals(context, dependencies, purpose, fn journals, journal_leases ->
+          context = chat_source_context(context, journals)
+
           with {:ok, first} <-
                  protected(context, dependencies, fn cap, catalog, _ ->
                    observe(context, dependencies, cap, catalog, journals, purpose == :worker)
@@ -701,6 +747,120 @@ defmodule Ipse.Session.ManagedUse do
   end
 
   @doc false
+  def management_root_transition_observation(context, dependencies, %{
+        action: action,
+        handoff: handoff
+      }) do
+    pin = context.config[:semantic_admission]["pin"]
+    root = SemanticAdmission.collection_root(context.config[:home])
+    accepted = Enum.filter(dependencies, &(&1["version"] === 6))
+    capture_receipt = get_in(action, ["outcome", "value", "receipt"])
+    operation = action["operation_id"]
+    request = %{"op" => "snapshot"}
+
+    with {:ok, ^dependencies} <- ManagedReference.union([dependencies]),
+         true <- bounded?(dependencies) and Enum.all?(dependencies, &bound?(&1, context)),
+         true <- accepted != [],
+         true <- Ipse.Extension.Actions.valid_result?(action),
+         true <- Ipse.Extension.ManagedCollectionCall.new_capture?(action["request"]),
+         true <- Ipse.Extension.ManagedCollectionCall.bound_outcome?(action),
+         true <- action["outcome"]["status"] === "ok",
+         true <- Ipse.Session.ChatReviewHandoff.valid_event?(handoff),
+         true <- handoff["session_id"] === context.session_id do
+      with_accepted_journals(context, accepted, fn journals ->
+        context = chat_source_context(context, journals)
+
+        with [resolved] <-
+               journals
+               |> Map.values()
+               |> Enum.filter(&(get_in(&1, [:chat_handoff, "event"]) === handoff)),
+             true <-
+               Ipse.Session.ChatReviewHandoff.matches_facts?(
+                 resolved.chat_handoff,
+                 resolved.event["facts"]
+               ),
+             {:ok, result} <-
+               PendingAcceptance.committed_result(
+                 resolved.event,
+                 resolved.intent,
+                 resolved.result["normalized_request"],
+                 resolved.result["receipt"]
+               ),
+             true <- result === resolved.result,
+             receipt = result["receipt"],
+             true <-
+               capture_receipt["generation"] ===
+                 result["normalized_request"]["expected_generation"],
+             proof = resolved.event["facts"]["source_proof"],
+             true <- proof === handoff["source_proof"] do
+          StoredSources.with_verified(context, nil, [proof], fn [_source] ->
+            protected(context, accepted, fn cap, catalog, policy ->
+              checked_observation(
+                policy,
+                fn ->
+                  with {:ok, first} <- ObservedRead.read(root, pin["namespace"], request),
+                       {:ok, guard} <- ObservedRead.root_dependency(request, first, pin),
+                       true <-
+                         guard["collection"]["generation"] === receipt["generation"] and
+                           guard["collection"]["floor"] === receipt["floor"] and
+                           guard["collection"]["floor_anchor"] === resolved.intent["operation_id"],
+                       {:ok, inspected} <-
+                         Collection.execute(
+                           root,
+                           pin["namespace"],
+                           %{"op" => "inspect", "operation_id" => operation},
+                           Ipse.Usage.id()
+                         ),
+                       true <- inspected["operation"] === capture_receipt,
+                       true <-
+                         inspected["generation"] === receipt["generation"] and
+                           inspected["floor"] === receipt["floor"] and
+                           inspected["floor_anchor"] === resolved.intent["operation_id"],
+                       {:ok, observed} <- observe(context, accepted, cap, catalog, journals),
+                       true <-
+                         Enum.all?(Enum.zip(accepted, observed.current), fn {old, current} ->
+                           ManagedReference.current?(
+                             old,
+                             current,
+                             System.system_time(:millisecond)
+                           )
+                         end),
+                       {:ok, ^first} <- ObservedRead.read(root, pin["namespace"], request) do
+                    {:ok,
+                     %{
+                       observation: first,
+                       inspected: inspected,
+                       management: %{
+                         handoff: resolved.chat_handoff,
+                         event: resolved.event,
+                         intent: resolved.intent,
+                         result: resolved.result
+                       }
+                     }}
+                  else
+                    _ -> @error
+                  end
+                end,
+                &{:ok, &1}
+              )
+            end)
+          end)
+        else
+          _ -> @error
+        end
+      end)
+    else
+      _ -> @error
+    end
+  rescue
+    _ -> @error
+  catch
+    _, _ -> @error
+  end
+
+  def management_root_transition_observation(_, _, _), do: @error
+
+  @doc false
   def root_transition_observation(context, dependencies, action) do
     pin = context.config[:semantic_admission]["pin"]
     root = SemanticAdmission.collection_root(context.config[:home])
@@ -939,6 +1099,13 @@ defmodule Ipse.Session.ManagedUse do
   end
 
   defp with_input_journals(_, _, :display, fun), do: fun.(%{}, [])
+
+  defp chat_source_context(context, journals) do
+    handoffs =
+      journals |> Map.values() |> Enum.map(&Map.get(&1, :chat_handoff)) |> Enum.reject(&is_nil/1)
+
+    Map.put(context, :chat_review_handoffs, handoffs)
+  end
 
   defp accepted_links(context, dependencies) do
     accepted = Enum.filter(dependencies, &(&1["version"] === 6))

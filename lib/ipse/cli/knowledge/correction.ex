@@ -224,7 +224,8 @@ defmodule Ipse.CLI.Knowledge.Correction do
             "result" =>
               case result do
                 {:ok, packet} -> Map.delete(packet, "actual")
-                {_, reason} -> %{"reason" => inspect(reason)}
+                {:error, _} -> %{"reason" => "pending_correction_refused"}
+                _ -> %{"reason" => "pending_correction_unconfirmed"}
               end
           }
 

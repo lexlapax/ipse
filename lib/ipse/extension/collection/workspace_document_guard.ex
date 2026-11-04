@@ -326,12 +326,23 @@ defmodule Ipse.Extension.Collection.WorkspaceDocumentGuard do
   def run_document_effect(context, intent, fun) when is_function(fun, 0) do
     case context[:workspace_snapshot_reader] do
       %{pid: reader, token: token} ->
-        Ipse.Session.Resources.document_file_effect(fun, fn peer ->
-          GenServer.call(
-            context.owner,
-            {:extension_workspace_snapshot_register, context.job_ref, intent, reader, peer, token}
-          )
-        end)
+        Ipse.Session.Resources.document_file_effect(
+          fun,
+          fn peer ->
+            GenServer.call(
+              context.owner,
+              {:extension_workspace_snapshot_register, context.job_ref, intent, reader, peer,
+               token}
+            )
+          end,
+          fn peer ->
+            GenServer.call(
+              context.owner,
+              {:extension_workspace_snapshot_activate, context.job_ref, intent, reader, peer,
+               token}
+            )
+          end
+        )
 
       _ ->
         Ipse.Session.Resources.file_effect(fun)

@@ -1,0 +1,11 @@
+retained_original_full_saved=pass actual_cache_binding=pass
+constructed_transition_prefix_saved=pass original_messages_preserved=true full_record_union_preserved=true
+forged_transition_controls=3_refused projection_bytes=19932 original_journal_unchanged=true
+fixture_run=false app_native_model_effects=false failed_actual_not_relabelled=true
+    warning: unused alias ManagedReference
+    │
+  6 │ alias Ipse.Session.{ManagedLineage, ManagedReference}
+    │ ~
+    │
+    └─ _build/verification/ipse-chat-management-root-20261104-01/verify-retained.exs:6:1
+

@@ -1,0 +1,12 @@
+test_exit=2
+source_post=0
+runtime_post=0
+deps_post=0
+pathset_post=0
+links_post=0
+source_paths_post=0
+source_links_post=0
+git_post=0
+mix_metadata_type_post=0
+hex_archive_post=0
+original_top_level_and_new_output_bound_post=0
