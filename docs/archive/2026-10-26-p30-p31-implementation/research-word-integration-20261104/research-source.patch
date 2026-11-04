@@ -1,0 +1,1014 @@
+--- a/extensions/knowledge/src/profiles.ex
++++ b/extensions/knowledge/src/profiles.ex
+@@ -51,6 +51,9 @@
+         {"corpus", "mcp-semantic"} ->
+           @mcp ++ ~w(host.embedding host.model)
+ 
++        {"research", "state-retained"} ->
++          @state
++
+         {"research", "offline"} ->
+           []
+ 
+@@ -126,10 +129,20 @@
+   defp compatible?(package, preset, o, caps) do
+     allowed =
+       case package do
+-        "knowledge" -> []
+-        "corpus" -> ~w(stores retrieval embedding rerank)
+-        "research" -> ~w(search fetch retrieval rerank)
+-        "graph" -> ~w(stores extraction)
++        "knowledge" ->
++          []
++
++        "corpus" ->
++          ~w(stores retrieval embedding rerank)
++
++        "research" ->
++          if(preset == "state-retained",
++            do: ~w(stores search fetch retrieval rerank),
++            else: ~w(search fetch retrieval rerank)
++          )
++
++        "graph" ->
++          ~w(stores extraction)
+       end
+ 
+     empty_unused = Enum.all?(@families -- allowed, &(o[&1] == %{}))
+@@ -155,7 +168,8 @@
+           map_size(o["stores"]) > 0 and map_size(o["extraction"]) > 0
+ 
+         "research" ->
+-          map_size(o["search"]) > 0 and map_size(o["fetch"]) > 0 and map_size(o["retrieval"]) > 0
++          map_size(o["search"]) > 0 and map_size(o["fetch"]) > 0 and map_size(o["retrieval"]) > 0 and
++            (preset != "state-retained" or map_size(o["stores"]) > 0)
+       end
+ 
+     authority =
+@@ -164,7 +178,7 @@
+       end)
+ 
+     offline =
+-      preset != "offline" or
++      preset not in ~w(offline state-retained) or
+         (Enum.all?(o["search"], fn {_, p} -> p["kind"] == "provided" end) and
+            Enum.all?(o["fetch"], fn {_, p} -> p["kind"] == "provided" end))
+ 
+--- a/extensions/knowledge/src/research.ex
++++ b/extensions/knowledge/src/research.ex
+@@ -1,6 +1,6 @@
+ defmodule IpseKnowledge.Research do
+   @behaviour Ipse.Extension
+-  alias IpseKnowledge.{Adapters, Evidence, Profiles}
++  alias IpseKnowledge.{Adapters, Evidence, Profiles, Store}
+   @preset "offline"
+   @max_sources 10
+ 
+@@ -11,13 +11,15 @@
+       "exports" => %{
+         "version" => 1,
+         "services" => [],
+-        "commands" => [
+-          entry("investigate", "Explicit bounded source investigation", investigate_schema()),
+-          entry("ledger", "Inspect or assert a provided claim ledger", ledger_schema())
+-        ],
+-        "tools" => [
+-          entry("investigate", "Explicit bounded source investigation", investigate_schema())
+-        ]
++        "commands" =>
++          [
++            entry("investigate", "Explicit bounded source investigation", investigate_schema()),
++            entry("ledger", "Inspect or assert a provided claim ledger", ledger_schema())
++          ] ++ retention_exports(),
++        "tools" =>
++          [
++            entry("investigate", "Explicit bounded source investigation", investigate_schema())
++          ] ++ retention_exports()
+       }
+     }
+   end
+@@ -32,6 +34,13 @@
+   def handle("invoke.command", payload, state), do: invoke(payload, state)
+   def handle("invoke.tool", payload, state), do: invoke(payload, state)
+ 
++  def handle(
++        "host.actions",
++        %{"outcome" => outcome},
++        %{phase: :retain_write, cont: cont} = state
++      ),
++      do: advance(Store.resume(cont, outcome), state)
++
+   def handle("host.actions", %{"outcome" => outcome}, %{phase: phase, cont: cont} = state)
+       when phase != :idle do
+     advance(Adapters.resume(cont, outcome), state)
+@@ -41,8 +50,96 @@
+   defp invoke(_, %{invalid: code} = state), do: finish(state, refused(code))
+   defp invoke(%{"id" => "investigate", "arguments" => args}, state), do: investigate(args, state)
+   defp invoke(%{"id" => "ledger", "arguments" => args}, state), do: ledger(args, state)
++
++  defp invoke(%{"id" => "retain", "arguments" => args}, state) when @preset == "state-retained",
++    do: retain(args, state)
++
+   defp invoke(_, state), do: finish(state, refused(:invalid_invocation))
+ 
++  defp retention_exports do
++    if @preset == "state-retained",
++      do: [
++        entry(
++          "retain",
++          "Explicitly retain supplied unverified text and an exact quote in a shared State Corpus",
++          retain_schema()
++        )
++      ],
++      else: []
++  end
++
++  defp retain_schema do
++    %{
++      "type" => "object",
++      "additionalProperties" => false,
++      "required" => ~w(store source quote),
++      "properties" => %{
++        "store" => string(64),
++        "quote" => string(1024),
++        "source" => %{
++          "type" => "object",
++          "additionalProperties" => false,
++          "required" => ~w(source_id title text uri observed_at_ms event_at_ms expires_at_ms),
++          "properties" => %{
++            "source_id" => string(256),
++            "title" => string(128),
++            "text" => string(4096),
++            "uri" => string(512),
++            "observed_at_ms" => integer(0, Evidence.safe_integer_max()),
++            "event_at_ms" => %{
++              "type" => ["integer", "null"],
++              "minimum" => 0,
++              "maximum" => Evidence.safe_integer_max()
++            },
++            "expires_at_ms" => %{
++              "type" => ["integer", "null"],
++              "minimum" => 0,
++              "maximum" => Evidence.safe_integer_max()
++            }
++          }
++        }
++      }
++    }
++  end
++
++  defp retain(args, state) do
++    with true <- exact?(args, ~w(store source quote)),
++         source when is_map(source) <- args["source"],
++         true <-
++           exact?(source, ~w(source_id title text uri observed_at_ms event_at_ms expires_at_ms)),
++         true <- provided_source?(Map.put(source, "generation", 1)),
++         true <- byte_size(source["text"]) <= 4096 and text?(args["quote"], 1024),
++         {:ok, start, finish} <- Store.provided_quote_range(source["text"], args["quote"]),
++         {:ok, profile} <- Profiles.lookup(state.resolved, "stores", args["store"]) do
++      receipt = %{
++        "version" => 1,
++        "kind" => "research.provided_transfer",
++        "source_id" => source["source_id"],
++        "uri" => source["uri"],
++        "body_sha256" => Evidence.sha256(source["text"]),
++        "quote" => args["quote"],
++        "start_byte" => start,
++        "end_byte" => finish
++      }
++
++      put =
++        source
++        |> Map.put("source_id", Store.provided_transfer_id(source["text"]))
++        |> Map.merge(%{
++          "generation" => 1,
++          "expected_revision" => 0,
++          "provided_transfer" => receipt
++        })
++
++      advance(
++        Store.start(args["store"], profile, :put, put),
++        %{state | phase: :retain_write, ctx: %{source_id: put["source_id"], derivation: receipt}}
++      )
++    else
++      _ -> finish(state, refused(:invalid_provided_transfer))
++    end
++  end
++
+   defp investigate(args, state) do
+     with true <-
+            exact?(
+@@ -215,9 +312,30 @@
+       {:ok, %{"api_version" => 1, "kind" => "host_call", "request" => request},
+        %{state | cont: cont}}
+ 
++  defp advance({:stop, :unknown_effect}, %{phase: :retain_write}), do: {:stop, :unknown_effect}
+   defp advance({:stop, :unknown_effect}, state), do: finish(state, refused(:unknown_effect))
+   defp advance({:done, {:error, code, _}}, state), do: finish(state, refused(code))
+ 
++  defp advance({:done, {:ok, _}}, %{phase: :retain_write} = state) do
++    finish(
++      state,
++      output(
++        "ok",
++        [],
++        [],
++        [],
++        %{
++          "kind" => "provided_transfer",
++          "durable" => true,
++          "native_receipt" => false,
++          "source_id" => state.ctx.source_id,
++          "derivation" => state.ctx.derivation
++        },
++        nil
++      )
++    )
++  end
++
+   defp advance({:done, {:ok, found}}, %{phase: :search} = state) do
+     hits = found["hits"]
+ 
+--- a/extensions/knowledge/src/store.ex
++++ b/extensions/knowledge/src/store.ex
+@@ -25,6 +25,46 @@
+   @root_fields ~w(format kind partition source_key source_id generation state title uri observed_at_ms event_at_ms expires_at_ms origin content_sha256 content_ref chunks_ref projections draft)
+   @projection_limit 8
+ 
++  def provided_transfer_id(text) when is_binary(text),
++    do: "research.provided:" <> Evidence.sha256(text)
++
++  def provided_quote_range(text, quote)
++      when is_binary(text) and is_binary(quote) and byte_size(quote) > 0 do
++    case :binary.match(text, quote) do
++      {start, length} ->
++        scope = {start + 1, byte_size(text) - start - 1}
++
++        if :binary.match(text, quote, scope: scope) == :nomatch,
++          do: {:ok, start, start + length},
++          else: {:error, :ambiguous_quote}
++
++      :nomatch ->
++        {:error, :missing_quote}
++    end
++  end
++
++  defp provided_transfer?(args) do
++    receipt = args["provided_transfer"]
++    text = args["text"]
++
++    is_map(receipt) and
++      keys?(receipt, ~w(version kind source_id uri body_sha256 quote start_byte end_byte)) and
++      receipt["version"] == 1 and receipt["kind"] == "research.provided_transfer" and
++      is_binary(text) and String.valid?(text) and byte_size(text) in 1..4096 and
++      is_binary(receipt["source_id"]) and String.valid?(receipt["source_id"]) and
++      byte_size(receipt["source_id"]) in 1..256 and
++      is_binary(args["uri"]) and String.valid?(args["uri"]) and
++      byte_size(args["uri"]) in 1..512 and receipt["uri"] == args["uri"] and
++      receipt["body_sha256"] == Evidence.sha256(text) and
++      args["source_id"] == provided_transfer_id(text) and
++      args["generation"] == 1 and args["expected_revision"] == 0 and
++      not Map.has_key?(args, "historical_import") and not Map.has_key?(args, "document") and
++      is_binary(receipt["quote"]) and String.valid?(receipt["quote"]) and
++      byte_size(receipt["quote"]) in 1..1024 and
++      provided_quote_range(text, receipt["quote"]) ==
++        {:ok, receipt["start_byte"], receipt["end_byte"]}
++  end
++
+   def start(name, profile, operation, args) do
+     with true <- name?(name) and profile?(profile) and operation in @operations and is_map(args),
+          :ok <- arguments(operation, args) do
+@@ -2406,6 +2446,7 @@
+       cond do
+         imported -> %{"original_origin" => imported}
+         args["document"] -> Evidence.document_storage_receipt!(args["document"])
++        args["provided_transfer"] -> args["provided_transfer"]
+         true -> nil
+       end
+ 
+@@ -2984,7 +3025,7 @@
+     optional =
+       case operation do
+         :put ->
+-          ~w(historical_import document effects_used)
++          ~w(historical_import document effects_used provided_transfer)
+ 
+         :open ->
+           ~w(historical_import document document_text effects_used)
+@@ -3028,6 +3069,7 @@
+            (is_binary(args["text"]) and String.valid?(args["text"]) and
+               byte_size(args["text"]) <= if(operation == :put, do: 8192, else: 4096))) and
+         (not Map.has_key?(args, "offset") or Evidence.safe_uint?(args["offset"])) and
++        (not Map.has_key?(args, "provided_transfer") or provided_transfer?(args)) and
+         (not Map.has_key?(args, "historical_import") or
+            (is_map(args["historical_import"]) and
+               byte_size(json(args["historical_import"])) <= 2048)) and
+--- a/extensions/knowledge/spec.exs
++++ b/extensions/knowledge/spec.exs
+@@ -4,7 +4,7 @@
+     "knowledge" => ~w(native decision-shadow),
+     "corpus" =>
+       ~w(state-lexical state-documents state-dense state-rerank state-semantic mcp-lexical mcp-documents mcp-dense mcp-rerank mcp-semantic collection-documents collection-dense),
+-    "research" => ~w(offline mcp mcp-model),
++    "research" => ~w(offline state-retained mcp mcp-model),
+     "graph" => ~w(state-explicit state-model mcp-explicit mcp-model)
+   }
+   @modules %{
+--- /dev/null
++++ b/extensions/knowledge/options/research-state-retained.json
+@@ -0,0 +1,10 @@
++{
++  "version": 1,
++  "stores": {"notes": {"kind": "state", "scope": "project", "partition": "research-notes"}},
++  "search": {"given": {"kind": "provided", "version": 1}},
++  "fetch": {"given": {"kind": "provided", "version": 1}},
++  "retrieval": {"words": {"kind": "bm25", "version": 1}},
++  "embedding": {},
++  "rerank": {},
++  "extraction": {}
++}
+--- /dev/null
++++ b/test/extensions/knowledge/research_transfer_test.exs
+@@ -0,0 +1,74 @@
++defmodule Ipse.KnowledgeResearchTransferTest do
++  use ExUnit.Case, async: false
++  @root Path.expand("../../..", __DIR__)
++
++  setup_all do
++    root = Path.join(System.tmp_dir!(), "ipse-research-transfer-" <> Ipse.Usage.id())
++    File.mkdir!(root)
++    File.chmod!(root, 0o700)
++    artifact = Path.join(root, "artifact")
++
++    {output, status} =
++      System.cmd(
++        System.find_executable("elixir"),
++        [
++          "extensions/knowledge/build.exs",
++          "--sdk",
++          Application.app_dir(:ipse, "ebin"),
++          "--output",
++          artifact,
++          "--package",
++          "research",
++          "--preset",
++          "state-retained"
++        ], stderr_to_stdout: true, env: [{"ERL_FLAGS", "+S 1:1 +A 1"}])
++
++    assert status == 0, output
++    refute output =~ "warning:"
++    manifest = File.read!(Path.join(artifact, "extension.json"))
++    assert byte_size(manifest) <= 16_384
++    assert {:ok, _} = Ipse.Extension.Artifact.decode(manifest)
++    on_exit(fn -> File.rm_rf!(root) end)
++    %{root: root, artifact: artifact}
++  end
++
++  defp paths do
++    Enum.flat_map(Enum.reject(:code.get_path(), &(&1 == ~c".")), &["-pa", List.to_string(&1)])
++  end
++
++  test "provided-only transfer validates independent Store boundaries and Corpus suppression",
++       c do
++    {output, status} =
++      System.cmd(
++        System.find_executable("elixir"),
++        paths() ++
++          [
++            "-pa",
++            Path.join(c.artifact, "ebin"),
++            Path.join(@root, "test/support/research_transfer_pure.exs")
++          ], stderr_to_stdout: true, env: [{"ERL_FLAGS", "+S 1:1 +A 1"}])
++
++    assert status == 0, output
++    assert output =~ "8 passed"
++    refute Code.ensure_loaded?(IpseKnowledge.Research)
++    refute Code.ensure_loaded?(IpseKnowledge.Store)
++  end
++
++  @tag timeout: 60_000
++  test "ordinary approvals retain attributed text, share it with Corpus and preserve forgetting across Sessions",
++       c do
++    {output, status} =
++      System.cmd(
++        System.find_executable("elixir"),
++        paths() ++
++          [
++            Path.join(@root, "test/support/research_transfer_session.exs"),
++            Path.join(c.root, "journey"),
++            c.artifact
++          ], stderr_to_stdout: true, env: [{"ERL_FLAGS", "+S 1:1 +A 1"}])
++
++    assert status == 0, output
++    assert output =~ "ordinary_state_journey=pass"
++    refute Code.ensure_loaded?(IpseKnowledge.Research)
++  end
++end
+--- /dev/null
++++ b/test/support/research_transfer_pure.exs
+@@ -0,0 +1,333 @@
++ExUnit.start(autorun: false)
++Code.require_file("dev/fixtures/knowledge.exs", Path.expand("../..", __DIR__))
++Code.require_file("extensions/knowledge/src/corpus.ex", Path.expand("../..", __DIR__))
++
++defmodule ResearchTransferTest do
++  use ExUnit.Case, async: false
++  alias IpseKnowledge.{Research, Corpus, Store, Evidence, Profiles}
++  alias Ipse.Development.Fixtures.Knowledge, as: F
++  @root Path.expand("../..", __DIR__)
++  defp opts do
++    JSON.decode!(
++      File.read!(Path.join(@root, "extensions/knowledge/options/research-state-retained.json"))
++    )
++  end
++
++  defp source do
++    %{
++      "source_id" => "supplied:one",
++      "title" => "Release",
++      "text" => "Résumé 雪: Ada owns release after audit.",
++      "uri" => "https://example.invalid/provided",
++      "observed_at_ms" => 10,
++      "event_at_ms" => nil,
++      "expires_at_ms" => nil
++    }
++  end
++
++  defp args(source \\ source()),
++    do: %{"store" => "notes", "source" => source, "quote" => "Ada owns release after audit."}
++
++  defp start(module) do
++    options =
++      if module == Corpus,
++        do: opts() |> Map.put("search", %{}) |> Map.put("fetch", %{}),
++        else: opts()
++
++    {:ok, state} = module.init(options)
++    refute Map.has_key?(state, :invalid)
++    state
++  end
++
++  defp value(%Ipse.Extension.ResultPublication.Output{bytes: bytes}), do: JSON.decode!(bytes)
++  defp value(%{"kind" => "result", "value" => value}), do: value
++
++  defp run(module, {:ok, %{"kind" => "host_call", "request" => request}, state}, db) do
++    {outcome, db} = F.host(db, request)
++    run(module, module.handle("host.actions", %{"outcome" => outcome}, state), db)
++  end
++
++  defp run(_, {:ok, result, _}, db), do: {value(result), db}
++  defp run(_, {:stop, :unknown_effect}, db), do: {:unknown, db}
++
++  defp call(module, id, args, db),
++    do:
++      run(
++        module,
++        module.handle("invoke.command", %{"id" => id, "arguments" => args}, start(module)),
++        db
++      )
++
++  defp store_run({:call, request, cont}, db) do
++    {outcome, db} = F.host(db, request)
++    store_run(Store.resume(cont, outcome), db)
++  end
++
++  defp store_run(result, db), do: {result, db}
++
++  defp snapshot(db) do
++    {result, db} = store_run(Store.start("notes", opts()["stores"]["notes"], :snapshot, %{}), db)
++    assert {:done, {:ok, snapshot}} = result
++    {snapshot, db}
++  end
++
++  defp forged_put do
++    s = source()
++    [{offset, len}] = :binary.matches(s["text"], args()["quote"])
++
++    s
++    |> Map.put("source_id", Store.provided_transfer_id(s["text"]))
++    |> Map.merge(%{
++      "generation" => 1,
++      "expected_revision" => 0,
++      "provided_transfer" => %{
++        "version" => 1,
++        "kind" => "research.provided_transfer",
++        "source_id" => s["source_id"],
++        "uri" => s["uri"],
++        "body_sha256" => Evidence.sha256(s["text"]),
++        "quote" => args()["quote"],
++        "start_byte" => offset,
++        "end_byte" => offset + len
++      }
++    })
++  end
++
++  test "explicit provided transfer is queried with attribution and exact UTF8 derivation" do
++    {retained, db} = call(Research, "retain", args(), F.new("research-notes"))
++    assert retained["status"] == "ok"
++    {snapshot, db} = snapshot(db)
++    assert [source] = snapshot["sources"]
++    assert source["text"] == source()["text"]
++    assert source["origin"]["kind"] == "provided"
++    assert source["origin"]["historical"] == false
++    receipt = source["origin"]["receipt"]
++    assert receipt == retained["coverage"]["derivation"]
++    assert receipt["start_byte"] == byte_size("Résumé 雪: ")
++    assert receipt["end_byte"] == byte_size(source["text"])
++    assert receipt["body_sha256"] == Evidence.sha256(source["text"])
++
++    {query, _} =
++      call(
++        Corpus,
++        "query",
++        %{
++          "store" => "notes",
++          "retrieval" => "words",
++          "rerank" => nil,
++          "query" => "release",
++          "top_k" => 3,
++          "as_of_ms" => 20
++        },
++        db
++      )
++
++    assert query["status"] == "ok"
++    assert [candidate] = query["evidence"]
++    assert candidate["citation"]["origin"] == source["origin"]
++    assert String.contains?(candidate["citation"]["quote"], "Ada owns release")
++    assert Enum.all?(F.requests(db), &String.starts_with?(&1["op"], "state."))
++  end
++
++  test "Corpus forget blocks aliases, new worker states and changed selected quote in the same body" do
++    {retained, db} = call(Research, "retain", args(), F.new("research-notes"))
++    id = retained["coverage"]["source_id"]
++
++    {inspected, db} =
++      call(
++        Corpus,
++        "source",
++        %{"store" => "notes", "action" => "inspect", "args" => %{"source_id" => id}},
++        db
++      )
++
++    revision = inspected["coverage"]["revision"]
++    assert is_integer(revision)
++
++    {forgotten, db} =
++      call(
++        Corpus,
++        "source",
++        %{
++          "store" => "notes",
++          "action" => "forget",
++          "args" => %{"source_id" => id, "expected_revision" => revision}
++        },
++        db
++      )
++
++    assert forgotten["status"] == "ok"
++    records = F.records(db)
++
++    for alias <- [%{}, %{"source_id" => "renamed"}, %{"uri" => "https://other.invalid/alias"}] do
++      supplied = Map.merge(source(), alias)
++
++      for quote <- [args()["quote"], "Résumé 雪"] do
++        {refused, after_db} =
++          call(Research, "retain", Map.put(args(supplied), "quote", quote), db)
++
++        assert refused["status"] == "refused"
++        assert F.records(after_db) == records
++      end
++    end
++
++    {snapshot, _} = snapshot(db)
++    assert snapshot["sources"] == []
++  end
++
++  test "same body cannot silently rewrite attribution" do
++    {_, db} = call(Research, "retain", args(), F.new("research-notes"))
++
++    {refused, after_db} =
++      call(Research, "retain", args(Map.put(source(), "uri", "provided:other")), db)
++
++    assert refused["status"] == "refused"
++    assert F.records(after_db) == F.records(db)
++  end
++
++  test "Store independently rejects changed hash, offsets, quote ambiguity, identity and authority metadata before IO" do
++    put = forged_put()
++
++    invalid = [
++      put_in(put, ["provided_transfer", "body_sha256"], String.duplicate("0", 64)),
++      put_in(put, ["provided_transfer", "start_byte"], 0),
++      put_in(put, ["provided_transfer", "end_byte"], 0),
++      put_in(put, ["provided_transfer", "quote"], "missing"),
++      Map.put(put, "source_id", "caller-selected"),
++      Map.put(put, "generation", 2),
++      Map.put(put, "expected_revision", 1),
++      Map.put(put, "historical_import", %{}),
++      Map.put(put, "origin", %{"kind" => "fetched"}),
++      put_in(put, ["provided_transfer", "kind"], "fetch-v1"),
++      put_in(put, ["provided_transfer", "receipt"], %{}),
++      Map.put(put, "document", %{})
++    ]
++
++    for args <- invalid do
++      assert {:done, {:error, :invalid_store_arguments, _}} =
++               Store.start("notes", opts()["stores"]["notes"], :put, args)
++    end
++
++    text = "repeat repeat"
++
++    ambiguous =
++      put
++      |> Map.put("text", text)
++      |> Map.put("source_id", Store.provided_transfer_id(text))
++      |> put_in(["provided_transfer", "body_sha256"], Evidence.sha256(text))
++      |> put_in(["provided_transfer", "quote"], "repeat")
++      |> put_in(["provided_transfer", "start_byte"], 0)
++      |> put_in(["provided_transfer", "end_byte"], 6)
++
++    assert {:done, {:error, :invalid_store_arguments, _}} =
++             Store.start("notes", opts()["stores"]["notes"], :put, ambiguous)
++  end
++
++  test "Research closed input and ordinary Corpus put reject forwarded authority fields" do
++    for extra <- [
++          %{"source_id" => "target"},
++          %{"generation" => 2},
++          %{"expected_revision" => 9},
++          %{"origin" => %{"kind" => "fetched"}},
++          %{"receipt" => %{}},
++          %{"historical_import" => %{}}
++        ] do
++      {refused, db} = call(Research, "retain", Map.merge(args(), extra), F.new("research-notes"))
++      assert refused["status"] == "refused"
++      assert F.requests(db) == []
++
++      nested =
++        if Map.has_key?(extra, "source_id"), do: %{"target_source_id" => "target"}, else: extra
++
++      {refused, db} =
++        call(Research, "retain", args(Map.merge(source(), nested)), F.new("research-notes"))
++
++      assert refused["status"] == "refused"
++      assert F.requests(db) == []
++    end
++
++    {refused, db} =
++      call(
++        Corpus,
++        "source",
++        %{"store" => "notes", "action" => "put", "args" => forged_put()},
++        F.new("research-notes")
++      )
++
++    assert refused["status"] == "refused"
++    assert F.requests(db) == []
++  end
++
++  test "overlapping quote matches are ambiguous" do
++    assert {:error, :ambiguous_quote} = Store.provided_quote_range("aaa", "aa")
++
++    {result, db} =
++      call(
++        Research,
++        "retain",
++        args(Map.put(source(), "text", "aaa")) |> Map.put("quote", "aa"),
++        F.new("research-notes")
++      )
++
++    assert result["status"] == "refused"
++    assert F.requests(db) == []
++  end
++
++  test "preset keeps provided-only profiles and exposes only the existing State capabilities" do
++    assert Profiles.capabilities("research", "state-retained") ==
++             Profiles.capabilities("corpus", "state-lexical")
++
++    assert {:error, _} = Profiles.validate("research", "offline", opts())
++
++    assert {:error, _} =
++             Profiles.validate(
++               "research",
++               "state-retained",
++               put_in(opts(), ["fetch", "given"], %{
++                 "kind" => "mcp",
++                 "binding" => "web",
++                 "contract" => "fetch-v1"
++               })
++             )
++
++    assert {:error, _} =
++             Profiles.validate("research", "state-retained", Map.put(opts(), "stores", %{}))
++  end
++
++  test "an uncertain mutation remains unknown and is not retried" do
++    state = start(Research)
++
++    assert {:ok, %{"kind" => "host_call"}, _} =
++             Research.handle("invoke.command", %{"id" => "retain", "arguments" => args()}, state)
++
++    mutating = fn recur, result, db ->
++      {:ok, %{"kind" => "host_call", "request" => request}, state} = result
++
++      if request["op"] == "state.put" do
++        assert {:stop, :unknown_effect} =
++                 Research.handle(
++                   "host.actions",
++                   %{"outcome" => %{"status" => "unknown", "value" => %{}}},
++                   state
++                 )
++
++        db
++      else
++        {outcome, db} = F.host(db, request)
++        recur.(recur, Research.handle("host.actions", %{"outcome" => outcome}, state), db)
++      end
++    end
++
++    db =
++      mutating.(
++        mutating,
++        Research.handle("invoke.command", %{"id" => "retain", "arguments" => args()}, state),
++        F.new("research-notes")
++      )
++
++    assert F.records(db) == %{}
++  end
++end
++
++result = ExUnit.run()
++System.halt(if result.failures == 0, do: 0, else: 1)
+--- /dev/null
++++ b/test/support/research_transfer_session.exs
+@@ -0,0 +1,269 @@
++import ExUnit.Assertions
++alias Ipse.{Session, Journal}
++alias Ipse.Extension.{Artifact, Config, Registry}
++[root, research_artifact] = System.argv()
++:ok = Application.load(:ipse)
++runtime = Application.app_dir(:ipse)
++true = File.regular?(Path.join(runtime, "ebin/Elixir.Ipse.Extension.Bootstrap.beam"))
++true = File.regular?(Path.join(runtime, "priv/ipse-runner"))
++{:ok, app} = :application.get_key(:ipse, :modules)
++
++true =
++  Enum.all?(
++    app,
++    &File.regular?(
++      Path.join(
++        runtime,
++        "ebin/Elixir." <> (Atom.to_string(&1) |> String.replace_prefix("Elixir.", "")) <> ".beam"
++      )
++    )
++  )
++
++false = Code.ensure_loaded?(IpseKnowledge.Research)
++home = Path.join(root, "private/home")
++System.put_env("HOME", home)
++System.put_env("IPSE_HOME", Path.join(home, ".ipse"))
++{:ok, _} = Application.ensure_all_started(:ipse)
++home = Path.join(home, ".ipse")
++cwd = Path.join(root, "private/workspace")
++File.mkdir_p!(cwd)
++File.mkdir_p!(home)
++File.chmod!(home, 0o700)
++
++defmodule NoResearchModel do
++  def complete(_, _, _, _), do: raise("provided transfer attempted inference")
++end
++
++defmodule TransferJourney do
++  import ExUnit.Assertions
++  alias Ipse.Session
++
++  def command(pid, name, args, approvals \\ true) do
++    :ok = Session.invoke_export(pid, :command, name, args)
++    await(pid, approvals, 0, System.monotonic_time(:millisecond) + 20_000)
++  end
++
++  defp await(pid, allow, count, deadline) do
++    receive do
++      {:ipse, ^pid, {:approval, ref, "extension:state.put", proposed}} ->
++        assert :ok = Ipse.Extension.State.validate(proposed["request"])
++        assert proposed["request"]["scope"] == "project"
++        assert is_binary(proposed["artifact_sha256"])
++        :ok = Session.approve(pid, ref, allow)
++        await(pid, allow, count + 1, deadline)
++
++      {:ipse, ^pid, {:approval, _, _, _}} ->
++        flunk("unexpected non-State approval")
++
++      {:ipse, ^pid, {:done, :ok}} ->
++        assert %{"value" => result} = Session.info(pid).extension_result
++        {result, count}
++
++      {:ipse, ^pid, {:done, status}} ->
++        flunk("command failed public status #{status}")
++
++      {:ipse, ^pid, {:error, reason}} ->
++        flunk("command error class #{inspect(reason, limit: 3)}")
++
++      _ ->
++        await(pid, allow, count, deadline)
++    after
++      max(0, deadline - System.monotonic_time(:millisecond)) ->
++        flunk("bounded command did not settle")
++    end
++  end
++end
++
++artifacts =
++  for {instance, path} <- [
++        {"research", research_artifact},
++        {"corpus", Path.join(runtime, "priv/extension-bundles/corpus-state-documents")}
++      ],
++      into: %{} do
++    {:ok, artifact} = Artifact.import(path, Path.join(home, "extensions/artifacts"))
++    {instance, artifact}
++  end
++
++research_options =
++  JSON.decode!(
++    File.read!(
++      Path.expand("../../extensions/knowledge/options/research-state-retained.json", __DIR__)
++    )
++  )
++
++corpus_options = research_options |> Map.put("search", %{}) |> Map.put("fetch", %{})
++
++source = %{
++  scope: "operator",
++  path: Path.join(home, "fixture.json"),
++  data: %{
++    "extensions" =>
++      for {instance, artifact} <- artifacts do
++        %{
++          "instance" => instance,
++          "artifact" => artifact.digest,
++          "enabled" => true,
++          "options" => if(instance == "research", do: research_options, else: corpus_options),
++          "order" => 0,
++          "lifetime" => "session"
++        }
++      end,
++    "extension_trust" =>
++      for {instance, artifact} <- artifacts do
++        %{
++          "artifact" => artifact.digest,
++          "capabilities" => artifact.manifest["capabilities"],
++          "allow_project" => false,
++          "allow_children" => false,
++          "state_bindings" => [
++            %{
++              "version" => 1,
++              "instance" => instance,
++              "id" => "research-shared",
++              "scopes" => ["project"]
++            }
++          ]
++        }
++      end
++  }
++}
++
++{:ok, selected} = Config.resolve([source], [])
++{:ok, entries} = Registry.prepare(selected, home)
++
++config = %{
++  provider: :demo,
++  model: "synthetic",
++  provider_module: NoResearchModel,
++  home: home,
++  extensions: entries,
++  approval: :ask,
++  approval_origin: :interactive,
++  headless: false,
++  compact: false
++}
++
++options = [config: config, cwd: cwd, state_dir: Path.join(home, "sessions"), subscriber: self()]
++{:ok, pid} = DynamicSupervisor.start_child(Ipse.Sessions, {Session, options})
++id = Session.info(pid).id
++
++provided = %{
++  "source_id" => "external:provided",
++  "title" => "Release",
++  "text" => "Résumé 雪: Ada owns release after audit.",
++  "uri" => "https://example.invalid/provided",
++  "observed_at_ms" => 10,
++  "event_at_ms" => nil,
++  "expires_at_ms" => nil
++}
++
++args = %{"store" => "notes", "source" => provided, "quote" => "Ada owns release after audit."}
++
++try do
++  {denied, 1} = TransferJourney.command(pid, "ext__research__retain", args, false)
++  assert denied["status"] == "refused"
++
++  {query, 0} =
++    TransferJourney.command(pid, "ext__corpus__query", %{
++      "store" => "notes",
++      "retrieval" => "words",
++      "rerank" => nil,
++      "query" => "release",
++      "top_k" => 3,
++      "as_of_ms" => 20
++    })
++
++  assert query["evidence"] == []
++  {retained, approvals} = TransferJourney.command(pid, "ext__research__retain", args)
++  assert retained["status"] == "ok" and approvals > 0
++  target = "research.provided:" <> Ipse.JSON.sha256(provided["text"])
++  assert retained["coverage"]["source_id"] == target
++
++  query_args = %{
++    "store" => "notes",
++    "retrieval" => "words",
++    "rerank" => nil,
++    "query" => "release",
++    "top_k" => 3,
++    "as_of_ms" => 20
++  }
++
++  {query, 0} = TransferJourney.command(pid, "ext__corpus__query", query_args)
++  assert query["status"] == "ok"
++  assert [candidate] = query["evidence"]
++  origin = candidate["citation"]["origin"]
++  assert origin["kind"] == "provided" and origin["historical"] == false
++  assert origin["receipt"] == retained["coverage"]["derivation"]
++  assert origin["receipt"]["source_id"] == provided["source_id"]
++  assert origin["receipt"]["start_byte"] == byte_size("Résumé 雪: ")
++
++  {inspect, 0} =
++    TransferJourney.command(pid, "ext__corpus__source", %{
++      "store" => "notes",
++      "action" => "inspect",
++      "args" => %{"source_id" => target}
++    })
++
++  {forgotten, forget_approvals} =
++    TransferJourney.command(pid, "ext__corpus__source", %{
++      "store" => "notes",
++      "action" => "forget",
++      "args" => %{"source_id" => target, "expected_revision" => inspect["coverage"]["revision"]}
++    })
++
++  assert forgotten["status"] == "ok" and forget_approvals > 0
++  :ok = Session.close_confirmed(pid)
++  {:ok, fresh} = DynamicSupervisor.start_child(Ipse.Sessions, {Session, options})
++
++  try do
++    {refused, 0} =
++      TransferJourney.command(
++        fresh,
++        "ext__research__retain",
++        args
++        |> put_in(["source", "source_id"], "alias:other")
++        |> put_in(["source", "uri"], "provided:alias")
++        |> Map.put("quote", "Résumé 雪")
++      )
++
++    assert refused["status"] == "refused"
++    {empty, 0} = TransferJourney.command(fresh, "ext__corpus__query", query_args)
++    assert empty["evidence"] == []
++  after
++    :ok = Session.close_confirmed(fresh)
++  end
++
++  {:ok, events} = Journal.load(options[:state_dir], id)
++
++  intents =
++    Enum.with_index(events)
++    |> Enum.filter(fn {event, _} -> event["type"] == "extension_action_intent" end)
++
++  results =
++    Enum.with_index(events)
++    |> Enum.filter(fn {event, _} -> event["type"] == "extension_action_result" end)
++
++  for {result, result_index} <- results do
++    assert Enum.any?(intents, fn {intent, index} ->
++             index < result_index and intent["operation_id"] == result["operation_id"]
++           end)
++  end
++
++  refute Enum.any?(events, &(&1["type"] in ~w(request_intent mcp_action_intent)))
++  assert {:ok, _} = Ipse.Session.Saved.restore(events, id)
++  before = File.read!(Path.join(options[:state_dir], id <> ".jsonl"))
++
++  {:ok, resumed} =
++    DynamicSupervisor.start_child(Ipse.Sessions, {Session, Keyword.put(options, :id, id)})
++
++  :ok = Session.close_confirmed(resumed)
++  {:ok, after_events} = Journal.load(options[:state_dir], id)
++  assert Enum.count(after_events, &(&1["type"] == "extension_action_intent")) == length(intents)
++  assert String.starts_with?(File.read!(Path.join(options[:state_dir], id <> ".jsonl")), before)
++
++  IO.puts(
++    "ordinary_state_journey=pass denied_write_empty=true approved_transfer=true corpus_quote_origin=true forget_alias_fresh_session_blocked=true journal_before_effect=true saved_restore=true no_replay=true model_calls=0 tty_reads=0"
++  )
++after
++  if Process.alive?(pid), do: Session.close_confirmed(pid)
++end

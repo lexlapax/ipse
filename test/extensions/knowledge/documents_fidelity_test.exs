@@ -103,7 +103,7 @@ defmodule Ipse.KnowledgeDocumentsFidelityTest do
       assert result["status"]=="complete" and result["warnings"]==[]
       assert result["revision_policy"]=="insertions_included_deletions_excluded"
       assert result["visibility_policy"]=="bounded_style_and_direct_hidden_excluded"
-      assert result["extraction_version"]=="ipse-documents-v16"
+      assert result["extraction_version"]=="ipse-documents-v17"
     end
     for value <- ["false","0","off"] do
       {:ok,result}=D.extract(doc.("<w:p><w:r><w:rPr><w:vanish w:val=\"#{value}\"/></w:rPr><w:t>visible</w:t></w:r></w:p>"),"a.docx")
@@ -234,7 +234,7 @@ defmodule Ipse.KnowledgeDocumentsFidelityTest do
     body=list.(7,"First α")<>"<w:p>"<>run.("interlude")<>"</w:p>"<>list.(7,"Second β")<>list.(8,"Restart γ")<>list.(7,"Third δ")
     bytes=zip.([{"word/document.xml",xml.(body)},{"word/numbering.xml",numbering}])
     {:ok,result}=D.extract(bytes,"numbered.docx")
-    assert result["extraction_version"]=="ipse-documents-v16"
+    assert result["extraction_version"]=="ipse-documents-v17"
     assert result["status"]=="partial"
     assert Enum.map(result["segments"],& &1["text"])==["First α","interlude","Second β","Restart γ","Third δ"]
     [first,plain,second,restart,third]=result["segments"]
@@ -292,6 +292,19 @@ defmodule Ipse.KnowledgeDocumentsFidelityTest do
     assert E.valid_span?(packed_source,crossing)
     changed=put_in(crossing,["document","spans",Access.at(0),Access.at(8),"label"],"4.")
     refute E.valid_span?(packed_source,changed)
+
+    legacy16=put_in(packed,["document","extraction_version"],"ipse-documents-v16")
+    assert E.valid_document?(legacy16["document"],legacy16["text"])
+    legacy_receipt=E.document_storage_receipt!(legacy16["document"])
+    legacy_attrs=packed_attrs |> put_in(["origin","receipt"],legacy_receipt)
+    legacy_attrs=if legacy_receipt["version"]==4, do: Map.put(legacy_attrs,"document",legacy16["document"]), else: Map.delete(legacy_attrs,"document")
+    {:ok,legacy_source}=E.source(legacy_attrs)
+    {:ok,[legacy_chunk|_]}=E.chunks(legacy_source)
+    {:ok,legacy_crossing}=E.citation(legacy_source,legacy_chunk,0,byte_size(crossing_text))
+    assert legacy_crossing["document"]["extraction_version"]=="ipse-documents-v16"
+    assert List.last(legacy_crossing["document"]["span_fields"])=="numbering"
+    assert E.valid_span?(legacy_source,legacy_crossing)
+    refute E.valid_span?(legacy_source,put_in(legacy_crossing,["document","spans",Access.at(0),Access.at(8),"label"],"9."))
 
     table=fn content -> "<w:tbl><w:tr><w:tc>"<>content<>"</w:tc></w:tr></w:tbl>" end
     mixed_body="<w:p>"<>run.("Plain")<>"</w:p>"<>list.(7,"Numbered")<>
@@ -412,6 +425,84 @@ defmodule Ipse.KnowledgeDocumentsFidelityTest do
     ''')
   end
 
+  test "undefined selected paragraph and character styles preserve Unicode and exact citations" do
+    pure(~S'''
+    alias IpseKnowledge.Evidence, as: E
+    body="<w:p><w:pPr><w:pStyle w:val=\"Heading1\"/></w:pPr><w:r><w:rPr><w:rStyle w:val=\"MissingChar\"/></w:rPr><w:t>Résumé 雪 evidence.</w:t></w:r></w:p>"
+    bytes=doc.(body)
+    {:ok,result}=D.extract(bytes,"undefined.docx")
+    assert result["extraction_version"]=="ipse-documents-v17"
+    assert result["status"]=="complete" and result["warnings"]==[]
+    assert [%{"text"=>"Résumé 雪 evidence.","style"=>"Heading1"}]=result["segments"]
+    {:ok,payload}=D.source_payload(result)
+    {:ok,source}=E.source(%{"source_id"=>"undefined:styles","partition"=>"notes","generation"=>1,
+      "title"=>"Undefined references","text"=>payload["text"],"uri"=>"provided:undefined.docx",
+      "observed_at_ms"=>10,"event_at_ms"=>nil,"expires_at_ms"=>nil,
+      "origin"=>%{"kind"=>"provided","store_profile"=>"notes","partition_or_scope"=>"notes",
+        "receipt"=>E.document_storage_receipt!(payload["document"]),"historical"=>false}})
+    {:ok,[chunk]}=E.chunks(source)
+    {start,length}=:binary.match(payload["text"],"雪 evidence.")
+    {:ok,citation}=E.citation(source,chunk,start,start+length)
+    assert citation["quote"]=="雪 evidence."
+    assert citation["document"]["original_sha256"]==E.sha256(bytes)
+    assert citation["document"]["start_byte"]==byte_size("Résumé ")
+    assert citation["document"]["extraction_version"]=="ipse-documents-v17"
+    assert E.valid_span?(source,citation)
+    refute E.valid_span?(source,put_in(citation,["document","start_byte"],start+1))
+    ''')
+  end
+
+  test "undefined style references cannot reveal hidden defaults, paragraph styles or direct properties" do
+    pure(~S'''
+    style=fn type,id,body -> "<w:style w:type=\"#{type}\" w:styleId=\"#{id}\">#{body}</w:style>" end
+    hidden="<w:rPr><w:vanish/></w:rPr>"
+    unknown_run="<w:r><w:rPr><w:rStyle w:val=\"MissingChar\"/></w:rPr><w:t>secret</w:t></w:r>"
+    visible="<w:r><w:rPr><w:rStyle w:val=\"MissingChar\"/><w:vanish w:val=\"false\"/></w:rPr><w:t>visible café 雪</w:t></w:r>"
+    extract=fn styles,pstyle,runs ->
+      D.extract(zip.([{"word/styles.xml","<w:styles xmlns:w=\"#{word}\">#{styles}</w:styles>"},{"word/document.xml",xml.("<w:p><w:pPr><w:pStyle w:val=\"#{pstyle}\"/></w:pPr>"<>runs<>"</w:p>")}]),"hidden-undefined.docx")
+    end
+    defaults="<w:docDefaults><w:rPrDefault>#{hidden}</w:rPrDefault></w:docDefaults>"
+    for {styles,pstyle} <- [{defaults,"MissingParagraph"},{style.("paragraph","hidden",hidden),"hidden"}] do
+      {:ok,result}=extract.(styles,pstyle,unknown_run<>visible)
+      assert [%{"text"=>"visible café 雪"}]=result["segments"]
+      refute result["segments"] |> Enum.any?(&String.contains?(&1["text"],"secret"))
+    end
+    runs="<w:r><w:rPr><w:rStyle w:val=\"hidden\"/></w:rPr><w:t>secret</w:t></w:r>"<>run.("visible café 雪")
+    {:ok,result}=extract.(style.("character","hidden",hidden),"MissingParagraph",runs)
+    assert [%{"text"=>"visible café 雪"}]=result["segments"]
+    direct="<w:r><w:rPr><w:rStyle w:val=\"MissingChar\"/><w:vanish/></w:rPr><w:t>secret</w:t></w:r>"<>run.("visible café 雪")
+    {:ok,result}=extract.("","MissingParagraph",direct)
+    assert [%{"text"=>"visible café 雪"}]=result["segments"]
+    for value <- ["true","false"] do
+      default="<w:style w:type=\"paragraph\" w:default=\"1\" w:styleId=\"normal\"><w:rPr><w:vanish w:val=\"#{value}\"/></w:rPr></w:style>"
+      assert {:error,:unsupported_docx_style_visibility}=extract.(default,"MissingParagraph",visible)
+    end
+    harmless="<w:style w:type=\"paragraph\" w:default=\"1\" w:styleId=\"normal\"><w:name w:val=\"Normal\"/></w:style>"
+    assert {:ok,%{"segments"=>[%{"text"=>"visible café 雪"}]}}=extract.(harmless,"MissingParagraph",visible)
+    ''')
+  end
+
+  test "ignoring undefined selections never repairs malformed graphs or wrong style types" do
+    pure(~S'''
+    style=fn type,id,body -> "<w:style w:type=\"#{type}\" w:styleId=\"#{id}\">#{body}</w:style>" end
+    extract=fn styles,pstyle,rstyle ->
+      D.extract(zip.([{"word/styles.xml","<w:styles xmlns:w=\"#{word}\">#{styles}</w:styles>"},{"word/document.xml",xml.("<w:p><w:pPr><w:pStyle w:val=\"#{pstyle}\"/></w:pPr><w:r><w:rPr><w:rStyle w:val=\"#{rstyle}\"/></w:rPr><w:t>must not leak</w:t></w:r></w:p>")}]),"invalid-undefined.docx")
+    end
+    for styles <- [style.("paragraph","unused","<w:basedOn w:val=\"missing\"/>"),
+      style.("paragraph","unused","<w:basedOn w:val=\"unused\"/>"),
+      style.("paragraph","unused","<w:basedOn w:val=\"b\"/>")<>style.("character","b",""),
+      style.("paragraph","unused","")<>style.("paragraph","unused","")] do
+      assert {:error,:unsupported_docx_style_visibility}=extract.(styles,"MissingParagraph","MissingChar")
+    end
+    assert {:error,:unsupported_docx_style_visibility}=extract.(style.("character","known",""),"known","MissingChar")
+    assert {:error,:unsupported_docx_style_visibility}=extract.(style.("paragraph","known",""),"MissingParagraph","known")
+    linked=style.("paragraph","known","<w:link w:val=\"linked\"/>")<>style.("character","linked","")
+    assert {:error,:unsupported_docx_style_visibility}=extract.(linked,"known","MissingChar")
+    table="<w:tbl><w:tblPr><w:tblStyle w:val=\"MissingTable\"/></w:tblPr><w:tr><w:tc><w:p>"<>run.("table")<>"</w:p></w:tc></w:tr></w:tbl>"
+    assert {:error,:unsupported_docx_style_visibility}=D.extract(doc.(table),"unknown-table.docx")
+    ''')
+  end
+
   @tag :docx_table_style
   test "nonhidden table styles retain visible Unicode cells and independent table locators" do
     pure(~S'''
@@ -424,7 +515,7 @@ defmodule Ipse.KnowledgeDocumentsFidelityTest do
     assert Map.take(first["locator"],~w(kind table row cell))==%{"kind"=>"table_cell","table"=>1,"row"=>1,"cell"=>1}
     assert Map.take(second["locator"],~w(kind table row cell))==%{"kind"=>"table_cell","table"=>2,"row"=>1,"cell"=>1}
     assert result["status"]=="complete" and result["warnings"]==[]
-    assert result["extraction_version"]=="ipse-documents-v16"
+    assert result["extraction_version"]=="ipse-documents-v17"
     ''')
   end
 
@@ -476,7 +567,7 @@ defmodule Ipse.KnowledgeDocumentsFidelityTest do
     ] do
       assert {:error,:unsupported_docx_style_visibility}=extract.(styles,p)
     end
-    assert {:error,:unsupported_docx_style_visibility}=D.extract(doc.(p),"missing.docx")
+    assert {:ok,%{"segments"=>[%{"text"=>"never eligible","style"=>"a"}]}}=D.extract(doc.(p),"missing.docx")
     for body <- [
       "<w:p>"<>run.("already emitted")<>"<w:pPr><w:pStyle w:val=\"a\"/></w:pPr></w:p>",
       "<w:p><w:pPr><w:pStyle w:val=\"a\"/><w:pStyle w:val=\"a\"/></w:pPr>"<>run.("duplicate")<>"</w:p>",
@@ -680,7 +771,7 @@ defmodule Ipse.KnowledgeDocumentsFidelityTest do
       {start,count}=:binary.match(payload["text"],quote)
       chunk=Enum.find(chunks,&(start >= &1["start_byte"] and start+count <= &1["end_byte"]))
       {:ok,citation}=E.citation(source,chunk,start,start+count)
-      assert citation["document"]["extraction_version"]=="ipse-documents-v16"
+      assert citation["document"]["extraction_version"]=="ipse-documents-v17"
       assert citation["document"]["locator"]["reference_site"]["byte_offset"]==5
       assert E.valid_span?(source,citation)
       refute E.valid_span?(source,put_in(citation,["document","locator","reference_site","byte_offset"],4))

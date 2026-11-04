@@ -761,7 +761,7 @@ defmodule Ipse.KnowledgeDocumentAcquisitionSessionTest do
     [hit] = result["evidence"]
     citation = hit["citation"]
     assert citation["document"]["original_sha256"] == JSON.sha256(bytes)
-    assert citation["document"]["extraction_version"] == "ipse-documents-v16"
+    assert citation["document"]["extraction_version"] == "ipse-documents-v17"
 
     assert citation["quote"] ==
              binary_part(
@@ -839,7 +839,7 @@ defmodule Ipse.KnowledgeDocumentAcquisitionSessionTest do
       citation = hit["citation"]
       assert citation["quote"] =~ "orbitalneedle"
       assert citation["document"]["original_sha256"] == JSON.sha256(bytes)
-      assert citation["document"]["extraction_version"] == "ipse-documents-v16"
+      assert citation["document"]["extraction_version"] == "ipse-documents-v17"
 
       if citation["document"]["version"] == 2 do
         assert Enum.any?(citation["document"]["spans"], fn
@@ -902,7 +902,7 @@ defmodule Ipse.KnowledgeDocumentAcquisitionSessionTest do
       refute citation["quote"] =~ "42."
       doc = citation["document"]
       assert doc["original_sha256"] == JSON.sha256(bytes)
-      assert doc["extraction_version"] == "ipse-documents-v16"
+      assert doc["extraction_version"] == "ipse-documents-v17"
 
       if doc["version"] == 2 do
         assert Enum.any?(doc["spans"], fn
@@ -1022,7 +1022,7 @@ defmodule Ipse.KnowledgeDocumentAcquisitionSessionTest do
           citation = hit["citation"]
           assert citation["quote"] == text
           assert citation["document"]["status"] == "complete"
-          assert citation["document"]["extraction_version"] == "ipse-documents-v16"
+          assert citation["document"]["extraction_version"] == "ipse-documents-v17"
           assert citation["document"]["original_sha256"] == JSON.sha256(bytes)
           locator = citation["document"]["locator"]
           assert locator["part"] == "word/#{part}.xml"
@@ -1138,7 +1138,7 @@ defmodule Ipse.KnowledgeDocumentAcquisitionSessionTest do
       citation = hit["citation"]
       assert citation["quote"] == text
       assert citation["document"]["original_sha256"] == JSON.sha256(bytes)
-      assert citation["document"]["extraction_version"] == "ipse-documents-v16"
+      assert citation["document"]["extraction_version"] == "ipse-documents-v17"
 
       assert citation["document"]["locator"] == %{
                "kind" => "table_cell",
@@ -2314,7 +2314,7 @@ defmodule Ipse.KnowledgeDocumentAcquisitionSessionTest do
       assert citation["document"]["end_byte"] === byte_size(quote)
       assert citation["content_sha256"] === JSON.sha256(fixture.text)
       assert citation["document"]["original_sha256"] === JSON.sha256(fixture.bytes)
-      assert citation["document"]["extraction_version"] === "ipse-documents-v16"
+      assert citation["document"]["extraction_version"] === "ipse-documents-v17"
       assert get_in(citation, ["document", "locator", "paragraph"]) === paragraph
       citation
     end)

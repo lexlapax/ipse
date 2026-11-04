@@ -1,6 +1,6 @@
 defmodule IpseKnowledge.Research do
   @behaviour Ipse.Extension
-  alias IpseKnowledge.{Adapters, Evidence, Profiles}
+  alias IpseKnowledge.{Adapters, Evidence, Profiles, Store}
   @preset "offline"
   @max_sources 10
 
@@ -11,13 +11,15 @@ defmodule IpseKnowledge.Research do
       "exports" => %{
         "version" => 1,
         "services" => [],
-        "commands" => [
-          entry("investigate", "Explicit bounded source investigation", investigate_schema()),
-          entry("ledger", "Inspect or assert a provided claim ledger", ledger_schema())
-        ],
-        "tools" => [
-          entry("investigate", "Explicit bounded source investigation", investigate_schema())
-        ]
+        "commands" =>
+          [
+            entry("investigate", "Explicit bounded source investigation", investigate_schema()),
+            entry("ledger", "Inspect or assert a provided claim ledger", ledger_schema())
+          ] ++ retention_exports(),
+        "tools" =>
+          [
+            entry("investigate", "Explicit bounded source investigation", investigate_schema())
+          ] ++ retention_exports()
       }
     }
   end
@@ -32,6 +34,13 @@ defmodule IpseKnowledge.Research do
   def handle("invoke.command", payload, state), do: invoke(payload, state)
   def handle("invoke.tool", payload, state), do: invoke(payload, state)
 
+  def handle(
+        "host.actions",
+        %{"outcome" => outcome},
+        %{phase: :retain_write, cont: cont} = state
+      ),
+      do: advance(Store.resume(cont, outcome), state)
+
   def handle("host.actions", %{"outcome" => outcome}, %{phase: phase, cont: cont} = state)
       when phase != :idle do
     advance(Adapters.resume(cont, outcome), state)
@@ -41,7 +50,95 @@ defmodule IpseKnowledge.Research do
   defp invoke(_, %{invalid: code} = state), do: finish(state, refused(code))
   defp invoke(%{"id" => "investigate", "arguments" => args}, state), do: investigate(args, state)
   defp invoke(%{"id" => "ledger", "arguments" => args}, state), do: ledger(args, state)
+
+  defp invoke(%{"id" => "retain", "arguments" => args}, state) when @preset == "state-retained",
+    do: retain(args, state)
+
   defp invoke(_, state), do: finish(state, refused(:invalid_invocation))
+
+  defp retention_exports do
+    if @preset == "state-retained",
+      do: [
+        entry(
+          "retain",
+          "Explicitly retain supplied unverified text and an exact quote in a shared State Corpus",
+          retain_schema()
+        )
+      ],
+      else: []
+  end
+
+  defp retain_schema do
+    %{
+      "type" => "object",
+      "additionalProperties" => false,
+      "required" => ~w(store source quote),
+      "properties" => %{
+        "store" => string(64),
+        "quote" => string(1024),
+        "source" => %{
+          "type" => "object",
+          "additionalProperties" => false,
+          "required" => ~w(source_id title text uri observed_at_ms event_at_ms expires_at_ms),
+          "properties" => %{
+            "source_id" => string(256),
+            "title" => string(128),
+            "text" => string(4096),
+            "uri" => string(512),
+            "observed_at_ms" => integer(0, Evidence.safe_integer_max()),
+            "event_at_ms" => %{
+              "type" => ["integer", "null"],
+              "minimum" => 0,
+              "maximum" => Evidence.safe_integer_max()
+            },
+            "expires_at_ms" => %{
+              "type" => ["integer", "null"],
+              "minimum" => 0,
+              "maximum" => Evidence.safe_integer_max()
+            }
+          }
+        }
+      }
+    }
+  end
+
+  defp retain(args, state) do
+    with true <- exact?(args, ~w(store source quote)),
+         source when is_map(source) <- args["source"],
+         true <-
+           exact?(source, ~w(source_id title text uri observed_at_ms event_at_ms expires_at_ms)),
+         true <- provided_source?(Map.put(source, "generation", 1)),
+         true <- byte_size(source["text"]) <= 4096 and text?(args["quote"], 1024),
+         {:ok, start, finish} <- Store.provided_quote_range(source["text"], args["quote"]),
+         {:ok, profile} <- Profiles.lookup(state.resolved, "stores", args["store"]) do
+      receipt = %{
+        "version" => 1,
+        "kind" => "research.provided_transfer",
+        "source_id" => source["source_id"],
+        "uri" => source["uri"],
+        "body_sha256" => Evidence.sha256(source["text"]),
+        "quote" => args["quote"],
+        "start_byte" => start,
+        "end_byte" => finish
+      }
+
+      put =
+        source
+        |> Map.put("source_id", Store.provided_transfer_id(source["text"]))
+        |> Map.merge(%{
+          "generation" => 1,
+          "expected_revision" => 0,
+          "provided_transfer" => receipt
+        })
+
+      advance(
+        Store.start(args["store"], profile, :put, put),
+        %{state | phase: :retain_write, ctx: %{source_id: put["source_id"], derivation: receipt}}
+      )
+    else
+      _ -> finish(state, refused(:invalid_provided_transfer))
+    end
+  end
 
   defp investigate(args, state) do
     with true <-
@@ -215,8 +312,29 @@ defmodule IpseKnowledge.Research do
       {:ok, %{"api_version" => 1, "kind" => "host_call", "request" => request},
        %{state | cont: cont}}
 
+  defp advance({:stop, :unknown_effect}, %{phase: :retain_write}), do: {:stop, :unknown_effect}
   defp advance({:stop, :unknown_effect}, state), do: finish(state, refused(:unknown_effect))
   defp advance({:done, {:error, code, _}}, state), do: finish(state, refused(code))
+
+  defp advance({:done, {:ok, _}}, %{phase: :retain_write} = state) do
+    finish(
+      state,
+      output(
+        "ok",
+        [],
+        [],
+        [],
+        %{
+          "kind" => "provided_transfer",
+          "durable" => true,
+          "native_receipt" => false,
+          "source_id" => state.ctx.source_id,
+          "derivation" => state.ctx.derivation
+        },
+        nil
+      )
+    )
+  end
 
   defp advance({:done, {:ok, found}}, %{phase: :search} = state) do
     hits = found["hits"]

@@ -10,6 +10,7 @@ authenticity, or semantic support.
 | Ask the main agent to investigate and synthesize | Native `$research` workflow, recorded source/claim ledger |
 | Rank supplied text without a model or service | Offline Research extension, structured result |
 | Investigate through selected search/fetch tools | MCP Research extension, structured result and call receipts |
+| Explicitly retain supplied text for later Corpus questions | [Provided-only Research transfer](#retain-supplied-evidence-in-a-shared-corpus) |
 | Keep sources for later questions or traverse retained relationships | [Corpus](corpus.md) or [Graph](graph.md) |
 
 The extension's caller-provided ledger and saved results are separate from the
@@ -175,6 +176,123 @@ positions in this result's evidence array. One passage normally gives `[0]`.
 No usable match returns abstain. Case-insensitive matching retains original UTF8
 quote coordinates. Nearby conditions may fit; distant qualifications may lie
 outside chunk/quote bounds. Inspect full source when needed.
+
+## Retain supplied evidence in a shared Corpus
+
+Use the optional `state-retained` Research preset when you want to keep supplied
+text for later Corpus queries. It accepts provided data, not native research
+ledger records or fetch receipts. A URL remains attribution; this route does not
+fetch or authenticate it. The offline and MCP presets do not offer `retain`.
+
+This source-build exercise needs the supported Elixir/OTP toolchain and a built
+checkout. It uses a fresh private home/workspace, ordinary State approvals and
+direct commands with the credential-free demo provider. It does not qualify
+mixing these outputs with managed notes or model tool context.
+
+Build the two reviewed artifacts and generate matching options/configurations:
+
+```sh
+umask 077
+./dev/build.sh
+IPSE_RETAIN_ARTIFACTS=$(mktemp -d)
+IPSE_RETAIN_HOME=$(mktemp -d)
+IPSE_RETAIN_WORKSPACE=$(mktemp -d)
+elixir extensions/knowledge/build.exs \
+  --sdk _build/dev/lib/ipse/ebin \
+  --output "$IPSE_RETAIN_ARTIFACTS/research" \
+  --package research --preset state-retained
+elixir extensions/knowledge/build.exs \
+  --sdk _build/dev/lib/ipse/ebin \
+  --output "$IPSE_RETAIN_ARTIFACTS/corpus" \
+  --package corpus --preset state-lexical
+elixir -e '[input, output] = System.argv(); options = JSON.decode!(File.read!(input)); options = options |> Map.put("search", %{}) |> Map.put("fetch", %{}); File.write!(output, JSON.encode!(options), [:exclusive])' \
+  extensions/knowledge/options/research-state-retained.json \
+  "$IPSE_RETAIN_ARTIFACTS/corpus-options.json"
+elixir extensions/knowledge/config.exs \
+  --artifact "$IPSE_RETAIN_ARTIFACTS/research" \
+  --package research --preset state-retained --instance research \
+  --options extensions/knowledge/options/research-state-retained.json \
+  --state-binding research-shared \
+  --output "$IPSE_RETAIN_ARTIFACTS/research.json"
+elixir extensions/knowledge/config.exs \
+  --artifact "$IPSE_RETAIN_ARTIFACTS/corpus" \
+  --package corpus --preset state-lexical --instance corpus \
+  --options "$IPSE_RETAIN_ARTIFACTS/corpus-options.json" \
+  --state-binding research-shared \
+  --output "$IPSE_RETAIN_ARTIFACTS/corpus.json"
+elixir -e '[research, corpus, output] = System.argv(); left = JSON.decode!(File.read!(research)); right = JSON.decode!(File.read!(corpus)); config = %{"version" => 1, "extensions" => left["extensions"] ++ right["extensions"], "extension_trust" => left["extension_trust"] ++ right["extension_trust"]}; File.write!(output, JSON.encode!(config), [:exclusive])' \
+  "$IPSE_RETAIN_ARTIFACTS/research.json" \
+  "$IPSE_RETAIN_ARTIFACTS/corpus.json" \
+  "$IPSE_RETAIN_ARTIFACTS/operator.json"
+IPSE_HOME="$IPSE_RETAIN_HOME" ./bin/ipse extension import "$IPSE_RETAIN_ARTIFACTS/research"
+IPSE_HOME="$IPSE_RETAIN_HOME" ./bin/ipse extension import "$IPSE_RETAIN_ARTIFACTS/corpus"
+```
+
+Inspect each printed digest with `IPSE_HOME="$IPSE_RETAIN_HOME" ./bin/ipse
+extension inspect DIGEST`. Review the source, complete manifest and generated
+operator file before enabling either instance. Import and inspection do not run
+the worker. The generated trust covers the artifacts' exact capabilities;
+instances remain disabled until selected. This preset adds State access, not
+network, model or MCP capability, and does not use saved knowledge consent.
+
+Both instances explicitly select the same logical binding `research-shared`,
+project scope and `research-notes` partition. They must also use the same home
+and workspace. Matching the `notes` profile alias alone does not share data.
+
+```sh
+IPSE_HOME="$IPSE_RETAIN_HOME" ./bin/ipse config \
+  --config "$IPSE_RETAIN_ARTIFACTS/operator.json" --no-project-config \
+  --extension research --extension corpus
+IPSE_HOME="$IPSE_RETAIN_HOME" ./bin/ipse chat --provider demo \
+  --config "$IPSE_RETAIN_ARTIFACTS/operator.json" --no-project-config \
+  --extension research --extension corpus --cwd "$IPSE_RETAIN_WORKSPACE"
+```
+
+Run these direct commands one at a time, waiting for `Finished.`:
+
+```text
+/ext ext__research__retain {"store":"notes","source":{"source_id":"manual:release","title":"Release policy","text":"Release requires quiescence.","uri":"local:release-policy","observed_at_ms":1700000000000,"event_at_ms":null,"expires_at_ms":null},"quote":"Release requires quiescence."}
+/ext ext__corpus__query {"store":"notes","retrieval":"words","rerank":null,"query":"quiescence","top_k":3,"as_of_ms":1700000000000}
+```
+
+Review the ordinary `extension:state.put` approvals, including the full proposed
+arguments. Denial before the first write leaves this source absent. On success,
+Research returns `coverage.source_id` and structured derivation. Corpus returns
+the original text with a provided-origin citation, original body hash and exact
+selected quote offsets. Supplied ID, URI and observation time remain unverified;
+the result proves no native fetch, historical existence or source truth.
+
+The destination ID is derived from the complete body. For this literal example
+it is `research.provided:abbba53d88fbef3ff61fa825de40691302cb2837fefec6b4701c41ec69ff5010`.
+Inspect it before forgetting:
+
+```text
+/ext ext__corpus__source {"store":"notes","action":"inspect","args":{"source_id":"research.provided:abbba53d88fbef3ff61fa825de40691302cb2837fefec6b4701c41ec69ff5010"}}
+```
+
+The fresh small-source example publishes root revision 2. Confirm
+`coverage.revision`; if it differs, use the returned revision in the next command:
+
+```text
+/ext ext__corpus__source {"store":"notes","action":"forget","args":{"source_id":"research.provided:abbba53d88fbef3ff61fa825de40691302cb2837fefec6b4701c41ec69ff5010","expected_revision":2}}
+/ext ext__corpus__query {"store":"notes","retrieval":"words","rerank":null,"query":"quiescence","top_k":3,"as_of_ms":1700000000000}
+```
+
+Approve the forget mutation. Later queries exclude the body. Retrying its transfer
+under a new supplied ID, URI, quote or fresh Session cannot restore it in this
+shared namespace. Earlier saved results and provider disclosures remain; forgetting
+does not erase history. Changed bodies and fetched-source derivatives are outside
+this provided-only suppression rule.
+
+The full original body is limited to 4,096 UTF-8 bytes and the selected quote to
+1,024 bytes. The quote must occur exactly once, including overlapping matches.
+Aggregate SDK and Store bounds also apply; field maxima are not additive.
+Callers cannot choose the destination ID, generation or revision, import a fetch
+receipt, or supply a historical origin. A repeated retained body conflicts rather
+than silently replacing its attribution. Inspect the existing source before
+deciding on new work. If a write is uncertain, preserve the original journal,
+home, workspace and configuration and follow [recovery](recovery.md); do not
+automatically repeat it or treat an unknown result as a known cancellation.
 
 ## Bound an investigation and read the complete result
 

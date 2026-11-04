@@ -4,7 +4,7 @@ defmodule IpseKnowledge.BuildSpec do
     "knowledge" => ~w(native decision-shadow),
     "corpus" =>
       ~w(state-lexical state-documents state-dense state-rerank state-semantic mcp-lexical mcp-documents mcp-dense mcp-rerank mcp-semantic collection-documents collection-dense),
-    "research" => ~w(offline mcp mcp-model),
+    "research" => ~w(offline state-retained mcp mcp-model),
     "graph" => ~w(state-explicit state-model mcp-explicit mcp-model)
   }
   @modules %{

@@ -27,7 +27,8 @@ options cannot promote lexical State code into semantic or MCP authority. All
 Knowledge presets declare SDK 2 and complete-result permission. Builder/generator
 check exact declarations before grants. Import, trust, and activation remain separate.
 Corpus uses store/retrieval/embedding/rerank families; Graph uses stores/extraction,
-with empty retrieval registry; Research uses search/fetch/BM25/optional rerank.
+with empty retrieval registry; Research uses search/fetch/BM25/optional rerank; its opt-in `state-retained`
+preset additionally selects State storage for explicit provided-text retention.
 Reject unused/incompatible profiles before generating permissions. A syntactically
 valid dense/graph/hybrid/remote-query profile is still invalid for Research.
 
@@ -637,7 +638,9 @@ and project/operator persistent Memory with each package, in distinct logical
 bindings. Disabled/enabled idle/resume counters remain zero for workers, State,
 MCP, embedding, and text work. Actual commands provide positive controls.
 Same source IDs do not turn notes into retained evidence or vice versa. Forgetting
-one store preserves the other's content. Research owns no retained knowledge store.
+one store preserves the other's content. This exercise selects offline Research, which owns no retained knowledge store.
+The separate `state-retained` preset shares a store only through explicit
+operator-selected State bindings, scope and partition.
 
 Inspect actual namespace-relative filenames/hashes: Research+Memory has one State
 file; Corpus/Graph+Memory have two. Empty inventory proves no inert-resume claim.
@@ -774,11 +777,11 @@ compact receipt version 4, retaining exact manifest hash/byte count, segment and
 warning counts, origin and one immutable manifest-head reference. Storage paging
 does not change the extraction recipe.
 
-For recipes v14 through v16, an extraction with more than 32 blocks can pack adjacent
+For recipes v14 through v17, an extraction with more than 32 blocks can pack adjacent
 plain paragraphs and table cells from one part into groups. Each group contains at most
 64 original blocks and fits the selected chunk-byte bound. Its `block_group`
 locator stores compact rows `[paragraph, text_bytes]` or
-`[paragraph, text_bytes, table, row, cell]`. V16 rows may append a `numbering` map
+`[paragraph, text_bytes, table, row, cell]`. V16 and v17 rows may append a `numbering` map
 after the optional table coordinates. Original paragraph numbers may have
 gaps; they must increase within the group. Other locator fields, such as annotation
 anchors or header regions, prevent grouping. The complete text keeps the same
@@ -829,7 +832,7 @@ retains the original single locator and local byte range. A quotation crossing
 packed blocks uses version 2, one `part` and compact `spans` rows. `span_fields`
 names their columns: paragraph, local start/end, quotation start/end, then
 table/row/cell coordinates. V14 and v15 rows contain five values for paragraphs
-and eight for table cells. V16 rows have nine fixed positions: the first five,
+and eight for table cells. V16 and v17 rows have nine fixed positions: the first five,
 nullable table/row/cell coordinates and nullable numbering metadata. Quotation
 offsets retain the newline gaps between original blocks.
 
@@ -941,6 +944,14 @@ package authority, bounds ZIP expansion and XML parsing, includes insertions, an
 excludes deletions and supported hidden runs. Unsupported content stays partial
 or refuses rather than claiming complete coverage.
 
+An undefined selected `pStyle` or `rStyle` contributes no paragraph or
+character style. This does not repair a missing inheritance parent or an invalid
+style graph. Document defaults, valid styles and direct run properties still
+govern hidden text. Undefined explicit paragraph references combined with a
+visibility-bearing default paragraph style refuse until that interaction is
+qualified; omission of `pStyle` keeps the existing default policy. The segment
+`style` value is the raw declared reference, not proof of an applied heading.
+
 A table's direct `tblPr/tblStyle` reference uses the same bounded style graph
 as paragraph and character references, with an exact table-style type check.
 Only table graphs without hidden-text properties are supported. The parser
@@ -949,7 +960,7 @@ duplicate references and references after row content. Each table tracks its
 own selection, while its cell locators retain their original table/row/cell
 identity. Ambiguous visibility remains outside the supported subset.
 
-For directly numbered body paragraphs, v16 separately derives list locators from
+For directly numbered body paragraphs, v16 and v17 derive list locators from
 the internal `numbering.xml` relationship and matching content type. The supported
 graph has explicit `singleLevel`, level zero, decimal format, start and a bounded
 template containing one `%1`; an optional level-zero start override sets the
@@ -960,7 +971,7 @@ and `suffix`. For example, template `%1.` with ordinal 3 produces `3.`, but that
 label is not prepended to the source paragraph or its quote. Compact group rows
 append the map after any table coordinates. V2 multi-block citation spans instead
 use fixed table, row, cell and numbering positions, with `null` for absent fields;
-v16 `span_fields` names each position. Evidence validates its shape and
+the `span_fields` list names each position. Evidence validates its shape and
 the label's derivation, then reconstructs the citation from the authenticated source
 record rather than trusting a submitted map.
 
@@ -1018,13 +1029,13 @@ relationship still refuses; this does not implement general Word text effects.
 Both parts count toward the aggregate expanded-byte bound.
 
 Recipes are format-specific: `Documents.version("docx")` is
-`ipse-documents-v16`, while text, Markdown and PDF use `ipse-documents-v2`.
+`ipse-documents-v17`, while text, Markdown and PDF use `ipse-documents-v2`.
 The legacy `version/0` returns the v2 value; use `version/1` when binding an
 extraction to a source version. Earlier DOCX results are not automatically
-migrated or equivalent. V14 and v15 packed receipts and citations retain their
+migrated or equivalent. V14, v15 and v16 packed receipts and citations retain their
 original recipes and remain readable; v16 extends the bounded block-map geometry
-with the separate numbering map. A
-future recipe cannot inherit that geometry without explicit validation support.
+with the separate numbering map. V17 retains that geometry and changes only
+undefined selected paragraph/character style handling. A future recipe cannot inherit that geometry without explicit validation support.
 Future indexing must explicitly rebuild or requalify older extraction results.
 The optional PDF backend requires a separately host-admitted protected parser;
 its installation does not activate PDF acquisition. The
@@ -1082,7 +1093,7 @@ objects. Use Elixir `JSON.encode!/decode!`, not raw Erlang encoding: binary sizi
 and `nil`→null semantics matter to persisted IDs. Sources allow 64 KiB UTF-8,
 with at most 32 chunks. Legacy sources keep their 2048-byte recipe; explicit
 Collection Source3 uses the versioned 4096-byte recipe. Document chunks remain
-inside their typed segments. V14–v16 groups may contain several original blocks and
+inside their typed segments. V14–v17 groups may contain several original blocks and
 their newline joins; separators between groups need not belong to a chunk.
 Citations bind generation/content/chunk,
 absolute byte range, literal quote/hash, URI, times, and origin. Quote bounds are
@@ -1369,13 +1380,43 @@ model calls. Repeat in installed mode with the same artifacts and compatible arc
 
 Independent Research ranks provided sources or selected search/fetch gateway output
 with BM25 and optional rerank. Its provided ledger normalizes supplied labels to open
-assertions; it creates no native host receipts or retained Corpus. Default as-of
+assertions; it creates no native host receipts. Offline and MCP presets do not
+retain a Corpus. Explicit provided-text retention uses the separate
+`state-retained` preset and ordinary State action approvals. Default as-of
 time is selected after capture so completion-stamped fetches are eligible. Explicit
 safe integer fixes time; null refuses. Observations after selected time and expiry
 at/before it exclude. Coverage retains raw captured bytes. Before each fetch/rerank,
 sample remaining allowance once; below 1000 ms refuses, otherwise pass that same value.
 An empty fetch queue ranks without requiring allowance for another fetch.
 [Storage contracts](knowledge-storage.md) specify exact gateway envelopes.
+
+Trace Research's `retain/2` implementation into `Store.start/4` with operation
+`:put`. Research derives a canonical ID from the complete original body hash, fixes
+generation 1/revision 0, and records the supplied ID/URI, unique exact quote and
+UTF-8 byte range. Store independently validates those closed fields before any
+snapshot or write. Its origin remains provided/nonhistorical; this derivation
+data grants no fetch, native-source or current-use authority. Corpus's public
+source route rejects the internal transfer field. An uncertain Store mutation
+returns the existing unknown-effect stop rather than a known refusal.
+
+The [operator exercise](../operator/research.md#retain-supplied-evidence-in-a-shared-corpus)
+builds the two artifacts, reviews exact trust and selects the same State binding,
+project scope and partition. That namespace choice is the sharing boundary;
+matching source/profile names alone are insufficient. Corpus forget suppresses
+the canonical body identity across supplied ID/URI/quote aliases and fresh
+Sessions. A conflicting same-body origin cannot silently replace attribution.
+Changed-body and fetched-source derivative suppression remain outside this mode.
+The body/quote limits are 4,096/1,024 UTF-8 bytes; ambiguity includes overlapping
+quote matches. Old Research presets retain their original capabilities/exports
+and reject stores/retain.
+
+Exercise independent Store forgery refusals, Corpus forwarding rejection, shared
+forgetting and ordinary approval/journal/no-replay behavior with
+`mix test test/extensions/knowledge/research_transfer_test.exs`. These controls
+use supplied synthetic data and direct Session commands, not model-selected
+transfers or mixed managed-notes/tool context. For those combinations, retain
+current source/policy/dependency checks and qualify an actual main-route journey
+before extending the claim.
 
 Native [`Tools.Research`](../../lib/ipse/tools/research.ex) instead captures literal
 URLs/excerpts from uniquely identified successful recorded MCP results. It records

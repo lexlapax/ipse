@@ -51,6 +51,9 @@ defmodule IpseKnowledge.Profiles do
         {"corpus", "mcp-semantic"} ->
           @mcp ++ ~w(host.embedding host.model)
 
+        {"research", "state-retained"} ->
+          @state
+
         {"research", "offline"} ->
           []
 
@@ -126,10 +129,20 @@ defmodule IpseKnowledge.Profiles do
   defp compatible?(package, preset, o, caps) do
     allowed =
       case package do
-        "knowledge" -> []
-        "corpus" -> ~w(stores retrieval embedding rerank)
-        "research" -> ~w(search fetch retrieval rerank)
-        "graph" -> ~w(stores extraction)
+        "knowledge" ->
+          []
+
+        "corpus" ->
+          ~w(stores retrieval embedding rerank)
+
+        "research" ->
+          if(preset == "state-retained",
+            do: ~w(stores search fetch retrieval rerank),
+            else: ~w(search fetch retrieval rerank)
+          )
+
+        "graph" ->
+          ~w(stores extraction)
       end
 
     empty_unused = Enum.all?(@families -- allowed, &(o[&1] == %{}))
@@ -155,7 +168,8 @@ defmodule IpseKnowledge.Profiles do
           map_size(o["stores"]) > 0 and map_size(o["extraction"]) > 0
 
         "research" ->
-          map_size(o["search"]) > 0 and map_size(o["fetch"]) > 0 and map_size(o["retrieval"]) > 0
+          map_size(o["search"]) > 0 and map_size(o["fetch"]) > 0 and map_size(o["retrieval"]) > 0 and
+            (preset != "state-retained" or map_size(o["stores"]) > 0)
       end
 
     authority =
@@ -164,7 +178,7 @@ defmodule IpseKnowledge.Profiles do
       end)
 
     offline =
-      preset != "offline" or
+      preset not in ~w(offline state-retained) or
         (Enum.all?(o["search"], fn {_, p} -> p["kind"] == "provided" end) and
            Enum.all?(o["fetch"], fn {_, p} -> p["kind"] == "provided" end))
 

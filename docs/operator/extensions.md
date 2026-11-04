@@ -11,6 +11,10 @@ a manual build or JSON edit. Shipped artifacts remain inert until selected.
 Document workspace/storage actions retain their approvals, independently of the
 separate [notes permission](knowledge-permissions.md).
 
+To share supplied evidence explicitly between Research and Corpus, follow
+[provided-text retention](research.md#retain-supplied-evidence-in-a-shared-corpus).
+It uses a separately selected State preset and ordinary action approvals.
+
 ## Try a bundled transform
 
 Save this complete operator file as `/private/path/extensions.json`:

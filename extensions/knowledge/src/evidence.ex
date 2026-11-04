@@ -14,7 +14,8 @@ defmodule IpseKnowledge.Evidence do
   @collection_chunking %{"version" => 2, "max_bytes" => 4096}
   @document_span_fields ~w(paragraph start_byte end_byte quote_start_byte quote_end_byte table row cell)
   @numbered_document_span_fields @document_span_fields ++ ~w(numbering)
-  @document_block_recipes ~w(ipse-documents-v14 ipse-documents-v15 ipse-documents-v16)
+  @document_block_recipes ~w(ipse-documents-v14 ipse-documents-v15 ipse-documents-v16 ipse-documents-v17)
+  @numbered_document_recipes ~w(ipse-documents-v16 ipse-documents-v17)
 
   def safe_integer_max, do: @safe
   def safe_uint?(value), do: is_integer(value) and value in 0..@safe
@@ -1650,7 +1651,7 @@ defmodule IpseKnowledge.Evidence do
       (not Map.has_key?(locator, "region") or locator["region"] in ~w(header footer)) and
       (not Map.has_key?(locator, "annotation_id") or identifier?(locator["annotation_id"], 64)) and
       (not Map.has_key?(locator, "numbering") or
-         (recipe == "ipse-documents-v16" and numbering?(locator["numbering"]))) and
+         (recipe in @numbered_document_recipes and numbering?(locator["numbering"]))) and
       (not Map.has_key?(locator, "reference_site") or
          reference_locator?(locator["reference_site"], ~w(byte_offset), recipe)) and
       (not Map.has_key?(locator, "reference_range") or
@@ -1909,7 +1910,7 @@ defmodule IpseKnowledge.Evidence do
 
       rows ->
         rows =
-          if receipt["extraction_version"] == "ipse-documents-v16" do
+          if receipt["extraction_version"] in @numbered_document_recipes do
             Enum.map(rows, fn [paragraph, left, right, quote_left, quote_right | coordinates] ->
               [paragraph, left, right, quote_left, quote_right] ++
                 fixed_span_coordinates(coordinates)
@@ -1927,7 +1928,9 @@ defmodule IpseKnowledge.Evidence do
     end
   end
 
-  defp document_span_fields("ipse-documents-v16"), do: @numbered_document_span_fields
+  defp document_span_fields(recipe) when recipe in @numbered_document_recipes,
+    do: @numbered_document_span_fields
+
   defp document_span_fields(_), do: @document_span_fields
 
   defp fixed_span_coordinates([]), do: [nil, nil, nil, nil]
@@ -1937,19 +1940,23 @@ defmodule IpseKnowledge.Evidence do
   defp fixed_span_coordinates([table, row, cell, %{} = numbering]),
     do: [table, row, cell, numbering]
 
-  defp span_locator(part, paragraph, [nil, nil, nil, nil], "ipse-documents-v16"),
-    do: block_locator(part, [paragraph, 0])
+  defp span_locator(part, paragraph, [nil, nil, nil, nil], recipe)
+       when recipe in @numbered_document_recipes,
+       do: block_locator(part, [paragraph, 0])
 
-  defp span_locator(part, paragraph, [nil, nil, nil, %{} = numbering], "ipse-documents-v16"),
-    do: block_locator(part, [paragraph, 0, numbering])
+  defp span_locator(part, paragraph, [nil, nil, nil, %{} = numbering], recipe)
+       when recipe in @numbered_document_recipes,
+       do: block_locator(part, [paragraph, 0, numbering])
 
-  defp span_locator(part, paragraph, [table, row, cell, nil], "ipse-documents-v16"),
-    do: block_locator(part, [paragraph, 0, table, row, cell])
+  defp span_locator(part, paragraph, [table, row, cell, nil], recipe)
+       when recipe in @numbered_document_recipes,
+       do: block_locator(part, [paragraph, 0, table, row, cell])
 
-  defp span_locator(part, paragraph, [table, row, cell, %{} = numbering], "ipse-documents-v16"),
-    do: block_locator(part, [paragraph, 0, table, row, cell, numbering])
+  defp span_locator(part, paragraph, [table, row, cell, %{} = numbering], recipe)
+       when recipe in @numbered_document_recipes,
+       do: block_locator(part, [paragraph, 0, table, row, cell, numbering])
 
-  defp span_locator(_, _, _, "ipse-documents-v16"), do: nil
+  defp span_locator(_, _, _, recipe) when recipe in @numbered_document_recipes, do: nil
 
   defp span_locator(part, paragraph, coordinates, _),
     do: block_locator(part, [paragraph, 0 | coordinates])

@@ -1402,16 +1402,24 @@ defmodule IpseKnowledge.Documents.Docx.Styles do
   end
 
   def check(styles, id, type) when is_binary(id) and byte_size(id) in 1..256 do
-    chain(styles, id, type, MapSet.new())
+    selected_chain(styles, id, type)
     :ok
   end
 
   def check(_, _, _), do: fail(:unsupported_docx_style_visibility)
 
   def hidden?(styles, paragraph, character) do
+    # An undefined explicit reference applies no style. Its interaction with a
+    # visibility-bearing default paragraph style remains outside this subset.
+    # Document defaults and valid paragraph/character styles still apply below.
+    if paragraph != nil and not Map.has_key?(styles.styles, paragraph) and styles.default do
+      flags = chain(styles, styles.default, "paragraph", MapSet.new())
+      if Enum.any?(flags, &(not is_nil(&1))), do: fail(:unsupported_docx_style_visibility)
+    end
+
     paragraph = paragraph || styles.default
-    p = if paragraph, do: chain(styles, paragraph, "paragraph", MapSet.new()), else: []
-    c = if character, do: chain(styles, character, "character", MapSet.new()), else: []
+    p = if paragraph, do: selected_chain(styles, paragraph, "paragraph"), else: []
+    c = if character, do: selected_chain(styles, character, "character"), else: []
     # Word and ISO differ for multi-level toggle interactions. This supported
     # subset accepts only a single effective inherited declaration; direct run
     # overrides remain absolute, but never make an invalid style graph valid.
@@ -1429,6 +1437,12 @@ defmodule IpseKnowledge.Documents.Docx.Styles do
           do: false,
           else: fail(:unsupported_docx_style_visibility)
     end
+  end
+
+  defp selected_chain(styles, id, type) do
+    if type in ~w(paragraph character) and not Map.has_key?(styles.styles, id),
+      do: [],
+      else: chain(styles, id, type, MapSet.new())
   end
 
   defp chain(state, id, type, seen, selected? \\ true) do

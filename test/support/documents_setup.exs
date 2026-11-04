@@ -361,7 +361,7 @@ else
   refute citation["quote"] =~ "4."
   doc = citation["document"]
   assert doc["original_sha256"] == Ipse.JSON.sha256(numbered)
-  assert doc["extraction_version"] == "ipse-documents-v16"
+  assert doc["extraction_version"] == "ipse-documents-v17"
 
   assert doc["version"] == 2, "the installed journey did not return a packed multi-block citation"
 

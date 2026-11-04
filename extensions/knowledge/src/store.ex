@@ -25,6 +25,46 @@ defmodule IpseKnowledge.Store do
   @root_fields ~w(format kind partition source_key source_id generation state title uri observed_at_ms event_at_ms expires_at_ms origin content_sha256 content_ref chunks_ref projections draft)
   @projection_limit 8
 
+  def provided_transfer_id(text) when is_binary(text),
+    do: "research.provided:" <> Evidence.sha256(text)
+
+  def provided_quote_range(text, quote)
+      when is_binary(text) and is_binary(quote) and byte_size(quote) > 0 do
+    case :binary.match(text, quote) do
+      {start, length} ->
+        scope = {start + 1, byte_size(text) - start - 1}
+
+        if :binary.match(text, quote, scope: scope) == :nomatch,
+          do: {:ok, start, start + length},
+          else: {:error, :ambiguous_quote}
+
+      :nomatch ->
+        {:error, :missing_quote}
+    end
+  end
+
+  defp provided_transfer?(args) do
+    receipt = args["provided_transfer"]
+    text = args["text"]
+
+    is_map(receipt) and
+      keys?(receipt, ~w(version kind source_id uri body_sha256 quote start_byte end_byte)) and
+      receipt["version"] == 1 and receipt["kind"] == "research.provided_transfer" and
+      is_binary(text) and String.valid?(text) and byte_size(text) in 1..4096 and
+      is_binary(receipt["source_id"]) and String.valid?(receipt["source_id"]) and
+      byte_size(receipt["source_id"]) in 1..256 and
+      is_binary(args["uri"]) and String.valid?(args["uri"]) and
+      byte_size(args["uri"]) in 1..512 and receipt["uri"] == args["uri"] and
+      receipt["body_sha256"] == Evidence.sha256(text) and
+      args["source_id"] == provided_transfer_id(text) and
+      args["generation"] == 1 and args["expected_revision"] == 0 and
+      not Map.has_key?(args, "historical_import") and not Map.has_key?(args, "document") and
+      is_binary(receipt["quote"]) and String.valid?(receipt["quote"]) and
+      byte_size(receipt["quote"]) in 1..1024 and
+      provided_quote_range(text, receipt["quote"]) ==
+        {:ok, receipt["start_byte"], receipt["end_byte"]}
+  end
+
   def start(name, profile, operation, args) do
     with true <- name?(name) and profile?(profile) and operation in @operations and is_map(args),
          :ok <- arguments(operation, args) do
@@ -2406,6 +2446,7 @@ defmodule IpseKnowledge.Store do
       cond do
         imported -> %{"original_origin" => imported}
         args["document"] -> Evidence.document_storage_receipt!(args["document"])
+        args["provided_transfer"] -> args["provided_transfer"]
         true -> nil
       end
 
@@ -2984,7 +3025,7 @@ defmodule IpseKnowledge.Store do
     optional =
       case operation do
         :put ->
-          ~w(historical_import document effects_used)
+          ~w(historical_import document effects_used provided_transfer)
 
         :open ->
           ~w(historical_import document document_text effects_used)
@@ -3028,6 +3069,7 @@ defmodule IpseKnowledge.Store do
            (is_binary(args["text"]) and String.valid?(args["text"]) and
               byte_size(args["text"]) <= if(operation == :put, do: 8192, else: 4096))) and
         (not Map.has_key?(args, "offset") or Evidence.safe_uint?(args["offset"])) and
+        (not Map.has_key?(args, "provided_transfer") or provided_transfer?(args)) and
         (not Map.has_key?(args, "historical_import") or
            (is_map(args["historical_import"]) and
               byte_size(json(args["historical_import"])) <= 2048)) and

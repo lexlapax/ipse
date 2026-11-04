@@ -75,6 +75,7 @@ nor resource/offline qualification. No daemon configuration or existing model wa
 
 ## Source checkpoint evidence — 2026-11-04
 
+- [Integrated Research transfer and Word v17](research-word-integration-20261104.md) records the complete strict build, four verified bundles, 63 focused passes and two fresh Word capacity/recovery passes; broader lineage, fidelity, installed and final combined gates remain open.
 - [Frozen regression groups](source-regression-groups-20261104.md) preserve all 473 files' terminal 4,018/4,019 result, eleven passing integrity checks, the original owner-loss failure and locale RED/GREEN evidence. A separately passing [confirmed-native-exit control](source-owner-loss-causal-20261104.md) strengthens the causal witness; the old aggregate remains failed.
 - [Current canonical short-note recall](current-canonical-recall-20261104.md) delivers all 33 short notes from one original source Session to a fresh consumer with complete coverage. Earlier multi-source failures and retained-cohort qualification remain separate.
 - [Retained revision-ledger prevalidation](retained-revision-ledger-20261104.md) reconciles 373 original journals to 2,000 publication revisions with all 4,890 original objects unchanged; it performs no renewal or consumer recall.

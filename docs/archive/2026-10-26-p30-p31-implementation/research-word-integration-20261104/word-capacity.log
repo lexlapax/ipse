@@ -1,0 +1,8 @@
+Running ExUnit with seed: 0, max_cases: 1
+Excluding tags: [:test, :native_sandbox, :macos_sandbox, :macos_filesystem, :memory_scope, :workspace_word_native, :controlled_tty_bridge, :controlled_tty_loss]
+Including tags: [:workspace_word_capacity_boundary]
+
+..
+Finished in 153.2 seconds (0.00s async, 153.2s sync)
+
+Result: 2 passed, 30 excluded
