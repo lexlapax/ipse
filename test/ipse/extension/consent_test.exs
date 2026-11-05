@@ -350,6 +350,9 @@ defmodule Ipse.Extension.ConsentTest do
     {:ok, _} = Application.ensure_all_started(:ipse)
     [root, project, payload, barrier, name] = System.argv()
     request = Jason.decode!(File.read!(payload))
+    {:ok, budget} = Ipse.Extension.Consent.with_existing_policy_budget(
+      root, project, 1, request["policy_sha256"], 1, &{:ok, &1})
+    1 = budget["available"]["model_calls"]
     File.write!(barrier <> "." <> name, "ready")
     deadline = System.monotonic_time(:millisecond) + 15_000
     wait = fn wait ->
@@ -361,7 +364,7 @@ defmodule Ipse.Extension.ConsentTest do
     end
     wait.(wait)
     result = Ipse.Extension.Consent.reserve(root, project, request, 1)
-    IO.puts(Jason.encode!(%{"ok" => match?({:ok, %{"sequence" => _}}, result)}))
+    IO.puts(Jason.encode!(%{"ok" => match?({:ok, %{"sequence" => _}}, result), "observed_model_calls_available" => budget["available"]["model_calls"]}))
     '''
 
     tasks =
@@ -387,8 +390,22 @@ defmodule Ipse.Extension.ConsentTest do
         end)
 
       assert Enum.count(results, & &1["ok"]) == 1
+      assert Enum.all?(results, &(&1["observed_model_calls_available"] == 1))
       assert {:ok, s} = C.snapshot(c.root, c.project)
       assert map_size(s["operations"]) == 1
+
+      assert {:ok, full} =
+               C.with_existing_policy_budget(
+                 c.root,
+                 c.project,
+                 1,
+                 Ipse.JSON.digest([c.policy]),
+                 1,
+                 &{:ok, &1}
+               )
+
+      assert full["available"]["model_calls"] == 0
+      assert {:error, :consent_reservation_refused} = C.reserve(c.root, c.project, request(c), 1)
       assert File.stat!(lock).inode == inode
     after
       File.write!(barrier, "release")

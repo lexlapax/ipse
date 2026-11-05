@@ -103,6 +103,15 @@ MCP and delegation keep their separate approval requirements. The grant expires
 after one year and has daily limits of 100 operations, 2 MiB of input and 4 MiB of
 output. A refusal or uncertain attempt may consume conservative allowance.
 
+An extension already admitted to read the project's knowledge can inspect a
+read-only saved-policy accounting observation. It carries its policy epoch and
+observation time and leaves saved-policy charges unchanged. The counts include
+unresolved saved effects across periods; they do not describe an endpoint's
+separate service quarantine. Treat any reported remainder as advisory: another
+operation can use it before your next action, and the host still applies current
+permission, source and atomic reservation checks. This observation cannot renew
+or reset the saved grant.
+
 For an ordinary model proposal derived from protected native notes, the Linux
 chat client can display the complete arguments under their current source and
 policy owners. Wait for `approval>`, then enter the displayed `allow CODE` for

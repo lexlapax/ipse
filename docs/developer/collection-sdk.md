@@ -188,6 +188,8 @@ requires `host.collection.managed`; read/write grants do not imply that capabili
 Source evidence additionally needs `host.sources`.
 These declarations do not create a saved policy or activate an old Session.
 
+### Read records and public metadata
+
 A read request is:
 
 ```json
@@ -219,6 +221,78 @@ must still fit; otherwise it returns the fixed `collection_result_limit` failure
 Read actions use the explicit 512-read/two-minute bounds and consume no Consent
 period IDs. `host.actions.mixed` separates 512 reads from sixteen other actions;
 without it, the existing cumulative action-family limits still apply.
+
+### Observe saved-policy pressure without reserving
+
+An extension with the existing read capability and a current semantic read
+mapping can request one bounded accounting observation:
+
+```json
+{"api_version":1,"kind":"host_call","request":{"op":"collection.call","purpose":"saved_policy_budget_v1","request":{"op":"status"}}}
+```
+
+This exact metadata purpose is distinct from ordinary Collection `status` and
+the separately protected pending-assessment get. It accepts no worker-selected
+home, project, namespace, time, epoch, ledger, proofs or alternative inner
+operation. The normal outer receipt, artifact/capability, Session pin,
+ProjectIdentity/worktree and `SemanticConsent.check/5` read mapping remain
+mandatory. Neither `context.available` nor Session inference `usage.read`
+describes this saved-policy balance.
+
+`CollectionCall` uses existing-only policy owners for both planning and the
+actual observation. `Consent.with_existing_policy_budget/6` requires the exact
+current epoch/policy SHA and unexpired policy, computes its summary under the
+retained control owner, and repeats the current source context before returning.
+An unresolved saved-policy overrun refuses. The callback runs outside Session;
+native final checks and owner release precede a known result. No Collection
+value is read, no control directory is created or repaired, and no Consent
+operation ID is allocated. The ordinary action intent/result is still journaled.
+
+The version-1 `saved_policy` result contains its bound namespace, epoch/policy
+SHA, observation time/period boundaries, six resource limits, `charged` and
+nonnegative `available` vectors, `nonterminal_reserved`, `unknown_reserved`,
+and resource-name lists `warning_dimensions` and `exhausted_dimensions`.
+It exports no policy/routes, operation IDs, receipts, source text or credentials.
+The host binds the result to the action's actual namespace, epoch and policy;
+historical replay cannot move it into another pin.
+
+The calculation reuses the aggregation used by atomic admission: current-period
+settled and compacted actuals plus every nonterminal reservation, including work
+from earlier periods. `unknown_reserved` is only the subset whose saved status
+is exactly `unknown`; the broader nonterminal vector also covers reserved,
+admitted and publishing work. Neither describes an endpoint's service quarantine.
+Positive limits warn at an integer 80%; charge at a limit is exhausted. An unused
+zero dimension does not warn or appear exhausted, while positive charge against
+a zero limit is exhausted. Available clamps at zero without discarding liability.
+
+The summary is historical as soon as its owner releases. A consumer may use it
+for an explicitly advisory warning or a non-mutating pause, never as a reusable
+permit or guaranteed balance at display. A competing operation can consume the
+remaining allowance. Current policy/source checks and normal atomic
+reserve/admit/publish/settle still decide every effect. A generic failed/unknown
+read or publication supplies no exhaustion reason, refund or replay authority.
+Compare available capacity with every nonzero resource in the proposed
+reservation. An unused zero dimension supplies no admission promise or reason
+to reject a zero-unit operation. An existing charge above any limit still
+prevents atomic admission. A positive remainder alone does not prove that the
+host's complete eventual reservation fits.
+
+Exercise pure shapes/calculation and actual owner/consumer boundaries separately:
+
+```sh
+mix test test/ipse/extension/consent_budget_test.exs test/ipse/extension/collection_call_test.exs
+mix test test/ipse/extension/consent_read_test.exs test/ipse/extension/consent_test.exs
+mix test test/ipse/extension/collection_call_session_test.exs
+```
+
+Require byte-preserving existing-only reads, stale/revoked/expired refusal,
+rollover unknown pressure, zero/80/100 boundaries and a prior snapshot that
+cannot admit a racing loser. The genuine worker test must retain full Saved,
+known action, confirmed close and idle no-replay checks. Pure ledger-shaped maps
+authenticate no native policy or source, and these component cases do not by
+themselves qualify a burst, endpoint or annual workload.
+
+### Publish with the legacy request
 
 A **legacy** publication request has exactly these outer fields:
 

@@ -129,4 +129,145 @@ defmodule Ipse.Extension.ConsentReadTest do
 
     assert File.read!(c.control_file) == before
   end
+
+  test "budget observation is existing-only, metadata-only and consumes no ledger identity", c do
+    before = File.read!(c.control_file)
+    inode = File.stat!(c.control_file).inode
+
+    for _ <- 1..3 do
+      assert {:ok, summary} =
+               C.with_existing_policy_budget(c.root, c.project, 1, c.hash, 1, &{:ok, &1})
+
+      assert C.valid_budget_summary?(summary)
+      assert summary["charged"] == C.zero()
+      assert summary["limits"] == c.policy["limits"]
+      refute Map.has_key?(summary, "policy")
+      refute Map.has_key?(summary, "operations")
+    end
+
+    assert File.read!(c.control_file) == before
+    assert File.stat!(c.control_file).inode == inode
+    missing = Path.join(Path.dirname(c.root), "not-created")
+
+    assert {:error, _} =
+             C.with_existing_policy_budget(missing, c.project, 1, c.hash, 1, fn _ ->
+               flunk("absent policy")
+             end)
+
+    refute File.exists?(missing)
+  end
+
+  test "budget callbacks refuse foreign, stale, revoked and expired current policies", c do
+    callback = fn _ ->
+      send(self(), :unexpected_budget)
+      {:ok, %{}}
+    end
+
+    for {project, epoch, sha, now} <- [
+          {JSON.sha256("foreign"), 1, c.hash, 1},
+          {c.project, 2, c.hash, 1},
+          {c.project, 1, JSON.sha256("changed"), 1},
+          {c.project, 1, c.hash, 10_000}
+        ] do
+      assert {:error, _} =
+               C.with_existing_policy_budget(c.root, project, epoch, sha, now, callback)
+    end
+
+    assert {:ok, summary} =
+             C.with_existing_policy_budget(c.root, c.project, 1, c.hash, 1, &{:ok, &1})
+
+    assert {:ok, _} = C.revoke(c.root, c.project, 1)
+    assert {:error, _} = C.with_existing_policy_budget(c.root, c.project, 1, c.hash, 1, callback)
+    refute_received :unexpected_budget
+    # A structurally valid historical snapshot supplies no new policy/admission authority.
+    assert C.valid_budget_summary?(summary)
+    assert {:error, _} = C.reserve(c.root, c.project, budget_request(c), 1)
+  end
+
+  test "an actual unknown reservation stays charged in the next observed period", c do
+    for _ <- 1..2 do
+      request = budget_request(c)
+      assert {:ok, ticket} = C.reserve(c.root, c.project, request, 1)
+      assert {:ok, _} = C.admit(c.root, c.project, ticket, 1)
+      assert {:ok, %{"status" => "unknown"}} = C.settle(c.root, c.project, ticket, :unknown)
+    end
+
+    assert {:ok, unknown} = C.existing_snapshot(c.root, c.project)
+    assert unknown["sequence"] == 2 and map_size(unknown["operations"]) == 2
+
+    assert Enum.all?(unknown["operations"], fn {_, row} ->
+             row["status"] == "unknown" and row["reserved"]["operations"] == 1
+           end)
+
+    before = File.read!(c.control_file)
+
+    assert {:ok, summary} =
+             C.with_existing_policy_budget(c.root, c.project, 1, c.hash, 1001, &{:ok, &1})
+
+    assert summary["charged"]["operations"] == 2
+    assert summary["nonterminal_reserved"]["operations"] == 2
+    assert summary["unknown_reserved"]["operations"] == 2
+    assert File.read!(c.control_file) == before
+  end
+
+  test "observed 80 and 100 accounting boundaries never replace the final atomic reservation",
+       c do
+    policy = %{c.policy | "limits" => Map.put(C.zero(), "operations", 100)}
+    assert {:ok, _} = C.replace(c.root, c.project, 1, policy, 1)
+    c = %{c | policy: policy, hash: JSON.digest([policy])}
+
+    for _ <- 1..80 do
+      request = budget_request(c)
+      assert {:ok, ticket} = C.reserve(c.root, c.project, request, 1)
+      assert {:ok, _} = C.admit(c.root, c.project, ticket, 1)
+      assert {:ok, _} = C.settle(c.root, c.project, ticket, {:known, request["reserved"]})
+    end
+
+    assert {:ok, settled} = C.existing_snapshot(c.root, c.project)
+    assert settled["sequence"] == 80
+    assert map_size(settled["operations"]) + map_size(settled["compacted"]) == 80
+
+    assert {:ok, summary} =
+             C.with_existing_policy_budget(c.root, c.project, 2, c.hash, 1, &{:ok, &1})
+
+    assert summary["warning_dimensions"] == ["operations"]
+    assert summary["available"]["operations"] == 20
+
+    for _ <- 1..20 do
+      assert {:ok, _} = C.reserve(c.root, c.project, budget_request(c), 1)
+    end
+
+    assert {:ok, all} = C.existing_snapshot(c.root, c.project)
+    assert all["sequence"] == 100
+    assert map_size(all["operations"]) + map_size(all["compacted"]) == 100
+    assert Enum.count(all["operations"], fn {_, row} -> row["status"] == "reserved" end) == 20
+
+    assert {:ok, full} =
+             C.with_existing_policy_budget(c.root, c.project, 2, c.hash, 1, &{:ok, &1})
+
+    assert full["exhausted_dimensions"] == ["operations"]
+    before_refusal = File.read!(c.control_file)
+
+    assert {:error, :consent_reservation_refused} =
+             C.reserve(c.root, c.project, budget_request(c), 1)
+
+    assert File.read!(c.control_file) == before_refusal
+    assert summary["available"]["operations"] == 20
+  end
+
+  defp budget_request(c) do
+    id = Ipse.Usage.id()
+
+    %{
+      "id" => id,
+      "operation" => "knowledge.capture",
+      "artifact_sha256" => c.policy["artifact_sha256"],
+      "source_sha256" => c.policy["source_sha256"],
+      "policy_sha256" => c.hash,
+      "request_sha256" => JSON.digest(["budget request", id]),
+      "source_generation" => 1,
+      "reserved" => Map.put(C.zero(), "operations", 1),
+      "headless" => true
+    }
+  end
 end

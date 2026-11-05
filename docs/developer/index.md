@@ -100,6 +100,7 @@ the host contract your feature needs:
 | Export typed tools/commands/services and publish complete output | [Invocations](extension-invocations.md) |
 | Use CAS, stale-write deadlines, services, questions, and explicit Memory | [State and continuations](extension-state.md) |
 | Revalidate saved permission, original sources and native owners for publication and delivery | [Protected collection SDK](collection-sdk.md) |
+| Inspect saved-policy accounting without reserving an effect | [Advisory allowance metadata](collection-sdk.md#observe-saved-policy-pressure-without-reserving) |
 | Request approved tools, MCP, text, native embeddings or typed advice | [Effects](extension-effects.md) |
 | Choose notifications, finite jobs, live feeds, or historical catch-up | [Events](extension-events.md) |
 | Change citations, retrieval, attributed facts, or native Research | [Knowledge algorithms](knowledge-extensions.md) |

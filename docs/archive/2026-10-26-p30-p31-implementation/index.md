@@ -104,6 +104,8 @@ nor resource/offline qualification. No daemon configuration or existing model wa
 
 ## P31A contracts and evidence
 
+- [Read-only saved-policy accounting](saved-policy-budget-metadata-20261104.md) records ten focused native/worker cases, exact existing-owner metadata, unchanged accounting and preserved fixture failures; queue display, the 320-proposal burst and annual qualification remain open.
+
 - [Authenticated expired-neighbor recall](authenticated-expired-recall-20261104.md) records a narrow typed expiry refusal, complete host/worker rebuild, and a passing genuine native renewal recall control; retained-cohort, complete-day and annual qualification remain open.
 - [Synthetic workload listener repair](workload-listener-20261103.md) records real loopback lifecycle controls and an unpopulated Session smoke; the populated recall failure and integrated day remain open.
 - [Saved source-window reuse candidate](saved-source-window-fold-20261103.md) records passing focused replay controls and a separate failed strict 33-note attempt; the candidate was not promoted.

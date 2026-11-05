@@ -70,6 +70,25 @@ defmodule Ipse.Extension.Consent do
 
   def with_existing_policy(_, _, _, _, _, _), do: {:error, :consent_read_refused}
 
+  @doc "Observe only an existing pinned policy's finite accounting; no reservation or delivery authority."
+  def with_existing_policy_budget(root, project, epoch, policy_sha256, now, fun)
+      when is_function(fun, 1) do
+    if uint?(epoch) and JSON.sha256?(policy_sha256) and uint?(now) do
+      existing_transaction(root, project, fn state ->
+        with true <- is_map(state) and policy_matches?(state, epoch, policy_sha256, now),
+             {:ok, summary} <- budget_summary(state, now) do
+          existing_callback(fun, summary)
+        else
+          _ -> {:error, :consent_read_refused}
+        end
+      end)
+    else
+      {:error, :consent_read_refused}
+    end
+  end
+
+  def with_existing_policy_budget(_, _, _, _, _, _), do: {:error, :consent_read_refused}
+
   @doc """
   Retain an existing exact management snapshot for a trusted read-only callback.
 
@@ -726,6 +745,10 @@ defmodule Ipse.Extension.Consent do
     do: Map.put(Map.take(r, ~w(id sequence epoch request_sha256)), "project", project)
 
   defp fits?(s, reserved, now) do
+    not quarantined?(s) and within?(add(used(s, now), reserved), s["policy"]["limits"])
+  end
+
+  defp used(s, now) do
     start = div(now, s["policy"]["period_ms"]) * s["policy"]["period_ms"]
 
     used =
@@ -749,10 +772,84 @@ defmodule Ipse.Extension.Consent do
           counts
       end)
 
-    used = Map.new(Enum.zip(@resources, Tuple.to_list(counts)))
+    Map.new(Enum.zip(@resources, Tuple.to_list(counts)))
+  end
 
-    not quarantined?(s) and
-      within?(add(used, reserved), s["policy"]["limits"])
+  @doc false
+  # Pure projection of an already validated ledger; shaped maps grant no authority.
+  def budget_summary(s, now) do
+    false = quarantined?(s)
+    policy = s["policy"]
+    start = div(now, policy["period_ms"]) * policy["period_ms"]
+    charged = used(s, now)
+
+    nonterminal =
+      Enum.reduce(s["operations"], zero(), fn {_, r}, total ->
+        if terminal?(r), do: total, else: add(total, r["reserved"])
+      end)
+
+    unknown =
+      Enum.reduce(s["operations"], zero(), fn {_, r}, total ->
+        if r["status"] == "unknown", do: add(total, r["reserved"]), else: total
+      end)
+
+    limits = policy["limits"]
+
+    value = %{
+      "version" => 1,
+      "scope" => "saved_policy",
+      "epoch" => s["epoch"],
+      "policy_sha256" => JSON.digest([policy]),
+      "observed_at_ms" => now,
+      "period_start_ms" => start,
+      "period_end_ms" => start + policy["period_ms"],
+      "limits" => limits,
+      "charged" => charged,
+      "available" => Map.new(@resources, &{&1, max(limits[&1] - charged[&1], 0)}),
+      "nonterminal_reserved" => nonterminal,
+      "unknown_reserved" => unknown,
+      "warning_dimensions" => budget_dimensions(limits, charged, :warning),
+      "exhausted_dimensions" => budget_dimensions(limits, charged, :exhausted)
+    }
+
+    if valid_budget_summary?(value), do: {:ok, value}, else: {:error, :consent_read_refused}
+  rescue
+    _ -> {:error, :consent_read_refused}
+  end
+
+  @doc false
+  def valid_budget_summary?(v) do
+    keys?(
+      v,
+      ~w(version scope epoch policy_sha256 observed_at_ms period_start_ms period_end_ms limits charged available nonterminal_reserved unknown_reserved warning_dimensions exhausted_dimensions)
+    ) and
+      v["version"] === 1 and v["scope"] === "saved_policy" and uint?(v["epoch"]) and
+      v["epoch"] > 0 and
+      JSON.sha256?(v["policy_sha256"]) and
+      Enum.all?(~w(observed_at_ms period_start_ms period_end_ms), &uint?(v[&1])) and
+      v["period_start_ms"] <= v["observed_at_ms"] and v["observed_at_ms"] < v["period_end_ms"] and
+      Enum.all?(
+        ~w(limits charged available nonterminal_reserved unknown_reserved),
+        &vector?(v[&1])
+      ) and
+      Enum.all?(@resources, fn r ->
+        v["unknown_reserved"][r] <= v["nonterminal_reserved"][r] and
+          v["nonterminal_reserved"][r] <= v["charged"][r] and
+          v["available"][r] == max(v["limits"][r] - v["charged"][r], 0)
+      end) and
+      v["warning_dimensions"] === budget_dimensions(v["limits"], v["charged"], :warning) and
+      v["exhausted_dimensions"] === budget_dimensions(v["limits"], v["charged"], :exhausted)
+  rescue
+    _ -> false
+  end
+
+  defp budget_dimensions(limits, charged, kind) do
+    Enum.filter(@resources, fn r ->
+      if limits[r] == 0,
+        do: kind == :exhausted and charged[r] > 0,
+        else:
+          if(kind == :warning, do: charged[r] * 5 >= limits[r] * 4, else: charged[r] >= limits[r])
+    end)
   end
 
   defp add(a, b), do: Map.new(@resources, &{&1, a[&1] + b[&1]})

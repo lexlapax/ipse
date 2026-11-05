@@ -80,6 +80,8 @@ defmodule Ipse.Extension.CollectionCallSessionTest do
           call(%{"op" => "tool.call", "name" => "write", "timeout_ms" => 1000, "arguments" => %{"path" => "forbidden", "content" => "denied"}}, Map.put(state, "step", "done"))
         state["mode"] == "read" ->
           call(%{"op" => "collection.call", "request" => %{"op" => "snapshot"}}, Map.put(state, "step", "done"))
+        state["mode"] == "budget" ->
+          call(%{"op" => "collection.call", "purpose" => "saved_policy_budget_v1", "request" => %{"op" => "status"}}, Map.put(state, "step", "done"))
         true ->
           call(%{"op" => "source.list", "limit" => 32}, Map.put(state, "step", "list"))
         end
@@ -374,6 +376,47 @@ defmodule Ipse.Extension.CollectionCallSessionTest do
     {:ok, pid} = DynamicSupervisor.start_child(Ipse.Sessions, {Session, opts})
     on_exit(fn -> if Process.alive?(pid), do: Session.close(pid) end)
     pid
+  end
+
+  @tag :saved_policy_budget
+  test "a genuine read-only worker receives the current finite accounting without consuming policy",
+       c do
+    assert {:ok, before} = Consent.existing_snapshot(c.control, c.binding["project_id"])
+    before_bytes = File.read!(Path.join([c.control, c.binding["project_id"], "control.json"]))
+    pid = start(c, %{fixture_mode: "budget", fixture_export: "inspect"})
+    id = Session.info(pid).id
+    assert :ok = Session.prompt(pid, "Observe the current saved-policy accounting metadata.")
+    assert_receive {:ipse, ^pid, {:done, :ok}}, 15_000
+    assert :ok = Session.close_confirmed(pid)
+    assert {:ok, events} = Journal.load(c.dir, id)
+    assert {:ok, _} = Session.Saved.restore(events, id)
+
+    [result] =
+      Enum.filter(
+        events,
+        &(&1["type"] == "extension_action_result" and
+            get_in(&1, ["request", "purpose"]) == "saved_policy_budget_v1")
+      )
+
+    assert result["approval"] == "not_required"
+    assert result["outcome"]["status"] == "ok"
+    value = result["outcome"]["value"]
+    assert value["project"] == c.namespace and value["epoch"] == before["epoch"]
+    assert value["policy_sha256"] == JSON.digest([before["policy"]])
+    assert value["charged"] == Consent.zero()
+    assert value["available"] == before["policy"]["limits"]
+    refute Map.has_key?(value, "settings")
+
+    assert File.read!(Path.join([c.control, c.binding["project_id"], "control.json"])) ==
+             before_bytes
+
+    assert {:ok, after_control} = Consent.existing_snapshot(c.control, c.binding["project_id"])
+    assert after_control === before
+    idle = start(c, %{fixture_mode: "budget", fixture_export: "inspect"}, id)
+    assert :ok = Session.close_confirmed(idle)
+    assert {:ok, after_idle} = Journal.load(c.dir, id)
+    assert {:ok, _} = Session.Saved.restore(after_idle, id)
+    assert Enum.count(after_idle, &(&1["type"] == "extension_action_intent")) == 1
   end
 
   test "headless protected capture journals exact outer and inner bindings and settles once", c do

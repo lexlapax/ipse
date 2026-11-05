@@ -45,7 +45,13 @@ defmodule Ipse.Extension.CollectionCall do
       match?(%{"op" => "get", "key" => "pending." <> _}, inner)
   end
 
+  defp request_shape?(%{"purpose" => "saved_policy_budget_v1"} = request),
+    do: keys?(request, ~w(op purpose request)) and request["request"] === %{"op" => "status"}
+
   defp request_shape?(request), do: keys?(Map.delete(request, "proofs"), ~w(op request))
+
+  defp budget_request?(request),
+    do: request["purpose"] === "saved_policy_budget_v1" and request_shape?(request)
 
   @doc false
   def pending_assessment?(admission, parent, request) do
@@ -380,7 +386,10 @@ defmodule Ipse.Extension.CollectionCall do
     pin = intent["effect_binding"]["pin"]
     root = SemanticAdmission.control_root(context.config[:home])
 
-    Ipse.Extension.Consent.with_policy(
+    operation =
+      if budget_request?(intent["request"]), do: :with_existing_policy, else: :with_policy
+
+    apply(Ipse.Extension.Consent, operation, [
       root,
       pin["project_id"],
       pin["epoch"],
@@ -401,7 +410,7 @@ defmodule Ipse.Extension.CollectionCall do
                  ) == :ok)
           end)
 
-        if Map.has_key?(intent["request"], "purpose") and
+        if Map.has_key?(intent["request"], "purpose") and not budget_request?(intent["request"]) and
              (not pending_assessment?(
                 context.config[:semantic_admission],
                 context.parent,
@@ -456,7 +465,7 @@ defmodule Ipse.Extension.CollectionCall do
           end
         end
       end
-    )
+    ])
   end
 
   defp read_recipes(settings, mapping) do
@@ -490,17 +499,28 @@ defmodule Ipse.Extension.CollectionCall do
   defp read(context, intent, current, fun) do
     pin = intent["effect_binding"]["pin"]
 
-    Ipse.Extension.Consent.with_policy(
+    {operation, callback} =
+      if budget_request?(intent["request"]) do
+        {:with_existing_policy_budget,
+         fn summary ->
+           with {:ok, ^current, []} <- current_sources(context, intent),
+                do: bound_value(intent, Map.put(summary, "project", intent["namespace"]))
+         end}
+      else
+        {:with_policy,
+         fn _ ->
+           with {:ok, ^current, []} <- current_sources(context, intent), do: fun.()
+         end}
+      end
+
+    apply(Ipse.Extension.Consent, operation, [
       SemanticAdmission.control_root(context.config[:home]),
       pin["project_id"],
       pin["epoch"],
       pin["policy_sha256"],
       now(),
-      fn _ ->
-        with {:ok, ^current, []} <- current_sources(context, intent),
-             do: fun.()
-      end
-    )
+      callback
+    ])
   end
 
   defp publish(context, intent, current, proofs, plan) do
@@ -705,10 +725,13 @@ defmodule Ipse.Extension.CollectionCall do
 
   def valid_outcome?(request, status, value, _) when status in ~w(ok conflict) do
     validate(request) == :ok and Extension.validate(value) == :ok and
-      if status == "conflict" do
-        keys?(value, @summary) and summary?(value)
+      if budget_request?(request) do
+        status == "ok" and JSON.sha256?(value["project"]) and
+          Ipse.Extension.Consent.valid_budget_summary?(Map.delete(value, "project"))
       else
-        result?(request["request"], value)
+        if status == "conflict",
+          do: keys?(value, @summary) and summary?(value),
+          else: result?(request["request"], value)
       end
   rescue
     _ -> false
@@ -721,11 +744,19 @@ defmodule Ipse.Extension.CollectionCall do
       %{"status" => "ok", "value" => value} ->
         request = event["request"]["request"]
 
-        if request["op"] == "commit" do
-          value["request_sha256"] == event["effect_binding"]["request_sha256"] and
-            value["generation"] == request["expected_generation"] + 1
-        else
-          value["project"] == event["namespace"]
+        cond do
+          budget_request?(event["request"]) ->
+            pin = event["effect_binding"]["pin"]
+
+            value["project"] == event["namespace"] and value["epoch"] === pin["epoch"] and
+              value["policy_sha256"] === pin["policy_sha256"]
+
+          request["op"] == "commit" ->
+            value["request_sha256"] == event["effect_binding"]["request_sha256"] and
+              value["generation"] == request["expected_generation"] + 1
+
+          true ->
+            value["project"] == event["namespace"]
         end
 
       %{"status" => "conflict", "value" => value} ->
