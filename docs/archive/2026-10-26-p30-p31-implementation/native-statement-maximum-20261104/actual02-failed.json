@@ -1,0 +1,18 @@
+{
+  "all_recorded_input_runtime_operator_process_postchecks_passed": true,
+  "fixture_boundary": "optional_absent_management_directory_sent_to_native_allocator",
+  "full_saved_readonly": true,
+  "inflight_preserved": true,
+  "journal_sha256": "edd17e8c22c2f242b6faea7cf2b43cba2a9491153e2ab5784591f1392ab719b9",
+  "known_inline_source_refused": true,
+  "known_native_source_bytes": 999,
+  "known_proof_bytes": 2048,
+  "known_published_records": 1,
+  "known_record_bytes": 4062,
+  "physical_audit_complete": false,
+  "resumed_or_replayed": false,
+  "source1025_idle_assertions_reached": true,
+  "status": "failed",
+  "status_sha256": "7055b6077f61be52da629752cad542794de7de15203ae5e0b6af41c8d7d8c019",
+  "version": 1
+}

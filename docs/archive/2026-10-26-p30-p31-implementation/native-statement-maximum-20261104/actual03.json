@@ -1,0 +1,31 @@
+{
+  "annual_workload_qualification": false,
+  "full_6144_payload_qualification": false,
+  "management_component": {
+    "basis": "lstat_enoent_no_management_actions",
+    "missing_dimensions": [
+      "logical_bytes",
+      "allocated_bytes",
+      "entries"
+    ],
+    "native_allocation": null,
+    "presence": "absent"
+  },
+  "model_calls": 0,
+  "native_measured_components": [
+    "control",
+    "identity",
+    "sessions"
+  ],
+  "native_source_bytes": 999,
+  "normal_runtime": true,
+  "old_head_and_values_unchanged": true,
+  "proof_encoded_bytes": 2048,
+  "proof_over_limit_bytes": 2049,
+  "record_encoded_bytes": 4062,
+  "saved_consent_accounting_unchanged": true,
+  "source_over_limit_bytes": 1025,
+  "status": "passed",
+  "strict_saved_and_idle_no_replay": true,
+  "version": 1
+}

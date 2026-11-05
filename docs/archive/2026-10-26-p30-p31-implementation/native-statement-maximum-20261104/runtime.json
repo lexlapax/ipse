@@ -1,0 +1,35 @@
+{
+  "applications": 16,
+  "build_info_commit": "d7034eca9c19b0ab6ddd89878e2c25b95c6aa967",
+  "bundles": [
+    {
+      "file_count": 27,
+      "id": "corpus-collection-documents",
+      "manifest_sha256": "4dadc4475b28aaa3befe545849ca1b5a39dfb1f6c0137e8572ecc2125da0a5a7"
+    },
+    {
+      "file_count": 27,
+      "id": "corpus-state-documents",
+      "manifest_sha256": "341e986836f34b4bb72387975c2629d68aff199b4cd423e4e63e29e4a0f17994"
+    },
+    {
+      "file_count": 9,
+      "id": "knowledge",
+      "manifest_sha256": "a05fc853091644a14e1f91f2060b421ebdf22abd890404fa3d0c58f8d4c7df9d"
+    },
+    {
+      "file_count": 9,
+      "id": "knowledge-decision-shadow",
+      "manifest_sha256": "170fa67dd52e2392111079ecdf87fd8db38dc6fda417bd65dd1155dff77e2f02"
+    }
+  ],
+  "full_closure_before_after": true,
+  "helper_sha256": "ac424d10e2ce6809cedcb157acd70092b00ca68aa7a48201a6007ac5dccbf33b",
+  "host_modules": 241,
+  "normal_runtime": true,
+  "runtime_manifest_sha256": "616fa20b594c01a4cefe09e5d1269813e0c170fc7ac70828d87f933c1923a4f6",
+  "scope": "immutable private normal SDK with separately pinned development fixture; no current whole-source regression claim",
+  "source_description": "d7034eca parent plus seven pinned coalescer source/test changes; source manifest identifies actual bytes",
+  "source_manifest_sha256": "97cbf640dd0b6f2062b8e7ec4c6e6612c01ae13137a72450732e3f3989de236f",
+  "version": 1
+}

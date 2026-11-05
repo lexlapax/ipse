@@ -58,6 +58,97 @@ defmodule Ipse.Development.NativeNotesSeed do
     ]
   end
 
+  def plan("maximum") do
+    [%{"day" => 0, "actions" => [%{"op" => "capture", "number" => 1, "category" => "ordinary"}]}]
+  end
+
+  @doc "Byte geometry only: no source proof, native observation or stored value is constructed."
+  def maximum_geometry(now, category \\ "ordinary")
+      when is_integer(now) and now >= 0 and category in ~w(ordinary preference current) do
+    escapes =
+      Enum.find(998..0//-1, fn count ->
+        maximum_proof_bytes(count, category) <= 2048
+      end)
+
+    statement = maximum_statement(escapes)
+    proof = maximum_proof_bytes(escapes, category)
+    encoded = fn value -> byte_size(Jason.encode!(value)) end
+    evidence = maximum_object_bytes([{"sources", proof + 2}])
+
+    value =
+      maximum_object_bytes([
+        {"version", 1},
+        {"id", 66},
+        {"lineage", 66},
+        {"text", encoded.(statement)},
+        {"evidence", evidence},
+        {"category", encoded.(category)},
+        {"reason", encoded.("Native operator statement and category review.")},
+        {"created_at_ms", encoded.(now)},
+        {"observed_at_ms", encoded.(now)},
+        {"event_at_ms", 4},
+        {"expires_at_ms", encoded.(if(category == "ordinary", do: now + 90 * @day))},
+        {"superseded_at_ms", 4},
+        {"previous_category", 4},
+        {"metadata_reserve", 66}
+      ])
+
+    quote_bytes = encoded.(statement)
+    fixed_proof_bytes = proof - quote_bytes
+
+    upper_bound =
+      Enum.map(1..1024, fn source_bytes ->
+        fixed = fixed_proof_bytes + byte_size(Integer.to_string(source_bytes)) - 3
+        quote = min(6 * source_bytes + 2, 2048 - fixed)
+        value + quote - quote_bytes + fixed + quote - proof
+      end)
+      |> Enum.max()
+
+    %{
+      "source_bytes" => byte_size(statement),
+      "json_escape_count" => escapes,
+      "proof_encoded_bytes" => proof,
+      "next_escape_proof_bytes" => maximum_proof_bytes(escapes + 1, category),
+      "predicted_note_value_bytes" => value,
+      "all_source_lengths_upper_bound_bytes" => upper_bound,
+      "record_ceiling_bytes" => 6144,
+      "category" => category,
+      "timestamp_digits" => byte_size(Integer.to_string(now)),
+      "source_limit_bytes" => 1024,
+      "proof_limit_bytes" => 2048,
+      "geometry_only" => true
+    }
+  end
+
+  def maximum_statement(escapes) when escapes in 0..998,
+    do: "M" <> String.duplicate("\\", escapes) <> String.duplicate("x", 998 - escapes)
+
+  defp maximum_proof_bytes(escapes, category) do
+    encoded = fn value -> byte_size(Jason.encode!(value)) end
+
+    maximum_object_bytes([
+      {"version", 1},
+      {"session_id", 34},
+      {"occurrence_id", 34},
+      {"version_id", 34},
+      {"kind", encoded.("input.assertion." <> category)},
+      {"origin", encoded.("native_operator_assertion")},
+      {"coverage", encoded.("available")},
+      {"path", 4},
+      {"start_byte", 1},
+      {"end_byte", 3},
+      {"quote", encoded.(maximum_statement(escapes))},
+      {"quote_sha256", 66},
+      {"content_sha256", 66},
+      {"receipt_sha256", 66}
+    ])
+  end
+
+  defp maximum_object_bytes(fields) do
+    2 + length(fields) - 1 +
+      Enum.sum(Enum.map(fields, fn {key, size} -> byte_size(Jason.encode!(key)) + 1 + size end))
+  end
+
   @doc "Summarize selected recorded event times; this is not a physical-completion bound."
   def recorded_times(events) when is_list(events) do
     %{
@@ -82,9 +173,11 @@ defmodule Ipse.Development.NativeNotesSeed do
 
   defp recorded_times_in(_, maxima), do: maxima
 
-  def main(["--init", root, kind]) when kind in ~w(initial smoke), do: initialize(root, kind, nil)
+  def main(["--init", root, kind]) when kind in ~w(initial smoke maximum),
+    do: initialize(root, kind, nil)
 
-  def main(["--init", root, kind, "--fixture-port", port]) when kind in ~w(initial smoke) do
+  def main(["--init", root, kind, "--fixture-port", port])
+      when kind in ~w(initial smoke maximum) do
     {port, ""} = Integer.parse(port)
     assert port in 1..65_535
     initialize(root, kind, port)
@@ -98,7 +191,7 @@ defmodule Ipse.Development.NativeNotesSeed do
   def main(_),
     do:
       raise(
-        "use --init ROOT initial|smoke [--fixture-port PORT], --run ROOT SEGMENTS|all, or --audit ROOT OUTPUT"
+        "use --init ROOT initial|smoke|maximum [--fixture-port PORT], --run ROOT SEGMENTS|all, or --audit ROOT OUTPUT"
       )
 
   @doc "A loopback-only synthetic profile; this does not enable or contact a service."
@@ -155,8 +248,9 @@ defmodule Ipse.Development.NativeNotesSeed do
           ],
         stderr_to_stdout: true,
         env: [
-          {"LD_PRELOAD", Path.join(root, "clock.so")},
-          {"IPSE_TEST_CLOCK_OFFSET_MS", Integer.to_string(day * @day)},
+          {"LD_PRELOAD", if(manifest["kind"] != "maximum", do: Path.join(root, "clock.so"))},
+          {"IPSE_TEST_CLOCK_OFFSET_MS",
+           if(manifest["kind"] != "maximum", do: Integer.to_string(day * @day))},
           {"HOME", root},
           {"IPSE_HOME", Path.join(root, "home")},
           {"TMPDIR", root}
@@ -179,13 +273,17 @@ defmodule Ipse.Development.NativeNotesSeed do
     assert not File.exists?(Path.join(root, "inflight.json"))
     reports = closed(root, manifest)
     assert length(reports) == length(manifest["plan"])
-    modules = Code.require_file(Path.join(root, "runtime/managed_clock_lifecycle.exs"))
-
-    {clock_module, _} =
-      Enum.find(modules, fn {module, _} -> module === Ipse.Test.ManagedClockLifecycle end)
-
     {:ok, _} = Application.ensure_all_started(:ipse)
-    clock_module.check_stdio_clock(root)
+
+    if manifest["kind"] != "maximum" do
+      modules = Code.require_file(Path.join(root, "runtime/managed_clock_lifecycle.exs"))
+
+      {clock_module, _} =
+        Enum.find(modules, fn {module, _} -> module === Ipse.Test.ManagedClockLifecycle end)
+
+      clock_module.check_stdio_clock(root)
+    end
+
     home = Path.join(root, "home")
     cwd = Path.join(root, "work")
     assert {:ok, binding} = ProjectIdentity.existing(home, cwd)
@@ -333,14 +431,20 @@ defmodule Ipse.Development.NativeNotesSeed do
           {"sessions", Path.join(home, "sessions")}
         ],
         fn {name, path} ->
-          assert {:ok, allocation} = Ipse.Runner.storage_allocation(path)
+          assert {:ok, allocation} = component_allocation(name, path, actions, manifest["kind"])
           {name, allocation}
         end
       )
 
     measured =
       status["allocated_bytes"] +
-        Enum.sum(Enum.map(physical, fn {_, usage} -> usage["allocated_bytes"] end))
+        Enum.reduce(physical, 0, fn
+          {_, %{"presence" => "absent", "native_allocation" => nil}}, total ->
+            total
+
+          {_, %{"allocated_bytes" => bytes}}, total when is_integer(bytes) and bytes >= 0 ->
+            total + bytes
+        end)
 
     save(output <> ".rows.json", rows)
 
@@ -366,6 +470,7 @@ defmodule Ipse.Development.NativeNotesSeed do
       "status" => status,
       "physical_allocations" => physical,
       "measured_components_allocated_bytes" => measured,
+      "absent_physical_components" => absent_components(physical),
       "allocation_scope" =>
         "Collection plus actual control, identity, management and original Session sources; excludes installed artifacts, frozen SDK and benchmark oracle; no double-counted control reserve",
       "full_6_kib_record_payload_qualification" => false,
@@ -389,13 +494,19 @@ defmodule Ipse.Development.NativeNotesSeed do
     File.chmod!(root, 0o700)
     for name <- ~w(runtime checkpoints logs work), do: File.mkdir!(Path.join(root, name))
 
-    for path <- @source_files,
-        do: File.cp!(path, Path.join(root, "runtime/" <> Path.basename(path)))
+    for path <- @source_files do
+      source = if path == "dev/knowledge/native_notes_seed.ex", do: __ENV__.file, else: path
+      File.cp!(source, Path.join(root, "runtime/" <> Path.basename(path)))
+    end
 
-    for {source, flags, target} <- [
-          {"dev/fixtures/process_clock.rs", ["--crate-type=cdylib"], "clock.so"},
-          {"test/support/operator_pty.rs", [], "pty"}
-        ] do
+    for {source, flags, target} <-
+          Enum.reject(
+            [
+              {"dev/fixtures/process_clock.rs", ["--crate-type=cdylib"], "clock.so"},
+              {"test/support/operator_pty.rs", [], "pty"}
+            ],
+            fn {_, _, target} -> kind == "maximum" and target == "clock.so" end
+          ) do
       {output, code} =
         System.cmd(
           "rustc",
@@ -408,32 +519,34 @@ defmodule Ipse.Development.NativeNotesSeed do
 
     paths = current_paths()
 
-    {output, code} =
-      System.cmd(
-        System.find_executable("elixir"),
-        ["--erl", "+S 2:2"] ++
-          paths ++
-          [
-            "-r",
-            Path.join(root, "runtime/managed_clock_lifecycle.exs"),
-            "-e",
-            "Ipse.Test.ManagedClockLifecycle.prepare_stdio_clock(System.argv())",
-            root,
-            Application.app_dir(:ipse, "ebin")
-          ],
-        stderr_to_stdout: true
-      )
+    if kind != "maximum" do
+      {output, code} =
+        System.cmd(
+          System.find_executable("elixir"),
+          ["--erl", "+S 2:2"] ++
+            paths ++
+            [
+              "-r",
+              Path.join(root, "runtime/managed_clock_lifecycle.exs"),
+              "-e",
+              "Ipse.Test.ManagedClockLifecycle.prepare_stdio_clock(System.argv())",
+              root,
+              Application.app_dir(:ipse, "ebin")
+            ],
+          stderr_to_stdout: true
+        )
 
-    File.write!(Path.join(root, "logs/runtime-build.log"), output, [:exclusive])
-    assert code == 0, output
-    # Freeze dependency BEAMs instead of sharing a mutable Mix build directory.
-    for path <- :code.get_path(),
-        path = List.to_string(path),
-        String.contains?(Path.expand(path), "/_build/") and Path.basename(path) == "ebin",
-        Path.basename(Path.dirname(path)) != "ipse" do
-      target = Path.join(root, "stdio-runtime/" <> Path.basename(Path.dirname(path)) <> "/ebin")
-      File.mkdir_p!(Path.dirname(target))
-      File.cp_r!(path, target)
+      File.write!(Path.join(root, "logs/runtime-build.log"), output, [:exclusive])
+      assert code == 0, output
+      # Freeze dependency BEAMs instead of sharing a mutable Mix build directory.
+      for path <- :code.get_path(),
+          path = List.to_string(path),
+          String.contains?(Path.expand(path), "/_build/") and Path.basename(path) == "ebin",
+          Path.basename(Path.dirname(path)) != "ipse" do
+        target = Path.join(root, "stdio-runtime/" <> Path.basename(Path.dirname(path)) <> "/ebin")
+        File.mkdir_p!(Path.dirname(target))
+        File.cp_r!(path, target)
+      end
     end
 
     private_files =
@@ -444,7 +557,10 @@ defmodule Ipse.Development.NativeNotesSeed do
       private_files ++
         Path.wildcard(Path.join(root, "stdio-runtime/*/ebin/*")) ++
         Path.wildcard(Path.join(root, "runtime/*")) ++
-        Enum.map(~w(clock.so pty clock-stdio-runtime.json), &Path.join(root, &1))
+        Enum.map(
+          if(kind == "maximum", do: ~w(pty), else: ~w(clock.so pty clock-stdio-runtime.json)),
+          &Path.join(root, &1)
+        )
 
     manifest = %{
       "version" => 1,
@@ -463,8 +579,16 @@ defmodule Ipse.Development.NativeNotesSeed do
         "otp" => List.to_string(:erlang.system_info(:otp_release)),
         "architecture" => List.to_string(:erlang.system_info(:system_architecture))
       },
-      "clock_scope" => "private Runner environment adapter; monotonic/kernel clocks unchanged",
-      "native_statement_bytes" => 1024,
+      "normal_runtime_ebins" =>
+        if(kind == "maximum",
+          do: Path.wildcard(Path.join(Path.dirname(Application.app_dir(:ipse)), "*/ebin"))
+        ),
+      "clock_scope" =>
+        if(kind == "maximum",
+          do: "normal immutable SDK, actual wall clock; no clock adapter",
+          else: "private Runner environment adapter; monotonic/kernel clocks unchanged"
+        ),
+      "native_statement_bytes" => if(kind == "maximum", do: 999, else: 1024),
       "full_6_kib_record_payload_qualification" => false,
       "annual_workload_qualification" => false
     }
@@ -515,8 +639,9 @@ defmodule Ipse.Development.NativeNotesSeed do
             ],
           stderr_to_stdout: true,
           env: [
-            {"LD_PRELOAD", Path.join(root, "clock.so")},
-            {"IPSE_TEST_CLOCK_OFFSET_MS", Integer.to_string(segment["day"] * @day)},
+            {"LD_PRELOAD", if(manifest["kind"] != "maximum", do: Path.join(root, "clock.so"))},
+            {"IPSE_TEST_CLOCK_OFFSET_MS",
+             if(manifest["kind"] != "maximum", do: Integer.to_string(segment["day"] * @day))},
             {"HOME", root},
             {"IPSE_HOME", Path.join(root, "home")},
             {"TMPDIR", root}
@@ -560,7 +685,15 @@ defmodule Ipse.Development.NativeNotesSeed do
     assert inflight["manifest_sha256"] ===
              JSON.sha256(File.read!(Path.join(root, "manifest.json")))
 
-    assert System.get_env("IPSE_TEST_CLOCK_OFFSET_MS") == Integer.to_string(segment["day"] * @day)
+    if manifest["kind"] == "maximum" do
+      assert segment["day"] == 0
+      assert is_nil(System.get_env("LD_PRELOAD"))
+      assert is_nil(System.get_env("IPSE_TEST_CLOCK_OFFSET_MS"))
+    else
+      assert System.get_env("IPSE_TEST_CLOCK_OFFSET_MS") ==
+               Integer.to_string(segment["day"] * @day)
+    end
+
     assert System.system_time(:millisecond) >= manifest["created_wall_ms"] + segment["day"] * @day
     previous = closed(root, manifest)
     assert length(previous) == index - 1
@@ -569,13 +702,17 @@ defmodule Ipse.Development.NativeNotesSeed do
       Enum.reduce(previous, %{}, fn report, all -> Map.merge(all, report["new_records"]) end)
 
     for report <- previous, source <- report["sources"], do: verify_fingerprint(source)
-    modules = Code.require_file(Path.join(root, "runtime/managed_clock_lifecycle.exs"))
-
-    {clock_module, _} =
-      Enum.find(modules, fn {module, _} -> module === Ipse.Test.ManagedClockLifecycle end)
-
     {:ok, _} = Application.ensure_all_started(:ipse)
-    clock_module.check_stdio_clock(root)
+
+    if manifest["kind"] != "maximum" do
+      modules = Code.require_file(Path.join(root, "runtime/managed_clock_lifecycle.exs"))
+
+      {clock_module, _} =
+        Enum.find(modules, fn {module, _} -> module === Ipse.Test.ManagedClockLifecycle end)
+
+      clock_module.check_stdio_clock(root)
+    end
+
     home = Path.join(root, "home")
     cwd = Path.join(root, "work")
 
@@ -671,7 +808,7 @@ defmodule Ipse.Development.NativeNotesSeed do
       Enum.with_index(captures, 1)
       |> Enum.map(fn {action, step} ->
         started = System.monotonic_time(:microsecond)
-        command = "/remember #{action["category"]} " <> text(action["number"])
+        command = "/remember #{action["category"]} " <> text(action["number"], manifest["kind"])
         File.write!(Path.join(root, "supersession-input-#{step}"), command)
         IO.write("IPSE_SUPERSESSION_READ_#{step}> ")
 
@@ -696,8 +833,15 @@ defmodule Ipse.Development.NativeNotesSeed do
         System.monotonic_time(:microsecond) - started
       end)
 
+    maximum =
+      if manifest["kind"] == "maximum",
+        do:
+          maximum_refusals(session, channel, root, dir, id, collection, namespace, home, binding),
+        else: nil
+
     assert :ok = Session.close_confirmed(session)
     assert {:ok, events} = Journal.load(dir, id)
+
     assert {:ok, _} = Session.Saved.restore(events, id)
 
     assert {:ok, %{"release_claim" => "signed_release_claim"}} =
@@ -718,7 +862,7 @@ defmodule Ipse.Development.NativeNotesSeed do
       |> Map.new(fn {action, event} ->
         [change] = event["request"]["request"]["changes"]
         value = change["value"]
-        assert value["text"] == text(action["number"])
+        assert value["text"] == text(action["number"], manifest["kind"])
         assert value["category"] == action["category"]
         [proof] = value["evidence"]["sources"]
         assert proof["origin"] == "native_operator_assertion" and proof["quote"] == value["text"]
@@ -727,7 +871,63 @@ defmodule Ipse.Development.NativeNotesSeed do
          %{"key" => change["key"], "value" => value, "category" => action["category"]}}
       end)
 
+    maximum =
+      if maximum do
+        [accepted] = Map.values(delta)
+        value = accepted["value"]
+        [proof] = value["evidence"]["sources"]
+        geometry = maximum_geometry(value["created_at_ms"])
+        assert byte_size(Jason.encode!(proof)) == geometry["proof_encoded_bytes"]
+
+        assert byte_size(Collection.Migration.encode(value)) ==
+                 geometry["predicted_note_value_bytes"]
+
+        intent =
+          Enum.find(
+            events,
+            &(&1["type"] == "extension_invocation_intent" and
+                &1["invocation_id"] == maximum["refusal_invocation_id"])
+          )
+
+        result =
+          Enum.find(
+            events,
+            &(&1["type"] == "extension_invocation_result" and
+                &1["invocation_id"] == maximum["refusal_invocation_id"])
+          )
+
+        assert {:ok, refusal} = maximum_inline_refusal(intent, result)
+        intents = invocation_intents(events)
+
+        assert {:ok, idle} =
+                 DynamicSupervisor.start_child(
+                   Ipse.Sessions,
+                   {Session, config: config, cwd: cwd, state_dir: dir, subscriber: self(), id: id}
+                 )
+
+        assert Session.info(idle).phase == :idle
+        assert :ok = Session.close_confirmed(idle)
+        assert :sys.get_state(Ipse.Session.Input).entries == %{}
+        assert {:ok, reopened} = Journal.load(dir, id)
+        assert {:ok, _} = Session.Saved.restore(reopened, id)
+        assert invocation_intents(reopened) === intents
+
+        assert {:ok, unchanged} =
+                 Collection.execute(collection, namespace, %{"op" => "snapshot"}, Usage.id())
+
+        assert unchanged === maximum["snapshot"]
+
+        Map.merge(maximum, geometry)
+        |> Map.merge(%{
+          "actual_proof_encoded_bytes" => byte_size(Jason.encode!(proof)),
+          "actual_note_value_bytes" => byte_size(Collection.Migration.encode(value)),
+          "idle_reopen_no_replay" => true,
+          "refusal_code" => refusal["code"]
+        })
+      end
+
     records = Map.merge(records, delta)
+
     management_before = Path.wildcard(Path.join(home, "knowledge-management/*.jsonl"))
 
     for action <- segment["actions"], action["op"] == "pin" do
@@ -826,7 +1026,9 @@ defmodule Ipse.Development.NativeNotesSeed do
           {"sessions", dir}
         ],
         fn {name, path} ->
-          assert {:ok, allocation} = Ipse.Runner.storage_allocation(path)
+          assert {:ok, allocation} =
+                   component_allocation(name, path, segment["actions"], manifest["kind"])
+
           {name, allocation}
         end
       )
@@ -852,7 +1054,9 @@ defmodule Ipse.Development.NativeNotesSeed do
       "control_sequence" => control["sequence"],
       "control_sha256" => JSON.digest([control]),
       "physical_allocations" => physical,
+      "absent_physical_components" => absent_components(physical),
       "beam_memory_after_segment" => :erlang.memory(:total),
+      "maximum_payload_boundary" => maximum,
       "annual_workload_qualification" => false,
       "initial_seed_complete" =>
         manifest["kind"] == "initial" and index == length(manifest["plan"])
@@ -894,6 +1098,166 @@ defmodule Ipse.Development.NativeNotesSeed do
     end
   end
 
+  @doc "Describe only the absent management component of a capture-only maximum fixture."
+  def absent_management_storage(path, actions) when is_binary(path) and is_list(actions) do
+    with true <- actions != [] and Enum.all?(actions, &(is_map(&1) and &1["op"] == "capture")),
+         {:error, :enoent} <- File.lstat(path) do
+      {:ok,
+       %{
+         "presence" => "absent",
+         "basis" => "lstat_enoent_no_management_actions",
+         "native_allocation" => nil,
+         "missing_dimensions" => ~w(logical_bytes allocated_bytes entries)
+       }}
+    else
+      _ -> {:error, :native_seed_management_storage_unavailable}
+    end
+  end
+
+  def absent_management_storage(_, _), do: {:error, :native_seed_management_storage_unavailable}
+
+  defp component_allocation("management", path, actions, "maximum"),
+    do: absent_management_storage(path, actions)
+
+  defp component_allocation(_, path, _, _), do: Ipse.Runner.storage_allocation(path)
+
+  defp absent_components(physical),
+    do: for({name, %{"presence" => "absent"}} <- physical, do: name)
+
+  defp maximum_refusals(session, channel, root, dir, id, collection, namespace, home, binding) do
+    assert {:ok, before_events} = Journal.load(dir, id)
+
+    assert {:ok, before_snapshot} =
+             Collection.execute(collection, namespace, %{"op" => "snapshot"}, Usage.id())
+
+    before_records = visible(collection, namespace)
+
+    assert {:ok, control_before} =
+             Consent.existing_snapshot(
+               SemanticAdmission.control_root(home),
+               binding["project_id"]
+             )
+
+    geometry = maximum_geometry(System.system_time(:millisecond))
+    command = "/remember ordinary " <> maximum_statement(geometry["json_escape_count"] + 1)
+    native_assertion(session, channel, root, 2, command)
+    assert_receive {:ipse, ^session, {:done, :ok}}, 30_000
+    assert {:ok, refused_events} = Journal.load(dir, id)
+    assert Enum.take(refused_events, length(before_events)) === before_events
+
+    [result] =
+      Enum.filter(
+        Enum.drop(refused_events, length(before_events)),
+        &(&1["type"] == "extension_invocation_result")
+      )
+
+    [intent] =
+      Enum.filter(
+        Enum.drop(refused_events, length(before_events)),
+        &(&1["type"] == "extension_invocation_intent")
+      )
+
+    assert {:ok, _} = Session.Saved.restore(refused_events, id)
+
+    assert {:ok, %{"status" => "refused", "code" => "source_refused"}} =
+             maximum_inline_refusal(intent, result)
+
+    assert {:ok, ^before_snapshot} =
+             Collection.execute(collection, namespace, %{"op" => "snapshot"}, Usage.id())
+
+    assert visible(collection, namespace) === before_records
+    command = "/remember ordinary " <> String.duplicate("x", 1025)
+    File.write!(Path.join(root, "supersession-input-3"), command)
+    IO.write("IPSE_SUPERSESSION_READ_3> ")
+
+    assert {:ok, ^command, witness} =
+             Session.observe_channel(session, channel, %{"kind" => "prompt"}, 30_000)
+
+    assert {:ok, ticket} = Session.stage_input(session, channel, command, witness)
+
+    assert {:error, :operator_assertion_refused} =
+             Session.prepare_assertion(session, channel, command, ticket)
+
+    assert {:ok, after_events} = Journal.load(dir, id)
+    assert after_events === refused_events
+
+    assert {:ok, ^before_snapshot} =
+             Collection.execute(collection, namespace, %{"op" => "snapshot"}, Usage.id())
+
+    assert visible(collection, namespace) === before_records
+
+    assert {:ok, control_after} =
+             Consent.existing_snapshot(
+               SemanticAdmission.control_root(home),
+               binding["project_id"]
+             )
+
+    assert control_after === control_before
+
+    %{
+      "refusal_invocation_id" => result["invocation_id"],
+      "snapshot" => before_snapshot,
+      "proof_over_limit_bytes" => geometry["next_escape_proof_bytes"],
+      "source_over_limit_bytes" => 1025,
+      "old_head_and_values_unchanged" => true,
+      "saved_consent_accounting_unchanged" => true,
+      "accepted_prefix_sha256" => JSON.digest(before_events),
+      "source_limit_refused_before_append" => true
+    }
+  end
+
+  defp native_assertion(session, channel, root, step, command) do
+    File.write!(Path.join(root, "supersession-input-#{step}"), command)
+    IO.write("IPSE_SUPERSESSION_READ_#{step}> ")
+
+    assert {:ok, ^command, witness} =
+             Session.observe_channel(session, channel, %{"kind" => "prompt"}, 30_000)
+
+    assert {:ok, ticket} = Session.stage_input(session, channel, command, witness)
+
+    assert {:ok, %{"render_id" => render}} =
+             Session.prepare_assertion(session, channel, command, ticket)
+
+    assert {:ok, input, observed} =
+             Session.observe_channel(
+               session,
+               channel,
+               %{"kind" => "assertion", "render_id" => render},
+               30_000
+             )
+
+    assert :ok = Session.accept_assertion_observed(session, channel, render, input, observed)
+  end
+
+  @doc "Inspect a small inline refusal; this grants no source or mutation authority."
+  def maximum_inline_refusal(intent, result) when is_map(intent) and is_map(result) do
+    with :ok <- Ipse.Extension.Invocation.validate_intent(intent),
+         true <- result["type"] == "extension_invocation_result" and result["version"] in [1, 3],
+         true <- Ipse.Extension.Invocation.result_intent(result) === intent,
+         true <- result["payload_sha256"] == JSON.digest([result["payload"]]),
+         true <-
+           is_binary(result["text"]) and result["text_sha256"] == JSON.sha256(result["text"]),
+         {:ok, value} <- JSON.decode_bounded(result["text"]),
+         true <- Ipse.Extension.Invocation.delivery(result) === %{"value" => value},
+         true <- value === %{"status" => "refused", "code" => "source_refused"} do
+      {:ok, value}
+    else
+      _ -> {:error, :maximum_inline_refusal_unavailable}
+    end
+  rescue
+    _ -> {:error, :maximum_inline_refusal_unavailable}
+  end
+
+  def maximum_inline_refusal(_, _), do: {:error, :maximum_inline_refusal_unavailable}
+
+  defp invocation_intents(events),
+    do: Enum.filter(events, &(&1["type"] == "extension_invocation_intent"))
+
+  defp text(_number, "maximum"),
+    do: maximum_statement(maximum_geometry(System.system_time(:millisecond))["json_escape_count"])
+
+  defp text(number, _kind), do: text(number)
+
   defp text(number) do
     prefix = "Native capacity source #{number}: "
     body = Enum.map_join(1..17, " ", &JSON.sha256("native capacity #{number}:#{&1}"))
@@ -902,8 +1266,13 @@ defmodule Ipse.Development.NativeNotesSeed do
 
   defp current_paths, do: Enum.flat_map(:code.get_path(), &["-pa", List.to_string(&1)])
 
-  defp private_paths(root),
-    do: Path.wildcard(Path.join(root, "stdio-runtime/*/ebin")) |> Enum.flat_map(&["-pa", &1])
+  defp private_paths(root) do
+    paths =
+      manifest(root)["normal_runtime_ebins"] ||
+        Path.wildcard(Path.join(root, "stdio-runtime/*/ebin"))
+
+    Enum.flat_map(paths, &["-pa", &1])
+  end
 
   defp report_path(root, index), do: Path.join(root, "checkpoints/report-#{index}.json")
   defp closed_path(root, index), do: Path.join(root, "checkpoints/closed-#{index}.json")

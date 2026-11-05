@@ -1,0 +1,9 @@
+actor_exit=0
+inputs_post=0
+normal_sdk_source_runtime_artifacts_links_pathset_post=0
+operator_before=1
+operator_after=1
+operator_cleanup=0
+matching_process_after=1
+process_cleanup=0
+original_roots_accessed=false

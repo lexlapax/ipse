@@ -1,0 +1,58 @@
+diff --git a/docs/developer/capture-pilot.md b/docs/developer/capture-pilot.md
+--- a/docs/developer/capture-pilot.md
++++ b/docs/developer/capture-pilot.md
+@@ -210,6 +210,20 @@
+ not necessarily a maximum encoded signed record. Primitive padded storage maps
+ cannot replace source-authenticated native maximum-payload evidence.
+ 
++Measure the source, complete proof and stored value separately through the native
++statement path. `/remember` limits the statement to 1,024 UTF-8 bytes, while the
++complete encoded source proof must fit 2,048 bytes. The record repeats the exact
++statement as its text and evidence quote, with the host's fixed reason. Escaping
++can therefore exhaust the proof bound before the source-byte bound. A shorter
++source can produce a larger encoded value when its byte-offset fields use fewer
++digits. The 6,144-byte note-value ceiling does not imply that this direct path can
++produce a value of that size. Preserve the actual source/proof/value sizes, the
++known refusal just beyond the binding bound, and the existing head, provenance
++and accounting checks. An unknown outcome stops the fixture without replay.
++
++Keep these functional boundary checks separate from the
++[storage measurement's coverage](measurement.md#interpret-latency-and-storage-coverage-honestly).
++
+ Keep the declaration beside the prepared developer workload, with an exact hash
+ in its manifest and retained attachment. Verify the selected ordered effects and
+ the full turn schedule before execution; changing the declaration or plan requires
+diff --git a/docs/developer/measurement.md b/docs/developer/measurement.md
+--- a/docs/developer/measurement.md
++++ b/docs/developer/measurement.md
+@@ -281,6 +281,15 @@
+ Read `complete`, `storage_reachability_complete`, `measurement_scope`, `unmeasured`,
+ and `resource_evaluation_complete` separately. Storage file lengths are not
+ allocated blocks, compression/shared extents, or exact transient storage peaks.
++Native allocation inspection requires an existing protected directory. A
++capture-only fixture need not create a management-journal directory. Record an
++expected `enoent` separately only when the plan has no management actions; leave
++its native allocation and missing dimensions explicit. Measure every present
++component through the native helper. Do not create an empty directory merely to
++make an inventory pass, fabricate a successful zero-byte native measurement, or
++treat another filesystem error as absence. An allocated-byte subtotal covers
++only its named measured components.
++
+ Run-directory counts exclude authoring/preflight copies outside it; output-wide
+ overviews count them separately with stated exclusions. Version-one overview
+ clocks start at runner entry and exclude CLI/module startup plus their own final
+diff --git a/docs/operator/knowledge-permissions.md b/docs/operator/knowledge-permissions.md
+--- a/docs/operator/knowledge-permissions.md
++++ b/docs/operator/knowledge-permissions.md
+@@ -263,6 +263,11 @@
+ 90-day ceiling; the other categories follow the reviewed policy. This command
+ does not replace an existing note, change retention or perform a supersession.
+ 
++The statement is limited to 1,024 UTF-8 bytes. Its complete encoded source proof
++must also fit 2 KiB, so an escape-heavy statement can be refused even within the
++text limit. Ipse does not truncate it to fit. The separate 6 KiB stored-value
++ceiling is not a 6 KiB input allowance.
++
+ Wait for the final result. The native owner makes its final locked publication
+ decision under the earliest policy/source deadline; a switch admitted before
+ expiry may physically finish later. If confirmation or publication is uncertain,

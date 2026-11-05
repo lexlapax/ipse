@@ -1,0 +1,16 @@
+{
+  "entry_sha256": "dd2e46082437c0b9677f77e99fac7ad492f8143b3f235a7fc38787536e373e7a",
+  "inputs_manifest_sha256": "2448b23bff30e8a571e470b3b606575f3f15a7425851430ca089060d9ad1c5e9",
+  "launcher_sha256": "e1e51b4b67337b64f4dd1e9cb9438207d54067ab01214ca291e66c59f3e06399",
+  "manuals_patch_sha256": "f1391543d9213bc204de5a61f1c1cd75f262323e14fd4d5da93aa9b7f1c235a0",
+  "preflight_ipse_app_started": false,
+  "preflight_model_calls": 0,
+  "preflight_native_calls": 0,
+  "pure_cases_passed": 9,
+  "retained_actual01_inline_binding_mutation_refusals": 6,
+  "runner_clock_derived": false,
+  "runtime_rebuilt": false,
+  "strict_fixture_closure_deferred_entry_warning_free": true,
+  "tooling_patch_sha256": "4565599b15d62d2675c4c844994e4a6e9760fb3a8fc900196b5da78a2bf9b623",
+  "version": 1
+}

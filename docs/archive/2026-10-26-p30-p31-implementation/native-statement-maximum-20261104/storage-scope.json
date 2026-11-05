@@ -1,0 +1,48 @@
+{
+  "absent_physical_components": [
+    "management"
+  ],
+  "collection": {
+    "accounted_allocated_bytes": 23105536,
+    "accounted_total_bytes": 23076149,
+    "allocated_bytes": 36864,
+    "data_bytes": 5547,
+    "floor": 1,
+    "generation": 1,
+    "records": 4,
+    "staged_data_bytes": 0,
+    "staged_records": 0
+  },
+  "physical_components": {
+    "control": {
+      "allocated_bytes": 16384,
+      "entries": 5,
+      "logical_bytes": 15103
+    },
+    "identity": {
+      "allocated_bytes": 4096,
+      "entries": 4,
+      "logical_bytes": 1391
+    },
+    "management": {
+      "basis": "lstat_enoent_no_management_actions",
+      "missing_dimensions": [
+        "logical_bytes",
+        "allocated_bytes",
+        "entries"
+      ],
+      "native_allocation": null,
+      "presence": "absent"
+    },
+    "sessions": {
+      "allocated_bytes": 126976,
+      "entries": 5,
+      "logical_bytes": 117488
+    }
+  },
+  "sampled_beam_memory_bytes": 60917640,
+  "sampled_beam_memory_is_kernel_aggregate": false,
+  "scope": "one private capture fixture; named native components only; no total lifetime storage/RAM or annual claim",
+  "staged_accounted_allocation_peak_bytes": 23105536,
+  "version": 1
+}

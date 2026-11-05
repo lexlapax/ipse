@@ -263,6 +263,11 @@ again before one new v3 record is admitted. Ordinary notes keep their original
 90-day ceiling; the other categories follow the reviewed policy. This command
 does not replace an existing note, change retention or perform a supersession.
 
+The statement is limited to 1,024 UTF-8 bytes. Its complete encoded source proof
+must also fit 2 KiB, so an escape-heavy statement can be refused even within the
+text limit. Ipse does not truncate it to fit. The separate 6 KiB stored-value
+ceiling is not a 6 KiB input allowance.
+
 Wait for the final result. The native owner makes its final locked publication
 decision under the earliest policy/source deadline; a switch admitted before
 expiry may physically finish later. If confirmation or publication is uncertain,

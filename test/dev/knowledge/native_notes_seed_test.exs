@@ -64,4 +64,172 @@ defmodule Ipse.Development.NativeNotesSeedTest do
     for invalid <- [0, 65_536, -1, "42123"],
         do: assert_raise(FunctionClauseError, fn -> Seed.fixture_config(invalid) end)
   end
+
+  test "the native maximum plan is one genuine statement capture, not a padded record write" do
+    assert Seed.plan("maximum") == [
+             %{
+               "day" => 0,
+               "actions" => [%{"op" => "capture", "number" => 1, "category" => "ordinary"}]
+             }
+           ]
+  end
+
+  test "proof JSON escaping is the binding native statement size limit" do
+    for category <- ~w(ordinary preference current) do
+      geometry = Seed.maximum_geometry(1_800_000_000_000, category)
+      assert geometry["source_bytes"] == 999
+      assert geometry["proof_encoded_bytes"] == 2048
+      assert geometry["next_escape_proof_bytes"] == 2049
+      assert geometry["predicted_note_value_bytes"] < geometry["record_ceiling_bytes"]
+
+      assert geometry["all_source_lengths_upper_bound_bytes"] ==
+               geometry["predicted_note_value_bytes"]
+
+      statement = Seed.maximum_statement(geometry["json_escape_count"])
+      next = Seed.maximum_statement(geometry["json_escape_count"] + 1)
+      assert byte_size(statement) == byte_size(next)
+      assert byte_size(Jason.encode!(next)) == byte_size(Jason.encode!(statement)) + 1
+
+      assert {:ok, ^category, ^statement} =
+               Ipse.Session.OperatorAssertion.parse_command("/remember #{category} " <> statement)
+
+      assert {:ok, ^category, ^next} =
+               Ipse.Session.OperatorAssertion.parse_command("/remember #{category} " <> next)
+    end
+
+    assert Seed.maximum_geometry(1_800_000_000_000)["predicted_note_value_bytes"] == 4062
+  end
+
+  test "native source overflow refuses before an assertion can be prepared" do
+    assert {:error, :operator_assertion_refused} =
+             Ipse.Session.OperatorAssertion.parse_command(
+               "/remember ordinary " <> String.duplicate("x", 1025)
+             )
+
+    for invalid <- [-1, 999],
+        do: assert_raise(FunctionClauseError, fn -> Seed.maximum_statement(invalid) end)
+
+    assert {:ok, "ordinary", text} =
+             Ipse.Session.OperatorAssertion.parse_command(
+               "/remember ordinary " <> String.duplicate("x", 1024)
+             )
+
+    assert byte_size(text) == 1024
+    refute Seed.maximum_geometry(1_800_000_000_000)["geometry_only"] == false
+  end
+
+  test "small refusals use a bound inline invocation result without a paged seal" do
+    hash = Ipse.JSON.sha256("native payload protocol fixture")
+
+    identity =
+      Map.new(
+        ~w(artifact artifact_sha256 options_sha256 exports_sha256 requires_sha256 subscriptions_sha256 source_sha256 host_sha256),
+        &{&1, hash}
+      )
+      |> Map.merge(%{
+        "instance" => "fixture",
+        "services" => [],
+        "scope" => "operator",
+        "sdk" => 2,
+        "protocol" => 1,
+        "capabilities" => ~w(invoke.command invoke.result.pages),
+        "order" => 1,
+        "lifetime" => "session",
+        "expires_at" => nil,
+        "generation" => 1,
+        "allow_children" => false,
+        "runtime" => %{
+          "architecture" => "fixture",
+          "elixir" => "1.18.5",
+          "erts" => "15",
+          "otp" => "27"
+        }
+      })
+
+    descriptor = %{
+      "id" => "capture",
+      "description" => "Synthetic refusal protocol",
+      "arguments_schema" => %{"type" => "object", "additionalProperties" => false},
+      "result_schema" => %{"type" => "object"},
+      "instance" => "fixture",
+      "stage" => "invoke.command",
+      "name" => "ext__fixture__capture"
+    }
+
+    intent =
+      Ipse.Extension.Invocation.intent(
+        identity,
+        descriptor,
+        %{},
+        Ipse.Usage.id(),
+        Ipse.Usage.id(),
+        nil,
+        nil,
+        "operator_request"
+      )
+
+    value = %{"status" => "refused", "code" => "source_refused"}
+
+    assert {:ok, result} =
+             Ipse.Extension.Invocation.build_result(intent, %{
+               "api_version" => 1,
+               "kind" => "result",
+               "value" => value
+             })
+
+    refute Map.has_key?(result, "delivery")
+    assert Ipse.Extension.Invocation.result_intent(result) === intent
+    assert {:ok, ^value} = Seed.maximum_inline_refusal(intent, result)
+
+    for invalid <- [
+          Map.put(result, "value", %{}),
+          Map.put(result, "text_sha256", hash),
+          Map.put(result, "payload_sha256", hash),
+          Map.put(result, "invocation_id", Ipse.Usage.id()),
+          Map.put(result, "version", 4),
+          Map.update!(result, "payload", &Map.put(&1, "arguments", %{"changed" => true}))
+        ] do
+      assert {:error, :maximum_inline_refusal_unavailable} =
+               Seed.maximum_inline_refusal(intent, invalid)
+    end
+
+    assert {:error, :maximum_inline_refusal_unavailable} =
+             Seed.maximum_inline_refusal(nil, result)
+  end
+
+  test "absent capture-only management storage is explicit and is not a native measurement" do
+    root = Path.join(System.tmp_dir!(), "ipse-native-seed-absence-" <> Ipse.Usage.id())
+    File.mkdir!(root)
+    path = Path.join(root, "knowledge-management")
+    actions = [%{"op" => "capture", "number" => 1, "category" => "ordinary"}]
+
+    try do
+      assert {:ok, absence} = Seed.absent_management_storage(path, actions)
+      assert absence["presence"] == "absent"
+      assert absence["native_allocation"] == nil
+      assert absence["missing_dimensions"] == ~w(logical_bytes allocated_bytes entries)
+      refute Map.has_key?(absence, "allocated_bytes")
+
+      assert {:error, :native_seed_management_storage_unavailable} =
+               Seed.absent_management_storage(path, actions ++ [%{"op" => "pin", "number" => 1}])
+
+      assert {:error, :native_seed_management_storage_unavailable} =
+               Seed.absent_management_storage(path, [])
+
+      File.mkdir!(path)
+
+      assert {:error, :native_seed_management_storage_unavailable} =
+               Seed.absent_management_storage(path, actions)
+
+      File.rmdir!(path)
+      File.ln_s!("does-not-exist", path)
+
+      assert {:error, :native_seed_management_storage_unavailable} =
+               Seed.absent_management_storage(path, actions)
+
+      File.rm!(path)
+    after
+      File.rmdir!(root)
+    end
+  end
 end

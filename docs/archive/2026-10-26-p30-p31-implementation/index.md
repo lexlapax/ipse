@@ -75,6 +75,8 @@ nor resource/offline qualification. No daemon configuration or existing model wa
 
 ## Source checkpoint evidence — 2026-11-04
 
+- [Direct native statement maximum](native-statement-maximum-20261104.md) passes one fresh 4062-byte ordinary record, 2048-byte proof and 999-byte source, proof/source overflow refusals, unchanged accounting and idle no-replay; two earlier fixture failures, other record maxima, burst and annual limits remain explicit.
+
 - [Anthropic cancelled-draft carryover](anthropic-draft-carryover-20261104.md) repairs live and saved text-only projection, preserves native outside history and passes a fresh four-wire synthetic cancellation/ordinary/same-ID journey. The first saved-policy failure and broader provider/installed/quality limits remain explicit.
 
 - [Simultaneous decision entry and quiescent recovery](p30-simultaneous-settlement-20261104.md) complete one synthetic settled winner, both normal closes and sequential idle/no-replay paths in one fresh cohort. The loser encounters native-control contention, not observed budget denial; earlier failures and consumer quality remain open.

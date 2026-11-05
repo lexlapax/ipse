@@ -210,6 +210,22 @@ assumptions when the pilot does not measure them. A maximum source statement is
 not necessarily a maximum encoded signed record. Primitive padded storage maps
 cannot replace source-authenticated native maximum-payload evidence.
 
+Measure the source, complete proof and stored value separately through the native
+statement path. `/remember` limits the statement to 1,024 UTF-8 bytes, while the
+complete encoded source proof must fit 2,048 bytes. The record repeats the exact
+statement as its text and evidence quote, with the host's fixed reason. Escaping
+can therefore exhaust the proof bound before the source-byte bound. A shorter
+source can produce a larger encoded value when its byte-offset fields use fewer
+digits. The 6,144-byte note-value ceiling does not imply that this direct path can
+produce a value of that size. Preserve the actual source/proof/value sizes, the
+known refusal just beyond the binding bound, and the existing head, provenance
+and accounting checks. An unknown outcome stops the fixture without replay.
+
+Keep these functional boundary checks separate from the
+[storage measurement's coverage](measurement.md#interpret-latency-and-storage-coverage-honestly).
+Run `mix test test/dev/knowledge/native_notes_seed_test.exs` to check the geometry
+and fixture result contracts. These pure cases do not execute a native capture.
+
 Keep the declaration beside the prepared developer workload, with an exact hash
 in its manifest and retained attachment. Verify the selected ordered effects and
 the full turn schedule before execution; changing the declaration or plan requires

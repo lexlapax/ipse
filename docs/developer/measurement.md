@@ -281,6 +281,15 @@ unknown when the journal cannot establish it.
 Read `complete`, `storage_reachability_complete`, `measurement_scope`, `unmeasured`,
 and `resource_evaluation_complete` separately. Storage file lengths are not
 allocated blocks, compression/shared extents, or exact transient storage peaks.
+Native allocation inspection requires an existing protected directory. A
+capture-only fixture need not create a management-journal directory. Record an
+expected `enoent` separately only when the plan has no management actions; leave
+its native allocation and missing dimensions explicit. Measure every present
+component through the native helper. Do not create an empty directory merely to
+make an inventory pass, fabricate a successful zero-byte native measurement, or
+treat another filesystem error as absence. An allocated-byte subtotal covers
+only its named measured components.
+
 Run-directory counts exclude authoring/preflight copies outside it; output-wide
 overviews count them separately with stated exclusions. Version-one overview
 clocks start at runner entry and exclude CLI/module startup plus their own final
