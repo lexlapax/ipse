@@ -659,6 +659,14 @@ silently shortening its evidence. Changing the timeout or creating another home
 cannot resolve that size refusal. The [extension contract](../developer/extension-effects.md#request-bounded-text-inference)
 explains its UTF-8 and complete-envelope limits.
 
+For a helper that uses protected native notes, defining this profile and trusting
+`host.model` remain separate from reviewing its source-use route. Follow the
+[finite Knowledge experiment procedure](knowledge-permissions.md#try-a-local-shadow-assessment)
+to select an explicit `--helper-profile` before capture and new-Session admission.
+That route review does not supply an answer extension or replace ordinary
+per-call approval. The finite decision-call allowance does not include helper
+requests or their costs.
+
 An SDK-2 invocation still has its original two-minute aggregate deadline. A
 longer model allowance cannot extend that enclosing invocation. Use a worker
 whose invocation contract supports the requested duration, such as the SDK-1

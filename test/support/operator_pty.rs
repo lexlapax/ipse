@@ -214,7 +214,7 @@ fn main() {
                     }
                     let reply = format!("{action} {code}");
                     if !answered.contains(&reply) {
-                        if (cas_knowledge || config_knowledge) && action == "enable" {
+                        if (cas_knowledge || config_knowledge) && (action == "enable" || action == "experiment") {
                             let root = std::path::Path::new(&args[args.len() - 2]);
                             std::fs::write(root.join("native-review-ready"), b"ready").unwrap();
                             if !root.join("consent-raced").is_file() { continue; }

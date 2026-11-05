@@ -79,6 +79,7 @@ nor resource/offline qualification. No daemon configuration or existing model wa
 - [Separate bounded helper context](model-context-v4-20261105.md) preserves complete evidence in version-four model calls under unchanged SDK and request limits. Current approval and denial pass in the failed four-case run; separate fresh source-withdrawal/interruption cases pass with conservative accounting and idle no replay. Real matched quality and installed qualification remain open.
 - [Frozen assessment and protected-answer adapters](p30-evaluation-adapters-20261105.md) records 59 focused development checks, complete baseline freeze/reprojection, inherited provenance and exact citation byte joins. Genuine paired execution, independent labels, time/cost and model quality remain open.
 - [Synthetic paired protected answers](p30-paired-protected-answers-20261105.md) later qualifies the actual eight-read, six-note baseline and four-note candidate protocol with three main, two helper and one decision wire. It preserves the failed 02 extractor aggregate and separate read-only materialization. Independent quality, time/cost and standalone/installed CLI qualification remain open.
+- [Explicit combined helper-route review](p30-combined-helper-route-20261105.md) adds the optional native CLI route before capture, with 58 passing CLI/Knowledge tests and the earlier fixture assertion failure preserved. CLI-to-paired and installed journeys remain open.
 
 ## Consent storage checkpoint — 2026-11-05
 

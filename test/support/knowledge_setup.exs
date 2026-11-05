@@ -1,5 +1,6 @@
 ExUnit.start(autorun: false)
 import ExUnit.Assertions
+Code.require_file("knowledge_helper_route.exs", __DIR__)
 {:ok, _} = Application.ensure_all_started(:ipse)
 
 for key <-
@@ -111,23 +112,35 @@ end
 {base, server} = if scenario == "save", do: KnowledgeRegisteredFixture.start(), else: {nil, nil}
 
 config_bytes =
-  if server do
-    Jason.encode!(%{
-      "version" => 1,
-      "profiles" => %{
-        "local_fixture" => %{
-          "provider" => "ollama",
-          "model" => "synthetic",
-          "base_url" => base,
-          "max_output_tokens" => 64,
-          "timeout_ms" => 90_000
-        }
-      },
-      "roles" => %{"main" => "local_fixture"},
-      "inference_services" => %{"local" => %{"version" => 1, "origins" => [base]}}
-    })
+  if scenario in ~w(experiment-helper experiment-helper-config) do
+    data =
+      %{"version" => 1, "settings" => %{"provider" => "demo", "model" => "scripted"}}
+      |> Map.merge(Ipse.Test.KnowledgeHelperRoute.profiles())
+      |> Map.merge(Ipse.Test.KnowledgeHelperRoute.install(root, home))
+
+    Jason.encode!(data)
   else
-    Jason.encode!(%{"version" => 1, "settings" => %{"provider" => "demo", "model" => "scripted"}})
+    if server do
+      Jason.encode!(%{
+        "version" => 1,
+        "profiles" => %{
+          "local_fixture" => %{
+            "provider" => "ollama",
+            "model" => "synthetic",
+            "base_url" => base,
+            "max_output_tokens" => 64,
+            "timeout_ms" => 90_000
+          }
+        },
+        "roles" => %{"main" => "local_fixture"},
+        "inference_services" => %{"local" => %{"version" => 1, "origins" => [base]}}
+      })
+    else
+      Jason.encode!(%{
+        "version" => 1,
+        "settings" => %{"provider" => "demo", "model" => "scripted"}
+      })
+    end
   end
 
 File.write!(config_path, config_bytes)
@@ -145,6 +158,146 @@ command = fn action ->
     config_path,
     "--no-project-config"
   ])
+end
+
+if scenario in ~w(experiment-helper experiment-helper-config) do
+  race =
+    if scenario == "experiment-helper-config" do
+      Task.async(fn ->
+        deadline = System.monotonic_time(:millisecond) + 10_000
+
+        wait = fn wait ->
+          if File.exists?(Path.join(root, "native-review-ready")) do
+            :ok
+          else
+            assert System.monotonic_time(:millisecond) < deadline
+            Process.sleep(5)
+            wait.(wait)
+          end
+        end
+
+        wait.(wait)
+
+        changed =
+          Jason.decode!(config_bytes) |> put_in(["profiles", "extract", "model"], "changed")
+
+        File.write!(config_path, Jason.encode!(changed))
+        File.write!(Path.join(root, "consent-raced"), "done")
+      end)
+    end
+
+  code =
+    Ipse.CLI.run([
+      "knowledge",
+      "experiment",
+      "advice",
+      "2",
+      "300",
+      "--helper-profile",
+      "extract",
+      "--cwd",
+      cwd,
+      "--config",
+      config_path,
+      "--no-project-config"
+    ])
+
+  if race do
+    assert code === 1
+    Task.await(race, 1000)
+    assert {:ok, binding} = Ipse.Extension.ProjectIdentity.existing(home, cwd)
+
+    assert {:ok, unchanged} =
+             Ipse.Extension.Consent.existing_snapshot(
+               Ipse.Extension.SemanticAdmission.control_root(home),
+               binding["project_id"]
+             )
+
+    assert unchanged === nil
+
+    refute File.exists?(
+             Path.join([
+               Ipse.Extension.SemanticAdmission.control_root(home),
+               binding["project_id"],
+               "control.json"
+             ])
+           )
+
+    IO.puts("KNOWLEDGE_NATIVE_HELPER_ROUTE_CHANGED_REFUSED")
+    System.halt(0)
+  end
+
+  assert code === 0
+  assert File.read!(config_path) === config_bytes
+  assert {:ok, binding} = Ipse.Extension.ProjectIdentity.existing(home, cwd)
+  control = Ipse.Extension.SemanticAdmission.control_root(home)
+
+  assert {:ok, snapshot} =
+           Ipse.Extension.Consent.existing_snapshot(control, binding["project_id"])
+
+  policy = snapshot["policy"]
+
+  assert Enum.map(policy["settings"]["routes"], &{&1["operation"], &1["profile"]}) ===
+           [{"decision.create", "advice"}, {"main", nil}, {"model.complete", "extract"}]
+
+  assert policy["limits"]["model_calls"] === 2 and snapshot["operations"] === %{}
+  assert {:ok, effective} = Ipse.Config.resolve(cwd, home, opts, %{})
+
+  client = %{
+    workspace: cwd,
+    home: home,
+    auth_dir: Path.join(home, "auth"),
+    operator_home: root,
+    mcp_config: nil,
+    base_url: nil,
+    operator_questions: true,
+    accept_edits: false,
+    approval: :ask,
+    approval_origin: :interactive,
+    headless: false
+  }
+
+  assert {:ok, runtime} = Ipse.Config.runtime(effective, client)
+  assert {:ok, active} = Ipse.Config.Activation.fresh(runtime, cwd)
+  knowledge = Enum.find(active.extensions, &(&1.identity["instance"] === "knowledge"))
+  assert Ipse.JSON.digest([knowledge.identity]) === policy["settings"]["identity_sha256"]
+  refute "host.model" in knowledge.identity["capabilities"]
+
+  assert Enum.any?(
+           active.extensions,
+           &(&1.identity["instance"] === "helper" and "host.model" in &1.identity["capabilities"])
+         )
+
+  assert {:ok, pid} =
+           DynamicSupervisor.start_child(
+             Ipse.Sessions,
+             {Ipse.Session,
+              [
+                config: runtime,
+                cwd: cwd,
+                state_dir: Path.join(root, "sessions"),
+                subscriber: self()
+              ]}
+           )
+
+  state = :sys.get_state(pid)
+  assert state.config.semantic_admission["status"] === "active"
+  assert state.config.semantic_admission["policy"] === policy
+  assert state.phase === :idle
+  assert :ok = Ipse.Session.close_confirmed(pid)
+  assert {:ok, events} = Ipse.Journal.load(Path.join(root, "sessions"), state.id)
+  assert {:ok, _} = Ipse.Session.Saved.restore(events, state.id)
+
+  refute Enum.any?(
+           events,
+           &(&1["type"] in ~w(request_admitted inference_dispatch_intent extension_action_intent))
+         )
+
+  assert {:ok, ^snapshot} =
+           Ipse.Extension.Consent.existing_snapshot(control, binding["project_id"])
+
+  IO.puts("KNOWLEDGE_NATIVE_HELPER_ROUTE_PASSED")
+  System.halt(0)
 end
 
 if scenario == "pipe" do

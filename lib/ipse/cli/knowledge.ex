@@ -75,24 +75,39 @@ defmodule Ipse.CLI.Knowledge do
   def run(_, _, _, _), do: fail(:unknown_knowledge_command)
 
   def run_experiment(profile, calls_text, seconds_text, opts, home, cwd) do
-    with true <- Enum.all?(Keyword.keys(opts), &(&1 in @options)) and opts[:json] != true,
+    with true <-
+           Enum.all?(Keyword.keys(opts), &(&1 in (@options ++ [:helper_profile]))) and
+             opts[:json] != true,
+         true <- length(Keyword.get_values(opts, :helper_profile)) <= 1,
+         helper = opts[:helper_profile],
+         true <- helper_profile?(helper),
+         runtime_opts = Keyword.delete(opts, :helper_profile),
          {calls, ""} when calls in 1..100 <- Integer.parse(calls_text),
          {seconds, ""} when seconds in 1..1800 <- Integer.parse(seconds_text),
          {:ok, cwd} <- Ipse.Workspace.canonical_path(cwd),
          {:ok, :native} <- Ipse.Runner.operator_channel(),
-         {:ok, config} <- runtime(opts, home, cwd),
+         {:ok, config} <- runtime(runtime_opts, home, cwd),
          :ok <- private_home(config.home),
          {:ok, binding} <- admit_project(config.home, cwd),
          {:ok, artifact} <- Bundles.install("knowledge-decision-shadow", config.home),
          now = System.system_time(:millisecond),
          {:ok, proposal} <-
-           prepare_experiment(config, binding, artifact.digest, now, profile, calls, seconds),
+           prepare_experiment(
+             config,
+             binding,
+             artifact.digest,
+             now,
+             profile,
+             calls,
+             seconds,
+             helper
+           ),
          {:ok, before} <- current_snapshot(config.home, binding["project_id"]),
          :ok <- confirm("experiment", experiment_review(binding, proposal.policy)),
          {:ok, _} <-
            ProjectIdentity.with_binding(config.home, cwd, binding, fn _ ->
              with {:ok, current} <-
-                    refresh_configuration(config, fn -> runtime(opts, home, cwd) end),
+                    refresh_configuration(config, fn -> runtime(runtime_opts, home, cwd) end),
                   {:ok, repeated} <-
                     prepare_experiment(
                       current,
@@ -101,7 +116,8 @@ defmodule Ipse.CLI.Knowledge do
                       now,
                       profile,
                       calls,
-                      seconds
+                      seconds,
+                      helper
                     ),
                   true <- repeated === proposal do
                Consent.replace(
@@ -600,21 +616,33 @@ defmodule Ipse.CLI.Knowledge do
   @doc "Prepare a finite local shadow experiment; this does not grant permission."
   def prepare_experiment(config, binding, digest, now, "advice", calls)
       when is_integer(calls) and calls in 1..100,
-      do: prepare_experiment(config, binding, digest, now, "advice", calls, 1800)
+      do: prepare_experiment(config, binding, digest, now, "advice", calls, 1800, nil)
 
   def prepare_experiment(_, _, _, _, _, _), do: @error
 
   def prepare_experiment(config, binding, digest, now, "advice", calls, seconds)
       when is_integer(calls) and calls in 1..100 and
              is_integer(seconds) and seconds in 1..1800,
-      do:
-        prepare_selection(config, binding, digest, now, %{
-          profile: "advice",
-          calls: calls,
-          seconds: seconds
-        })
+      do: prepare_experiment(config, binding, digest, now, "advice", calls, seconds, nil)
 
   def prepare_experiment(_, _, _, _, _, _, _), do: @error
+
+  def prepare_experiment(config, binding, digest, now, "advice", calls, seconds, helper)
+      when is_integer(calls) and calls in 1..100 and
+             is_integer(seconds) and seconds in 1..1800 do
+    if helper_profile?(helper) do
+      prepare_selection(config, binding, digest, now, %{
+        profile: "advice",
+        calls: calls,
+        seconds: seconds,
+        helper_profile: helper
+      })
+    else
+      @error
+    end
+  end
+
+  def prepare_experiment(_, _, _, _, _, _, _, _), do: @error
 
   defp prepare_selection(config, binding, digest, now, experiment) do
     with true <- JSON.safe_uint?(now),
@@ -661,7 +689,9 @@ defmodule Ipse.CLI.Knowledge do
          selected = Map.put(config, :extensions, entries),
          selectors =
            if(experiment,
-             do: [decision_selector(experiment.profile), main_selector()],
+             do:
+               [decision_selector(experiment.profile), main_selector()] ++
+                 helper_selectors(experiment.helper_profile),
              else: [main_selector()]
            ),
          {:ok, reviewed} <- SemanticRoutes.review(selected, selectors),
@@ -812,6 +842,18 @@ defmodule Ipse.CLI.Knowledge do
   defp decision_selector(profile),
     do: Map.put(main_selector(), "operation", "decision.create") |> Map.put("profile", profile)
 
+  defp helper_profile?(nil), do: true
+
+  defp helper_profile?(profile) when is_binary(profile),
+    do: Regex.match?(~r/\A[A-Za-z][A-Za-z0-9_-]{0,63}\z/, profile)
+
+  defp helper_profile?(_), do: false
+
+  defp helper_selectors(nil), do: []
+
+  defp helper_selectors(profile),
+    do: [Map.put(main_selector(), "operation", "model.complete") |> Map.put("profile", profile)]
+
   defp local_decision_route?(routes, profile),
     do:
       profile == "advice" and
@@ -842,6 +884,8 @@ defmodule Ipse.CLI.Knowledge do
       "The select_shadow tool compares complete current note packs against the actual context " <>
       "allocation and ordinary recall without changing context or stored notes. Fitting sets " <>
       "make no decision call. Neither experiment qualifies a default strategy. " <>
+      "The optional model.complete route requires a separately trusted host.model extension and " <>
+      "ordinary per-call native approval. CALLS counts decisions only, not main/helper usage or money. " <>
       "Each decision still needs native approval. Admitted requests may finish after expiry; " <>
       "unknown work retains its full reservation.\n" <> Jason.encode!(policy, pretty: true)
   end

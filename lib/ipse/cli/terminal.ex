@@ -84,6 +84,7 @@ defmodule Ipse.CLI.Terminal do
   ipse documents disable [--write]  Review disabling documents for new sessions
   ipse knowledge enable           Review and save project knowledge permission in a native terminal
   ipse knowledge experiment advice CALLS [SECONDS]  Review a finite local shadow experiment
+    --helper-profile PROFILE       Explicitly review one existing model.complete route (experiment only)
   ipse knowledge status [--json]   Inspect saved project knowledge permission
   ipse knowledge permissions      Show the complete saved permission
   ipse knowledge disable          Revoke permission through a fresh native review

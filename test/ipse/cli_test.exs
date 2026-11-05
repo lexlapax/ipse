@@ -152,6 +152,46 @@ end
 defmodule Ipse.CLITest do
   use ExUnit.Case, async: false
 
+  test "helper profile is a single explicit knowledge experiment option" do
+    for command <- [
+          ["chat"],
+          ["config"],
+          ["knowledge", "enable"],
+          ["knowledge", "permissions"],
+          ["knowledge", "experiment", "advice"]
+        ] do
+      output =
+        ExUnit.CaptureIO.capture_io(:stderr, fn ->
+          assert Ipse.CLI.run(command ++ ["--helper-profile", "extract"]) === 1
+        end)
+
+      assert output =~ "--helper-profile requires"
+    end
+
+    output =
+      ExUnit.CaptureIO.capture_io(:stderr, fn ->
+        assert Ipse.CLI.run([
+                 "knowledge",
+                 "experiment",
+                 "advice",
+                 "2",
+                 "--helper-profile",
+                 "extract",
+                 "--helper-profile",
+                 "other"
+               ]) === 1
+      end)
+
+    assert output =~ "--helper-profile requires"
+
+    for value <- ["", "bad.profile"] do
+      ExUnit.CaptureIO.capture_io(:stderr, fn ->
+        assert Ipse.CLI.run(["knowledge", "experiment", "advice", "2", "--helper-profile", value]) ===
+                 1
+      end)
+    end
+  end
+
   setup_all do
     {:ok, _} = Application.ensure_all_started(:ipse)
     :ok

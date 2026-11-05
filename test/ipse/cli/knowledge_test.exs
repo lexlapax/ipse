@@ -1,3 +1,5 @@
+Code.require_file("../../support/knowledge_helper_route.exs", __DIR__)
+
 defmodule Ipse.CLI.KnowledgeTest do
   use ExUnit.Case, async: false
   import ExUnit.CaptureIO
@@ -12,6 +14,17 @@ defmodule Ipse.CLI.KnowledgeTest do
 
   test "native setup saves exact permission, activates a new headless session and revokes" do
     assert scenario("save", "--knowledge") =~ "KNOWLEDGE_NATIVE_SETUP_SAVE_DISABLE_PASSED"
+  end
+
+  @tag timeout: 90_000, knowledge_helper_route: true
+  test "native experiment review saves explicit helper route with final Knowledge identity" do
+    assert scenario("experiment-helper", "--knowledge") =~ "KNOWLEDGE_NATIVE_HELPER_ROUTE_PASSED"
+  end
+
+  @tag timeout: 90_000, knowledge_helper_route: true
+  test "changing the helper profile during native review cannot save its old route" do
+    assert scenario("experiment-helper-config", "--knowledge-config") =~
+             "KNOWLEDGE_NATIVE_HELPER_ROUTE_CHANGED_REFUSED"
   end
 
   for input <- ~w(argv stdin) do
@@ -366,6 +379,145 @@ defmodule Ipse.CLI.KnowledgeTest do
     File.write!(installed, "{}")
     assert {:error, _} = Ipse.CLI.Knowledge.prepare(config, binding, artifact.digest, now)
     refute File.exists?(control)
+  end
+
+  test "explicit helper route preserves finite experiment defaults and exact activation identity" do
+    root = private_root()
+    home = Path.join(root, "home")
+    cwd = Path.join(root, "project")
+    File.mkdir!(home)
+    File.chmod!(home, 0o700)
+    File.mkdir!(cwd)
+
+    data =
+      %{"version" => 1, "settings" => %{"provider" => "demo", "model" => "scripted"}}
+      |> Map.merge(Ipse.Test.KnowledgeHelperRoute.profiles())
+
+    helper = Ipse.Test.KnowledgeHelperRoute.install(root, home)
+    config_path = Path.join(home, "config.json")
+    File.write!(config_path, Jason.encode!(Map.merge(data, helper)))
+
+    client = %{
+      workspace: cwd,
+      home: home,
+      auth_dir: Path.join(home, "auth"),
+      operator_home: root,
+      mcp_config: nil,
+      base_url: nil,
+      operator_questions: false,
+      accept_edits: false,
+      approval: :ask,
+      approval_origin: :interactive,
+      headless: false
+    }
+
+    assert {:ok, effective} =
+             Ipse.Config.resolve(cwd, home, [config: config_path, project_config: false], %{})
+
+    assert {:ok, config} = Ipse.Config.runtime(effective, client)
+    assert {:ok, binding} = Ipse.Extension.ProjectIdentity.admit(home, cwd, :folder)
+    assert {:ok, shadow} = Ipse.Extension.Bundles.install("knowledge-decision-shadow", home)
+    now = System.system_time(:millisecond)
+
+    prepare = fn cfg, profile ->
+      Ipse.CLI.Knowledge.prepare_experiment(
+        cfg,
+        binding,
+        shadow.digest,
+        now,
+        "advice",
+        2,
+        1800,
+        profile
+      )
+    end
+
+    assert {:ok, old} =
+             Ipse.CLI.Knowledge.prepare_experiment(
+               config,
+               binding,
+               shadow.digest,
+               now,
+               "advice",
+               2
+             )
+
+    assert {:ok, ^old} =
+             Ipse.CLI.Knowledge.prepare_experiment(
+               config,
+               binding,
+               shadow.digest,
+               now,
+               "advice",
+               2,
+               1800
+             )
+
+    assert {:ok, ^old} = prepare.(config, nil)
+    assert {:ok, %{policy: combined}} = prepare.(config, "extract")
+
+    assert Enum.map(combined["settings"]["routes"], &{&1["operation"], &1["profile"]}) ===
+             [{"decision.create", "advice"}, {"main", nil}, {"model.complete", "extract"}]
+
+    assert Enum.map(old.policy["settings"]["routes"], & &1["operation"]) === [
+             "decision.create",
+             "main"
+           ]
+
+    assert Map.drop(combined, ["settings"]) === Map.drop(old.policy, ["settings"])
+
+    assert Map.drop(combined["settings"], ~w(identity_sha256 routes activation)) ===
+             Map.drop(old.policy["settings"], ~w(identity_sha256 routes activation))
+
+    activation = combined["settings"]["activation"]
+
+    assert Enum.sort(activation["service_refs"]) ===
+             Enum.sort(
+               Enum.map(
+                 combined["settings"]["routes"],
+                 &Map.take(&1, ~w(operation service_id profile))
+               )
+             )
+
+    assert {:ok, draft} =
+             Ipse.Extension.Activation.draft(
+               binding["project_id"],
+               activation,
+               config.base_extension_catalog
+             )
+
+    assert {:ok, entries} = Ipse.Extension.Registry.prepare(draft.catalog, home)
+    entry = Enum.find(entries, &(&1.identity["instance"] === "knowledge"))
+    assert Ipse.JSON.digest([entry.identity]) === combined["settings"]["identity_sha256"]
+    refute "host.model" in entry.identity["capabilities"]
+    assert combined["limits"]["model_calls"] === 2
+    refute Enum.any?(combined["settings"]["effects"], &(&1["class"] === "model.complete"))
+
+    for profile <- ["", "unknown", "bad.profile", 1, false] do
+      assert {:error, _} = prepare.(config, profile)
+    end
+
+    unavailable =
+      Map.put(
+        config,
+        :model_profiles,
+        Map.put(
+          config.profiles,
+          "extract",
+          Map.put(config.profiles["extract"], "provider", "demo")
+        )
+      )
+
+    assert {:error, _} = prepare.(unavailable, "extract")
+    # Re-resolve without the separately trusted helper; profiles alone grant nothing.
+    File.write!(config_path, Jason.encode!(data))
+
+    assert {:ok, plain_effective} =
+             Ipse.Config.resolve(cwd, home, [config: config_path, project_config: false], %{})
+
+    assert {:ok, missing} = Ipse.Config.runtime(plain_effective, client)
+    assert {:error, _} = prepare.(missing, "extract")
+    refute File.exists?(Ipse.Extension.SemanticAdmission.control_root(home))
   end
 
   defp scenario(name, mode, script \\ "knowledge_setup.exs") do

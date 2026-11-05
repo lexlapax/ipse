@@ -123,6 +123,14 @@ passes 61 focused tests and the working integration build. Independent labels,
 whole-task time/cost, model quality and standalone/installed CLI qualification
 remain open.
 
+The [explicit helper-route CLI increment](archive/2026-10-26-p30-p31-implementation/p30-combined-helper-route-20261105.md)
+now supports reviewing a separately admitted answer profile alongside main and
+advice before capture. All 58 CLI/Knowledge tests pass, including native save,
+new-Session identity pinning and refusal after a configuration change during
+review. The earlier fixture assertion failure remains recorded separately.
+The actual CLI-to-paired workflow, installed checks and independent quality
+evaluation remain open; this option supplies no bundled answer extension.
+
 For each active lane, name the next end-to-end result, its owner, required inputs
 and observable pass/fail checks. Use focused tests during implementation; preserve
 failures and stop repeating a probe when it does not resolve the user journey.

@@ -258,6 +258,15 @@ conversation automatically. Calls consume model steps and shared
 outside this contract. [Example builds](../../examples/README.md) include a
 credential-free model-call exercise.
 
+To carry protected native notes into that inference, the selected extension must
+preserve the Session's actual inherited dependencies and current-use checks.
+Its `host.model` grant and named profile do not supply that authority. The
+[finite Knowledge review](knowledge-permissions.md#try-a-local-shadow-assessment)
+can explicitly include its helper profile alongside main and advice routes;
+ordinary per-call native approval remains separate. Neither shipped Knowledge
+preset is an answer-model extension, and the generic model example does not
+qualify a protected-note answer workflow by itself.
+
 ## Generate vectors explicitly
 
 Build or obtain the reviewed embedding example, import it, and substitute its

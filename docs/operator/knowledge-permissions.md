@@ -183,16 +183,60 @@ to the models and numeric loopback ports you actually run:
 }
 ```
 
-Save it as `/private/path/ipse-local.json`. In a native terminal, review a grant
-for at most two decision calls and 300 seconds:
+Save it as `/private/path/ipse-local.json`. This selects the main and advice
+routes; it does not configure a separate answer helper. For an ordinary shadow
+comparison, review at most two decision calls and 300 seconds in a native terminal:
 
 ```sh
 ipse knowledge experiment advice 2 300 --config /private/path/ipse-local.json --no-project-config --cwd /path/to/project
+```
+
+To include a separate extension's one-shot answer route, prepare that extension
+**before** reviewing the grant or capturing source notes. First obtain a compatible
+artifact, [import, inspect, trust and select it](extensions.md#import-a-reviewed-artifact)
+in the same operator file. Trust its actual manifest capabilities, including
+`host.model` and the required invocation/host-action capabilities. The shipped
+Knowledge presets have no `host.model`; this option neither adds it nor installs
+an answer extension.
+
+A source checkout supplies the generic [model-call example](../../examples/README.md#build-an-inert-extension).
+Its documented `model-calls` build recipe produces a separately importable
+`invoke.command`/`host.actions`/`host.model` artifact. It exercises explicit text
+inference, not a ready-made protected-note answer service or matched comparison.
+An answer extension must independently preserve the real inherited source union
+and supported request/result contract. Do not paste recalled protected text into
+an unrelated prompt to bypass those checks.
+
+Define the extension's requested text profile in the existing `profiles` object,
+with your explicit provider/model/endpoint and normal limits. For example, name
+it `extract` when that is the extension's requested profile; follow the
+[helper model configuration](configuration.md#allow-a-longer-extension-answer).
+A profile definition alone grants no protected route. To review it together with
+the shadow routes, use this command **instead of** the two-route command above:
+
+```sh
+ipse knowledge experiment advice 2 300 --helper-profile extract --config /private/path/ipse-local.json --no-project-config --cwd /path/to/project
+```
+
+This selects exactly `main`, `decision.create/advice` and
+`model.complete/extract`. Inspect all three actual provider, model, endpoint,
+billing and service identities in the native review. The option uses the named
+existing profile; it never changes the main provider, chooses a fallback or
+installs code. It is supported only by `knowledge experiment`; duplicate options,
+missing profiles and unavailable routes refuse instead of silently omitting the
+helper. Every helper call retains ordinary full native approval, current-source
+checks and Usage/service accounting. `CALLS` counts decisions only, not main or
+helper requests, and is not a monetary allowance. No helper effect is added to
+Knowledge's decision or collection-read tool permissions.
+
+Read the complete review and enter its fresh `experiment CODE`. After the grant
+is saved, start a new Session with the same configuration:
+
+```sh
 ipse chat --config /private/path/ipse-local.json --no-project-config --cwd /path/to/project
 ```
 
-Read the complete review and enter its fresh `experiment CODE`; the second
-command starts a new Session after the grant is saved. The time limit begins
+The time limit begins
 before the review and ends no later than the current UTC accounting period; an
 expired review cannot be saved. The grant replaces the project's prior knowledge
 permission: already-running Sessions pinned to it lose permission for later

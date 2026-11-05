@@ -41,6 +41,7 @@ defmodule Ipse.CLI do
           project_config: :boolean,
           timeout_ms: :integer,
           profile: :string,
+          helper_profile: :keep,
           scope: :string,
           policy: :string,
           after: :string,
@@ -70,6 +71,15 @@ defmodule Ipse.CLI do
         report(
           {:error,
            "Unknown or invalid options. Run ipse --help to review supported options; no task was started."}
+        )
+
+      Keyword.has_key?(opts, :helper_profile) and
+          (length(Keyword.get_values(opts, :helper_profile)) != 1 or
+             not (match?(["knowledge", "experiment", _, _], rest) or
+                      match?(["knowledge", "experiment", _, _, _], rest))) ->
+        report(
+          {:error,
+           "--helper-profile requires one explicit profile on knowledge experiment; no action was started."}
         )
 
       Enum.any?([:policy, :days], &Keyword.has_key?(opts, &1)) and

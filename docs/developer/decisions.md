@@ -402,6 +402,16 @@ The helper execution includes the selected provider/model/endpoint and token
 settings, with profile `extract` and a 3000-ms request deadline in this adapter.
 Both arms must match that same execution; the separately declared decision-engine
 route is not the answer route.
+For an operator-configured comparison, the existing
+[finite experiment review](../operator/knowledge-permissions.md#try-a-local-shadow-assessment)
+can include an explicit helper profile. Its separately imported and trusted
+`host.model` extension must already be selected in the base catalog. The CLI
+reviews the additional route before deriving the final Activation/Registry
+Knowledge identity; it does not give Knowledge model capability or add a helper
+effect to a decision outer. Default review still selects only main and advice.
+The decision-call allocation remains distinct from ordinary helper Usage and
+service accounting. The generic model-call example demonstrates the public
+effect contract, not the complete protected-answer adapter or its quality.
 Match the prepared execution to `ModelCall.execution/2` from the actual saved
 Session header as well as to the selected configuration.
 
