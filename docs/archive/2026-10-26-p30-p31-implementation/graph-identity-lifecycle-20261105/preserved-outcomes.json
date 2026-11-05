@@ -1,0 +1,32 @@
+{
+  "version": 1,
+  "ordinary_queries": {
+    "no_identity_selection": "One existing fact-validation pass retained; arity-only counter control passed."
+  },
+  "unicode": {
+    "first_result": "25/26 passed; a legal 256-byte label expanded to 384 bytes on downcase, so an accepted alias then refused its query.",
+    "correction": "Bound only the internal normalized comparison form at 1024 bytes; public and stored original labels stay at 256 bytes.",
+    "final_result": "26/26 passed, including genuine source/capture/alias/query."
+  },
+  "build_setup": {
+    "first_sandbox_result": "Input-holder fuser inspection could not open its socket; no claim, stage or compiler occurred.",
+    "sdk_post_exit": 0,
+    "host_invocation_result": "Single inert build succeeded with unchanged guards; original refusal retained."
+  },
+  "strict_setup": {
+    "unused_guard_declaration": "Reviewed preimage retained; one unused module attribute removed before final strict definition check.",
+    "final_diagnostics": 0
+  },
+  "actual_actor": {
+    "attempts": 1,
+    "retries": 0,
+    "result": "PASS",
+    "retained_on_completion": true
+  },
+  "historical_unknowns": {
+    "resumed": false,
+    "replayed": false,
+    "reconciled": false,
+    "original_retained_root_access": false
+  }
+}

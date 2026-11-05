@@ -52,7 +52,7 @@ defmodule Ipse.KnowledgeGraphCaptureTest do
       )
 
     assert status == 0, output
-    assert output =~ "10 passed"
+    assert output =~ "graph_identity_protocol=pass"
     refute Code.ensure_loaded?(IpseKnowledge.Graph)
     refute Code.ensure_loaded?(IpseKnowledge.Store)
   end

@@ -1,0 +1,83 @@
+{
+  "version": 1,
+  "date": "2026-11-05",
+  "kind": "ordinary_state_graph_identity_lifecycle",
+  "candidate_source_test_patch_sha256": "4fff1b5e7be1d949aa9354d2067a7d0006a4ef660d78285f048826b4c68a7bbf",
+  "protocol": {
+    "passed": 26,
+    "existing_capture_cases_included": 10,
+    "new_identity_cases": 16,
+    "body_seconds": 0.1,
+    "native_or_app_actor": false
+  },
+  "strict": {
+    "feature_helpers": 7,
+    "diagnostics": 0,
+    "final_guard_journey_definitions": 3,
+    "fixture_diagnostics": 0
+  },
+  "inert_artifact_build": {
+    "artifacts": 3,
+    "common_helper_beams_identical": 25,
+    "primary_exit": 0,
+    "original_sdk_post_exit": 0,
+    "operator_post_exit": 0,
+    "imported": false,
+    "activated": false,
+    "app_started": false
+  },
+  "actual_session": {
+    "fresh_disposable_journey": true,
+    "actor_exit": 0,
+    "post_exit": 0,
+    "operator_exit": 0,
+    "alias": true,
+    "merge": true,
+    "latest_undo": true,
+    "known_denial": true,
+    "stale_revision_refused": true,
+    "original_claim_and_citations_preserved": true,
+    "complete_values_compared": true,
+    "strict_saved": true,
+    "confirmed_close": true,
+    "same_id_idle_no_replay": true,
+    "all_invocations_actions_known": true,
+    "model_requests": 0,
+    "mcp_calls": 0,
+    "original_retained_access": false
+  },
+  "independent_post": {
+    "sdk_sources_runtime_artifacts_unchanged": true,
+    "state_hashes_unchanged_across_idle": true,
+    "saved_full_and_before_idle_prefix_valid": true,
+    "intent_digest_unchanged_across_idle": true,
+    "owned_processes_absent": true,
+    "input_operator_free": true,
+    "error_logs_empty": true
+  },
+  "unchanged_limits": {
+    "original_entity_bytes": 256,
+    "active_steps": 8,
+    "state_value_bytes": 6000,
+    "sdk_object_bytes": 16384,
+    "cumulative_reads": 512,
+    "effects": 16,
+    "worker_deadline_ms": 5000
+  },
+  "fixture_bounds": {
+    "command_ms": 20000,
+    "actor_ms": 180000,
+    "pipeline_ms": 240000,
+    "termination_grace_ms": 5000
+  },
+  "open_actual_gates": [
+    "CAS at expiry",
+    "interrupted unknown identity write",
+    "mixed-package live coexistence",
+    "installed use",
+    "managed Graph",
+    "semantic identity quality",
+    "full graph capacity",
+    "complete P31G"
+  ]
+}

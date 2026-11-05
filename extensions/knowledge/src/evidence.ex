@@ -867,26 +867,166 @@ defmodule IpseKnowledge.Evidence do
     end
   end
 
-  def traverse(sources, facts, seed, limits, now) do
-    with true <- identifier?(seed, 256) and limits?(limits),
+  def graph_identity_key(partition), do: id("graph.identity", [partition])
+
+  def graph_identity_step(kind, from, to, citation, revision) do
+    fields = ~w(source_key generation content_sha256 chunk_id start_byte end_byte quote_sha256)
+
+    operation =
+      id("graph.identity.step", [kind, revision, from, to, Enum.map(fields, &citation[&1])])
+
+    %{
+      "version" => 1,
+      "operation_id" => operation,
+      "kind" => kind,
+      "base_revision" => revision,
+      "from" => from,
+      "to" => to,
+      "citation" => citation
+    }
+  end
+
+  def valid_graph_identity?(value, partition) do
+    exact?(value, ~w(format kind partition steps)) and value["format"] === 1 and
+      value["kind"] === "graph_identity" and value["partition"] === partition and
+      is_list(value["steps"]) and length(value["steps"]) <= 8 and
+      Enum.all?(value["steps"], fn step ->
+        exact?(step, ~w(version operation_id kind base_revision from to citation)) and
+          step["version"] === 1 and step["kind"] in ~w(alias merge) and
+          safe_uint?(step["base_revision"]) and identifier?(step["from"], 256) and
+          identifier?(step["to"], 256) and is_map(step["citation"]) and
+          is_integer(step["citation"]["version"]) and citation_shape?(step["citation"]) and
+          step ===
+            graph_identity_step(
+              step["kind"],
+              step["from"],
+              step["to"],
+              step["citation"],
+              step["base_revision"]
+            )
+      end) and
+      Enum.map(value["steps"], & &1["base_revision"]) ===
+        Enum.sort(Enum.uniq(Enum.map(value["steps"], & &1["base_revision"]))) and
+      json_bounded?(value, 6000)
+  rescue
+    _ -> false
+  end
+
+  # Explicit State selection data, not native source/current-use authority.
+  # Neither facts nor their IDs/quotes are rewritten by this comparison map.
+  def graph_identity_resolution(value, sources, facts, now) do
+    with true <- valid_graph_identity?(value, value["partition"]),
+         {:ok, valid} <- validate_facts(sources, facts, now) do
+      entities =
+        MapSet.new(
+          Enum.flat_map(
+            valid["facts"],
+            &[String.downcase(&1["subject"]), String.downcase(&1["object"])]
+          )
+        )
+
+      by_key = Map.new(sources, &{&1["source_key"], &1})
+
+      entity_deadline =
+        valid["facts"]
+        |> Enum.flat_map(fn fact ->
+          [
+            fact["valid_to_ms"]
+            | Enum.map(fact["citations"], &by_key[&1["source_key"]]["expires_at_ms"])
+          ]
+        end)
+        |> Enum.reject(&is_nil/1)
+        |> Enum.min(fn -> nil end)
+
+      Enum.reduce_while(value["steps"], {:ok, %{}, entity_deadline}, fn step,
+                                                                        {:ok, map, deadline} ->
+        citation = step["citation"]
+        source = by_key[citation["source_key"]]
+        from = graph_entity(step["from"], map)
+        to = graph_entity(step["to"], map)
+        current_entities = MapSet.new(entities, &graph_entity(&1, map))
+        alias_name = String.downcase(step["from"])
+        quote = String.downcase(citation["quote"])
+
+        with true <- is_map(source) and current?(source, now) and valid_span?(source, citation),
+             true <- from !== to and MapSet.member?(current_entities, to),
+             true <-
+               String.contains?(quote, String.downcase(step["from"])) and
+                 String.contains?(quote, String.downcase(step["to"])),
+             true <-
+               if(step["kind"] === "alias",
+                 do:
+                   not MapSet.member?(entities, alias_name) and not Map.has_key?(map, alias_name),
+                 else: MapSet.member?(current_entities, from)
+               ) do
+          next =
+            if step["kind"] === "alias",
+              do: Map.put(map, alias_name, to),
+              else:
+                map
+                |> Map.new(fn {key, target} ->
+                  {key, if(target === from, do: to, else: target)}
+                end)
+                |> Map.put(from, to)
+
+          expiry = source["expires_at_ms"]
+
+          next_deadline =
+            cond do
+              deadline === nil -> expiry
+              expiry === nil -> deadline
+              true -> min(deadline, expiry)
+            end
+
+          {:cont, {:ok, next, next_deadline}}
+        else
+          _ -> {:halt, {:error, :graph_identity_unavailable}}
+        end
+      end)
+    else
+      _ -> {:error, :graph_identity_unavailable}
+    end
+  rescue
+    _ -> {:error, :graph_identity_unavailable}
+  end
+
+  defp graph_entity(entity, resolution),
+    do: Map.get(resolution, String.downcase(entity), String.downcase(entity))
+
+  defp graph_resolution?(resolution),
+    do:
+      is_map(resolution) and map_size(resolution) <= 16 and
+        Enum.all?(resolution, fn {from, to} ->
+          # Normalization may expand UTF-8. Original labels still require 256 bytes.
+          identifier?(from, 1024) and identifier?(to, 1024) and
+            String.downcase(from) === from and String.downcase(to) === to and from !== to and
+            not Map.has_key?(resolution, to)
+        end)
+
+  def traverse(sources, facts, seed, limits, now),
+    do: traverse(sources, facts, seed, limits, now, %{})
+
+  def traverse(sources, facts, seed, limits, now, resolution) do
+    with true <- identifier?(seed, 256) and limits?(limits) and graph_resolution?(resolution),
          {:ok, valid} <- validate_facts(sources, facts, now),
          {selected, nodes, truncated} <-
            walk(
              valid["facts"],
-             [String.downcase(seed)],
-             MapSet.new([String.downcase(seed)]),
+             [graph_entity(seed, resolution)],
+             MapSet.new([graph_entity(seed, resolution)]),
              [],
              limits["depth"],
-             limits
+             limits,
+             resolution
            ),
-         {:ok, context} <- claim_context(selected, valid["facts"], nodes),
+         {:ok, context} <- claim_context(selected, valid["facts"], nodes, resolution),
          evidence =
            context
            |> Enum.flat_map(& &1["citations"])
            |> Enum.uniq_by(&span_key/1)
            |> Enum.map(&%{"citation" => &1, "score" => 1.0, "method" => "graph"})
            |> Enum.take(limits["top_k"]),
-         {:ok, claims} <- classify(evidence, context, seed) do
+         {:ok, claims} <- classify(evidence, context, seed, resolution) do
       {:ok,
        result(evidence, claims, valid["gaps"], %{
          "as_of_ms" => now,
@@ -898,7 +1038,7 @@ defmodule IpseKnowledge.Evidence do
          "negative_context" => Enum.count(context, &(&1["polarity"] == "negative")),
          "counterassertions" =>
            Enum.count(context -- selected, fn fact ->
-             Enum.any?(selected, &conflicts?(&1, fact))
+             Enum.any?(selected, &conflicts?(&1, fact, resolution))
            end),
          "complete" => not truncated
        })}
@@ -933,14 +1073,16 @@ defmodule IpseKnowledge.Evidence do
     end
   end
 
-  def classify(evidence, facts, query) do
+  def classify(evidence, facts, query), do: classify(evidence, facts, query, %{})
+
+  def classify(evidence, facts, query, resolution) do
     if is_list(evidence) and length(evidence) <= 128 and Enum.all?(evidence, &candidate?/1) and
          is_list(facts) and length(facts) <= @max_claim_context and
          Enum.all?(facts, &valid_fact?/1) and
-         text?(query, 1024) do
+         text?(query, 1024) and graph_resolution?(resolution) do
       claims =
         Enum.map(facts, fn f ->
-          conflict = Enum.any?(facts, &conflicts?(f, &1))
+          conflict = Enum.any?(facts, &conflicts?(f, &1, resolution))
 
           label =
             cond do
@@ -977,7 +1119,7 @@ defmodule IpseKnowledge.Evidence do
     end
   end
 
-  defp claim_context(selected, facts, nodes) do
+  defp claim_context(selected, facts, nodes, resolution) do
     selected = Enum.uniq_by(selected, & &1["fact_id"])
     selected_ids = MapSet.new(selected, & &1["fact_id"])
 
@@ -986,8 +1128,8 @@ defmodule IpseKnowledge.Evidence do
       |> Enum.reject(&MapSet.member?(selected_ids, &1["fact_id"]))
       |> Enum.filter(fn fact ->
         (fact["polarity"] == "negative" and
-           MapSet.member?(nodes, String.downcase(fact["subject"]))) or
-          Enum.any?(selected, &conflicts?(&1, fact))
+           MapSet.member?(nodes, graph_entity(fact["subject"], resolution))) or
+          Enum.any?(selected, &conflicts?(&1, fact, resolution))
       end)
       |> Enum.uniq_by(& &1["fact_id"])
       |> Enum.sort_by(& &1["fact_id"])
@@ -999,11 +1141,12 @@ defmodule IpseKnowledge.Evidence do
       else: {:error, :graph_context_limit}
   end
 
-  defp conflicts?(fact, other) do
-    same_object = String.downcase(other["object"]) == String.downcase(fact["object"])
+  defp conflicts?(fact, other, resolution) do
+    same_object =
+      graph_entity(other["object"], resolution) === graph_entity(fact["object"], resolution)
 
     other["fact_id"] != fact["fact_id"] and
-      String.downcase(other["subject"]) == String.downcase(fact["subject"]) and
+      graph_entity(other["subject"], resolution) === graph_entity(fact["subject"], resolution) and
       String.downcase(other["predicate"]) == String.downcase(fact["predicate"]) and
       same_object and other["polarity"] != fact["polarity"] and
       overlaps?(fact, other)
@@ -1027,19 +1170,19 @@ defmodule IpseKnowledge.Evidence do
     end)
   end
 
-  defp walk(facts, frontier, nodes, selected, 0, _),
-    do: {selected, nodes, remaining_facts(facts, frontier, selected) != []}
+  defp walk(facts, frontier, nodes, selected, 0, _, resolution),
+    do: {selected, nodes, remaining_facts(facts, frontier, selected, resolution) != []}
 
-  defp walk(_, [], nodes, selected, _, _), do: {selected, nodes, false}
+  defp walk(_, [], nodes, selected, _, _, _), do: {selected, nodes, false}
 
-  defp walk(facts, frontier, nodes, selected, depth, limits) do
+  defp walk(facts, frontier, nodes, selected, depth, limits, resolution) do
     eligible =
-      remaining_facts(facts, frontier, selected)
+      remaining_facts(facts, frontier, selected, resolution)
       |> Enum.sort_by(& &1["fact_id"])
 
     {chosen, new_nodes, next, cut} =
       Enum.reduce(eligible, {selected, nodes, [], false}, fn f, {edges, seen, next, cut} ->
-        target = String.downcase(f["object"])
+        target = graph_entity(f["object"], resolution)
 
         cond do
           length(edges) >= limits["max_edges"] ->
@@ -1054,14 +1197,14 @@ defmodule IpseKnowledge.Evidence do
         end
       end)
 
-    {edges, seen, later_cut} = walk(facts, next, new_nodes, chosen, depth - 1, limits)
+    {edges, seen, later_cut} = walk(facts, next, new_nodes, chosen, depth - 1, limits, resolution)
     {edges, seen, cut or later_cut}
   end
 
-  defp remaining_facts(facts, frontier, selected) do
+  defp remaining_facts(facts, frontier, selected, resolution) do
     Enum.filter(
       facts,
-      &(&1["polarity"] == "positive" and String.downcase(&1["subject"]) in frontier and
+      &(&1["polarity"] == "positive" and graph_entity(&1["subject"], resolution) in frontier and
           not Enum.any?(selected, fn f -> f["fact_id"] == &1["fact_id"] end))
     )
   end

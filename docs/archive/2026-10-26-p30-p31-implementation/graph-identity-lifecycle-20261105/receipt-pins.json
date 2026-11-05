@@ -1,0 +1,20 @@
+{
+  "version": 1,
+  "source_test_patch_sha256": "4fff1b5e7be1d949aa9354d2067a7d0006a4ef660d78285f048826b4c68a7bbf",
+  "reviewed_actor_descriptor_sha256": "cb57b1090d7f17ced6f6020f772337b7f8871c91a9e87f6ae3e41426a414ce33",
+  "released_launcher_sha256": "6a9b309ea0b45f4a8bcd009c6d0c302ef777404e5c693225d89f6b86acc6c285",
+  "journey_helper_sha256": "15042b26e2ae7ede5abd4690743b3612606b60077aeab8d5432a41efd0773262",
+  "final_guard_sha256": "40494d236448669638776cc967483d9fd7bb9932b94efcaf9cf9aee4af425f8d",
+  "private_receipt_hashes": {
+    "actor_exit_zero": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa",
+    "post_exit_zero": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa",
+    "operator_exit_zero": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa",
+    "guard_post": "b09f64671d5e2c429664b2470ad68963a7f23beb3639c8d26b76f33b6e5a53b4",
+    "inputs_post": "bf5eb400106213467066f6c7780e95eca1414d42536f6bc53fbafe2adb24f0ed",
+    "neutral_actual_host_post": "0f7831769db06a8dee5204a7655d1bed2556915af56db3876179d79b7c1021ac",
+    "strict_definitions": "a19a95667dace9190951b2f2f60c28ea1084176e590d950307c58ffa401b75a3",
+    "source_input_preflight": "21b2de33146db15e8b8a92be89cc0c11e0930e5f0765c4f003df826df1cebfca"
+  },
+  "private_journals_transcripts_state_configs_and_paths_included": false,
+  "actor_runtime_was_clean_committed_build": false
+}

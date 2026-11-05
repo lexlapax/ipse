@@ -1250,9 +1250,60 @@ authenticate current use. `Session.Invocation` still refuses State.put/delete
 and generic Collection.store when managed notes or other managed dependencies
 are inherited. Do not copy a managed receipt into State or remove those guards
 to extend this tool. Managed graph publication needs a separately reviewed
-source/policy/owner contract. Reversible entity aliases/merges, identity resolution,
-Collection graph capacity, installed capture and extraction-quality qualification
-are separate open work; keep Graph optional and experimental.
+source/policy/owner contract. Explicit ordinary-State identity choices follow
+the separate path below. Automatic identity resolution, Collection graph
+capacity, installed capture and extraction-quality qualification remain separate
+work; keep Graph optional and experimental.
+
+### Follow an explicit entity choice through State CAS
+
+The command-only `identity` export reuses ordinary State snapshot/get/put APIs;
+it adds no SDK operation, model service or managed-note authority. Follow the
+[operator exercise](../operator/graph.md#select-and-undo-an-entity-alias-or-merge)
+from a current fact projection into alias, merge and latest-step undo.
+
+`Evidence.graph_identity_key/1` addresses one partition selection row. Its
+closed integer format 1 contains at most eight steps and 6,000 encoded bytes.
+Each step binds alias/merge, original labels, the prior host State revision and
+an exact source citation into its operation ID. Graph validates a fresh snapshot,
+the named current source generation and unique supporting quotation, then sends
+the existing State CAS with both expected row revision and namespace generation.
+Finite source expiry is the existing `write_before_ms` deadline. Ordinary
+approval still controls that write; a quote or stored selection grants no effect
+authority.
+
+`Evidence.graph_identity_resolution/4` derives a bounded comparison map only
+after validating current facts and every active choice's full source span and
+origin. Alias cannot shadow a raw fact entity, merge needs two distinct current
+entities and neither operation can create a cycle. Traversal/conflict comparison
+uses the map while preserving original fact objects, hashes, labels and citation
+bases. Queries retain the source-token revalidation, then read the exact identity
+row again, including its State operation identity. An active selection also
+requires the snapshot namespace generation unchanged. Reserve and count that
+extra read within the existing cumulative 512-read/16-effect limits.
+
+Undo checks the exact current revision and latest operation ID, then removes
+only that step under namespace CAS. It needs no fresh authority from an expired
+or replaced supporting source because it reduces comparison data. Historical
+inspection grants no current-source authority. Denied or unknown effects stop
+without another action; a fresh inspect may observe an already-applied unknown,
+but cannot settle it or authorize replay.
+
+The shared Store validator recognizes the new `graph_identity` record kind;
+older readers refuse it. Upgrade all artifacts sharing a partition together and
+close old pinned Sessions before the first identity write. Corpus and Research
+do not apply Graph choices to their own retrieval, but need compatible shared
+Store readers to inspect that partition. Existing fact/source records are not
+migrated or rewritten, and collection preserves the selection metadata row.
+Existing per-source exports do not contain this partition-level row; do not
+describe source migration as a faithful identity-selection export/import.
+
+Extend the existing Graph protocol owner rather than building a second state
+machine. Check alias→merge→undo, immutable source/fact bytes, CAS interpositions,
+source expiry/replacement, forged tags/citations, tombstone refusal, bounded
+requests and denied/unknown stop. The separate Session capture journey continues
+to test ordinary approval and no-replay ownership; it does not by itself qualify
+an identity command or real-world entity resolution.
 
 ### Retain compatible and conflicting attributed facts
 

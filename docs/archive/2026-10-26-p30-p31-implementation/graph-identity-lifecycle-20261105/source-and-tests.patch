@@ -1,0 +1,1349 @@
+--- a/extensions/knowledge/src/evidence.ex
++++ b/extensions/knowledge/src/evidence.ex
+@@ -867,26 +867,166 @@
+     end
+   end
+ 
+-  def traverse(sources, facts, seed, limits, now) do
+-    with true <- identifier?(seed, 256) and limits?(limits),
++  def graph_identity_key(partition), do: id("graph.identity", [partition])
++
++  def graph_identity_step(kind, from, to, citation, revision) do
++    fields = ~w(source_key generation content_sha256 chunk_id start_byte end_byte quote_sha256)
++
++    operation =
++      id("graph.identity.step", [kind, revision, from, to, Enum.map(fields, &citation[&1])])
++
++    %{
++      "version" => 1,
++      "operation_id" => operation,
++      "kind" => kind,
++      "base_revision" => revision,
++      "from" => from,
++      "to" => to,
++      "citation" => citation
++    }
++  end
++
++  def valid_graph_identity?(value, partition) do
++    exact?(value, ~w(format kind partition steps)) and value["format"] === 1 and
++      value["kind"] === "graph_identity" and value["partition"] === partition and
++      is_list(value["steps"]) and length(value["steps"]) <= 8 and
++      Enum.all?(value["steps"], fn step ->
++        exact?(step, ~w(version operation_id kind base_revision from to citation)) and
++          step["version"] === 1 and step["kind"] in ~w(alias merge) and
++          safe_uint?(step["base_revision"]) and identifier?(step["from"], 256) and
++          identifier?(step["to"], 256) and is_map(step["citation"]) and
++          is_integer(step["citation"]["version"]) and citation_shape?(step["citation"]) and
++          step ===
++            graph_identity_step(
++              step["kind"],
++              step["from"],
++              step["to"],
++              step["citation"],
++              step["base_revision"]
++            )
++      end) and
++      Enum.map(value["steps"], & &1["base_revision"]) ===
++        Enum.sort(Enum.uniq(Enum.map(value["steps"], & &1["base_revision"]))) and
++      json_bounded?(value, 6000)
++  rescue
++    _ -> false
++  end
++
++  # Explicit State selection data, not native source/current-use authority.
++  # Neither facts nor their IDs/quotes are rewritten by this comparison map.
++  def graph_identity_resolution(value, sources, facts, now) do
++    with true <- valid_graph_identity?(value, value["partition"]),
++         {:ok, valid} <- validate_facts(sources, facts, now) do
++      entities =
++        MapSet.new(
++          Enum.flat_map(
++            valid["facts"],
++            &[String.downcase(&1["subject"]), String.downcase(&1["object"])]
++          )
++        )
++
++      by_key = Map.new(sources, &{&1["source_key"], &1})
++
++      entity_deadline =
++        valid["facts"]
++        |> Enum.flat_map(fn fact ->
++          [
++            fact["valid_to_ms"]
++            | Enum.map(fact["citations"], &by_key[&1["source_key"]]["expires_at_ms"])
++          ]
++        end)
++        |> Enum.reject(&is_nil/1)
++        |> Enum.min(fn -> nil end)
++
++      Enum.reduce_while(value["steps"], {:ok, %{}, entity_deadline}, fn step,
++                                                                        {:ok, map, deadline} ->
++        citation = step["citation"]
++        source = by_key[citation["source_key"]]
++        from = graph_entity(step["from"], map)
++        to = graph_entity(step["to"], map)
++        current_entities = MapSet.new(entities, &graph_entity(&1, map))
++        alias_name = String.downcase(step["from"])
++        quote = String.downcase(citation["quote"])
++
++        with true <- is_map(source) and current?(source, now) and valid_span?(source, citation),
++             true <- from !== to and MapSet.member?(current_entities, to),
++             true <-
++               String.contains?(quote, String.downcase(step["from"])) and
++                 String.contains?(quote, String.downcase(step["to"])),
++             true <-
++               if(step["kind"] === "alias",
++                 do:
++                   not MapSet.member?(entities, alias_name) and not Map.has_key?(map, alias_name),
++                 else: MapSet.member?(current_entities, from)
++               ) do
++          next =
++            if step["kind"] === "alias",
++              do: Map.put(map, alias_name, to),
++              else:
++                map
++                |> Map.new(fn {key, target} ->
++                  {key, if(target === from, do: to, else: target)}
++                end)
++                |> Map.put(from, to)
++
++          expiry = source["expires_at_ms"]
++
++          next_deadline =
++            cond do
++              deadline === nil -> expiry
++              expiry === nil -> deadline
++              true -> min(deadline, expiry)
++            end
++
++          {:cont, {:ok, next, next_deadline}}
++        else
++          _ -> {:halt, {:error, :graph_identity_unavailable}}
++        end
++      end)
++    else
++      _ -> {:error, :graph_identity_unavailable}
++    end
++  rescue
++    _ -> {:error, :graph_identity_unavailable}
++  end
++
++  defp graph_entity(entity, resolution),
++    do: Map.get(resolution, String.downcase(entity), String.downcase(entity))
++
++  defp graph_resolution?(resolution),
++    do:
++      is_map(resolution) and map_size(resolution) <= 16 and
++        Enum.all?(resolution, fn {from, to} ->
++          # Normalization may expand UTF-8. Original labels still require 256 bytes.
++          identifier?(from, 1024) and identifier?(to, 1024) and
++            String.downcase(from) === from and String.downcase(to) === to and from !== to and
++            not Map.has_key?(resolution, to)
++        end)
++
++  def traverse(sources, facts, seed, limits, now),
++    do: traverse(sources, facts, seed, limits, now, %{})
++
++  def traverse(sources, facts, seed, limits, now, resolution) do
++    with true <- identifier?(seed, 256) and limits?(limits) and graph_resolution?(resolution),
+          {:ok, valid} <- validate_facts(sources, facts, now),
+          {selected, nodes, truncated} <-
+            walk(
+              valid["facts"],
+-             [String.downcase(seed)],
+-             MapSet.new([String.downcase(seed)]),
++             [graph_entity(seed, resolution)],
++             MapSet.new([graph_entity(seed, resolution)]),
+              [],
+              limits["depth"],
+-             limits
++             limits,
++             resolution
+            ),
+-         {:ok, context} <- claim_context(selected, valid["facts"], nodes),
++         {:ok, context} <- claim_context(selected, valid["facts"], nodes, resolution),
+          evidence =
+            context
+            |> Enum.flat_map(& &1["citations"])
+            |> Enum.uniq_by(&span_key/1)
+            |> Enum.map(&%{"citation" => &1, "score" => 1.0, "method" => "graph"})
+            |> Enum.take(limits["top_k"]),
+-         {:ok, claims} <- classify(evidence, context, seed) do
++         {:ok, claims} <- classify(evidence, context, seed, resolution) do
+       {:ok,
+        result(evidence, claims, valid["gaps"], %{
+          "as_of_ms" => now,
+@@ -898,7 +1038,7 @@
+          "negative_context" => Enum.count(context, &(&1["polarity"] == "negative")),
+          "counterassertions" =>
+            Enum.count(context -- selected, fn fact ->
+-             Enum.any?(selected, &conflicts?(&1, fact))
++             Enum.any?(selected, &conflicts?(&1, fact, resolution))
+            end),
+          "complete" => not truncated
+        })}
+@@ -933,14 +1073,16 @@
+     end
+   end
+ 
+-  def classify(evidence, facts, query) do
++  def classify(evidence, facts, query), do: classify(evidence, facts, query, %{})
++
++  def classify(evidence, facts, query, resolution) do
+     if is_list(evidence) and length(evidence) <= 128 and Enum.all?(evidence, &candidate?/1) and
+          is_list(facts) and length(facts) <= @max_claim_context and
+          Enum.all?(facts, &valid_fact?/1) and
+-         text?(query, 1024) do
++         text?(query, 1024) and graph_resolution?(resolution) do
+       claims =
+         Enum.map(facts, fn f ->
+-          conflict = Enum.any?(facts, &conflicts?(f, &1))
++          conflict = Enum.any?(facts, &conflicts?(f, &1, resolution))
+ 
+           label =
+             cond do
+@@ -977,7 +1119,7 @@
+     end
+   end
+ 
+-  defp claim_context(selected, facts, nodes) do
++  defp claim_context(selected, facts, nodes, resolution) do
+     selected = Enum.uniq_by(selected, & &1["fact_id"])
+     selected_ids = MapSet.new(selected, & &1["fact_id"])
+ 
+@@ -986,8 +1128,8 @@
+       |> Enum.reject(&MapSet.member?(selected_ids, &1["fact_id"]))
+       |> Enum.filter(fn fact ->
+         (fact["polarity"] == "negative" and
+-           MapSet.member?(nodes, String.downcase(fact["subject"]))) or
+-          Enum.any?(selected, &conflicts?(&1, fact))
++           MapSet.member?(nodes, graph_entity(fact["subject"], resolution))) or
++          Enum.any?(selected, &conflicts?(&1, fact, resolution))
+       end)
+       |> Enum.uniq_by(& &1["fact_id"])
+       |> Enum.sort_by(& &1["fact_id"])
+@@ -999,11 +1141,12 @@
+       else: {:error, :graph_context_limit}
+   end
+ 
+-  defp conflicts?(fact, other) do
+-    same_object = String.downcase(other["object"]) == String.downcase(fact["object"])
++  defp conflicts?(fact, other, resolution) do
++    same_object =
++      graph_entity(other["object"], resolution) === graph_entity(fact["object"], resolution)
+ 
+     other["fact_id"] != fact["fact_id"] and
+-      String.downcase(other["subject"]) == String.downcase(fact["subject"]) and
++      graph_entity(other["subject"], resolution) === graph_entity(fact["subject"], resolution) and
+       String.downcase(other["predicate"]) == String.downcase(fact["predicate"]) and
+       same_object and other["polarity"] != fact["polarity"] and
+       overlaps?(fact, other)
+@@ -1027,19 +1170,19 @@
+     end)
+   end
+ 
+-  defp walk(facts, frontier, nodes, selected, 0, _),
+-    do: {selected, nodes, remaining_facts(facts, frontier, selected) != []}
++  defp walk(facts, frontier, nodes, selected, 0, _, resolution),
++    do: {selected, nodes, remaining_facts(facts, frontier, selected, resolution) != []}
+ 
+-  defp walk(_, [], nodes, selected, _, _), do: {selected, nodes, false}
++  defp walk(_, [], nodes, selected, _, _, _), do: {selected, nodes, false}
+ 
+-  defp walk(facts, frontier, nodes, selected, depth, limits) do
++  defp walk(facts, frontier, nodes, selected, depth, limits, resolution) do
+     eligible =
+-      remaining_facts(facts, frontier, selected)
++      remaining_facts(facts, frontier, selected, resolution)
+       |> Enum.sort_by(& &1["fact_id"])
+ 
+     {chosen, new_nodes, next, cut} =
+       Enum.reduce(eligible, {selected, nodes, [], false}, fn f, {edges, seen, next, cut} ->
+-        target = String.downcase(f["object"])
++        target = graph_entity(f["object"], resolution)
+ 
+         cond do
+           length(edges) >= limits["max_edges"] ->
+@@ -1054,14 +1197,14 @@
+         end
+       end)
+ 
+-    {edges, seen, later_cut} = walk(facts, next, new_nodes, chosen, depth - 1, limits)
++    {edges, seen, later_cut} = walk(facts, next, new_nodes, chosen, depth - 1, limits, resolution)
+     {edges, seen, cut or later_cut}
+   end
+ 
+-  defp remaining_facts(facts, frontier, selected) do
++  defp remaining_facts(facts, frontier, selected, resolution) do
+     Enum.filter(
+       facts,
+-      &(&1["polarity"] == "positive" and String.downcase(&1["subject"]) in frontier and
++      &(&1["polarity"] == "positive" and graph_entity(&1["subject"], resolution) in frontier and
+           not Enum.any?(selected, fn f -> f["fact_id"] == &1["fact_id"] end))
+     )
+   end
+@@ -2026,3 +2169,4 @@
+ 
+   defp valid_json?(_, _), do: false
+ end
++
+--- a/extensions/knowledge/src/graph.ex
++++ b/extensions/knowledge/src/graph.ex
+@@ -25,6 +25,11 @@
+         "commands" => [
+           entry("source", "Explicit graph source lifecycle", source_schema()),
+           entry("extract", "Explicit attributable fact projection", extract_schema()),
++          entry(
++            "identity",
++            "Inspect, alias, merge or undo an explicit State graph entity selection",
++            identity_schema()
++          ),
+           entry("query", "Traverse current supported facts", query_schema())
+         ],
+         "tools" => [
+@@ -59,7 +64,11 @@
+       )
+       when phase != :idle do
+     result =
+-      if pending == :store, do: Store.resume(cont, outcome), else: Adapters.resume(cont, outcome)
++      case pending do
++        :store -> Store.resume(cont, outcome)
++        :state -> IpseKnowledge.Store.State.resume(cont, outcome)
++        :adapter -> Adapters.resume(cont, outcome)
++      end
+ 
+     advance(result, state)
+   end
+@@ -70,6 +79,7 @@
+   defp invoke(%{"id" => "extract", "arguments" => args}, state), do: extract(args, state)
+   defp invoke(%{"id" => "query", "arguments" => args}, state), do: query(args, state)
+   defp invoke(%{"id" => "capture", "arguments" => args}, state), do: capture(args, state)
++  defp invoke(%{"id" => "identity", "arguments" => args}, state), do: identity(args, state)
+   defp invoke(_, state), do: finish(state, refused(:invalid_invocation))
+ 
+   defp source(%{"store" => store, "action" => action, "args" => args} = outer, state) do
+@@ -196,8 +206,121 @@
+     end
+   end
+ 
++  defp identity(args, state) when is_map(args) do
++    fields =
++      case args["action"] do
++        "inspect" ->
++          ~w(store action)
++
++        "undo" ->
++          ~w(store action expected_revision operation_id)
++
++        action when action in ~w(alias merge) ->
++          ~w(store action expected_revision source_id generation from to quote)
++
++        _ ->
++          []
++      end
++
++    with true <- exact?(args, fields),
++         {:ok, %{"kind" => "state"} = profile} <-
++           Profiles.lookup(state.resolved, "stores", args["store"]),
++         true <- args["action"] === "inspect" or Evidence.safe_uint?(args["expected_revision"]),
++         true <- args["action"] !== "undo" or Evidence.sha256?(args["operation_id"]),
++         true <-
++           args["action"] not in ~w(alias merge) or
++             (text?(args["source_id"], 256) and Evidence.safe_positive?(args["generation"]) and
++                text?(args["from"], 256) and text?(args["to"], 256) and text?(args["quote"], 1024)) do
++      advance(Store.start(args["store"], profile, :snapshot, %{}), %{
++        state
++        | phase: :identity_snapshot,
++          ctx: %{args: args, profile: profile}
++      })
++    else
++      _ -> finish(state, refused(:invalid_graph_identity))
++    end
++  end
++
++  defp identity(_, state), do: finish(state, refused(:invalid_graph_identity))
++
++  defp identity_record(snapshot, profile) do
++    case snapshot["graph_identity"] do
++      nil ->
++        {:ok, 0,
++         %{
++           "format" => 1,
++           "kind" => "graph_identity",
++           "partition" => profile["partition"],
++           "steps" => []
++         }}
++
++      %{"deleted" => false, "revision" => revision, "value" => value}
++      when is_integer(revision) and revision > 0 ->
++        if Evidence.valid_graph_identity?(value, profile["partition"]),
++          do: {:ok, revision, value},
++          else: {:error, :graph_identity_unavailable}
++
++      _ ->
++        {:error, :graph_identity_unavailable}
++    end
++  end
++
++  defp identity_next(args, value, revision, snapshot) do
++    with true <- args["expected_revision"] === revision do
++      if args["action"] === "undo" do
++        with [last | _] <- Enum.reverse(value["steps"]),
++             true <- last["operation_id"] === args["operation_id"] do
++          {:ok, Map.put(value, "steps", Enum.drop(value["steps"], -1)), nil, args["operation_id"]}
++        else
++          _ -> {:error, :graph_identity_undo_refused}
++        end
++      else
++        facts = Enum.flat_map(Map.values(snapshot["projections"]), &(&1["facts"] || []))
++
++        with [source] <-
++               Enum.filter(
++                 snapshot["sources"],
++                 &(&1["source_id"] === args["source_id"] and
++                     &1["generation"] === args["generation"])
++               ),
++             {:ok, start, stop} <- Store.provided_quote_range(source["text"], args["quote"]),
++             {:ok, chunks} <- Evidence.chunks(source),
++             chunk when is_map(chunk) <-
++               Enum.find(chunks, &(start >= &1["start_byte"] and stop <= &1["end_byte"])),
++             {:ok, citation} <- Evidence.citation(source, chunk, start, stop),
++             step =
++               Evidence.graph_identity_step(
++                 args["action"],
++                 args["from"],
++                 args["to"],
++                 citation,
++                 revision
++               ),
++             next = Map.put(value, "steps", value["steps"] ++ [step]),
++             {:ok, _, deadline} <-
++               Evidence.graph_identity_resolution(
++                 next,
++                 snapshot["sources"],
++                 facts,
++                 System.system_time(:millisecond)
++               ) do
++          {:ok, next, deadline, step["operation_id"]}
++        else
++          _ -> {:error, :graph_identity_unavailable}
++        end
++      end
++    else
++      _ -> {:error, :graph_identity_conflict}
++    end
++  end
++
+   defp advance({:call, request, cont}, state) do
+-    pending = if state.phase == :extract_adapter, do: :adapter, else: :store
++    pending =
++      cond do
++        state.phase === :extract_adapter -> :adapter
++        state.phase in [:identity_write, :query_identity_revalidate] -> :state
++        true -> :store
++      end
+ 
+     {:ok, %{"api_version" => 1, "kind" => "host_call", "request" => request},
+      %{state | cont: cont, pending: pending}}
+@@ -279,26 +402,147 @@
+   defp advance({:done, {:ok, committed}}, %{phase: :extract_commit} = state),
+     do: finish(state, output("ok", [], [], [], committed, nil))
+ 
++  defp advance({:done, {:ok, snapshot}}, %{phase: :identity_snapshot} = state) do
++    args = state.ctx.args
++
++    with {:ok, revision, value} <- identity_record(snapshot, state.ctx.profile) do
++      if args["action"] === "inspect" do
++        finish(
++          state,
++          output(
++            "ok",
++            [],
++            [],
++            [],
++            %{
++              "identity_selection" => %{
++                "revision" => revision,
++                "steps" => value["steps"],
++                "current_source_authority" => false
++              }
++            },
++            nil
++          )
++        )
++      else
++        with {:ok, next, deadline, operation} <- identity_next(args, value, revision, snapshot),
++             true <- Evidence.valid_graph_identity?(next, state.ctx.profile["partition"]) do
++          request = %{
++            "key" => Evidence.graph_identity_key(state.ctx.profile["partition"]),
++            "expected_revision" => revision,
++            "expected_generation" => snapshot["coverage"]["generation"],
++            "next_root" => next,
++            "write_before_ms" => deadline
++          }
++
++          advance(
++            IpseKnowledge.Store.State.start(state.ctx.profile, :cas_root, request),
++            %{
++              state
++              | phase: :identity_write,
++                ctx: Map.merge(state.ctx, %{next: next, operation: operation})
++            }
++          )
++        else
++          {:error, code} -> finish(state, refused(code))
++          _ -> finish(state, refused(:invalid_graph_identity))
++        end
++      end
++    else
++      _ -> finish(state, refused(:graph_identity_unavailable))
++    end
++  end
++
++  defp advance({:done, {:ok, written}}, %{phase: :identity_write} = state) do
++    finish(
++      state,
++      output(
++        "ok",
++        [],
++        [],
++        [],
++        %{
++          "identity_selection" => %{
++            "revision" => written["record"]["revision"],
++            "operation_id" => state.ctx.operation,
++            "action" => state.ctx.args["action"],
++            "active_steps" => length(state.ctx.next["steps"]),
++            "attribution" => "explicit_ordinary_state_choice_not_verified_identity"
++          }
++        },
++        nil
++      )
++    )
++  end
++
+   defp advance({:done, {:ok, snapshot}}, %{phase: :query_snapshot} = state) do
+-    if not query_plan?(snapshot["coverage"]) do
++    if not query_plan?(
++         snapshot["coverage"],
++         if(state.ctx.profile["kind"] === "state", do: 1, else: 0)
++       ) do
+       finish(state, refused(:effect_budget))
+     else
+       facts = Enum.flat_map(Map.values(snapshot["projections"]), &(&1["facts"] || []))
+       limits = Map.take(state.ctx.args, ~w(depth max_nodes max_edges top_k))
+ 
+-      case Evidence.traverse(
+-             snapshot["sources"],
+-             facts,
+-             state.ctx.args["entity"],
+-             limits,
+-             state.ctx.as_of_ms
+-           ) do
++      identity =
++        if state.ctx.profile["kind"] === "state",
++          do: identity_record(snapshot, state.ctx.profile),
++          else:
++            if(snapshot["graph_identity"] === nil,
++              do:
++                {:ok, 0,
++                 %{
++                   "format" => 1,
++                   "kind" => "graph_identity",
++                   "partition" => state.ctx.profile["partition"],
++                   "steps" => []
++                 }},
++              else: {:error, :graph_identity_unavailable}
++            )
++
++      resolution =
++        case identity do
++          {:ok, _, %{"steps" => []}} ->
++            {:ok, %{}, nil}
++
++          {:ok, _, value} ->
++            Evidence.graph_identity_resolution(
++              value,
++              snapshot["sources"],
++              facts,
++              state.ctx.as_of_ms
++            )
++
++          error ->
++            error
++        end
++
++      ranked =
++        with {:ok, map, _} <- resolution,
++             do:
++               Evidence.traverse(
++                 snapshot["sources"],
++                 facts,
++                 state.ctx.args["entity"],
++                 limits,
++                 state.ctx.as_of_ms,
++                 map
++               )
++
++      case ranked do
+         {:ok, ranked} ->
+-          ctx = state.ctx |> Map.put(:snapshot, snapshot) |> Map.put(:rank, ranked)
++          ctx =
++            state.ctx
++            |> Map.put(:snapshot, snapshot)
++            |> Map.put(:rank, ranked)
++            |> Map.put(:identity, identity)
+ 
+           advance(
+             Store.start(state.ctx.args["store"], state.ctx.profile, :revalidate, %{
+-              "tokens" => snapshot["tokens"]
++              "tokens" => snapshot["tokens"],
++              "reads_used" => snapshot["coverage"]["reads_used"],
++              "effects_used" => snapshot["coverage"]["effects_used"]
+             }),
+             %{state | phase: :query_revalidate, ctx: ctx}
+           )
+@@ -306,6 +550,9 @@
+         {:error, :graph_context_limit} ->
+           finish(state, refused(:graph_context_limit))
+ 
++        {:error, :graph_identity_unavailable} ->
++          finish(state, refused(:graph_identity_unavailable))
++
+         _ ->
+           finish(state, refused(:invalid_evidence))
+       end
+@@ -314,32 +561,98 @@
+ 
+   defp advance({:done, {:ok, checked}}, %{phase: :query_revalidate} = state) do
+     if checked["valid"] == true do
+-      rank =
+-        Evidence.query_scope(
+-          state.ctx.rank,
+-          state.ctx.snapshot["sources"],
+-          state.ctx.snapshot["gaps"],
+-          state.ctx.as_of_ms
+-        )
+-
+-      coverage =
+-        Map.merge(rank["coverage"], %{
+-          "as_of_ms" => state.ctx.as_of_ms,
+-          "store" => state.ctx.snapshot["coverage"],
+-          "revalidated" => true
+-        })
+-
+-      finish(
+-        state,
+-        output(rank["status"], rank["evidence"], rank["claims"], rank["gaps"], coverage, nil)
+-      )
++      if state.ctx.profile["kind"] === "state" do
++        if checked["coverage"]["reads_used"] < 512 do
++          advance(
++            IpseKnowledge.Store.State.start(state.ctx.profile, :get_many, %{
++              "keys" => [Evidence.graph_identity_key(state.ctx.profile["partition"])]
++            }),
++            %{
++              state
++              | phase: :query_identity_revalidate,
++                ctx: Map.put(state.ctx, :checked, checked)
++            }
++          )
++        else
++          finish(state, refused(:effect_budget))
++        end
++      else
++        finish_query(state)
++      end
+     else
+       finish(state, output("conflict", [], [], [%{"code" => "snapshot_changed"}], %{}, nil))
+     end
+   end
+ 
++  defp advance({:done, {:ok, checked}}, %{phase: :query_identity_revalidate} = state) do
++    [record] = checked["records"]
++    prior = state.ctx.snapshot["graph_identity"]
++    {:ok, _, identity} = state.ctx.identity
++
++    same =
++      if prior === nil,
++        do: record["revision"] === 0 and record["deleted"] === true and record["value"] === nil,
++        else: record === prior
++
++    generation =
++      if identity["steps"] !== [],
++        do: state.ctx.snapshot["coverage"]["generation"],
++        else:
++          state.ctx.checked["store_generation"] || state.ctx.snapshot["coverage"]["generation"]
++
++    if same and checked["generation"] === generation,
++      do: finish_query(state),
++      else:
++        finish(
++          state,
++          output("conflict", [], [], [%{"code" => "graph_identity_changed"}], %{}, nil)
++        )
++  end
++
+   defp advance(_, state), do: finish(state, refused(:invalid_operation_state))
+ 
++  defp finish_query(state) do
++    rank =
++      Evidence.query_scope(
++        state.ctx.rank,
++        state.ctx.snapshot["sources"],
++        state.ctx.snapshot["gaps"],
++        state.ctx.as_of_ms
++      )
++
++    coverage =
++      Map.merge(rank["coverage"], %{
++        "as_of_ms" => state.ctx.as_of_ms,
++        "store" =>
++          if(state.ctx.profile["kind"] === "state",
++            do:
++              Map.merge(
++                state.ctx.snapshot["coverage"],
++                Map.update!(state.ctx.checked["coverage"], "reads_used", &(&1 + 1))
++              ),
++            else: state.ctx.snapshot["coverage"]
++          ),
++        "revalidated" => true
++      })
++
++    {:ok, revision, identity} = state.ctx.identity
++
++    coverage =
++      if identity["steps"] === [],
++        do: coverage,
++        else:
++          Map.put(coverage, "identity_selection", %{
++            "revision" => revision,
++            "steps" => identity["steps"],
++            "attribution" => "explicit_ordinary_state_choice_not_verified_identity"
++          })
++
++    finish(
++      state,
++      output(rank["status"], rank["evidence"], rank["claims"], rank["gaps"], coverage, nil)
++    )
++  end
++
+   defp source_args?(action, args) do
+     fields =
+       case action do
+@@ -515,6 +828,25 @@
+     }
+   end
+ 
++  defp identity_schema do
++    %{
++      "type" => "object",
++      "additionalProperties" => false,
++      "required" => ~w(store action),
++      "properties" => %{
++        "store" => string(64),
++        "action" => %{"type" => "string", "enum" => ~w(inspect alias merge undo)},
++        "expected_revision" => integer(0, Evidence.safe_integer_max()),
++        "operation_id" => string(64),
++        "source_id" => string(256),
++        "generation" => integer(1, Evidence.safe_integer_max()),
++        "from" => string(256),
++        "to" => string(256),
++        "quote" => string(1024)
++      }
++    }
++  end
++
+   defp entry(id, description, schema),
+     do: %{
+       "id" => id,
+@@ -567,12 +899,13 @@
+         coverage["model_effects"] + coverage["commit_effects_worst_case"]
+   end
+ 
+-  defp query_plan?(coverage) do
++  defp query_plan?(coverage, extra_reads) do
+     is_map(coverage) and is_integer(coverage["effects_used"]) and
+       is_integer(coverage["revalidate_effects_worst_case"]) and
+       coverage["effects_used"] + coverage["revalidate_effects_worst_case"] <= 16 and
+       is_integer(coverage["reads_used"]) and
+       is_integer(coverage["revalidate_reads_worst_case"]) and
+-      coverage["reads_used"] + coverage["revalidate_reads_worst_case"] <= 512
++      coverage["reads_used"] + coverage["revalidate_reads_worst_case"] + extra_reads <= 512
+   end
+ end
++
+--- a/extensions/knowledge/src/store.ex
++++ b/extensions/knowledge/src/store.ex
+@@ -449,6 +449,13 @@
+          "root_records" => inventory_count(roots),
+          "fetch_origin_records" =>
+            inventory_count(fetch_origins(%{cache: cache, profile: %{"partition" => partition}})),
++         "graph_identity_records" =>
++           inventory_count(
++             Enum.filter(records, fn record ->
++               not record["deleted"] and get_in(record, ["value", "partition"]) === partition and
++                 get_in(record, ["value", "kind"]) === "graph_identity"
++             end)
++           ),
+          "roots" => root_rows,
+          "selected_pages" =>
+            inventory_count(Enum.filter(pages, &MapSet.member?(selected, &1["key"]))),
+@@ -1102,6 +1109,8 @@
+           "projections" => projections,
+           "tokens" => tokens,
+           "gaps" => gaps,
++          "graph_identity" =>
++            state.cache["records"][Evidence.graph_identity_key(state.profile["partition"])],
+           "coverage" => coverage(state)
+         }}}
+     else
+@@ -3178,6 +3187,11 @@
+              true
+            else
+              case value["kind"] do
++               "graph_identity" ->
++                 key === Evidence.graph_identity_key(partition) and
++                   Evidence.valid_graph_identity?(value, partition) and
++                   Enum.all?(value["steps"], &(&1["base_revision"] < record["revision"]))
++
+                "fetch_origin" ->
+                  valid_fetch_origin?(value, partition) and key == value["source_key"] and
+                    valid_fetch_target?(cache, value, partition)
+@@ -3713,3 +3727,4 @@
+     _ -> false
+   end
+ end
++
+--- a/test/extensions/knowledge/graph_capture_test.exs
++++ b/test/extensions/knowledge/graph_capture_test.exs
+@@ -52,7 +52,7 @@
+       )
+ 
+     assert status == 0, output
+-    assert output =~ "10 passed"
++    assert output =~ "graph_identity_protocol=pass"
+     refute Code.ensure_loaded?(IpseKnowledge.Graph)
+     refute Code.ensure_loaded?(IpseKnowledge.Store)
+   end
+@@ -85,3 +85,4 @@
+     refute Code.ensure_loaded?(IpseKnowledge.Store)
+   end
+ end
++
+--- a/test/support/graph_main_capture.exs
++++ b/test/support/graph_main_capture.exs
+@@ -338,5 +338,512 @@
+   end
+ end
+ 
++defmodule GraphIdentityDriver do
++  alias CaptureDriver, as: D
++  alias IpseKnowledge.{Evidence, Graph}
++  alias Ipse.Development.Fixtures.Knowledge, as: F
++
++  def seed do
++    {graph, db} = D.initial()
++
++    text =
++      "Cedar uses Blue. Birch uses Green. Aspen is another name for Cedar. Cedar and Birch identify the same release group. " <>
++        Enum.map_join(1..9, " ", &"Alias#{&1} names Cedar.")
++
++    {_, graph, db} = D.source(graph, db, text)
++
++    {_, graph, db} =
++      D.invoke(
++        graph,
++        db,
++        "capture",
++        D.args([
++          D.relation(),
++          D.relation(%{"subject" => "Birch", "object" => "Green", "quote" => "Birch uses Green."})
++        ])
++      )
++
++    {graph, db}
++  end
++
++  def alias_args(rev \\ 0),
++    do: %{
++      "store" => "notes",
++      "action" => "alias",
++      "expected_revision" => rev,
++      "source_id" => "test-source",
++      "generation" => 1,
++      "from" => "Aspen",
++      "to" => "Cedar",
++      "quote" => "Aspen is another name for Cedar."
++    }
++
++  def merge_args(rev),
++    do:
++      alias_args(rev)
++      |> Map.merge(%{
++        "action" => "merge",
++        "from" => "Cedar",
++        "to" => "Birch",
++        "quote" => "Cedar and Birch identify the same release group."
++      })
++
++  def identity(graph, db, args),
++    do:
++      D.run(Graph.handle("invoke.command", %{"id" => "identity", "arguments" => args}, graph), db)
++
++  def inspect_selection(graph, db),
++    do: identity(graph, db, %{"store" => "notes", "action" => "inspect"})
++
++  def undo(graph, db, rev, operation),
++    do:
++      identity(graph, db, %{
++        "store" => "notes",
++        "action" => "undo",
++        "expected_revision" => rev,
++        "operation_id" => operation
++      })
++
++  def query(graph, db, entity, now \\ nil),
++    do:
++      D.invoke(graph, db, "query", %{
++        "store" => "notes",
++        "entity" => entity,
++        "depth" => 1,
++        "max_nodes" => 128,
++        "max_edges" => 256,
++        "top_k" => 10,
++        "as_of_ms" => now
++      })
++
++  def key, do: Evidence.graph_identity_key("notes")
++  def writes(db), do: Enum.filter(db.requests, &(&1["op"] in ~w(state.put state.delete)))
++
++  def pending(graph, db, args),
++    do:
++      until(
++        Graph.handle("invoke.command", %{"id" => "identity", "arguments" => args}, graph),
++        db,
++        &(&1["op"] === "state.put")
++      )
++
++  def until({:ok, %{"kind" => "host_call", "request" => request}, graph}, db, predicate) do
++    if predicate.(request),
++      do: {request, graph, db},
++      else:
++        (
++          {outcome, db} = F.host(db, request)
++          until(Graph.handle("host.actions", %{"outcome" => outcome}, graph), db, predicate)
++        )
++  end
++end
++
++defmodule GraphIdentityTest do
++  use ExUnit.Case, async: false
++  alias CaptureDriver, as: D
++  alias GraphIdentityDriver, as: I
++  alias IpseKnowledge.{Evidence, Graph, Store}
++  alias Ipse.Development.Fixtures.Knowledge, as: F
++
++  test "explicit alias merge and latest undo preserve original facts and citations" do
++    {graph, db} = I.seed()
++    original = db.records
++    {before, graph, db} = I.query(graph, db, "Aspen")
++    assert Enum.all?(before["claims"], &(&1["label"] === "open"))
++    {aliased, graph, db} = I.identity(graph, db, I.alias_args())
++    assert aliased["status"] === "ok"
++    alias_op = aliased["coverage"]["identity_selection"]["operation_id"]
++    {query, graph, db} = I.query(graph, db, "Aspen")
++    assert [%{"subject" => "Cedar", "object" => "Blue", "basis" => [citation]}] = query["claims"]
++    assert citation["quote"] === "Cedar uses Blue."
++    assert query["coverage"]["identity_selection"]["revision"] === 1
++    {merged, graph, db} = I.identity(graph, db, I.merge_args(1))
++    merge_op = merged["coverage"]["identity_selection"]["operation_id"]
++    assert merged["status"] === "ok"
++    {query, graph, db} = I.query(graph, db, "Aspen")
++    assert Enum.sort(Enum.map(query["claims"], & &1["subject"])) === ["Birch", "Cedar"]
++    {undone, graph, db} = I.undo(graph, db, 2, merge_op)
++    assert undone["status"] === "ok"
++    {query, graph, db} = I.query(graph, db, "Aspen")
++    assert Enum.map(query["claims"], & &1["subject"]) === ["Cedar"]
++    {undone, graph, db} = I.undo(graph, db, 3, alias_op)
++    assert undone["status"] === "ok"
++    {query, _, db} = I.query(graph, db, "Aspen")
++    assert Enum.all?(query["claims"], &(&1["label"] === "open"))
++    assert Map.drop(db.records, [I.key()]) === original
++    refute Enum.any?(db.requests, &(&1["op"] in ~w(model.complete decision.create mcp.call)))
++  end
++
++  test "identity is an explicit command with existing ordinary State capabilities" do
++    description = Graph.describe()
++    assert Enum.any?(description["exports"]["commands"], &(&1["id"] === "identity"))
++    refute Enum.any?(description["exports"]["tools"], &(&1["id"] === "identity"))
++    :ok = Ipse.Extension.Catalog.validate(description["exports"], description["capabilities"])
++    refute "host.model" in description["capabilities"]
++
++    schema =
++      Enum.find(description["exports"]["commands"], &(&1["id"] === "identity"))[
++        "arguments_schema"
++      ]
++
++    :ok = Ipse.JSON.validate_arguments(schema, I.alias_args())
++  end
++
++  test "stale revision and older undo never overwrite a newer explicit choice" do
++    {graph, db} = I.seed()
++    {aliased, graph, db} = I.identity(graph, db, I.alias_args())
++    {_, graph, db} = I.identity(graph, db, I.merge_args(1))
++    before = db.records
++
++    for args <- [
++          I.alias_args(),
++          %{
++            "store" => "notes",
++            "action" => "undo",
++            "expected_revision" => 2,
++            "operation_id" => aliased["coverage"]["identity_selection"]["operation_id"]
++          }
++        ] do
++      {refusal, _, after_db} = I.identity(graph, db, args)
++      assert refusal["status"] === "refused"
++      assert after_db.records === before
++    end
++  end
++
++  test "namespace CAS refuses a competing publication while approval is pending" do
++    {graph, db} = I.seed()
++    {request, pending, db} = I.pending(graph, db, I.alias_args())
++    assert request["expected_revision"] === 0 and request["expected_generation"] === db.generation
++    {_, _, changed} = D.source(graph, db, "Cedar uses Orange.", 2)
++    {outcome, changed} = F.host(changed, request)
++
++    {result, _, final} =
++      D.run(Graph.handle("host.actions", %{"outcome" => outcome}, pending), changed)
++
++    assert result["status"] === "refused" and result["gaps"] === [%{"code" => "conflict"}]
++    assert final.records[I.key()] === nil
++  end
++
++  test "denied and unknown writes stop once; fresh inspection observes known-applied unknown" do
++    for mode <- ["denied", "unknown"] do
++      {graph, db} = I.seed()
++      {request, pending, db} = I.pending(graph, db, I.alias_args())
++      bytes = IO.iodata_to_binary(JSON.encode!(request))
++      assert byte_size(bytes) < 16_384
++
++      {result, _, after_db} =
++        D.run(
++          Graph.handle(
++            "host.actions",
++            %{"outcome" => %{"status" => mode, "value" => %{}}},
++            pending
++          ),
++          db
++        )
++
++      assert result["status"] === "refused" and after_db.records === db.records
++      assert after_db.requests === db.requests
++    end
++
++    {graph, db} = I.seed()
++    {request, pending, db} = I.pending(graph, db, I.alias_args())
++    {_, applied} = F.host(db, request)
++
++    {result, _, applied} =
++      D.run(
++        Graph.handle(
++          "host.actions",
++          %{"outcome" => %{"status" => "unknown", "value" => %{}}},
++          pending
++        ),
++        applied
++      )
++
++    assert result["status"] === "refused"
++    {inspect, graph, inspected} = I.inspect_selection(graph, applied)
++    assert inspect["coverage"]["identity_selection"]["revision"] === 1
++    assert I.writes(inspected) === I.writes(applied)
++    [step] = inspect["coverage"]["identity_selection"]["steps"]
++    {undo, _, _} = I.undo(graph, inspected, 1, step["operation_id"])
++    assert undo["status"] === "ok"
++  end
++
++  test "current source replacement withdraws selection but still permits explicit undo" do
++    {graph, db} = I.seed()
++    {aliased, graph, db} = I.identity(graph, db, I.alias_args())
++    {_, graph, db} = D.source(graph, db, "Cedar uses Orange.", 2)
++    {query, graph, db} = I.query(graph, db, "Aspen")
++    assert query["status"] === "refused"
++    {inspect, graph, db} = I.inspect_selection(graph, db)
++    assert inspect["coverage"]["identity_selection"]["current_source_authority"] === false
++    {undo, _, _} = I.undo(graph, db, 1, aliased["coverage"]["identity_selection"]["operation_id"])
++    assert undo["status"] === "ok"
++  end
++
++  test "expiry withdrawal and host decision deadline are explicit and unchanged" do
++    {graph, db} = I.seed()
++    root_key = Store.root_key("notes", Evidence.sha256("test-source"))
++    expiry = System.system_time(:millisecond) + 60_000
++    db = put_in(db.records[root_key]["value"]["expires_at_ms"], expiry)
++    {request, _, _} = I.pending(graph, db, I.alias_args())
++    assert request["write_before_ms"] === expiry
++    {aliased, graph, db} = I.identity(graph, db, I.alias_args())
++    {query, _, _} = I.query(graph, db, "Aspen", expiry)
++    assert query["status"] === "refused"
++    assert aliased["status"] === "ok"
++  end
++
++  test "aliases cannot shadow existing entities and merges cannot make cycles or self selections" do
++    {graph, db} = I.seed()
++
++    for args <- [
++          Map.put(I.alias_args(), "from", "Birch"),
++          Map.put(I.merge_args(0), "to", "Cedar"),
++          Map.put(I.alias_args(), "quote", "Cedar uses Blue."),
++          Map.put(I.alias_args(), "generation", 2)
++        ] do
++      {result, _, after_db} = I.identity(graph, db, args)
++      assert result["status"] === "refused" and after_db.records === db.records
++    end
++
++    {_, graph, db} = I.identity(graph, db, I.merge_args(0))
++    args = I.merge_args(1) |> Map.merge(%{"from" => "Birch", "to" => "Cedar"})
++    {result, _, _} = I.identity(graph, db, args)
++    assert result["status"] === "refused"
++  end
++
++  test "final exact row and namespace generation revalidation detects concurrent changes" do
++    {graph, db} = I.seed()
++    {_, graph, db} = I.identity(graph, db, I.alias_args())
++
++    invocation =
++      Graph.handle(
++        "invoke.command",
++        %{
++          "id" => "query",
++          "arguments" => %{
++            "store" => "notes",
++            "entity" => "Aspen",
++            "depth" => 1,
++            "max_nodes" => 128,
++            "max_edges" => 256,
++            "top_k" => 10,
++            "as_of_ms" => nil
++          }
++        },
++        graph
++      )
++
++    {request, pending, db} =
++      I.until(invocation, db, &(&1["op"] === "state.get" and &1["key"] === I.key()))
++
++    assert pending.phase === :query_identity_revalidate
++    changed = %{db | generation: db.generation + 1}
++    {outcome, changed} = F.host(changed, request)
++
++    {result, _, _} =
++      D.run(Graph.handle("host.actions", %{"outcome" => outcome}, pending), changed)
++
++    assert result["status"] === "conflict" and result["claims"] === []
++
++    changed =
++      update_in(db.records[I.key()]["operation_id"], fn _ -> String.duplicate("f", 32) end)
++
++    {outcome, changed} = F.host(changed, request)
++
++    {result, _, _} =
++      D.run(Graph.handle("host.actions", %{"outcome" => outcome}, pending), changed)
++
++    assert result["status"] === "conflict"
++  end
++
++  test "strict tags, malformed citations and tombstones refuse without resurrection" do
++    {graph, db} = I.seed()
++    {_, graph, db} = I.identity(graph, db, I.alias_args())
++    value = db.records[I.key()]["value"]
++
++    for forged <- [
++          Map.put(value, "format", 1.0),
++          put_in(value, ["steps", Access.at(0), "version"], 1.0),
++          put_in(value, ["steps", Access.at(0), "base_revision"], 0.0),
++          put_in(value, ["steps", Access.at(0), "citation", "version"], 1.0),
++          put_in(value, ["steps", Access.at(0), "citation", "quote"], "forged")
++        ] do
++      refute Evidence.valid_graph_identity?(forged, "notes")
++      corrupt = put_in(db.records[I.key()]["value"], forged)
++      {result, _, _} = I.inspect_selection(graph, corrupt)
++      assert result["status"] === "refused"
++    end
++
++    tombstone =
++      put_in(db.records[I.key()], %{
++        "key" => I.key(),
++        "revision" => 2,
++        "deleted" => true,
++        "value" => nil,
++        "operation_id" => String.duplicate("1", 32)
++      })
++
++    {result, _, after_db} = I.identity(graph, tombstone, I.alias_args(2))
++    assert result["status"] === "refused" and after_db.records === tombstone.records
++  end
++
++  test "structurally valid but foreign citation metadata cannot select current facts" do
++    {graph, db} = I.seed()
++    {_, graph, db} = I.identity(graph, db, I.alias_args())
++    value = db.records[I.key()]["value"]
++    [step] = value["steps"]
++
++    for citation <- [
++          Map.put(step["citation"], "uri", "provided:foreign"),
++          put_in(step["citation"], ["origin", "store_profile"], "foreign")
++        ] do
++      forged =
++        Map.put(value, "steps", [
++          Evidence.graph_identity_step(
++            step["kind"],
++            step["from"],
++            step["to"],
++            citation,
++            step["base_revision"]
++          )
++        ])
++
++      assert Evidence.valid_graph_identity?(forged, "notes")
++      corrupt = put_in(db.records[I.key()]["value"], forged)
++      {result, _, _} = I.query(graph, corrupt, "Aspen")
++      assert result["status"] === "refused" and result["claims"] === []
++    end
++  end
++
++  test "bounded selection record refuses before publication rather than truncating" do
++    {graph, db} = I.seed()
++
++    {graph, db, admitted} =
++      Enum.reduce(1..9, {graph, db, 0}, fn n, {graph, db, admitted} ->
++        args =
++          I.alias_args(admitted)
++          |> Map.merge(%{"from" => "Alias#{n}", "quote" => "Alias#{n} names Cedar."})
++
++        {result, next, after_db} = I.identity(graph, db, args)
++
++        if result["status"] === "ok" do
++          value = after_db.records[I.key()]["value"]
++          assert byte_size(IO.iodata_to_binary(JSON.encode!(value))) <= 6000
++          assert length(value["steps"]) === admitted + 1
++          assert byte_size(IO.iodata_to_binary(JSON.encode!(hd(after_db.requests)))) < 16_384
++          {next, after_db, admitted + 1}
++        else
++          assert after_db.records === db.records
++          {graph, db, admitted}
++        end
++      end)
++
++    assert admitted in 1..8
++    {inspect, _, _} = I.inspect_selection(graph, db)
++    assert length(inspect["coverage"]["identity_selection"]["steps"]) === admitted
++  end
++
++  test "metadata row survives collection and MCP mutation refuses before any host action" do
++    {graph, db} = I.seed()
++    {_, graph, db} = I.identity(graph, db, I.alias_args())
++    before = db.records[I.key()]
++
++    {_, graph, db} =
++      D.invoke(graph, db, "source", %{
++        "store" => "notes",
++        "action" => "collect",
++        "args" => %{"limit" => 12}
++      })
++
++    assert db.records[I.key()] === before
++
++    mcp =
++      put_in(graph, [:resolved, "options", "stores", "notes"], %{
++        "kind" => "mcp_cas",
++        "binding" => "db",
++        "partition" => "notes",
++        "contract" => "ipse-cas-v3"
++      })
++
++    {result, _, after_db} = I.identity(mcp, db, I.alias_args(1))
++    assert result["status"] === "refused" and after_db.requests === db.requests
++  end
++
++  test "identity revalidation includes cumulative reads within the existing budget" do
++    {graph, db} = I.seed()
++    prior_reads = Enum.count(db.requests, &(&1["op"] in ~w(state.get state.scan)))
++
++    invocation =
++      Graph.handle(
++        "invoke.command",
++        %{
++          "id" => "query",
++          "arguments" => %{
++            "store" => "notes",
++            "entity" => "Cedar",
++            "depth" => 1,
++            "max_nodes" => 128,
++            "max_edges" => 256,
++            "top_k" => 10,
++            "as_of_ms" => nil
++          }
++        },
++        graph
++      )
++
++    {request, pending, db} =
++      I.until(invocation, db, &(&1["op"] === "state.get" and &1["key"] === I.key()))
++
++    {outcome, db} = F.host(db, request)
++    {result, _, db} = D.run(Graph.handle("host.actions", %{"outcome" => outcome}, pending), db)
++
++    assert result["coverage"]["store"]["reads_used"] ===
++             Enum.count(db.requests, &(&1["op"] in ~w(state.get state.scan))) - prior_reads
++
++    assert pending.ctx.checked["coverage"]["reads_used"] < 512
++  end
++
++  test "no-selection query retains one ordinary fact-validation pass" do
++    {graph, db} = I.seed()
++    1 = :erlang.trace_pattern({Evidence, :validate_facts, 3}, true, [:call_count])
++
++    try do
++      {result, _, _} = I.query(graph, db, "Cedar")
++      assert result["status"] === "ok"
++      assert {:call_count, 1} = :erlang.trace_info({Evidence, :validate_facts, 3}, :call_count)
++    after
++      :erlang.trace_pattern({Evidence, :validate_facts, 3}, false, [:call_count])
++    end
++  end
++
++  test "maximum legal Unicode entity retains its expanded lowercase comparison form" do
++    {graph, db} = D.initial()
++    entity = String.duplicate("İ", 128)
++    assert byte_size(entity) === 256 and byte_size(String.downcase(entity)) === 384
++    fact_quote = entity <> " uses Blue."
++    alias_quote = "Aspen names " <> entity <> "."
++    {_, graph, db} = D.source(graph, db, fact_quote <> " " <> alias_quote)
++
++    {captured, graph, db} =
++      D.invoke(
++        graph,
++        db,
++        "capture",
++        D.args([D.relation(%{"subject" => entity, "quote" => fact_quote})])
++      )
++
++    assert captured["status"] === "ok"
++    args = I.alias_args() |> Map.merge(%{"to" => entity, "quote" => alias_quote})
++    {aliased, graph, db} = I.identity(graph, db, args)
++    assert aliased["status"] === "ok"
++    {query, _, _} = I.query(graph, db, "Aspen")
++    assert query["status"] === "ok"
++    assert [%{"subject" => ^entity, "basis" => [%{"quote" => ^fact_quote}]}] = query["claims"]
++  end
++end
++
+ result = ExUnit.run()
++if result.failures === 0, do: IO.puts("graph_identity_protocol=pass")
+ System.halt(if(result.failures == 0, do: 0, else: 1))
++

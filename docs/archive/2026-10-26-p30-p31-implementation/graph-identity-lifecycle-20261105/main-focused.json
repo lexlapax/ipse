@@ -1,0 +1,35 @@
+{
+  "version": 1,
+  "date": "2026-11-05",
+  "kind": "canonical_main_graph_focused_integration",
+  "focused": {
+    "exit": 0,
+    "outer_tests_passed": 3,
+    "seconds": 24.9,
+    "failures": 0,
+    "warnings": 0,
+    "private_log_sha256": "949a351d7de3431b0f5877a995c28cdd48a47270548510983c4e0bb083ca01b4",
+    "nested_protocol_count": 26,
+    "nested_counts_added_to_outer_total": false
+  },
+  "reader": {
+    "exit": 0,
+    "app_started": false,
+    "native_actor": false,
+    "current_main_reader_accepts_new_kind": true,
+    "exact_old_store_reader_refuses_new_kind": true,
+    "old_empty_partition_accepted": true,
+    "private_log_sha256": "0f1858bc549fd1a9d5fea063d429ce39dc054d5e9b20aadeb1d0c1914093a119"
+  },
+  "private_actor_candidate_patch_sha256": "4fff1b5e7be1d949aa9354d2067a7d0006a4ef660d78285f048826b4c68a7bbf",
+  "source_format_delta": "Each of five files differs from the private qualified source only by removing one blank line at EOF.",
+  "integrated_source_sha256": {
+    "extensions/knowledge/src/evidence.ex": "3e15c1d965f2458d9d95f170bc6399231d4e28b6c22b7c1a438b3f6100f12a16",
+    "extensions/knowledge/src/graph.ex": "ab3f5ae73f95aae54e32f5d0c6c95c6476b1c6d3a12f185550ba39b3861075ce",
+    "extensions/knowledge/src/store.ex": "9775030fb8290be38a7305154c4d035684d656d9343a1e67c31f678177f3a2dc",
+    "test/extensions/knowledge/graph_capture_test.exs": "cc12a3bb5a2bfbf3d9377acd2a33ddfc374ec2b75f4755ae60bc77feef9681bc",
+    "test/support/graph_main_capture.exs": "0a634f35912a447b701d8e0cba9eb5d25464bc53027772bdabe1cded4ea342bb"
+  },
+  "prior_full_suite_failures_changed": false,
+  "whole_graph_milestone_complete": false
+}

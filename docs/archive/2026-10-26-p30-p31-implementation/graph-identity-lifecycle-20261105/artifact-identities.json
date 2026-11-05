@@ -1,0 +1,36 @@
+{
+  "version": 1,
+  "sdk_base_commit": "800235a5d7ded176b4e41674c0ef6ccce0c1b29a",
+  "sdk_is_dirty_reviewed_overlay": true,
+  "host_modules": 241,
+  "applications": 16,
+  "sdk_source_manifest_sha256": "2231578fe9a8c06252d4705ef871139f540e690c6ea43b2bf1b41062ddb8ea0d",
+  "sdk_runtime_manifest_sha256": "1d4200788a9dc2c5f5aa22f4adc062620421b5965834f29e781a17f9a4394e82",
+  "normal_native_helper_sha256": "ac424d10e2ce6809cedcb157acd70092b00ca68aa7a48201a6007ac5dccbf33b",
+  "artifacts": [
+    {
+      "package": "graph",
+      "preset": "state-explicit",
+      "manifest_sha256": "1aa98b01641038f91814e6d3817f9b3ac73637d24bb04a33f379b6c0a8d37220",
+      "modules": 26,
+      "declared_payloads": 27
+    },
+    {
+      "package": "corpus",
+      "preset": "state-lexical",
+      "manifest_sha256": "1a2e3e5f3a06bb750415bce63a25cac7b4cce3194fa15e0a44297f13e1e49fa3",
+      "modules": 26,
+      "declared_payloads": 27
+    },
+    {
+      "package": "research",
+      "preset": "state-fetched",
+      "manifest_sha256": "00915dcd8b7f4c458085dfb6baa003712b243f0cb398124fcaa0df49bd337bde",
+      "modules": 26,
+      "declared_payloads": 27
+    }
+  ],
+  "byte_identical_common_helper_beams": 25,
+  "payload_schema_license_imports_verified": true,
+  "live_coexistence_qualified": false
+}

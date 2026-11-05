@@ -449,6 +449,13 @@ defmodule IpseKnowledge.Store do
          "root_records" => inventory_count(roots),
          "fetch_origin_records" =>
            inventory_count(fetch_origins(%{cache: cache, profile: %{"partition" => partition}})),
+         "graph_identity_records" =>
+           inventory_count(
+             Enum.filter(records, fn record ->
+               not record["deleted"] and get_in(record, ["value", "partition"]) === partition and
+                 get_in(record, ["value", "kind"]) === "graph_identity"
+             end)
+           ),
          "roots" => root_rows,
          "selected_pages" =>
            inventory_count(Enum.filter(pages, &MapSet.member?(selected, &1["key"]))),
@@ -1102,6 +1109,8 @@ defmodule IpseKnowledge.Store do
           "projections" => projections,
           "tokens" => tokens,
           "gaps" => gaps,
+          "graph_identity" =>
+            state.cache["records"][Evidence.graph_identity_key(state.profile["partition"])],
           "coverage" => coverage(state)
         }}}
     else
@@ -3178,6 +3187,11 @@ defmodule IpseKnowledge.Store do
              true
            else
              case value["kind"] do
+               "graph_identity" ->
+                 key === Evidence.graph_identity_key(partition) and
+                   Evidence.valid_graph_identity?(value, partition) and
+                   Enum.all?(value["steps"], &(&1["base_revision"] < record["revision"]))
+
                "fetch_origin" ->
                  valid_fetch_origin?(value, partition) and key == value["source_key"] and
                    valid_fetch_target?(cache, value, partition)

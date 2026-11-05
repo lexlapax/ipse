@@ -11,6 +11,7 @@ Start with the explicit State preset below, then choose how to supply facts:
 | --- | --- |
 | Author every fact without inference | [Construct the explicit fact](#prepare-one-explicit-fact-without-a-model), then publish it with the command walkthrough |
 | Let the existing main model propose relationships | [Store the source](#select-graph-and-store-the-source), then use [main-tool capture](#capture-through-the-main-model); Graph makes no secondary model call |
+| Select or undo an entity alias or merge | [Review an explicit State identity choice](#select-and-undo-an-entity-alias-or-merge); original facts and citations stay unchanged |
 | Use a separate extractor or remote store | [Select the optional capabilities](#add-optional-model-extraction-or-an-mcp-store) and review their independent approvals |
 
 Graph is an independently built extension. It is separate from
@@ -237,9 +238,9 @@ fact identities within the existing projection limits.
 This path preserves ordinary State approvals. It cannot save a graph derived
 from protected managed-note context: those State writes remain refused under
 the host's dependency guard. A copied State source or receipt supplies no current
-authority over the original Session or file. Reversible aliases/merges and
-automatic identity resolution are not implemented. Use unambiguous entity IDs;
-matching names do not prove that two people or objects are the same. Real-model
+authority over the original Session or file. Entity aliases and merges require
+the separate explicit State choice below; Graph never infers them from matching
+names. Matching names do not prove that two people or objects are the same. Real-model
 relationship extraction, installed capture and full graph-collection capacity
 remain unqualified.
 
@@ -337,6 +338,96 @@ Inspect the source and draft state before requesting a smaller explicit batch
 instead of widening grants to evade the refusal.
 The complete SDK request must fit 16 KiB. Legal individual field maxima do not
 guarantee the combined request fits.
+
+## Select and undo an entity alias or merge
+
+Use this command only with an ordinary State graph and a current stored source
+that supports your explicit choice. It adds comparison data, not a new fact or
+proof of identity. An alias introduces an unused alternate label for a currently
+supported entity. A merge selects one existing entity as the traversal
+representative of another. Facts, their IDs, original spelling and citations
+remain byte-for-byte unchanged. MCP identity commands refuse.
+
+Before the first choice in a shared partition, close old pinned Sessions and
+upgrade every Graph, Corpus and Research artifact using that State binding to
+the same reviewed shared Store implementation. The new `graph_identity` record
+kind is intentionally refused by older readers, even after its active choices
+have all been undone. Do not mix old readers with a new selection row or edit
+State files to work around refusal. Partitions without that row need no migration.
+Choices belong to the partition, not to an individual source export. The existing
+source export/import procedure does not transfer this selection row. Retain its
+historical inspection separately; a destination needs fresh current sources and
+explicitly reviewed choices, rather than importing old choices as current.
+
+For example, suppose your current `manual:entities` source, generation 1,
+contains the unique sentences `Aspen is another name for Cedar.` and
+`Cedar and Birch identify the same release group.`, and its current fact
+projection already contains `Cedar uses Blue.` and `Birch uses Green.`. Store
+and capture those facts through the preceding procedure first, then inspect:
+
+```text
+/ext ext__graph__identity {"store":"notes","action":"inspect"}
+```
+
+Inspect returns `coverage.identity_selection.revision` and the ordered active
+steps. It is historical inspection, explicitly marked
+`current_source_authority: false`. A never-created selection has revision zero;
+an empty selection that has previously been changed keeps its actual revision.
+Use that inspected integer as `expected_revision`, starting with zero only for
+the never-created example:
+
+```text
+/ext ext__graph__identity {"store":"notes","action":"alias","expected_revision":0,"source_id":"manual:entities","generation":1,"from":"Aspen","to":"Cedar","quote":"Aspen is another name for Cedar."}
+/ext ext__graph__query {"store":"notes","entity":"Aspen","depth":1,"max_nodes":8,"max_edges":8,"top_k":5,"as_of_ms":null}
+```
+
+Finish each command before entering the next and review its full ordinary State
+write. Expect the query to return the original `Cedar` claim and citation,
+alongside the identity-selection revision and attributed choice in coverage.
+No secondary model call is made. Each supporting quote must occur exactly once
+in its current source, fit one chunk and contain both supplied labels. This
+checks attribution; you must still assess whether the text supports the choice.
+An alias cannot shadow an entity already present in current facts; use merge
+for that explicit choice instead.
+
+Inspect again, then merge using its actual revision:
+
+```text
+/ext ext__graph__identity {"store":"notes","action":"merge","expected_revision":1,"source_id":"manual:entities","generation":1,"from":"Cedar","to":"Birch","quote":"Cedar and Birch identify the same release group."}
+```
+
+The example revision one applies only after the preceding alias succeeded.
+Querying `Aspen` now follows the original outgoing facts for both entities.
+Original claims remain separate; an opposite-polarity assertion can still be
+reported as a conflict. A choice is neither semantic truth nor a permission to
+publish data derived from managed notes.
+
+To undo, inspect and copy the latest step's `operation_id` and current revision:
+
+```text
+/ext ext__graph__identity {"store":"notes","action":"undo","expected_revision":CURRENT_REVISION,"operation_id":"LATEST_OPERATION_ID"}
+```
+
+Replace both placeholders before submitting. Undo removes only that latest
+choice. Undoing the merge restores the preceding alias; a second explicit undo
+can remove the alias. It never rewrites facts, removes a newer conflicting
+choice, revives a suppressed source or deletes earlier journal receipts.
+
+The selection permits at most eight active steps and a 6,000-byte encoded State
+value; large quotations can reach the byte bound earlier. The complete request
+must still fit 16 KiB. Refusal never truncates a choice. State row revision and
+namespace generation are checked again at the approved CAS, with finite source
+expiry carried to the existing native write decision. A concurrent publication
+can therefore conflict even when it changes a different source. Inspect before
+requesting new work rather than changing the expected revision blindly.
+
+Denied writes stop. An unknown write may already have applied: keep its journal
+and State files, then run a fresh inspection before deciding on a new explicit
+operation. Inspection does not replay or settle that unknown. Querying also
+revalidates sources and the exact selection row before return. Replaced,
+expired, suppressed or altered support withholds the current selected view;
+historical inspection and an explicit latest-step undo remain available. A
+returned query cannot revoke text already disclosed earlier.
 
 ## Read every claim's supporting citations
 
