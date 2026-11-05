@@ -3,7 +3,7 @@ defmodule IpseKnowledge.KnowledgeCaptureTest do
 
   @suite ~S"""
   ExUnit.start(autorun: false)
-  for path <- ~w(profiles notes knowledge/records knowledge/contracts knowledge/decision_policy knowledge),
+  for path <- ~w(profiles notes knowledge/contracts knowledge/records knowledge/decision_policy knowledge),
     do: Code.require_file(Path.join("extensions/knowledge/src", path <> ".ex"))
 
   "extensions/knowledge/src/knowledge.ex"
@@ -196,10 +196,51 @@ defmodule IpseKnowledge.KnowledgeCaptureTest do
     end
   end
 
+  defp pending_page(rows, total, generation, next \\ nil),
+    do: %{"records" => rows, "count" => total, "generation" => generation,
+      "coverage" => "metadata_only", "prefix" => "pending.", "next" => next}
+
+  defp empty_pending(state, generation) do
+    state = if state.phase == :capture_budget, do: elem(request(respond(state,budget())),1), else: state
+    request(respond(state, pending_page([], 0, generation)))
+  end
+
+  defp budget_state(generation \\ 7) do
+    state = start("assistant_proposal")
+    {_, state} = request(respond(state, %{"record" => nil}))
+    {request, state} = request(respond(state, %{"records" => [], "generation" => generation}))
+    assert request == %{"op" => "collection.call", "purpose" => "saved_policy_budget_v1", "request" => %{"op" => "status"}}
+    state
+  end
+
+  defp capacity_state(generation \\ 7) do
+    {request,state} = request(respond(budget_state(generation),budget()))
+    assert request == %{"op" => "collection.call", "request" => %{"op" => "index", "prefix" => "pending.", "cursor" => nil, "limit" => 32}}
+    state
+  end
+
+  defp budget(n \\ 0, unknown \\ 0) do
+    zero = Map.new(~w(operations model_calls input_bytes output_bytes download_bytes cost_nanos),&{&1,0})
+    limits = Map.merge(zero,%{"operations" => 100,"input_bytes" => 2097152,"output_bytes" => 4194304})
+    %{"version" => 1,"scope" => "saved_policy","project" => String.duplicate("a",64),"epoch" => 1,
+      "policy_sha256" => String.duplicate("b",64),"observed_at_ms" => 1000,"period_start_ms" => 0,"period_end_ms" => 86400000,
+      "limits" => limits,"charged" => Map.put(zero,"operations",n),"available" => Map.put(limits,"operations",max(100-n,0)),
+      "nonterminal_reserved" => Map.put(zero,"operations",unknown),"unknown_reserved" => Map.put(zero,"operations",unknown),
+      "warning_dimensions" => if(n >= 80,do: ["operations"],else: []),"exhausted_dimensions" => if(n >= 100,do: ["operations"],else: [])}
+  end
+
+  defp rows(count, bytes \\ 512) do
+    for n <- 1..count, count > 0 do
+      %{"key" => "pending." <> (Integer.to_string(n,16) |> String.pad_leading(64,"0")),
+        "revision" => 1, "bytes" => bytes, "sha256" => String.duplicate("a",64)}
+    end
+  end
+
   test "capturing a pending proposal does not start shadow assessment" do
     state = start("assistant_proposal")
     {_, state} = request(respond(state, %{"record" => nil}))
     {_, state} = request(respond(state, %{"records" => [], "generation" => 7}))
+    {_, state} = empty_pending(state, 7)
     {%{"status" => "saved", "category" => "pending"}, %{phase: :idle}} =
       value(shadow_respond(state, %{"generation" => 8}))
   end
@@ -207,7 +248,8 @@ defmodule IpseKnowledge.KnowledgeCaptureTest do
   test "shadow assessment explicitly reads one pending proposal and returns advice only" do
     state = start("assistant_proposal")
     {_, state} = request(respond(state, %{"record" => nil}))
-    {commit, _} = request(respond(state, %{"records" => [], "generation" => 7}))
+    {_, state} = request(respond(state, %{"records" => [], "generation" => 7}))
+    {commit, _} = empty_pending(state, 7)
     [change] = commit["request"]["changes"]
     key = change["key"]
     proposal = change["value"]
@@ -264,7 +306,8 @@ defmodule IpseKnowledge.KnowledgeCaptureTest do
       value(respond(state, %{"records" => [%{"key" => key, "revision" => 3}], "generation" => 9}))
 
     for records <- [[], [%{"key" => key <> ".suffix", "revision" => 4}]] do
-      {commit, _} = request(respond(state, %{"records" => records, "generation" => 9}))
+      {_, queued} = request(respond(state, %{"records" => records, "generation" => 9}))
+      {commit, _} = empty_pending(queued, 9)
       assert commit["request"]["expected_generation"] == 9
       assert [%{"key" => ^key, "expected_revision" => 0}] = commit["request"]["changes"]
     end
@@ -296,13 +339,14 @@ defmodule IpseKnowledge.KnowledgeCaptureTest do
       )
   end
 
-  test "assistant claims remain pending and leave queue capacity to the protected host" do
+  test "assistant claims remain pending and retain independent protected-host queue enforcement" do
     state = start("assistant_proposal")
 
     {%{"request" => %{"op" => "index", "prefix" => "pending." <> _}}, state} =
       request(respond(state, %{"record" => nil}))
 
-    {commit, _} = request(respond(state, %{"records" => [], "generation" => 5}))
+    {_, state} = request(respond(state, %{"records" => [], "generation" => 5}))
+    {commit, _} = empty_pending(state, 5)
     assert commit["op"] == "collection.managed"
     assert commit["request"]["expected_generation"] == 5
     assert {:ok, commit["recipe_sha256"]} ==
@@ -352,6 +396,243 @@ defmodule IpseKnowledge.KnowledgeCaptureTest do
         })
       )
   end
+
+  test "the 52nd projected pending record warns without pausing or changing consent limits" do
+    state = capacity_state()
+    {request, state} = request(respond(state,pending_page(Enum.take(rows(51),32),51,7,"next")))
+    assert request["request"]["cursor"] == "next"
+    {commit, state} = request(respond(state,pending_page(Enum.drop(rows(51),32),51,7)))
+    assert commit["op"] == "collection.managed"
+    assert [%{"expected_revision" => 0, "key" => "pending." <> _}] = commit["request"]["changes"]
+    {saved, _} = value(respond(state,%{"generation" => 8}))
+    assert saved["status"] == "saved"
+    assert saved["capacity"]["notice"] == "pending_capacity_80_percent"
+    assert saved["capacity"]["scope"] == "pending_queue"
+    assert saved["capacity"]["records"] == 52
+    refute Map.has_key?(saved["capacity"],"consent")
+    state = capacity_state()
+    {_, state} = request(respond(state,pending_page(Enum.take(rows(50),32),50,7,"next")))
+    {_, state} = request(respond(state,pending_page(Enum.drop(rows(50),32),50,7)))
+    {saved, _} = value(respond(state,%{"generation" => 8}))
+    refute Map.has_key?(saved,"capacity")
+    # Legacy admitted rows can exceed today's 4 KiB proposal constructor.
+    state = capacity_state()
+    {_, state} = request(respond(state,pending_page(Enum.take(rows(36,5900),32),36,7,"next")))
+    {_, state} = request(respond(state,pending_page(Enum.drop(rows(36,5900),32),36,7)))
+    {saved, _} = value(respond(state,%{"generation" => 8}))
+    assert saved["capacity"]["records"] == 37
+    assert saved["capacity"]["bytes"] * 5 >= 262144 * 4
+  end
+
+  test "a full pending queue returns a visible pause without a mutation or bytes claim" do
+    {paused, state} = value(respond(capacity_state(),pending_page(rows(32),64,7,"rest")))
+    assert paused["status"] == "paused" and paused["mutation"] == "none"
+    assert paused["code"] == "pending_capacity"
+    assert paused["capacity"]["records"] == 64
+    assert paused["capacity"]["bytes"] == nil
+    assert state.phase == :idle
+  end
+
+  test "a complete pending byte inventory can pause before count64 without touching pins" do
+    state = capacity_state()
+    {_, state} = request(respond(state,pending_page(Enum.take(rows(63,4160),32),63,7,"next")))
+    {paused, _} = value(respond(state,pending_page(Enum.drop(rows(63,4160),32),63,7)))
+    assert paused["status"] == "paused"
+    assert paused["capacity"]["records"] == 63
+    assert paused["capacity"]["bytes"] == 262080
+    assert paused["mutation"] == "none"
+  end
+
+  test "untrusted pending metadata progress and root changes refuse rather than authorizing capture" do
+    valid = pending_page(rows(1),1,7)
+    invalid = [Map.put(valid,"generation",8),Map.put(valid,"prefix","note."),
+      Map.put(valid,"coverage","complete"),Map.put(valid,"count",2),
+      Map.put(valid,"records",[%{"key" => "pending.bad"}]),
+      Map.put(valid,"records",[%{hd(rows(1)) | "key" => "note." <> String.duplicate("a",64)}]),
+      Map.put(valid,"records",["malformed"])]
+    for page <- invalid do
+      {refused, state} = value(respond(capacity_state(),page))
+      assert refused == %{"status" => "refused", "code" => "invalid_pending_capacity_index"}
+      assert state.phase == :idle
+    end
+    {_, state} = request(respond(capacity_state(),pending_page(Enum.take(rows(63),20),63,7,"same")))
+    {refused, _} = value(respond(state,pending_page(rows(63)|>Enum.drop(20)|>Enum.take(20),63,7,"same")))
+    assert refused["code"] == "invalid_pending_capacity_index"
+    for final <- [pending_page(Enum.drop(rows(36),32),36,8),pending_page(Enum.drop(rows(36),32),37,7)] do
+      {_, state} = request(respond(capacity_state(),pending_page(Enum.take(rows(36),32),36,7,"next")))
+      {refused, _} = value(respond(state,final))
+      assert refused["code"] == "invalid_pending_capacity_index"
+    end
+  end
+
+  test "deduplication finishes before the queue inventory and does not renew a stored candidate" do
+    state = start("assistant_proposal")
+    {request, state} = request(respond(state,%{"record" => nil}))
+    key = request["request"]["prefix"]
+    {existing, state} = value(respond(state,%{"records" => [%{"key" => key,"revision" => 9}],"generation" => 7}))
+    assert existing["status"] == "existing" and existing["renewed"] == false
+    assert state.phase == :idle
+  end
+
+  test "generic permission failures and unknown outcomes are not relabeled as budget pauses" do
+    for status <- ~w(denied failed unknown conflict) do
+      {interrupted, state} = value(K.handle("host.actions",%{"operation_id" => String.duplicate("a",32),
+        "outcome" => %{"status" => status,"value" => %{}}},capacity_state()))
+      assert interrupted["status"] == "interrupted"
+      assert interrupted["outcome"]["status"] == status
+      assert state.phase == :idle
+    end
+  end
+
+  test "the burst declaration counts320raw proposals independently of native effects" do
+    raw = Enum.map(1..320, fn n ->
+      cond do
+        n <= 64 -> {:new,n}
+        n <= 128 -> {:duplicate,n-64}
+        n <= 160 -> {:invalid,n}
+        true -> {:new,n}
+      end
+    end)
+    assert length(Enum.chunk_every(raw,8)) == 40
+    assert Enum.frequencies_by(raw,&elem(&1,0)) == %{new: 224,duplicate: 64,invalid: 32}
+    # These are raw inputs, not simulated native approvals or actual admissions.
+    assert Enum.count(raw,fn {kind,_}->kind==:new end) > 100
+  end
+
+  test "only an observed saved budget warns at80 and pauses at100 before queue or mutation" do
+    for {n,warning} <- [{0,false},{79,false},{80,true},{99,true}] do
+      {_,state} = request(respond(budget_state(),budget(n)))
+      {_,state} = empty_pending(state,7)
+      {saved,_} = value(respond(state,%{"generation" => 8}))
+      assert saved["status"] == "saved"
+      assert Map.has_key?(saved,"budget") == warning
+      if warning do
+        assert saved["budget"]["observation"] == "advisory"
+        assert saved["budget"]["scope"] == "saved_policy"
+        assert saved["budget"]["snapshot"]["charged"]["operations"] == n
+      end
+    end
+    {paused,state} = value(respond(budget_state(),budget(100)))
+    assert paused["status"] == "paused" and paused["code"] == "saved_policy_budget"
+    assert paused["mutation"] == "none" and state.phase == :idle
+    assert paused["budget"]["snapshot"]["exhausted_dimensions"] == ["operations"]
+    refute Map.has_key?(paused,"capacity")
+  end
+
+  test "unresolved saved liabilities retain pressure without asserting service quarantine" do
+    {paused,_} = value(respond(budget_state(),budget(100,100)))
+    assert paused["budget"]["snapshot"]["unknown_reserved"]["operations"] == 100
+    assert paused["budget"]["snapshot"]["nonterminal_reserved"]["operations"] == 100
+    refute Map.has_key?(paused["budget"],"quarantine")
+    refute Map.has_key?(paused["budget"],"service_quarantine")
+  end
+
+  test "actual encoded tool previews show readable allowance and queue notices within the existing 800 characters" do
+    for {n,size} <- [{80,:normal},{100,:normal},{80,:maximum},{100,:maximum}] do
+      snapshot = budget(n)
+      snapshot = %{snapshot | "observed_at_ms" => 1762000000000,
+        "period_start_ms" => 1761955200000, "period_end_ms" => 1762041600000}
+      snapshot =
+        if size == :maximum do
+          maximum = 9_007_199_254_740_991
+          used = if n == 100,do: maximum,else: div(maximum * 4 + 4,5)
+          resources = ~w(operations model_calls input_bytes output_bytes download_bytes cost_nanos)
+          %{snapshot | "epoch" => maximum,
+            "limits" => Map.new(resources,&{&1,maximum}),
+            "charged" => Map.new(resources,&{&1,used}),
+            "available" => Map.new(resources,&{&1,maximum-used}),
+            "warning_dimensions" => resources,
+            "exhausted_dimensions" => if(n == 100,do: resources,else: [])}
+        else
+          snapshot
+        end
+      outcome = respond(budget_state(),snapshot)
+      result =
+        if n == 100 do
+          {value,_} = value(outcome)
+          value
+        else
+          {_,state} = request(outcome)
+          {_,state} = empty_pending(state,7)
+          {value,_} = value(respond(state,%{"generation" => 8}))
+          value
+        end
+      preview = String.slice(Jason.encode!(result),0,800)
+      assert String.contains?(preview,if(n == 100,do: "Saving paused:",else: "Saved knowledge allowance is nearing a limit."))
+      assert String.contains?(preview,"Observed capacity: #{snapshot["available"]["operations"]} operations")
+      assert String.contains?(preview,"#{snapshot["available"]["input_bytes"]} input bytes")
+      assert String.contains?(preview,"#{snapshot["available"]["output_bytes"]} output bytes")
+      assert result["budget"]["snapshot"] === snapshot
+      assert result["budget"]["snapshot"]["limits"] == snapshot["limits"]
+      assert result["budget"]["snapshot"]["charged"] == snapshot["charged"]
+      assert result["budget"]["snapshot"]["observed_at_ms"] == snapshot["observed_at_ms"]
+      refute Map.has_key?(result["budget"],"permission")
+    end
+    {_,state} = request(respond(capacity_state(),pending_page(Enum.take(rows(51),32),51,7,"next")))
+    {_,state} = request(respond(state,pending_page(Enum.drop(rows(51),32),51,7)))
+    {saved,_} = value(respond(state,%{"generation" => 8}))
+    assert String.contains?(String.slice(Jason.encode!(saved),0,800),"Pending proposals are nearing queue capacity:")
+    {paused,_} = value(respond(capacity_state(),pending_page(rows(32),64,7,"rest")))
+    assert String.contains?(String.slice(Jason.encode!(paused),0,800),"Saving paused:")
+    assert paused["capacity"]["bytes"] == nil
+  end
+
+  test "unused zero dimensions never pause but known positive zero-limit pressure does" do
+    {_,state} = request(respond(budget_state(),budget()))
+    assert state.phase == :pending_capacity
+    equality = budget() |> put_in(["limits","model_calls"],1) |> put_in(["charged","model_calls"],1)
+      |> Map.put("warning_dimensions",["model_calls"]) |> Map.put("exhausted_dimensions",["model_calls"])
+    {_,state} = request(respond(budget_state(),equality))
+    assert state.phase == :pending_capacity
+    {_,state} = empty_pending(state,7)
+    {saved,_} = value(respond(state,%{"generation" => 8}))
+    assert saved["status"] == "saved" and saved["budget"]["capture_blocked_dimensions"] == []
+    for resource <- ~w(operations input_bytes output_bytes) do
+      disabled = budget() |> put_in(["limits",resource],0) |> put_in(["available",resource],0)
+      {paused,_} = value(respond(budget_state(),disabled))
+      assert paused["code"] == "saved_policy_budget"
+      assert paused["budget"]["capture_blocked_dimensions"] == [resource]
+    end
+    impossible = budget() |> put_in(["charged","model_calls"],1) |> put_in(["unknown_reserved","model_calls"],1)
+      |> put_in(["nonterminal_reserved","model_calls"],1) |> Map.put("exhausted_dimensions",["model_calls"])
+    {paused,_} = value(respond(budget_state(),impossible))
+    assert paused["code"] == "saved_policy_budget"
+    assert paused["budget"]["snapshot"]["exhausted_dimensions"] == ["model_calls"]
+  end
+
+  test "malformed saved budget callbacks refuse without guessing balance or creating a permit" do
+    v = budget(80)
+    for bad <- [Map.put(v,"operation_ids",[]),Map.put(v,"epoch",0),Map.put(v,"scope","service"),
+      Map.put(v,"policy_sha256","bad"),put_in(v,["available","operations"],21),
+      Map.put(v,"warning_dimensions",[]),put_in(v,["unknown_reserved","operations"],81),
+      Map.put(v,"observed_at_ms",86400000)] do
+      {refused,state} = value(respond(budget_state(),bad))
+      assert refused == %{"status" => "refused","code" => "invalid_saved_budget_snapshot"}
+      assert state.phase == :idle
+    end
+  end
+
+  test "a later real admission refusal stays a refusal after an earlier advisory snapshot" do
+    {_,state} = request(respond(budget_state(),budget(80)))
+    {commit,state} = empty_pending(state,7)
+    assert commit["op"] == "collection.managed"
+    {interrupted,_} = value(K.handle("host.actions",%{"operation_id" => String.duplicate("a",32),
+      "outcome" => %{"status" => "failed","value" => %{"code" => "collection_consent_denied"}}},state))
+    assert interrupted["status"] == "interrupted"
+    assert interrupted["outcome"]["value"]["code"] == "collection_consent_denied"
+    refute Map.has_key?(interrupted,"budget")
+  end
+
+  test "budget observation failures remain unattributed and cannot become budget pauses" do
+    for status <- ~w(denied failed unknown) do
+      {interrupted,state} = value(K.handle("host.actions",%{"operation_id" => String.duplicate("a",32),
+        "outcome" => %{"status" => status,"value" => %{}}},budget_state()))
+      assert interrupted["status"] == "interrupted" and interrupted["outcome"]["status"] == status
+      refute Map.has_key?(interrupted,"budget")
+      assert state.phase == :idle
+    end
+  end
+
   end
   result = ExUnit.run()
   if result.failures > 0, do: System.halt(1)
@@ -365,7 +646,7 @@ defmodule IpseKnowledge.KnowledgeCaptureTest do
     args = ["--erl", "+S 2:2"] ++ Enum.flat_map(paths, &["-pa", &1]) ++ ["-e", @suite]
     {output, status} = System.cmd(System.find_executable("elixir"), args, stderr_to_stdout: true)
     assert status == 0, output
-    assert output =~ "13 passed"
+    assert output =~ "27 passed"
     assert Enum.map(modules, &:code.is_loaded/1) == before
   end
 end

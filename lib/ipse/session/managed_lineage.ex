@@ -324,6 +324,15 @@ defmodule Ipse.Session.ManagedLineage do
   # A settled Worker transition can precede model projection. Only its exact
   # authenticated successor may accompany the original cached prerequisites.
   def root_projection_candidate(%__MODULE__{unavailable: false} = state, dependencies) do
+    case model_root_chain(state, dependencies) do
+      {:ok, action, _chain} -> {:ok, action}
+      _ -> single_root_projection_candidate(state, dependencies)
+    end
+  end
+
+  def root_projection_candidate(_, _), do: @error
+
+  defp single_root_projection_candidate(state, dependencies) do
     case root_candidate(state, dependencies) do
       {:ok, _} = candidate ->
         candidate
@@ -364,7 +373,107 @@ defmodule Ipse.Session.ManagedLineage do
     _ -> @error
   end
 
-  def root_projection_candidate(_, _), do: @error
+  # Model-only composition of already committed, cached Worker transitions.
+  # Each compact edge names receipts still authenticated by this exact state.
+  # Worker preparation continues to use the narrower root_candidate/2.
+  defp model_root_chain(state, dependencies) do
+    with {:ok, ^dependencies} <- ManagedReference.union([dependencies]),
+         [_ | _] = metadata <- Enum.filter(dependencies, &(&1["version"] === 3)),
+         identity = Map.take(hd(metadata), ~w(project_id namespace pin_sha256 policy_generation)),
+         true <- Enum.all?(dependencies, &(Map.take(&1, Map.keys(identity)) === identity)),
+         true <- Enum.all?(dependencies, &(&1["version"] in [3, 4, 5, 6])),
+         grouped = Enum.group_by(metadata, & &1["collection"]["generation"]),
+         generations = Enum.sort(Map.keys(grouped)),
+         first = hd(generations),
+         last = List.last(generations),
+         true <- last - first >= 2 and last - first <= map_size(state.root_writes),
+         true <- last - first <= 2048,
+         true <- generations === Enum.to_list(first..last),
+         pin = get_in(state.admission, ["pin"]),
+         binding = %{"pin" => pin, "namespace" => identity["namespace"]},
+         true <-
+           Enum.all?(metadata, fn dependency ->
+             state.dictionary[JSON.digest([dependency])] === dependency and
+               Session.ManagedReads.cached_root_history?(
+                 dependency,
+                 state.root_observations,
+                 binding,
+                 dependency["collection"]["generation"]
+               )
+           end),
+         dictionary = Map.new(metadata, &{JSON.digest([&1]), &1}),
+         {:ok, action, reversed} <-
+           Enum.reduce_while(first..(last - 1), {:ok, nil, []}, fn generation, {:ok, _, chain} ->
+             old = grouped[generation]
+             [prior] = Enum.uniq(Enum.map(old, & &1["collection"]))
+
+             targets =
+               Enum.map(old, &Map.get(state.root_transitions, JSON.digest([&1]))) |> Enum.uniq()
+
+             matches =
+               for {operation, value} <- state.root_writes,
+                   action = value["action"],
+                   action["request"]["request"]["expected_generation"] === generation,
+                   Enum.any?(
+                     value["dependencies"],
+                     &(&1["version"] === 3 and &1["collection"] === prior)
+                   ),
+                   do: {operation, value}
+
+             with [target_id] when is_binary(target_id) <- targets,
+                  target when is_map(target) <- dictionary[target_id],
+                  true <- target["collection"]["generation"] === generation + 1,
+                  true <- state.root_observations[target_id] === true,
+                  [{operation, value}] <- matches,
+                  action = value["action"],
+                  true <- operation === action["operation_id"],
+                  true <- Ipse.Extension.Actions.valid_result?(action),
+                  true <- Ipse.Extension.ManagedCollectionCall.bound_outcome?(action),
+                  true <- Ipse.Extension.ManagedCollectionCall.new_capture?(action["request"]),
+                  true <- action["outcome"]["status"] === "ok",
+                  true <- root_write_union?(state, action, value["dependencies"]),
+                  true <- Enum.all?(old, &(&1 in value["dependencies"])),
+                  true <-
+                    Enum.all?(
+                      Enum.reject(dependencies, &(&1["version"] === 3)),
+                      &(&1 in value["dependencies"])
+                    ),
+                  true <-
+                    Enum.all?(Enum.filter(value["dependencies"], &(&1["version"] === 3)), fn d ->
+                      state.root_transitions[JSON.digest([d])] === target_id
+                    end),
+                  true <- JSON.sha256?(value["result_sha256"]),
+                  true <- Map.has_key?(state.outputs, action["parent_invocation_id"]),
+                  [change] <- action["request"]["request"]["changes"],
+                  true <- value["result_pending_key"] === change["key"],
+                  receipt = get_in(action, ["outcome", "value", "receipt"]),
+                  true <- target["collection"]["generation"] === receipt["generation"],
+                  true <- target["collection"]["floor"] === receipt["floor"],
+                  true <- target["collection"]["floor_anchor"] === operation do
+               from = Enum.min_by(old, &JSON.digest([&1]))
+
+               edge = %{
+                 "operation_id" => operation,
+                 "own_action_sha256" => JSON.digest([action]),
+                 "receipt_sha256" => JSON.digest([receipt]),
+                 "from_dependency_sha256" => JSON.digest([from]),
+                 "to_dependency_sha256" => target_id
+               }
+
+               {:cont, {:ok, action, [edge | chain]}}
+             else
+               _ -> {:halt, @error}
+             end
+           end) do
+      {:ok, action, Enum.reverse(reversed)}
+    else
+      _ -> @error
+    end
+  rescue
+    _ -> @error
+  catch
+    _, _ -> @error
+  end
 
   @doc false
   def management_root_candidate(%__MODULE__{unavailable: false} = state, dependencies) do
@@ -602,7 +711,16 @@ defmodule Ipse.Session.ManagedLineage do
            "operation_id" => operation,
            "own_action_sha256" => JSON.digest([action]),
            "receipt_sha256" => JSON.digest([receipt])
-         } do
+         },
+         evidence =
+           (if purpose == :model do
+              case model_root_chain(state, dependencies) do
+                {:ok, ^action, chain} -> Map.put(evidence, "root_chain", chain)
+                _ -> evidence
+              end
+            else
+              evidence
+            end) do
       {:ok, guard, evidence}
     else
       _ -> @error

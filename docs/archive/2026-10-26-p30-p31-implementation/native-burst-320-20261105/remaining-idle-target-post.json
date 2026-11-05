@@ -1,0 +1,1 @@
+{"status":"PASS","all_original_non_session_non_lock_files_exact":true,"lock_delta":"sealed existing paths; ctime only","session_delta":"exact original prefix; validated idle-only append or none","control_and_collection_bytes_unchanged":true}

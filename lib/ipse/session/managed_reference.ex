@@ -530,7 +530,12 @@ defmodule Ipse.Session.ManagedReference do
          {:ok, _, next} <- admit(next, producer, length(plan.messages), notice, [guard]),
          event = %{
            "type" => "managed_root_transition",
-           "version" => if(evidence["management"], do: 2, else: 1),
+           "version" =>
+             cond do
+               evidence["management"] -> 2
+               evidence["root_chain"] -> 3
+               true -> 1
+             end,
            "session_id" => plan.state.session_id,
            "binding" => binding,
            "plan_sha256" => plan.sha256,
@@ -551,7 +556,24 @@ defmodule Ipse.Session.ManagedReference do
              do: Map.put(event, "management", evidence["management"]),
              else: event
            ),
-         true <- fits?(event, @event_bytes) do
+         event =
+           if(evidence["root_chain"],
+             do: Map.put(event, "root_chain", evidence["root_chain"]),
+             else: event
+           ),
+         true <- fits?(event, @event_bytes),
+         true <-
+           is_nil(evidence["root_chain"]) or
+             fits?(
+               %{
+                 "type" => "managed_preflight_result",
+                 "version" => 1,
+                 "intent_id" => String.duplicate("0", 32),
+                 "projection" => event,
+                 "verdicts" => nil
+               },
+               65_536
+             ) do
       {:ok, event, messages, next}
     else
       _ -> @error
@@ -571,7 +593,8 @@ defmodule Ipse.Session.ManagedReference do
            Enum.sort(Map.keys(evidence)) ==
              Enum.sort(
                ~w(fresh_dependency fresh_observation inspection operation_id own_action_sha256 receipt_sha256) ++
-                 if(evidence["management"], do: ["management"], else: [])
+                 if(evidence["management"], do: ["management"], else: []) ++
+                 if(evidence["root_chain"], do: ["root_chain"], else: [])
              ),
          {:ok, ^old} <- union([old]),
          guard = evidence["fresh_dependency"],
@@ -582,7 +605,8 @@ defmodule Ipse.Session.ManagedReference do
          identity = Map.take(first, ~w(project_id namespace pin_sha256 policy_generation)),
          true <-
            Enum.all?(metadata, fn dependency ->
-             (evidence["management"] != nil or dependency["collection"] === prior) and
+             (evidence["management"] != nil or evidence["root_chain"] != nil or
+                dependency["collection"] === prior) and
                Map.take(dependency, ~w(project_id namespace pin_sha256 policy_generation)) ===
                  identity
            end),
@@ -590,14 +614,73 @@ defmodule Ipse.Session.ManagedReference do
          true <-
            Map.take(guard, ~w(project_id namespace pin_sha256 policy_generation)) === identity,
          true <-
-           if(evidence["management"],
-             do: management_root_evidence?(old, evidence),
-             else: guard["collection"]["generation"] === prior["generation"] + 1
-           ),
+           (cond do
+              evidence["management"] ->
+                is_nil(evidence["root_chain"]) and management_root_evidence?(old, evidence)
+
+              evidence["root_chain"] ->
+                root_chain_evidence?(old, evidence)
+
+              true ->
+                guard["collection"]["generation"] === prior["generation"] + 1
+            end),
          true <-
            JSON.sha256?(evidence["own_action_sha256"]) and
              JSON.sha256?(evidence["receipt_sha256"]) and id?(evidence["operation_id"]),
          true <- is_map(evidence["fresh_observation"]),
+         do: true,
+         else: (_ -> false)
+  rescue
+    _ -> false
+  end
+
+  # Structural checks only. ManagedLineage independently rebuilds every edge
+  # from authenticated cached actions and compares the complete replay event.
+  defp root_chain_evidence?(old, evidence) do
+    guard = evidence["fresh_dependency"]
+    chain = evidence["root_chain"]
+    metadata = Enum.filter(old, &(&1["version"] === 3))
+    known = Map.new([guard | metadata], &{digest(&1), &1})
+
+    with true <- is_nil(evidence["management"]),
+         true <- is_list(chain) and length(chain) in 2..2048,
+         true <- fits?(chain, 65_536),
+         true <- length(Enum.uniq_by(chain, & &1["operation_id"])) === length(chain),
+         prior = Enum.min_by(metadata, & &1["collection"]["generation"]),
+         {:ok, final, roots} <-
+           Enum.reduce_while(chain, {:ok, prior["collection"], []}, fn edge,
+                                                                       {:ok, expected, roots} ->
+             with true <-
+                    is_map(edge) and
+                      keys?(
+                        edge,
+                        ~w(operation_id own_action_sha256 receipt_sha256 from_dependency_sha256 to_dependency_sha256)
+                      ),
+                  true <- id?(edge["operation_id"]),
+                  true <-
+                    Enum.all?(
+                      ~w(own_action_sha256 receipt_sha256 from_dependency_sha256 to_dependency_sha256),
+                      &JSON.sha256?(edge[&1])
+                    ),
+                  from when is_map(from) <- known[edge["from_dependency_sha256"]],
+                  to when is_map(to) <- known[edge["to_dependency_sha256"]],
+                  true <- from["version"] === 3 and to["version"] === 3,
+                  true <- from["collection"] === expected,
+                  true <- to["collection"]["generation"] === expected["generation"] + 1,
+                  true <- to["collection"]["floor"] === to["collection"]["generation"],
+                  true <- to["collection"]["floor_anchor"] === edge["operation_id"] do
+               {:cont, {:ok, to["collection"], [expected | roots]}}
+             else
+               _ -> {:halt, @error}
+             end
+           end),
+         true <- final === guard["collection"],
+         true <- Enum.all?(metadata, &(&1["collection"] in [final | roots])),
+         last = List.last(chain),
+         true <- last["to_dependency_sha256"] === digest(guard),
+         true <- last["operation_id"] === evidence["operation_id"],
+         true <- last["own_action_sha256"] === evidence["own_action_sha256"],
+         true <- last["receipt_sha256"] === evidence["receipt_sha256"],
          do: true,
          else: (_ -> false)
   rescue

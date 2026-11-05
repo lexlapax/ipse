@@ -15,6 +15,9 @@ defmodule IpseKnowledge.Knowledge do
   @max_record_proofs 8
   # An accepted decision can additionally require its management-journal owner.
   @max_record_owners 9
+  @pending_records 64
+  @pending_bytes 262_144
+  @budget_resources ~w(operations model_calls input_bytes output_bytes download_bytes cost_nanos)
 
   def describe do
     capture =
@@ -722,11 +725,11 @@ defmodule IpseKnowledge.Knowledge do
         })
 
       [] ->
-        commit(generation, state)
+        capture_budget(generation, state)
 
       [%{"key" => key}] when is_binary(key) and key > state.ctx.key ->
         if String.starts_with?(key, state.ctx.key),
-          do: commit(generation, state),
+          do: capture_budget(generation, state),
           else: refused(state, :invalid_index_progress)
 
       _ ->
@@ -735,12 +738,100 @@ defmodule IpseKnowledge.Knowledge do
   end
 
   defp advance(:commit, value, state) do
-    finish(state, %{
+    result = %{
       "status" => "saved",
       "key" => state.ctx.key,
       "category" => state.ctx.value["category"] || "pending",
       "receipt" => value
-    })
+    }
+
+    notice = state.ctx[:capture_notice]
+    result = if notice, do: Map.put(result, "capacity", notice), else: result
+    finish(state, with_budget_notice(state, result))
+  end
+
+  defp advance(:capture_budget, value, state) when is_map(value) do
+    if budget_snapshot?(value) do
+      notice = if value["warning_dimensions"] != [], do: budget_notice(value)
+      state = %{state | ctx: Map.put(state.ctx, :budget_notice, notice)}
+
+      if capture_blocked_dimensions(value) != [] do
+        finish(state, %{
+          "status" => "paused",
+          "code" => "saved_policy_budget",
+          "mutation" => "none",
+          "budget" => budget_notice(value),
+          "retry" =>
+            "inspect the current saved permission and unresolved work before a new attempt"
+        })
+      else
+        pending_capacity(state.ctx.budget_generation, state)
+      end
+    else
+      refused(state, :invalid_saved_budget_snapshot)
+    end
+  end
+
+  defp advance(:pending_capacity, value, state) when is_map(value) do
+    progress = state.ctx.pending_capacity
+    rows = value["records"]
+    total = value["count"]
+    next = value["next"]
+
+    keys =
+      if is_list(rows), do: Enum.map(rows, fn row -> if is_map(row), do: row["key"] end), else: []
+
+    seen = length(progress.keys) + length(keys)
+
+    valid =
+      value["coverage"] == "metadata_only" and value["prefix"] == "pending." and
+        value["generation"] === progress.generation and uint?(total) and total <= 8192 and
+        (is_nil(progress.total) or total === progress.total) and is_list(rows) and
+        length(rows) <= 32 and
+        Enum.all?(rows, &pending_row?/1) and keys === Enum.sort(Enum.uniq(keys)) and
+        Enum.all?(keys, fn key -> progress.keys == [] or key > List.last(progress.keys) end) and
+        seen <= total and progress.pages < @pending_records and
+        (is_nil(next) or (text?(next, 2048) and rows != [] and next not in progress.cursors)) and
+        if is_nil(next), do: seen == total, else: seen < total
+
+    if valid do
+      bytes = progress.bytes + Enum.sum(Enum.map(rows, & &1["bytes"]))
+
+      cond do
+        total >= @pending_records ->
+          pending_pause(state, total, nil)
+
+        not is_nil(next) ->
+          progress = %{
+            progress
+            | keys: progress.keys ++ keys,
+              bytes: bytes,
+              total: total,
+              pages: progress.pages + 1,
+              cursors: [next | progress.cursors]
+          }
+
+          collection(
+            %{"op" => "index", "prefix" => "pending.", "cursor" => next, "limit" => 32},
+            %{state | ctx: Map.put(state.ctx, :pending_capacity, progress)}
+          )
+
+        bytes + byte_size(encode(state.ctx.value)) > @pending_bytes ->
+          pending_pause(state, total, bytes)
+
+        true ->
+          projected = total + 1
+          projected_bytes = bytes + byte_size(encode(state.ctx.value))
+
+          notice =
+            if projected * 5 >= @pending_records * 4 or projected_bytes * 5 >= @pending_bytes * 4,
+              do: pending_notice(projected, projected_bytes)
+
+          commit(progress.generation, %{state | ctx: Map.put(state.ctx, :capture_notice, notice)})
+      end
+    else
+      refused(state, :invalid_pending_capacity_index)
+    end
   end
 
   defp advance(_, _, state), do: refused(state, :invalid_host_response)
@@ -770,6 +861,142 @@ defmodule IpseKnowledge.Knowledge do
       do: call(request, %{state | phase: :commit}),
       else: refused(state, :capture_capacity)
   end
+
+  defp pending_capacity(generation, state) do
+    progress = %{generation: generation, keys: [], bytes: 0, total: nil, pages: 0, cursors: []}
+
+    collection(
+      %{"op" => "index", "prefix" => "pending.", "cursor" => nil, "limit" => 32},
+      %{state | phase: :pending_capacity, ctx: Map.put(state.ctx, :pending_capacity, progress)}
+    )
+  end
+
+  defp capture_budget(generation, state) do
+    call(
+      %{
+        "op" => "collection.call",
+        "purpose" => "saved_policy_budget_v1",
+        "request" => %{"op" => "status"}
+      },
+      %{state | phase: :capture_budget, ctx: Map.put(state.ctx, :budget_generation, generation)}
+    )
+  end
+
+  defp budget_snapshot?(v) do
+    exact?(
+      v,
+      ~w(version scope epoch policy_sha256 project observed_at_ms period_start_ms period_end_ms limits charged available nonterminal_reserved unknown_reserved warning_dimensions exhausted_dimensions)
+    ) and
+      v["version"] === 1 and v["scope"] === "saved_policy" and uint?(v["epoch"]) and
+      v["epoch"] > 0 and
+      Enum.all?(~w(policy_sha256 project), fn key ->
+        is_binary(v[key]) and String.match?(v[key], ~r/\A[0-9a-f]{64}\z/)
+      end) and
+      Enum.all?(~w(observed_at_ms period_start_ms period_end_ms), &uint?(v[&1])) and
+      v["period_start_ms"] <= v["observed_at_ms"] and v["observed_at_ms"] < v["period_end_ms"] and
+      Enum.all?(~w(limits charged available nonterminal_reserved unknown_reserved), fn key ->
+        exact?(v[key], @budget_resources) and Enum.all?(@budget_resources, &uint?(v[key][&1]))
+      end) and
+      Enum.all?(@budget_resources, fn r ->
+        v["unknown_reserved"][r] <= v["nonterminal_reserved"][r] and
+          v["nonterminal_reserved"][r] <= v["charged"][r] and
+          v["available"][r] == max(v["limits"][r] - v["charged"][r], 0)
+      end) and
+      v["warning_dimensions"] === budget_dimensions(v, :warning) and
+      v["exhausted_dimensions"] === budget_dimensions(v, :exhausted)
+  rescue
+    _ -> false
+  end
+
+  defp budget_dimensions(v, kind) do
+    Enum.filter(@budget_resources, fn r ->
+      if v["limits"][r] == 0,
+        do: kind == :exhausted and v["charged"][r] > 0,
+        else:
+          if(kind == :warning,
+            do: v["charged"][r] * 5 >= v["limits"][r] * 4,
+            else: v["charged"][r] >= v["limits"][r]
+          )
+    end)
+  end
+
+  defp budget_notice(v) do
+    blocked = capture_blocked_dimensions(v)
+
+    state =
+      if blocked == [],
+        do: "Saved knowledge allowance is nearing a limit.",
+        else: "Saving paused: the saved allowance cannot admit another capture."
+
+    message =
+      state <>
+        " Observed capacity: #{v["available"]["operations"]} operations, " <>
+        "#{v["available"]["input_bytes"]} input bytes and " <>
+        "#{v["available"]["output_bytes"]} output bytes. " <>
+        if(blocked == [],
+          do: "Admission still rechecks permission.",
+          else: "Inspect saved permission and unresolved work."
+        )
+
+    %{
+      "scope" => "saved_policy",
+      "observation" => "advisory",
+      "capture_blocked_dimensions" => blocked,
+      "notice" => message,
+      "snapshot" => v
+    }
+  end
+
+  defp capture_blocked_dimensions(v) do
+    Enum.filter(@budget_resources, fn resource ->
+      if resource in ~w(operations input_bytes output_bytes),
+        do: v["available"][resource] == 0,
+        else: v["charged"][resource] > v["limits"][resource]
+    end)
+  end
+
+  defp with_budget_notice(state, value),
+    do:
+      if(state.ctx[:budget_notice],
+        do: Map.put(value, "budget", state.ctx.budget_notice),
+        else: value
+      )
+
+  defp pending_row?(row) do
+    exact?(row, ~w(key revision sha256 bytes)) and text?(row["key"], 96) and
+      String.starts_with?(row["key"], "pending.") and
+      uint?(row["revision"]) and row["revision"] > 0 and uint?(row["bytes"]) and
+      row["bytes"] in 1..6144 and is_binary(row["sha256"]) and
+      String.match?(row["sha256"], ~r/\A[0-9a-f]{64}\z/)
+  end
+
+  defp pending_notice(count, bytes),
+    do: %{
+      "scope" => "pending_queue",
+      "notice" => "pending_capacity_80_percent",
+      "message" =>
+        "Pending proposals are nearing queue capacity: #{count} of #{@pending_records} " <>
+          "records; #{if is_integer(bytes), do: Integer.to_string(bytes), else: "unmeasured"} " <>
+          "of #{@pending_bytes} encoded bytes. Review pending proposals before a new attempt.",
+      "records" => count,
+      "bytes" => bytes,
+      "record_limit" => @pending_records,
+      "byte_limit" => @pending_bytes
+    }
+
+  defp pending_pause(state, count, bytes),
+    do:
+      finish(
+        state,
+        with_budget_notice(state, %{
+          "status" => "paused",
+          "code" => "pending_capacity",
+          "message" => "Saving paused: the pending proposal queue has no room for this capture.",
+          "capacity" => pending_notice(count, bytes),
+          "mutation" => "none",
+          "retry" => "inspect pending records and current permission before a new attempt"
+        })
+      )
 
   defp collection(request, state),
     do: call(%{"op" => "collection.call", "request" => request}, state)

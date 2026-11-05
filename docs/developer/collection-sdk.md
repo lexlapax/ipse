@@ -101,8 +101,17 @@ unchanged; an independently guarded notice explains their historical meaning.
 Metadata-only index descriptors have their own authenticated history classification,
 including nonempty pages. Every signed-record dependency stays attached and must
 pass fresh eligibility and original-source checks; it never becomes a root guard.
-Scans, mixed metadata roots, missing classification and unknown or intervening
-writes refuse the history transition. The [own-write implementation review](../archive/2026-10-26-p30-p31-implementation/own-root-transition-independent-review.md)
+The adjacent Worker transition still refuses mixed metadata roots. A later model
+preflight can compose several already authenticated own-capture successors only
+as an ordered chain with every original record prerequisite, known completed
+output and exact cached operation/receipt mapping retained. Its final root is
+freshly inspected; gaps, ambiguity, missing classification and unknown or
+unrecorded intervening writes refuse. Compact version-3 model evidence and Saved
+replay bind the complete chain within the existing preflight JSON bound; they
+grant no past-root permission. Follow
+[Session's model-history flow](session-sources.md#read-through-a-real-synthetic-session)
+for that distinct composition. Scans do not qualify for either transition.
+The [own-write implementation review](../archive/2026-10-26-p30-p31-implementation/own-root-transition-independent-review.md)
 includes an actual synthetic-model turn that captures, performs later source
 reads and completes successfully. Full notes and provider qualification remain
 separate; the earlier settled-but-failed turns retain their original scope.

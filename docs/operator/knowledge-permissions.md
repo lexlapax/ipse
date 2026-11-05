@@ -329,6 +329,37 @@ result fails. Inspect the stored effect and Session journal after an error;
 an error does not mean nothing was saved, and resume does not repeat capture.
 General end-to-end automatic `run` capture remains unqualified.
 
+When the main model queues a new pending proposal, distinguish queue room from
+the saved daily allowance. The pending queue retains at most 64 records and
+256 KiB, including expired proposals. A readable warning starts when the
+projected queue reaches 52 records or 80% of its encoded-byte ceiling. A full
+queue reports `pending_capacity` and pauses that new save. It does not evict
+another proposal or remove a protected note or pin. Review unwanted proposals
+through their normal management procedure before attempting new work.
+
+Saved-allowance advice instead reports observed operations, input bytes and
+output bytes. A near-limit notice warns at 80%; `saved_policy_budget` pauses a
+new pending save when a required resource has no observed capacity. Unresolved
+effects can retain charges across daily periods. These observations are
+advisory: another operation can consume capacity, and nonzero capacity does not
+guarantee that the final atomic reservation will admit the complete capture.
+An exact existing proposal is detected before either check; it adds no new
+capture and does not renew its deadline. Other refusals do not establish that
+the budget was exhausted.
+
+Inspect the permission, pending metadata and any printed uncertain operation
+separately:
+
+```sh
+ipse knowledge status --cwd /path/to/project
+ipse knowledge review --json --cwd /path/to/project
+ipse knowledge operation OPERATION_ID --cwd /path/to/project
+```
+
+Do not delete control history or retry an unknown effect to restore allowance.
+The normal source, permission and final publication checks still apply after
+either kind of warning.
+
 Eligible unattended input remains a pending proposal rather than an endorsed
 fact. After native permission setup, a headless task can use the saved grant
 without `--yes`, through either task arguments or standard input:

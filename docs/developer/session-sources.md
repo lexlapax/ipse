@@ -423,18 +423,32 @@ root or absence does not establish current record eligibility; the notice has
 its own current guard. Only version-3 metadata receives the successor mapping.
 Every literal, historical or accepted-record dependency remains attached to its
 producer and Reference occurrence and must pass its separate current-use checks.
-Missing metadata classification, mixed metadata roots, unknown actions and
-intervening writes refuse instead of receiving this projection.
+Missing metadata classification, unknown actions and unrecorded intervening
+writes refuse instead of receiving this projection. Mixed metadata roots cannot
+enter the adjacent Worker transition; model history needs the ordered evidence
+described next.
 
-A settled Worker input can already have authenticated that same adjacent
-successor before model preparation. Model projection may then combine the
-original cached metadata with that exact successor guard. It requires the
-recorded mapping for every metadata member of the complete causal write union
-and the known successful own action, reacquires the current root, and adds the
-same historical notice. Signed records remain separate obligations, including
-their original source journals and deadlines. Another metadata root or an
-unrecorded fresh guard cannot join this case. Worker transition requires all
-original metadata members to describe the same old root.
+A settled Worker input can already have authenticated an adjacent successor
+before model preparation. Model projection may combine the original cached
+metadata with that exact successor guard. After several known captures, it can
+also compose their ordered root mappings, provided every intermediate metadata
+guard is already selected and cached in this same causal state. Each generation
+must have exactly one known completed own capture with its original source/pin/
+namespace union, exact action/result/pending-key binding and receipt. Every
+retained signed-record dependency must be a prerequisite of every hop. A gap,
+branch, unknown output, changed scope or unrecorded fresh guard refuses.
+
+Version-3 model transition evidence stores compact action/receipt/dependency
+digest references for this chain. Its final dependency must equal the separately
+freshly observed native root and operation inspection. Live projection and Saved
+replay independently rebuild every edge from their chronological authenticated
+state and compare the complete event. Original messages and dependency values
+remain historical and unchanged; a guarded notice explains the projection.
+The full enclosing preflight JSON stays within 65,536 bytes. The earlier
+single-successor and management versions keep their contracts. Worker transition
+still requires all original metadata members to describe the same old root;
+this model-only composition cannot authorize a Worker input. Signed records
+retain their separate current-use, original-journal and deadline checks.
 
 Decision acceptance can advance the root again while the chat is closed.
 `ManagedLineage.management_root_candidate/2` selects only the cached capture

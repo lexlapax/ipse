@@ -141,6 +141,34 @@ Neither silently removes proposals to make room.
 Recorded endorsement establishes the user's statement, not external truth or
 permission for another effect.
 
+### Check a new proposal's queue and saved allowance separately
+
+Follow the pending branch from its exact-prefix existing-key index. A duplicate
+finishes as `existing` before allowance or queue inspection, without another
+publication or a renewed lifetime. A new pending candidate requests the public
+`saved_policy_budget_v1` status purpose through `collection.call`. The host binds
+that read-only observation to the admitted capability, project, namespace,
+artifact and current policy epoch. The worker validates its closed resource
+vectors, arithmetic, warning dimensions and period; malformed or unavailable
+metadata is a refusal, not inferred exhaustion.
+
+The worker treats zero available operations, input or output bytes as no observed
+capture capacity, including a zero limit with zero charge. Unused model/download/
+cost dimensions do not block a capture merely because their zero-unit reservation
+matches a limit. The compact notice places readable advice before its full
+unchanged accounting snapshot so the ordinary bounded terminal preview retains
+it. The observation grants no reservation or permission; a stale positive result
+can still lose the final atomic admission race.
+
+Next, the worker pages only `pending.` metadata, with the existing 32-row page
+bound and one unchanged generation. It checks sorted unique keys, progress,
+declared counts and exact byte sizes. The projected new count/encoded value
+warns at 80% (52 of 64 records), while a full queue or excess projected bytes
+returns `paused` / `pending_capacity` without a commit. Budget exhaustion uses
+the separate `saved_policy_budget` code. Both preserve all existing proposals
+and protected records. The final normalizer still checks held queue capacity,
+source and current permission; advisory worker metadata cannot replace it.
+
 ### Admit one bounded publication
 
 The capture action retains its complete inherited-plus-own dependency union.
@@ -163,10 +191,20 @@ selected occurrence and its complete provenance union, including an initially
 empty call. It repeats that relation at result admission and Saved reconstruction.
 Subscriber starts omit source arguments; previews use a fixed status-only message.
 Authenticated content retains its full lineage in the journal/model continuation.
-After a confirmed own capture, the host can preserve its exact prior root-only
-union as explicitly historical using the adjacent own receipt and freshly checked
-successor root. Original dependencies/messages remain unchanged. Record contents,
-mixed roots and unknown or intervening writes receive no such projection.
+After a confirmed own capture, the Worker-input path can preserve its exact prior
+root-only union as explicitly historical using the adjacent own receipt and
+freshly checked successor root. Model preparation can additionally compose a
+bounded ordered chain of those already authenticated own-capture transitions.
+Every hop retains its original dependency union, completed output and exact
+operation/receipt mapping, and every signed record remains a prerequisite of
+every write. The final freshly observed native root must equal the chain's end.
+Original dependencies/messages remain unchanged; compact version-3 model
+evidence references the already validated actions rather than carrying new
+authority. Live and Saved replay rebuild the complete chain and compare the
+whole event. Gaps, ambiguous successors, changed scope, missing classifications
+and unknown or unrecorded intervening writes refuse. See
+[the source-owner flow](session-sources.md#read-through-a-real-synthetic-session)
+for the adjacent Worker and separate model-history boundaries.
 
 Lineage derives from source identity and span independently of model text or
 retention classification. Pure `Notes` retention helpers retain anchored clocks:

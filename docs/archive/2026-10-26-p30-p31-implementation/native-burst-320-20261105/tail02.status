@@ -1,0 +1,6 @@
+tail_exit=0
+sdk_post_exit=0
+target_post_exit=0
+process_exit=1
+operator_fuser_exit=1
+actor04_status=FAILED

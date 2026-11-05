@@ -244,6 +244,35 @@ resource/history/cache behavior as separate required checks. There is no public
 knowledge CLI command that turns a workload declaration into permission or
 executes this development calendar.
 
+For a protected 320-proposal control, retain exactly 40 turns of eight raw
+proposals across four conversations. Record raw, invalid, duplicate, saved,
+queue-paused and allowance-paused outcomes separately; raw proposals are not
+charged effects. Bind repeated candidates to genuine source handles from their
+own conversation. The worker checks an existing pending key before accounting
+advice and metadata-only queue inventory. Its queue warning starts at projected
+80% capacity; its saved-allowance warning observes the real finite Consent
+ledger. A queue-full pause and an exhausted required resource are separate
+outcomes, and neither queue counts nor an advisory snapshot grants publication.
+Keep the final atomic reservation and source/current-root checks in the journey.
+
+Count ordinary responses and context summaries separately. The normal context
+limit can trigger a summary between tool phases; a fixture server must recognize
+the actual summary instruction, schema and empty tool list before parsing its
+ordinary turn protocol. Use the public context checkpoint flow and preserve the
+active turn, source window and protected dependencies. Record every additional
+summary request under a finite declared ceiling. Do not disable compaction,
+increase context limits or count a summary as an ordinary turn to satisfy an
+expected request total. A synthetic summary checks protocol continuity, not
+summary quality.
+
+If a declared schedule uses eight seed/pin operations, 77 captures and 15
+individually reviewed rejections, prove their 100 distinct settled unit records
+from the real protected ledger. Preserve the raw storage version and compare its
+publicly decoded value with the current protected snapshot; do not manufacture
+bulk charges. Require protected pins and their original sources to remain
+unchanged. A single successful burst does not qualify the separate annual
+calendar, 10,000 additional changes, model quality or untested payload bounds.
+
 This exposed development pilot is not a protected Session capture journey,
 installed-user acceptance or held-out quality evaluation. For decision-engine
 assessment, the actual candidate admission and replay/shadow contracts still
