@@ -1395,6 +1395,14 @@ oracle; fifty focused regression tests pass. Every document remains partial
 with its body-formatting warning. These exposed remediation inputs do not
 establish fresh held-out quality, installed citation joins or full P31F acceptance.
 
+The [bounded table-row context increment](archive/2026-11-05-word-row-context/index.md)
+addresses a returned label cell whose adjacent value had no query terms. Direct
+BM25 snapshots retain lexical hits first and add source-exact sibling-cell context
+within the existing result limit, with separate provenance and explicit scope.
+The source-runtime checks pass, including both storage profiles and changed-file
+refusal. A fresh installed 24-case citation run, indexed namespace parity,
+multi-block expansion and broader Word/model quality remain open.
+
 The [operator-authored planning-decision increment](archive/2026-10-26-p30-p31-implementation/operator-planning-20261103/index.md)
 adds a separate native acceptance and explicit post-exit save with linked original
 provenance. Its synthetic verification passed 11 native journeys and 95 focused

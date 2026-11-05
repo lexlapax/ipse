@@ -1592,7 +1592,7 @@ defmodule IpseKnowledge.Corpus do
 
   defp advance({:done, {:ok, snapshot}}, %{phase: :collection_query} = state) do
     with {:ok, rank} <-
-           Evidence.rank_lexical(
+           Evidence.rank_lexical_with_table_context(
              snapshot["sources"],
              state.ctx.args["query"],
              state.ctx.args["top_k"],
@@ -1948,7 +1948,7 @@ defmodule IpseKnowledge.Corpus do
 
     case profile["kind"] do
       "bm25" ->
-        case Evidence.rank_lexical(
+        case Evidence.rank_lexical_with_table_context(
                snapshot["sources"],
                args["query"],
                args["top_k"],

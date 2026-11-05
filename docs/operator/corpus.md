@@ -292,7 +292,22 @@ or metadata bounds refuse. No model service is required.
 A hit's document citation binds the original binary hash, extraction recipe and
 paragraph or table-cell locator alongside the exact text offsets. Inspect
 `status`, `coverage.complete` and `gaps`: unsupported relationships or document
-features can leave the result partial. Before returning acquired-file evidence or
+features can leave the result partial.
+
+For a direct BM25 snapshot query, a matching Word table cell can bring back a
+different cell in the same source, part, table and row. The extra citation is
+marked `method: "table_context"` with score zero: it supplies nearby source text,
+not a scored keyword match or a finding that the cell answers the question. Before
+an optional rerank, positive BM25 hits take the available `top_k` positions first.
+`coverage.table_context` reports how many context chunks were returned and whether
+eligible chunks exceeded the remaining positions. It also identifies the
+single-block cell-chunk scope: a chunk crossing original blocks is not expanded;
+a chunk from a packed group can qualify if its locator resolves to one block.
+With no matching cell there is no row expansion. A long cell can
+still have a bounded excerpt, and even an untruncated expansion does not prove
+that the row contains an answer. Inspect the cited source in context.
+
+Before returning acquired-file evidence or
 claims, Corpus checks the original relative path, complete-file hash and byte
 count through the native read tool, then checks the stored generation again.
 This applies to ordinary, selected-source and shared-projection queries. Coverage
@@ -483,7 +498,10 @@ An explicit `query_selected` takes `store`, `retrieval`,
 `query`, `top_k`, `as_of_ms` and one to eight exact `source_ids`; it omits `rerank`.
 Inspect citations, `status`, `coverage.complete`, `namespace_complete` and gaps.
 A changed catalog or stale index refuses instead of answering from a mixed snapshot.
-The lexical preset accepts BM25. For selected shared vectors, use the separate
+The lexical preset accepts BM25. A selected-source BM25 query can add the
+[table-cell context](#acquire-a-small-word-document-from-the-workspace) described
+above. The indexed namespace `query` does not add that context. For selected
+shared vectors, use the separate
 [semantic query procedure](#query-selected-shared-vectors); ordinary namespace
 `query` remains lexical.
 

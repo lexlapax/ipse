@@ -558,6 +558,84 @@ defmodule IpseKnowledge.Evidence do
     end
   end
 
+  @doc "Add bounded, source-attributed table-row context to lexical evidence."
+  def rank_lexical_with_table_context(sources, query, top_k, now) do
+    with {:ok, rank} <- rank_lexical(sources, query, top_k, now),
+         hits = rank["evidence"],
+         anchors = table_context_anchors(hits),
+         {:ok, docs} <- table_context_documents(sources, now, anchors) do
+      seen = MapSet.new(hits, & &1["citation"]["chunk_id"])
+
+      eligible =
+        docs
+        |> Enum.flat_map(fn doc ->
+          chunk = doc.chunk
+
+          case document_location(doc.source, chunk["start_byte"], chunk["end_byte"]) do
+            %{"version" => 1, "locator" => %{"kind" => "table_cell"} = locator} ->
+              same_row =
+                Enum.any?(anchors, fn {key, row, cell} ->
+                  key == source_identity(doc.source) and row == row_key(locator) and
+                    cell != locator["cell"]
+                end)
+
+              if same_row and not MapSet.member?(seen, chunk["chunk_id"]) do
+                [doc]
+              else
+                []
+              end
+
+            _ ->
+              []
+          end
+        end)
+        |> Enum.sort_by(fn doc ->
+          [doc.source["source_key"], doc.source["generation"], doc.chunk["chunk_id"]]
+        end)
+
+      companions =
+        eligible
+        |> Enum.take(max(top_k - length(hits), 0))
+        |> Enum.map(&candidate(&1.source, &1.chunk, 0.0, "table_context", query))
+
+      {:ok,
+       rank
+       |> Map.put("evidence", hits ++ companions)
+       |> update_in(
+         ["coverage"],
+         &Map.put(&1, "table_context", %{
+           "scope" => "single_block_cell_chunks",
+           "returned" => length(companions),
+           "truncated" => length(eligible) > length(companions),
+           "multi_block_chunks_expanded" => false
+         })
+       )}
+    end
+  end
+
+  defp table_context_anchors(hits) do
+    hits
+    |> Enum.flat_map(fn hit ->
+      case hit["citation"]["document"] do
+        %{"version" => 1, "locator" => %{"kind" => "table_cell"} = locator} ->
+          [{source_identity(hit["citation"]), row_key(locator), locator["cell"]}]
+
+        _ ->
+          []
+      end
+    end)
+    |> MapSet.new()
+  end
+
+  defp table_context_documents(sources, now, anchors) do
+    if MapSet.size(anchors) == 0,
+      do: {:ok, []},
+      else: documents(Enum.filter(sources, &current?(&1, now)))
+  end
+
+  defp row_key(locator), do: Map.take(locator, ~w(part table row region annotation_id))
+  defp source_identity(source), do: Map.take(source, ~w(source_key generation content_sha256))
+
   @doc "Validate final hydrated chunks against exact index frequencies and global BM25 statistics."
   def rank_indexed(sources, rows, query, stats, top_k, now) do
     with :ok <- inputs(sources, top_k, now),
@@ -1430,7 +1508,7 @@ defmodule IpseKnowledge.Evidence do
   defp candidate?(c),
     do:
       exact?(c, ~w(citation score method)) and citation_shape?(c["citation"]) and
-        finite?(c["score"]) and c["method"] in ~w(bm25 cosine rrf graph mcp_query)
+        finite?(c["score"]) and c["method"] in ~w(bm25 cosine rrf graph mcp_query table_context)
 
   defp candidate_key(c), do: span_key(c["citation"])
 

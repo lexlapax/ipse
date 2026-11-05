@@ -735,6 +735,28 @@ time-excluded-fact diagnostics remain explicit exclusions.
 Unpublished source work or failed required components stay coverage gaps: an empty
 ranking with a draft is partial, not complete abstention.
 
+Direct Corpus BM25 snapshot queries use
+`Evidence.rank_lexical_with_table_context/4` after source hydration. It keeps the
+positive `rank_lexical/4` hits first, then fills remaining `top_k` slots with
+deterministically ordered chunks from different cells in a matched cell's row.
+The source key, generation and content hash must all match, as must the Word part,
+table, row and any region or annotation identity. A returned companion uses the
+ordinary validated source excerpt and citation, with `method: "table_context"`
+and score zero; the method does not assert lexical match or semantic support.
+The coverage member records the returned count, truncation among eligible chunks
+and the single-block cell-chunk scope. `multi_block_chunks_expanded: false` is a
+scope declaration, not a count of omitted chunks; a packed group can qualify if
+the chunk has a single-block locator. `truncated: false` does not prove row
+completeness. No match means no expansion, and long chunks still use
+the bounded excerpt selector. A later explicit reranker can change result order.
+
+This path serves State/MCP BM25 snapshots and Collection's explicit-source BM25
+query. The indexed Collection namespace query, hybrid/graph component ranking
+and independent Research keep their existing lexical ranking. In particular, an
+indexed query has not hydrated arbitrary neighboring cells. None of these paths
+changes stored chunks, source bytes or ingestion. Test the row-context candidate,
+both document Session profiles and the indexed and packed-group limits separately.
+
 Graph/hybrid fusion retains each component's claims/gaps/coverage. A completed rank
 calculation cannot certify bounded traversal. Only actual missing-embedding policy
 can take explicit lexical fallback; graph/transport/malformed-model failures cannot.
@@ -1779,6 +1801,7 @@ specify order. Follow BM25 tokenization/ties, then the tests in isolated VMs:
 
 ```sh
 mix test test/extensions/knowledge/evidence_test.exs test/extensions/knowledge/profiles_test.exs
+mix test test/extensions/knowledge/document_row_context_test.exs test/extensions/knowledge/document_acquisition_session_test.exs
 mix test test/extensions/knowledge/domain_regressions_test.exs test/extensions/knowledge/graph_population_test.exs
 mix test test/extensions/knowledge/packages_test.exs test/extensions/knowledge/query_completeness_test.exs
 mix test test/extensions/knowledge/build_spec_test.exs

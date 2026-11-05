@@ -569,6 +569,66 @@ defmodule Ipse.KnowledgeDocumentAcquisitionSessionTest do
   end
 
   for preset <- ~w(state-documents collection-documents) do
+    @tag row_context_preset: preset
+    test "same-row context uses current source citations (#{preset})", c do
+      run = open(c, c.row_context_preset)
+
+      body =
+        "<w:tbl><w:tr><w:tc><w:p><w:r><w:t>Project amber</w:t></w:r></w:p></w:tc>" <>
+          "<w:tc><w:p><w:r><w:t>7391</w:t></w:r></w:p></w:tc></w:tr></w:tbl>"
+
+      bytes = document_body(body, [{:compress, []}])
+      path = Path.join(run.cwd, "source.docx")
+      File.write!(path, bytes)
+      opened = invoke(run, "source", args())
+      published = if opened["status"] == "draft", do: finish_staging(run, opened), else: opened
+      assert published["status"] == "ok", inspect(published)
+
+      common = %{
+        "store" => "notes",
+        "retrieval" => "words",
+        "query" => "Project amber",
+        "top_k" => 10,
+        "as_of_ms" => 20
+      }
+
+      run_query = fn ->
+        if c.row_context_preset == "collection-documents" do
+          invoke(run, "query_selected", Map.put(common, "source_ids", ["workspace:source"]))
+        else
+          invoke(run, "query", Map.put(common, "rerank", nil))
+        end
+      end
+
+      result = run_query.()
+      assert result["status"] in ["ok", "partial"], inspect(result)
+
+      assert result["coverage"]["table_context"] == %{
+               "scope" => "single_block_cell_chunks",
+               "returned" => 1,
+               "truncated" => false,
+               "multi_block_chunks_expanded" => false
+             }
+
+      assert result["coverage"]["workspace_file_check_scope"] == "returned_evidence_and_claims"
+      assert is_list(result["coverage"]["workspace_file_checks"])
+      [hit, context] = result["evidence"]
+      assert hit["method"] == "bm25"
+      assert context["method"] == "table_context" and context["score"] == 0.0
+      assert context["citation"]["quote"] == "7391"
+      assert context["citation"]["document"]["original_sha256"] == JSON.sha256(bytes)
+
+      assert Map.take(context["citation"]["document"]["locator"], ~w(table row cell)) ==
+               %{"table" => 1, "row" => 1, "cell" => 2}
+
+      File.write!(path, document("changed"))
+      refused = run_query.()
+      assert refused["status"] == "refused"
+      assert refused["evidence"] == []
+    end
+  end
+
+  for preset <- ~w(state-documents collection-documents) do
     @tag :workspace_current_query
     @tag current_query_preset: preset
     test "#{preset} withholds changed, renamed, deleted and redirected workspace documents", c do
@@ -761,7 +821,7 @@ defmodule Ipse.KnowledgeDocumentAcquisitionSessionTest do
     [hit] = result["evidence"]
     citation = hit["citation"]
     assert citation["document"]["original_sha256"] == JSON.sha256(bytes)
-    assert citation["document"]["extraction_version"] == "ipse-documents-v17"
+    assert citation["document"]["extraction_version"] == "ipse-documents-v18"
 
     assert citation["quote"] ==
              binary_part(
@@ -839,7 +899,7 @@ defmodule Ipse.KnowledgeDocumentAcquisitionSessionTest do
       citation = hit["citation"]
       assert citation["quote"] =~ "orbitalneedle"
       assert citation["document"]["original_sha256"] == JSON.sha256(bytes)
-      assert citation["document"]["extraction_version"] == "ipse-documents-v17"
+      assert citation["document"]["extraction_version"] == "ipse-documents-v18"
 
       if citation["document"]["version"] == 2 do
         assert Enum.any?(citation["document"]["spans"], fn
@@ -902,7 +962,7 @@ defmodule Ipse.KnowledgeDocumentAcquisitionSessionTest do
       refute citation["quote"] =~ "42."
       doc = citation["document"]
       assert doc["original_sha256"] == JSON.sha256(bytes)
-      assert doc["extraction_version"] == "ipse-documents-v17"
+      assert doc["extraction_version"] == "ipse-documents-v18"
 
       if doc["version"] == 2 do
         assert Enum.any?(doc["spans"], fn
@@ -1022,7 +1082,7 @@ defmodule Ipse.KnowledgeDocumentAcquisitionSessionTest do
           citation = hit["citation"]
           assert citation["quote"] == text
           assert citation["document"]["status"] == "complete"
-          assert citation["document"]["extraction_version"] == "ipse-documents-v17"
+          assert citation["document"]["extraction_version"] == "ipse-documents-v18"
           assert citation["document"]["original_sha256"] == JSON.sha256(bytes)
           locator = citation["document"]["locator"]
           assert locator["part"] == "word/#{part}.xml"
@@ -1138,7 +1198,7 @@ defmodule Ipse.KnowledgeDocumentAcquisitionSessionTest do
       citation = hit["citation"]
       assert citation["quote"] == text
       assert citation["document"]["original_sha256"] == JSON.sha256(bytes)
-      assert citation["document"]["extraction_version"] == "ipse-documents-v17"
+      assert citation["document"]["extraction_version"] == "ipse-documents-v18"
 
       assert citation["document"]["locator"] == %{
                "kind" => "table_cell",
@@ -2314,7 +2374,7 @@ defmodule Ipse.KnowledgeDocumentAcquisitionSessionTest do
       assert citation["document"]["end_byte"] === byte_size(quote)
       assert citation["content_sha256"] === JSON.sha256(fixture.text)
       assert citation["document"]["original_sha256"] === JSON.sha256(fixture.bytes)
-      assert citation["document"]["extraction_version"] === "ipse-documents-v17"
+      assert citation["document"]["extraction_version"] === "ipse-documents-v18"
       assert get_in(citation, ["document", "locator", "paragraph"]) === paragraph
       citation
     end)
