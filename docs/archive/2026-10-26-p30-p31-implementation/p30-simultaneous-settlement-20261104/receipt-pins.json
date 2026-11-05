@@ -1,0 +1,8 @@
+{
+  "both-work-owners-closed.json": "fd4d54ff1247a16bf0e45a456d2659ebd1d37ec96f9da80374ee969fa27758be",
+  "first/dispatch-error-classification.json": "0086e98b39655997f2550201605002400e574fb027f4bb1f0dd9e37dcf269067",
+  "qualification-outcomes.json": "20884d6526e679d1a3702864d7aa008d4138d20e815db3bb30b4edc2ec081033",
+  "second/dispatch-error-classification.json": "0086e98b39655997f2550201605002400e574fb027f4bb1f0dd9e37dcf269067",
+  "sequential-idle-outcomes.json": "e63a2501662928fd91c363483eb7f4d1471f24b91f7a5ba10124b6563b60f827",
+  "simultaneous-summary.json": "808a158ee671cf393c8cb9b6825d559b4784d2b9b3129c619f8840fbb75f9fd2"
+}

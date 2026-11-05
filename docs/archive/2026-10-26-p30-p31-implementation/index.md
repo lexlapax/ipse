@@ -75,6 +75,8 @@ nor resource/offline qualification. No daemon configuration or existing model wa
 
 ## Source checkpoint evidence — 2026-11-04
 
+- [Simultaneous decision entry and quiescent recovery](p30-simultaneous-settlement-20261104.md) complete one synthetic settled winner, both normal closes and sequential idle/no-replay paths in one fresh cohort. The loser encounters native-control contention, not observed budget denial; earlier failures and consumer quality remain open.
+
 - [Pilot label coverage and provisional intake freeze](pilot-label-intake-freeze-20261104.md) verify all 57 observed turn rows and 39 candidates already have independent-agent labels, preserve the partial run, and pin the unchanged 57-effect/40-turn assumptions in a private developer adapter; no actual day or quality acceptance.
 
 - [Coalesced notes Worker-input observations](coalesced-worker-readview-20261104.md) record a fresh complete current build, 33 backend passes, one eight-source Worker pass, genuine native index/slot fallback and unchanged authority bounds; ordinary retained recall remains open.

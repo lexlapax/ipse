@@ -1,0 +1,57 @@
+{
+  "runtime_manifest_sha256": "616fa20b594c01a4cefe09e5d1269813e0c170fc7ac70828d87f933c1923a4f6",
+  "sources": [
+    {
+      "path": "closure.exs",
+      "sha256": "b9c71aee59b93356fb89800ab1b44a8c747171ad94cd1dc85c5c16216e75c4b7"
+    },
+    {
+      "path": "execution-01/entry.exs",
+      "sha256": "113853794c92b69c78245247de8f63dd63bb38dc527535bdf774e5bd4c100d1b"
+    },
+    {
+      "path": "execution-01/run-once.sh",
+      "sha256": "f225e5456132026f5000ce461d97dbde90ae2ee665d6b0f598a17da744f78a59"
+    },
+    {
+      "path": "mechanics.exs",
+      "sha256": "47cc18f2af29c96b27a62e0e63bf3c31dc5bb9c800627d52d0cd79bd3110e608"
+    },
+    {
+      "path": "preflight.exs",
+      "sha256": "bcef25c02b8eb4e1c70b68db13a87abcacb819c6472358e1a91e198219304d5a"
+    },
+    {
+      "path": "source/test/extensions/knowledge/shadow_simultaneous_session_test.exs",
+      "sha256": "f28a407779511f9abe8af42061450d311cc0621647332b11f168e537d13b1ddf"
+    },
+    {
+      "path": "source/test/support/managed_clock_lifecycle.exs",
+      "sha256": "71ee6667f1389f6315fca305a6d4af819f26f8f8db0da7ff61552ca39723e104"
+    },
+    {
+      "path": "source/test/support/operator_pty_simultaneous.rs",
+      "sha256": "deecdcadec166a3f9dd07dd04d9caa0e6e633af472d5bbd6356dbea5bf55c89f"
+    },
+    {
+      "path": "source/test/support/provider_fixture.ex",
+      "sha256": "0092d34f9e3adeed2bf184e3ab48feabd79eeacd2b5f0e5c1b5c654ceba2dcc1"
+    },
+    {
+      "path": "source/test/support/shadow_concurrent_trace.exs",
+      "sha256": "dc8a916521a09e5b3c6bc34306bdd862f62ca54fa93cb8898ef6b4fe44f58a29"
+    },
+    {
+      "path": "source/test/support/shadow_pending_candidate_cli.exs",
+      "sha256": "eee0102529d9aa5a1aa154b986de3c3e95bffc6086f9916e90da46a63d4d48ea"
+    },
+    {
+      "path": "source/test/support/shadow_simultaneous.exs",
+      "sha256": "e4bfcfa8b119448ee27886909330ca8f2afd0b92653df3a79f138bc88291fd8a"
+    },
+    {
+      "path": "source/test/support/shadow_simultaneous_child.exs",
+      "sha256": "ee3804f01b5009696320814bbbe6ebc7d0118d233fd86fe25d25ebb25fcfaec6"
+    }
+  ]
+}

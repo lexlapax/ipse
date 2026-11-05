@@ -1,0 +1,55 @@
+{
+  "scope": "one fresh P30 cohort; independent read-only evidence and pure final Saved reconstruction",
+  "result": {
+    "excluded": 0,
+    "failures": 0,
+    "skipped": 0,
+    "total": 1
+  },
+  "children": [
+    {
+      "name": "first",
+      "reservation_acquired": false,
+      "known_response": false,
+      "refusal_kind": "native_control_contention",
+      "fits_observations": 0,
+      "fit_result": null,
+      "hold_ms": 2593,
+      "strict_final_saved": true,
+      "original_work_closed_and_down": true,
+      "before_idle_global_input_entries": 0,
+      "idle_no_replay_receipt": true,
+      "diagnostic_labels": [],
+      "diagnostic_overflow": false
+    },
+    {
+      "name": "second",
+      "reservation_acquired": true,
+      "known_response": true,
+      "refusal_kind": "reserved",
+      "fits_observations": 1,
+      "fit_result": true,
+      "hold_ms": 72,
+      "strict_final_saved": true,
+      "original_work_closed_and_down": true,
+      "before_idle_global_input_entries": 0,
+      "idle_no_replay_receipt": true,
+      "diagnostic_labels": [],
+      "diagnostic_overflow": false
+    }
+  ],
+  "known_settled_experiment_calls": 1,
+  "service_ledger": {
+    "revision": 42,
+    "sequence": 14,
+    "recent": 14,
+    "priority_counts": {
+      "foreground": 14
+    }
+  },
+  "no_actor_or_original_retained_access": true,
+  "old_failure_subtype_resolved": false,
+  "actual_limit_driven_loser_refusal_observed": false,
+  "permitted_claim": "shared one positive reservation and known settlement plus quiescent same-ID idle recovery; baseline only",
+  "D_and_equality_closed": false
+}

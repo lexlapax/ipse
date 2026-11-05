@@ -86,8 +86,13 @@ pass settled-output revocation and the proposal's own signed seven-day expiry
 under a fresh day-eight grant. The old service-alias fixture failure remains
 preserved. A [later simultaneous committed-preflight cohort](archive/2026-10-26-p30-p31-implementation/p30-simultaneous-preflight-20261104.md)
 reaches both real reserve/fits paths and excludes a second call, but its winner
-fails before dispatch and remains unknown. Known simultaneous settlement, idle
-reopen and consumer quality stay open; the fast inner refusal is not identified.
+fails before dispatch and remains unknown. A separate
+[simultaneous-entry and quiescent-recovery cohort](archive/2026-10-26-p30-p31-implementation/p30-simultaneous-settlement-20261104.md)
+now completes one known settled decision and both confirmed-close/idle/no-replay
+paths under a shared one-call allowance. Its loser encounters native-control
+contention before a fit check, so this cohort does not establish budget-driven
+denial. The earlier fast refusal remains unidentified; current-main integrated
+regression and consumer quality remain open.
 
 For each active lane, name the next end-to-end result, its owner, required inputs
 and observable pass/fail checks. Use focused tests during implementation; preserve

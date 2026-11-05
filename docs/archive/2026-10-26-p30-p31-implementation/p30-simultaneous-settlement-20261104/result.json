@@ -1,0 +1,130 @@
+{
+  "both_work_closed": {
+    "confirmed_closed_owners": 2,
+    "idle_releases_before_both_closed": 0,
+    "saved_restored": 2
+  },
+  "dispatch_error_classification": [
+    {
+      "labels": [],
+      "overflow": false,
+      "scope": "local_error_1_fixed_labels_only"
+    },
+    {
+      "labels": [],
+      "overflow": false,
+      "scope": "local_error_1_fixed_labels_only"
+    }
+  ],
+  "integrity_and_cleanup": {
+    "inputs_post": "0",
+    "matching_process_cleanup": "0",
+    "matching_process_post": "1",
+    "normal_runtime_source_artifact_links_pathset_post": "0",
+    "operator_after_fuser": "1",
+    "operator_before_fuser": "1",
+    "operator_cleanup": "0",
+    "original_retained_roots_accessed": "false",
+    "test_exit": "0"
+  },
+  "limits": {
+    "limit_driven_loser_refusal_observed": false,
+    "live_engine_used": false,
+    "prior_failure_cause_identified": false,
+    "qualified_consumer": false,
+    "quality_evaluated": false
+  },
+  "qualification": {
+    "children": [
+      {
+        "action_status": "failed",
+        "collection_complete": true,
+        "fit_result": null,
+        "fits_observations": 0,
+        "hold_ms": 2593,
+        "idle_close_confirmed": true,
+        "idle_no_replay": true,
+        "idle_outcome": "idle_reopened",
+        "idle_reopened": true,
+        "known_response": false,
+        "refusal_kind": "native_control_contention",
+        "reservation_acquired": false,
+        "reservation_attempts": 1,
+        "saved_after_idle": true,
+        "saved_and_idle_no_replay": true,
+        "terminal_status": 1
+      },
+      {
+        "action_status": "ok",
+        "collection_complete": true,
+        "fit_result": true,
+        "fits_observations": 1,
+        "hold_ms": 72,
+        "idle_close_confirmed": true,
+        "idle_no_replay": true,
+        "idle_outcome": "idle_reopened",
+        "idle_reopened": true,
+        "known_response": true,
+        "refusal_kind": "reserved",
+        "reservation_acquired": true,
+        "reservation_attempts": 1,
+        "saved_after_idle": true,
+        "saved_and_idle_no_replay": true,
+        "terminal_status": 0
+      }
+    ],
+    "coordination_completed": true,
+    "terminal": [
+      {
+        "name": "first",
+        "passed_marker": true,
+        "result": "returned",
+        "status": 0
+      },
+      {
+        "name": "second",
+        "passed_marker": true,
+        "result": "returned",
+        "status": 0
+      }
+    ]
+  },
+  "result": {
+    "excluded": 0,
+    "failures": 0,
+    "skipped": 0,
+    "total": 1
+  },
+  "scope": "one_fresh_synthetic_simultaneous_committed_preflight_cohort",
+  "sequential_idle": {
+    "children": [
+      {
+        "idle_close_confirmed": true,
+        "idle_no_replay": true,
+        "idle_outcome": "idle_reopened",
+        "idle_reopened": true,
+        "saved_after_idle": true
+      },
+      {
+        "idle_close_confirmed": true,
+        "idle_no_replay": true,
+        "idle_outcome": "idle_reopened",
+        "idle_reopened": true,
+        "saved_after_idle": true
+      }
+    ]
+  },
+  "summary": {
+    "decision_dispatches": 1,
+    "distinct_os_owners": 2,
+    "genuine_pending_reads": 2,
+    "loser_before_egress": true,
+    "native_approvals": 2,
+    "saved_and_idle_no_replay": true,
+    "settled_actual_model_calls": 1,
+    "source_and_collection_unchanged": true,
+    "version": 1,
+    "zero_reservations_at_shared_barrier": true
+  },
+  "version": 1
+}

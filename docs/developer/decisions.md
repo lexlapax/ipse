@@ -106,6 +106,17 @@ accepted work and would test a different state. This sequence tests an allowance
 already held in flight; simultaneous reservation entry needs a separate race
 control.
 
+For simultaneous reservation entry, wait until both native-approved consumers
+have committed their decision preflights and neither has reserved a call, then
+release their reservation attempts together. Classify the loser from the actual
+reservation result: native-control contention establishes no budget comparison.
+Require any acquired winner to return validated advice and settle its actual
+usage. Confirm both work owners have closed normally and released their native
+input entries before reopening either Session idle. Reconstruct each final
+history and verify that reopening repeats neither inference nor its effects.
+A separate passing cohort cannot resolve an earlier unknown reservation or
+establish the cause of its failure.
+
 ## Build one request and inspect its wire form
 
 From a built checkout:
