@@ -343,6 +343,33 @@ mix test test/dev/evaluation/decision_metrics_test.exs
 mix test test/extensions/knowledge/decision_policy_test.exs test/ipse/decision_test.exs
 ```
 
+Use `dev/evaluation/candidate_assessment.exs` for a frozen keep/defer study,
+with pending proposals and observed-durable records kept in separate strata.
+`declare/1` creates an OFF declaration; `verify_inputs/3` checks its input,
+source-receipt and baseline blobs. Freeze candidate rows before opening labels.
+Pending proposals are not durable outcomes and cannot demonstrate reduced
+false-durable capture. The scorer's arithmetic never establishes source
+authority, independent labels or a qualified strategy.
+
+Its companion `CandidateAssessmentSession.prepare/5` checks the frozen blobs,
+selected artifact and routes without starting an actor. A separately enabled
+`run/5` then validates the original capture, current policy and exact stored
+candidate before using the ordinary Session/native-approval path. Loading either
+module runs no actor, and `main/1` remains disabled. Advice extraction requires a new
+settled operation and the exact current output release with confirmed cleanup;
+materialize complete paged results rather than treating a receipt as advice.
+`result_row/5` preserves denied, refused and cancelled statuses only when the
+typed action, accounting and delivered result support them. Missing closure,
+partial request/response failures and untyped outer errors remain unknown.
+A cancelled observation does not settle, refund or remove an unknown ledger
+operation. Non-advice choices, whole-task latency and cost stay null; the added
+advice phase's elapsed time is not a matched whole-task measurement. Exercise
+these joins before enabling an actual case:
+
+```sh
+mix test test/dev/evaluation/candidate_assessment_test.exs test/dev/evaluation/candidate_assessment_session_test.exs
+```
+
 For a frozen selection study, use
 `dev/evaluation/selection_experiment.exs` to bind the source, runtime, artifact,
 routes, policy, finite shared limits, case inputs and complete engine-free
@@ -363,6 +390,68 @@ review evidence is established. Exercise these distinctions with:
 
 ```sh
 mix test test/dev/selection_experiment_test.exs
+```
+
+When the study also compares answers, `dev/evaluation/protected_answer.exs`
+projects the protected service's saved output into those existing study rows;
+it is not another inference engine. Start with a complete, settled read prefix
+and its exact Actions/ManagedReads observations. Freeze the original question,
+source membership and helper execution before generating the baseline answer.
+The helper execution includes the selected provider/model/endpoint and token
+settings, with profile `extract` and a 3000-ms request deadline in this adapter.
+Both arms must match that same execution; the separately declared decision-engine
+route is not the answer route.
+
+Prepare the complete engine-free answer with `ProtectedAnswer.baseline_request/3`,
+then let the ordinary owner perform its separately approved service call.
+`baseline_project/7` joins its real current release, confirmed cleanup, completed
+model action and exact response to the existing baseline-blob shape. Freeze that
+actual blob before collecting candidate predictions. `prepare/8` later
+reprojects the prior baseline and requires exact equality with the frozen blob;
+a supplied favorable prediction is insufficient. It exposes `baseline_records`
+separately from the selected pack. Request and citation validation support the
+complete baseline of up to sixteen records; chosen packs and candidate study
+rows remain limited to four. Both use the unchanged 8192-byte v4 context and
+complete SDK-envelope limits. A complete baseline that does not fit refuses;
+never trim it to make a comparison possible.
+
+For both answer arms, the materializer reconstructs the real pre-entry service
+lineage and requires every original read-record v4 dependency, including records
+outside the selected pack. It preserves additional root or selector dependencies.
+The candidate also retains the complete actual baseline entry union.
+The initial delivered WorkerInput and the model helper's admitted preflight must
+bind that complete union and the exact request through the existing host
+validators. Reconstruct the intermediate live service suffix chronologically
+from its closed pre-service basis. Ordinary Saved reconstruction applies resume
+recovery, intentionally clearing admissions and helper inputs; it cannot supply
+the live state immediately before a helper preflight. Keep final full Saved
+validation as a separate check. Copied bare context is insufficient. These
+historical joins do not replace the live owner's source checks or grant a fresh
+permission lease.
+
+For the candidate answer, `project/9` checks the original question/pack, record
+revisions and hashes, exact service arguments, full Saved reconstruction and
+current recorded output release before extracting a prediction. Selector commands
+can use complete paged results; the answer service uses the existing bounded
+inline result contract and refuses oversized output. Its closed
+answer-or-abstention schema joins every supplied citation to an exact selected
+note-text key/revision and UTF-8 quote range/hash, plus a range in the answer.
+Those are citations to attributed derived note text, not promoted original-source
+quotations or proof of entailment. Separate claims citing one span retain separate
+pair IDs. The live service still owns fresh source checks and native approval;
+an offline projection grants no permission. Unknown or unavailable outcomes retain
+absent predictions and null unobserved timing/cost.
+
+Keep the complete answer in its saved result, commit the first prediction rows,
+and only then open independent answer and claim/span review labels for the
+existing `Metrics.semantic/2` and `SelectionExperiment.score/6` owners. A valid
+quote join establishes byte integrity, not support or reviewer independence.
+Constructed protocol tests and synthetic replies cannot establish actual model
+quality. The source adapters need their own focused checks and a genuine paired
+Session journey before they can supply actual experiment evidence:
+
+```sh
+mix test test/dev/evaluation/protected_answer_test.exs test/dev/selection_experiment_test.exs
 ```
 
 The decision-policy test also compiles the actual independent artifact against

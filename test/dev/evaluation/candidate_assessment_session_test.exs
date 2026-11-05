@@ -1,0 +1,722 @@
+Code.require_file("../../../dev/evaluation/candidate_assessment_session.exs", __DIR__)
+
+defmodule Ipse.Development.Evaluation.CandidateAssessmentSessionTest do
+  use ExUnit.Case, async: true
+  alias Ipse.JSON
+  alias Ipse.Extension.{Invocation, ResultDocument, ResultSource}
+  alias Ipse.Extension.{Actions, DecisionCall}
+  alias Ipse.Config.Decisions
+  alias Ipse.Session.ManagedOutput
+  alias Ipse.Development.Evaluation.CandidateAssessment, as: A
+  alias Ipse.Development.Evaluation.CandidateAssessmentSession, as: S
+
+  defmodule ReviewOwner do
+    use GenServer
+
+    def start_link(state), do: GenServer.start_link(__MODULE__, state)
+    def init(state), do: {:ok, Map.put(state, :public_refusals, 0)}
+    def handle_call(:info, _, state), do: {:reply, {:error, :session_share_frozen}, state}
+
+    def handle_call({:approve, _, true}, _, state),
+      do:
+        {:reply, {:error, :session_share_frozen},
+         %{state | public_refusals: state.public_refusals + 1}}
+  end
+
+  test "approval coordination observes the owned review state while public approval stays frozen" do
+    owner =
+      start_supervised!(
+        {ReviewOwner,
+         %{
+           phase: :managed_approval,
+           share_barrier: %{phase: :review_input},
+           managed_approval: %{id: "fixture-only"}
+         }}
+      )
+
+    assert {:error, :session_share_frozen} = Ipse.Session.info(owner)
+    assert S.approval_control_ready?(owner, 10, 20)
+    assert :sys.get_state(owner).public_refusals === 1
+    :sys.replace_state(owner, &%{&1 | phase: :idle})
+    refute S.approval_control_ready?(owner, 11, 20)
+    assert :sys.get_state(owner).public_refusals === 1
+    assert_raise ExUnit.AssertionError, fn -> S.approval_control_ready?(owner, 20, 20) end
+  end
+
+  defp fixture do
+    id = String.duplicate("1", 32)
+    artifact = JSON.sha256("constructed artifact")
+    root = "/dev/shm/ipse-candidate-shadow-constructed"
+
+    config = %{
+      provider: :ollama,
+      model: "constructed",
+      base_url: "http://127.0.0.1:1",
+      timeout_ms: 15_000,
+      home: root <> "/home",
+      approval: :ask,
+      headless: false,
+      accept_edits: false,
+      extensions: [
+        %{
+          identity: %{
+            "instance" => "knowledge",
+            "artifact_sha256" => artifact,
+            "capabilities" => ["host.decision"]
+          }
+        }
+      ],
+      decision_profiles: %{
+        "advice" => %{
+          "operation" => "decision",
+          "provider" => "system_one_compatible",
+          "model" => "constructed",
+          "base_url" => "http://127.0.0.1:2",
+          "service_id" => "fixture_service"
+        }
+      }
+    }
+
+    input =
+      Jason.encode!(%{
+        "candidate_id" => JSON.sha256("candidate"),
+        "text" => "Constructed candidate",
+        "assigned_category" => "ordinary",
+        "reason" => "constructed"
+      })
+
+    source =
+      Jason.encode!(%{
+        "version" => 1,
+        "session_id" => id,
+        "journal_sha256" => JSON.sha256("constructed journal")
+      })
+
+    key = "pending." <> JSON.sha256("candidate")
+
+    baseline =
+      Jason.encode!(%{
+        "version" => 1,
+        "case_id" => id,
+        "input_sha256" => JSON.sha256(input),
+        "source_receipt_sha256" => JSON.sha256(source),
+        "candidate_key" => key,
+        "stratum" => "pending",
+        "baseline" => "keep",
+        "admission" => "pending",
+        "journal_sha256" => JSON.sha256("constructed journal"),
+        "operation_id" => id,
+        "elapsed_ms" => nil,
+        "cost_nanos" => nil
+      })
+
+    c = %{
+      "id" => id,
+      "stratum" => "pending",
+      "candidate_key" => key,
+      "input_sha256" => JSON.sha256(input),
+      "baseline_sha256" => JSON.sha256(baseline),
+      "source_receipt_sha256" => JSON.sha256(source)
+    }
+
+    spec = %{
+      "version" => 1,
+      "kind" => "candidate_shadow",
+      "source_sha256" => JSON.sha256("source"),
+      "runtime_sha256" => JSON.sha256("runtime"),
+      "artifact_sha256" => artifact,
+      "main_route_sha256" => S.route_digest(config),
+      "policy_sha256" => JSON.sha256("policy"),
+      "label_commitment" => JSON.sha256("unopened labels"),
+      "decision_route" => %{
+        "engine" => "compatible_loopback",
+        "model" => "constructed",
+        "rubric_sha256" => JSON.sha256("rubric"),
+        "availability" => "unverified_access"
+      },
+      "shared_limits" =>
+        Map.new(
+          ~w(operations model_calls input_bytes output_bytes download_bytes cost_nanos),
+          &{&1, 1}
+        ),
+      "cases" => [c]
+    }
+
+    {:ok, declaration} = A.declare(spec)
+    blobs = Map.new([input, source, baseline], &{JSON.sha256(&1), &1})
+
+    %{
+      declaration: declaration,
+      sha: JSON.digest([declaration]),
+      id: id,
+      load: &Map.fetch(blobs, &1),
+      options: %{
+        enabled: false,
+        root: root,
+        output: Path.join([root, "cases", id]),
+        cwd: root <> "/project",
+        state_dir: root <> "/sessions",
+        config: config
+      }
+    }
+  end
+
+  test "matching OFF preflight starts no App or Session and grants nothing" do
+    f = fixture()
+    refute Enum.any?(Application.started_applications(), &(elem(&1, 0) == :ipse))
+    assert {:ok, p} = S.prepare(f.declaration, f.sha, f.id, f.load, f.options)
+    assert p.recipe["status"] == "off" and p.recipe["note_mutation"] == "none"
+    assert {:error, :execution_disabled} = S.run(f.declaration, f.sha, f.id, f.load, f.options)
+    assert {:error, :execution_disabled} = S.main([])
+    refute Enum.any?(Application.started_applications(), &(elem(&1, 0) == :ipse))
+  end
+
+  test "declaration mismatch refuses before even the read-only loader" do
+    f = fixture()
+
+    load = fn _ ->
+      send(self(), :opened_input)
+      {:error, :missing}
+    end
+
+    changed = put_in(f.declaration, ["spec", "artifact_sha256"], JSON.sha256("changed"))
+
+    assert {:error, :candidate_execution_preflight} =
+             S.prepare(changed, f.sha, f.id, load, f.options)
+
+    refute_received :opened_input
+  end
+
+  test "changed route, artifact, scripted provider and decision model refuse before actors" do
+    f = fixture()
+
+    for config <- [
+          Map.put(f.options.config, :provider_module, Scripted),
+          Map.put(f.options.config, :base_url, "http://127.0.0.1:2"),
+          put_in(
+            f.options.config,
+            [:extensions, Access.at(0), :identity, "artifact_sha256"],
+            JSON.sha256("foreign")
+          ),
+          put_in(f.options.config, [:decision_profiles, "advice", "model"], "foreign")
+        ] do
+      assert {:error, :candidate_execution_preflight} =
+               S.prepare(f.declaration, f.sha, f.id, f.load, %{f.options | config: config})
+    end
+  end
+
+  test "outside paths, bare yes and headless contexts cannot select this native owner" do
+    f = fixture()
+
+    for options <- [
+          %{f.options | output: "/tmp/outside"},
+          %{f.options | state_dir: f.options.root <> "/../outside"},
+          put_in(f.options, [:config, :approval], :allow),
+          put_in(f.options, [:config, :headless], true),
+          put_in(f.options, [:config, :accept_edits], true)
+        ] do
+      assert {:error, :candidate_execution_preflight} =
+               S.prepare(f.declaration, f.sha, f.id, f.load, options)
+    end
+  end
+
+  test "changed or malformed source commitments cannot reach a protected read" do
+    f = fixture()
+
+    bad = fn digest ->
+      {:ok, bytes} = f.load.(digest)
+      {:ok, bytes <> " "}
+    end
+
+    assert {:error, :candidate_execution_preflight} =
+             S.prepare(f.declaration, f.sha, f.id, bad, f.options)
+
+    assert {:error, :candidate_execution_preflight} =
+             S.prepare(f.declaration, f.sha, String.duplicate("f", 32), f.load, f.options)
+  end
+
+  test "known row requires newly settled exact input and complete current release" do
+    f = fixture()
+    {:ok, p} = S.prepare(f.declaration, f.sha, f.id, f.load, f.options)
+    {events, action, result} = delivery(p, :inline)
+    {before, after_policy} = policies(action)
+    row = S.result_row(p, events, before, after_policy, 110)
+    assert row["status"] == "ok" and row["choice"] == "defer_candidate"
+    assert row["input_sha256"] == p.recipe["input_sha256"]
+    assert is_nil(row["cost_nanos"]) and is_nil(row["elapsed_ms"])
+    assert row["response_sha256"] == JSON.digest([result["value"]])
+
+    assert_raise ExUnit.AssertionError, fn ->
+      S.result_row(p, events, after_policy, after_policy, 110)
+    end
+
+    changed =
+      put_in(
+        action,
+        ["request", "input"],
+        Jason.encode!(%{
+          "candidates" => [
+            %{"id" => "candidate", "input" => Jason.encode!(%{"different" => true})}
+          ]
+        })
+      )
+
+    assert_raise ExUnit.AssertionError, fn ->
+      S.result_row(p, replace(events, action, changed), before, after_policy, 110)
+    end
+  end
+
+  test "missing unknown foreign and forged cleanup cannot become known advice" do
+    f = fixture()
+    {:ok, p} = S.prepare(f.declaration, f.sha, f.id, f.load, f.options)
+    {events, action, _} = delivery(p, :inline)
+    {before, after_policy} = policies(action)
+    cleanup = Enum.find(events, &(&1["type"] == "managed_output_release_cleanup"))
+
+    for changed <- [
+          nil,
+          Map.put(cleanup, "status", "unknown"),
+          Map.put(cleanup, "release_id", Ipse.Usage.id()),
+          Map.put(cleanup, "result_sha256", JSON.sha256("foreign"))
+        ] do
+      assert_unknown(p, replace(events, cleanup, changed), before, after_policy)
+    end
+  end
+
+  test "cross invocation changed result and withdrawn admission remain unverified" do
+    f = fixture()
+    {:ok, p} = S.prepare(f.declaration, f.sha, f.id, f.load, f.options)
+    {events, action, result} = delivery(p, :inline)
+    {before, after_policy} = policies(action)
+    admission = Enum.find(events, &(&1["type"] == "managed_output_release_result"))
+
+    for {old, changed} <- [
+          {action, Map.put(action, "parent_invocation_id", Ipse.Usage.id())},
+          {result, put_in(result, ["value", "advice", "choice"], "keep_baseline")},
+          {result, Map.put(result, "actions_sha256", JSON.sha256("foreign"))},
+          {admission, Map.put(admission, "decision", "withdrawn")},
+          {admission, Map.put(admission, "intent_sha256", JSON.sha256("foreign"))}
+        ] do
+      assert_unknown(p, replace(events, old, changed), before, after_policy)
+    end
+
+    unknown = put_in(action, ["outcome", "status"], "unknown")
+    policy = put_in(after_policy, ["operations", action["operation_id"], "status"], "unknown")
+    assert_unknown(p, [unknown], before, policy)
+  end
+
+  test "paged delivery materializes exact complete hash bound advice" do
+    f = fixture()
+    {:ok, p} = S.prepare(f.declaration, f.sha, f.id, f.load, f.options)
+    {events, action, result} = delivery(p, :paged)
+    {before, after_policy} = policies(action)
+    row = S.result_row(p, events, before, after_policy, 500)
+    assert row["status"] == "ok" and row["choice"] == "defer_candidate"
+    assert is_nil(row["elapsed_ms"]) and is_nil(row["cost_nanos"])
+    chunks = Enum.filter(events, &(&1["type"] == "extension_output_chunk"))
+    assert length(chunks) >= 3
+    chunk = Enum.at(chunks, 1)
+    assert is_map(chunk)
+    assert_unknown(p, replace(events, chunk, nil), before, after_policy)
+
+    assert_unknown(
+      p,
+      replace(events, chunk, Map.put(chunk, "sha256", JSON.sha256("changed"))),
+      before,
+      after_policy
+    )
+
+    assert_unknown(
+      p,
+      replace(events, result, put_in(result, ["delivery", "byte_count"], 1)),
+      before,
+      after_policy
+    )
+  end
+
+  test "qualified frozen info retries without resetting the absolute coordination budget" do
+    assert S.phase_observed?(%{phase: :idle}, :idle, 109, 110)
+    refute S.phase_observed?(%{phase: :managed_approval}, :idle, 109, 110)
+    refute S.phase_observed?({:error, :session_share_frozen}, :idle, 109, 110)
+
+    for response <- [%{phase: :idle}, {:error, :session_share_frozen}] do
+      for now <- [110, 111],
+          do:
+            assert_raise(ExUnit.AssertionError, fn ->
+              S.phase_observed?(response, :idle, now, 110)
+            end)
+    end
+
+    assert_raise ExUnit.AssertionError, fn ->
+      S.phase_observed?({:error, :not_owner}, :idle, 109, 110)
+    end
+
+    assert_raise ExUnit.AssertionError, fn -> S.phase_observed?(:unknown, :idle, 109, 110) end
+  end
+
+  test "authenticated native denial and pre-admission limit remain distinct without advice or refunds" do
+    f = fixture()
+    {:ok, p} = S.prepare(f.declaration, f.sha, f.id, f.load, f.options)
+
+    for {kind, status} <- [{:denied, "denied"}, {:limit, "refused"}] do
+      {events, _action} = causal_delivery(p, kind)
+      policy = %{"operations" => %{}}
+      row = S.result_row(p, events, policy, policy, 10)
+      assert row["status"] === status and row["choice"] === nil
+      assert is_nil(row["elapsed_ms"]) and is_nil(row["cost_nanos"])
+    end
+  end
+
+  test "actual cancelled completion is distinct while partial response failure remains unknown" do
+    f = fixture()
+    {:ok, p} = S.prepare(f.declaration, f.sha, f.id, f.load, f.options)
+    {events, action} = causal_delivery(p, :cancelled)
+    before = %{"operations" => %{}}
+    after_policy = %{"operations" => %{action["operation_id"] => %{"status" => "unknown"}}}
+    row = S.result_row(p, events, before, after_policy, 10)
+    assert row["status"] === "cancelled" and is_nil(row["choice"])
+    assert after_policy["operations"][action["operation_id"]]["status"] === "unknown"
+    assert is_nil(row["cost_nanos"]) and is_nil(row["elapsed_ms"])
+    completion = Enum.find(events, &(&1["type"] === "request_finished"))
+
+    for changed <- [
+          nil,
+          Map.put(completion, "attempt_id", Ipse.Usage.id()),
+          Map.put(completion, "outcome", "failed")
+        ] do
+      assert_unknown(p, replace(events, completion, changed), before, after_policy)
+    end
+
+    for kind <- [:partial, :partial_response] do
+      {partial, action} = causal_delivery(p, kind)
+      after_policy = %{"operations" => %{action["operation_id"] => %{"status" => "unknown"}}}
+      assert_unknown(p, partial, before, after_policy)
+    end
+  end
+
+  test "denial still needs the exact current confirmed output closure" do
+    f = fixture()
+    {:ok, p} = S.prepare(f.declaration, f.sha, f.id, f.load, f.options)
+    {events, _action} = causal_delivery(p, :denied)
+    policy = %{"operations" => %{}}
+    cleanup = Enum.find(events, &(&1["type"] === "managed_output_release_cleanup"))
+    admission = Enum.find(events, &(&1["type"] === "managed_output_release_result"))
+
+    for changed <- [
+          nil,
+          Map.put(cleanup, "status", "unknown"),
+          Map.put(cleanup, "release_id", Ipse.Usage.id())
+        ] do
+      assert_unknown(p, replace(events, cleanup, changed), policy, policy)
+    end
+
+    assert_unknown(
+      p,
+      replace(events, admission, Map.put(admission, "decision", "withdrawn")),
+      policy,
+      policy
+    )
+
+    intent = Enum.find(events, &(&1["type"] === "extension_action_intent"))
+
+    assert_unknown(
+      p,
+      replace(events, intent, Map.put(intent, "operation_id", Ipse.Usage.id())),
+      policy,
+      policy
+    )
+  end
+
+  test "complete matched artifact refusal is observed but untyped outer error is unknown" do
+    f = fixture()
+    {:ok, p} = S.prepare(f.declaration, f.sha, f.id, f.load, f.options)
+    parent = parent(p)
+    value = %{"status" => "refused", "code" => "assessment_unavailable"}
+
+    {:ok, result} =
+      Invocation.build_result(parent, %{"api_version" => 1, "kind" => "result", "value" => value})
+
+    events = [parent] ++ release(parent, result)
+    policy = %{"operations" => %{}}
+    assert S.result_row(p, events, policy, policy, 10)["status"] === "refused"
+
+    assert_unknown(p, events, policy, %{
+      "operations" => %{Ipse.Usage.id() => %{"status" => "unknown"}}
+    })
+
+    assert_unknown(p, [%{"type" => "turn_finished", "outcome" => "error"}], policy, policy)
+  end
+
+  defp causal_delivery(p, kind) do
+    parent = parent(p)
+
+    request = %{
+      "op" => "decision.create",
+      "version" => 1,
+      "profile" => "advice",
+      "timeout_ms" => 2000,
+      "input" =>
+        Jason.encode!(%{
+          "candidates" => [%{"id" => "candidate", "input" => Jason.encode!(p.input)}]
+        }),
+      "questions" => [
+        %{
+          "id" => "candidate",
+          "type" => "choice",
+          "choices" => ~w(keep_baseline defer_candidate),
+          "instructions" => "rubric"
+        }
+      ]
+    }
+
+    {:ok, binding} = DecisionCall.binding(p.options.config, request)
+    approval = if kind === :denied, do: "denied", else: "approved"
+    {:ok, intent} = Actions.intent(parent, request, 1, approval, p.options.cwd, nil, nil, binding)
+
+    {outcome, inference} =
+      case kind do
+        :denied ->
+          {%{"status" => "denied", "value" => %{}}, []}
+
+        :limit ->
+          {%{"status" => "failed", "value" => %{"code" => "decision_limit"}}, []}
+
+        kind when kind in [:cancelled, :partial, :partial_response] ->
+          {:ok, runtime, execution} = Decisions.prepare(p.options.config, request)
+
+          admission =
+            Ipse.Usage.admission(
+              parent["payload"]["session_id"],
+              runtime,
+              "extension",
+              parent["payload"]["turn_id"]
+            )
+            |> Map.put("request_id", intent["operation_id"])
+
+          source = DecisionCall.source(intent, admission, execution)
+
+          completion =
+            Ipse.Usage.completion(
+              admission,
+              if(kind === :cancelled, do: :cancelled, else: :failed),
+              5,
+              nil
+            )
+
+          code =
+            case kind do
+              :cancelled -> "decision_cancelled"
+              :partial -> "decision_request_failed"
+              :partial_response -> "decision_response"
+            end
+
+          {%{"status" => "failed", "value" => %{"code" => code}}, [source, admission, completion]}
+      end
+
+    {:ok, action} = Actions.result(intent, outcome)
+
+    value = %{
+      "status" => "interrupted",
+      "outcome" => outcome,
+      "retry" => "inspect; never replay unknown work"
+    }
+
+    {:ok, result} =
+      Invocation.build_result(
+        parent,
+        %{"api_version" => 1, "kind" => "result", "value" => value},
+        [action]
+      )
+
+    metadata = %{
+      "type" => "session",
+      "metadata" => %{
+        "usage_version" => 3,
+        "decision_profiles" => Decisions.snapshot(p.options.config)
+      }
+    }
+
+    events = [metadata, parent, intent] ++ inference ++ [action] ++ release(parent, result)
+    assert {:ok, _} = Ipse.Usage.restore(events, parent["payload"]["session_id"])
+    {events, action}
+  end
+
+  defp release(parent, result) do
+    intent = ManagedOutput.intent(parent["payload"]["session_id"], parent, result, [], 100, 110)
+    admission = ManagedOutput.admission(intent, result, "current", [], 101, 110)
+    [intent, result, admission, ManagedOutput.cleanup(intent, admission, "confirmed")]
+  end
+
+  defp assert_unknown(p, events, before, after_policy) do
+    row = S.result_row(p, events, before, after_policy, 110)
+    assert row["status"] == "unknown"
+    for key <- ~w(choice response_sha256 elapsed_ms cost_nanos), do: assert(is_nil(row[key]))
+  end
+
+  defp replace(events, old, nil), do: Enum.reject(events, &(&1 === old))
+
+  defp replace(events, old, changed),
+    do: Enum.map(events, fn event -> if event === old, do: changed, else: event end)
+
+  defp policies(action),
+    do:
+      {%{"operations" => %{}},
+       %{"operations" => %{action["operation_id"] => %{"status" => "settled"}}}}
+
+  # Constructed public protocol rows test extraction only. They are not Saved
+  # histories or native authority; execute/3 requires strict Saved first.
+  defp delivery(p, kind) do
+    parent = parent(p)
+
+    action = %{
+      "type" => "extension_action_result",
+      "operation_id" => Ipse.Usage.id(),
+      "parent_invocation_id" => parent["invocation_id"],
+      "request" => %{
+        "op" => "decision.create",
+        "input" =>
+          Jason.encode!(%{
+            "candidates" => [%{"id" => "candidate", "input" => Jason.encode!(p.input)}]
+          }),
+        "questions" => [
+          %{"choices" => ~w(keep_baseline defer_candidate), "instructions" => "rubric"}
+        ]
+      },
+      "outcome" => %{"status" => "ok"}
+    }
+
+    value = %{
+      "status" => "assessed",
+      "key" => p.recipe["arguments"]["key"],
+      "advice" => %{"choice" => "defer_candidate", "reason" => "selected"}
+    }
+
+    {prefix, raw} = raw_result(parent, value, kind)
+    result = Map.merge(raw, %{"action_count" => 1, "actions_sha256" => JSON.digest([action])})
+    intent = ManagedOutput.intent(parent["payload"]["session_id"], parent, result, [], 100, 110)
+    admission = ManagedOutput.admission(intent, result, "current", [], 101, 110)
+    cleanup = ManagedOutput.cleanup(intent, admission, "confirmed")
+    [^parent | producer_events] = prefix
+    {[parent, action] ++ producer_events ++ [intent, result, admission, cleanup], action, result}
+  end
+
+  defp parent(p) do
+    hash = p.recipe["artifact_sha256"]
+
+    identity = %{
+      "instance" => "knowledge",
+      "artifact" => hash,
+      "artifact_sha256" => hash,
+      "options_sha256" => hash,
+      "exports_sha256" => hash,
+      "requires_sha256" => hash,
+      "subscriptions_sha256" => hash,
+      "services" => [],
+      "scope" => "operator",
+      "source_sha256" => hash,
+      "sdk" => 2,
+      "protocol" => 1,
+      "capabilities" => ~w(invoke.command invoke.result.pages host.actions host.decision),
+      "order" => 1,
+      "lifetime" => "session",
+      "expires_at" => nil,
+      "runtime" => %{
+        "architecture" => "fixture",
+        "elixir" => "1.18.5",
+        "erts" => "15",
+        "otp" => "27"
+      },
+      "host_sha256" => hash,
+      "generation" => 1,
+      "allow_children" => false
+    }
+
+    descriptor = %{
+      "id" => "assess",
+      "description" => "Constructed assessment",
+      "arguments_schema" => %{
+        "type" => "object",
+        "properties" => %{"key" => %{"type" => "string"}},
+        "required" => ["key"],
+        "additionalProperties" => false
+      },
+      "result_schema" => %{"type" => "object", "additionalProperties" => true},
+      "instance" => "knowledge",
+      "stage" => "invoke.command",
+      "name" => "ext__knowledge__assess"
+    }
+
+    parent =
+      Invocation.intent(
+        identity,
+        descriptor,
+        p.recipe["arguments"],
+        Ipse.Usage.id(),
+        Ipse.Usage.id(),
+        nil,
+        nil,
+        "operator_request"
+      )
+
+    assert :ok = Invocation.validate_intent(parent)
+    parent
+  end
+
+  defp raw_result(parent, value, :inline) do
+    {:ok, result} =
+      Invocation.build_result(parent, %{"api_version" => 1, "kind" => "result", "value" => value})
+
+    {[parent], result}
+  end
+
+  defp raw_result(parent, value, :paged) do
+    value =
+      Map.merge(value, %{
+        "detail" => String.duplicate("é", 3000),
+        "detail_tail" => String.duplicate("é", 3000)
+      })
+
+    {:ok, bytes} = ResultDocument.encode(value, parent["descriptor"]["result_schema"])
+
+    offer = %{
+      "api_version" => 1,
+      "kind" => "result_producer",
+      "output" => %{
+        "version" => 1,
+        "byte_count" => byte_size(bytes),
+        "sha256" => JSON.sha256(bytes)
+      }
+    }
+
+    {:ok, begin, source} = ResultSource.open(parent, offer, 10)
+    {chunks, source} = chunks(source, bytes, [])
+    {:ok, proof, source} = ResultSource.seal(source, 20)
+    {:ok, result} = Invocation.build_saved_result(parent, ResultSource.descriptor(source), [], 21)
+    {[parent, begin] ++ chunks ++ [proof.event], result}
+  end
+
+  defp chunks(%{offset: offset} = source, bytes, acc) when offset == byte_size(bytes),
+    do: {Enum.reverse(acc), source}
+
+  defp chunks(source, bytes, acc) do
+    size = min(4096, byte_size(bytes) - source.offset)
+    fragment = binary_part(bytes, source.offset, size)
+
+    reply = %{
+      "api_version" => 1,
+      "kind" => "result_chunk",
+      "output" => %{
+        "version" => 1,
+        "output_id" => source.begin["output_id"],
+        "offset" => source.offset,
+        "next" => source.offset + size,
+        "complete" => source.offset + size == byte_size(bytes),
+        "data_base64" => Base.encode64(fragment),
+        "sha256" => JSON.sha256(fragment)
+      }
+    }
+
+    {:ok, chunk, source} = ResultSource.push(source, reply)
+    chunks(source, bytes, [chunk | acc])
+  end
+end

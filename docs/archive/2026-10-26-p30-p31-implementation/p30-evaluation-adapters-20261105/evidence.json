@@ -1,0 +1,24 @@
+{
+  "version": 1,
+  "scope": "development_adapters_and_constructed_protocol_controls",
+  "base_commit": "d548da3ce338d8772219c2543b14657b6fb38b36",
+  "command": "MIX_ENV=test HEX_OFFLINE=1 ERL_FLAGS='+S 1:1 +A 1' mix test --no-start --no-compile --no-deps-check test/dev/evaluation/candidate_assessment_test.exs test/dev/evaluation/candidate_assessment_session_test.exs test/dev/evaluation/protected_answer_test.exs test/dev/evaluation/decision_metrics_test.exs test/dev/selection_experiment_test.exs --max-cases 1",
+  "result": {"exit_status": 0, "passed": 59, "failed": 0, "selected_skipped": 0, "duration_seconds": 2.6},
+  "log_sha256": "3a6328931234ab36e4b700d73bcca429f98a12728db7651e769bf71ba7a33b4d",
+  "earlier_result": {"passed": 58, "duration_seconds": 1.8, "log_sha256": "50d9c1cd0676571bbb532e6bcf530422de959db9f63cf1ed25472203fcc29e97", "missed_live_prefix_reconstruction": true},
+  "documentation_check": {"scope": "exact_staged_source", "markdown_files": 1213, "local_links": 10015, "errors": 0},
+  "files": {
+    "dev/evaluation/candidate_assessment.exs": "b39fad289dc1f726494b39026992b7691a0ebe84f6840737adbd8bf69ac90740",
+    "dev/evaluation/candidate_assessment_session.exs": "2c9da57af45221af91118833dfd9f30e6ed81cc82476c96ad9f8cfc12eb4e35c",
+    "dev/evaluation/protected_answer.exs": "2732a2ae1530cfb9799acc48a91a3aab53e4973142134b751185676778e959c3",
+    "test/dev/evaluation/candidate_assessment_test.exs": "a94ea306fc1b0ee59f79f36db070f7a0443ca19df0da314f254f66debca11de0",
+    "test/dev/evaluation/candidate_assessment_session_test.exs": "1a514dfad2a6dd4108d3c25251ad6102ef4929c1b86e3edb46d76f8ba85fb2b0",
+    "test/dev/evaluation/protected_answer_test.exs": "6d9d75cff2eb8b17aefffdac86d6927b27f430cfee366abe426a7e1669c678be"
+  },
+  "actual_session_journey": "unrun",
+  "native_approval": "unrun_in_this_increment",
+  "quality": "unverified",
+  "independent_labels": "unverified",
+  "whole_task_time_and_cost": null,
+  "qualification": "none"
+}
