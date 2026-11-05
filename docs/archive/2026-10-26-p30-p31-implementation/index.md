@@ -75,6 +75,8 @@ nor resource/offline qualification. No daemon configuration or existing model wa
 
 ## Source checkpoint evidence — 2026-11-04
 
+- [Fetched-body selection and explicit recovery](research-fetch-origin-lifecycle-20261104.md) passes one fresh ordinary MCP/State lifecycle with known-body/denied-selector recovery, immutable citations, competing revisions and Saved/idle no replay. Paired format-2 compatibility and pure boundaries stay distinct from installed, quality and cross-store qualification.
+
 - [Confirmed withdrawn event replay](managed-event-withdrawal-replay-20261104.md) authenticates exact managed completion during Saved reconstruction, with six pure controls, 36 integrated cases and an unchanged 207-event in-place replay. The actual partial read remains failed and quarantined; live final use and retained recall stay open.
 
 - [Direct native statement maximum](native-statement-maximum-20261104.md) passes one fresh 4062-byte ordinary record, 2048-byte proof and 999-byte source, proof/source overflow refusals, unchanged accounting and idle no-replay; two earlier fixture failures, other record maxima, burst and annual limits remain explicit.

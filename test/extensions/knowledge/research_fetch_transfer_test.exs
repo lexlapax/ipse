@@ -57,7 +57,16 @@ defmodule Ipse.KnowledgeResearchFetchTransferTest do
   end
 
   defp paths do
-    Enum.flat_map(Enum.reject(:code.get_path(), &(&1 == ~c".")), &["-pa", List.to_string(&1)])
+    :code.get_path()
+    |> Enum.map(&List.to_string/1)
+    |> Enum.reject(fn path ->
+      path == "." or
+        Enum.any?(
+          ~w(Elixir.Ipse.Development.Fixtures.Knowledge.beam Elixir.Ipse.Development.Fixtures.Knowledge.Backend.beam),
+          &File.regular?(Path.join(path, &1))
+        )
+    end)
+    |> Enum.flat_map(&["-pa", &1])
   end
 
   test "fetched transfer validates real adapter envelopes and shared body suppression", c do
@@ -75,7 +84,7 @@ defmodule Ipse.KnowledgeResearchFetchTransferTest do
       )
 
     assert code == 0, output
-    assert output =~ "10 passed"
+    assert output =~ "23 passed"
     refute Code.ensure_loaded?(IpseKnowledge.Research)
   end
 

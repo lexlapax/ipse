@@ -18,7 +18,7 @@ defmodule IpseKnowledge.Research do
               entry("investigate", "Explicit bounded source investigation", investigate_schema()),
               entry("ledger", "Inspect or assert a provided claim ledger", ledger_schema())
             ]
-          ) ++ retention_exports(),
+          ) ++ retention_exports() ++ recovery_exports(),
         "tools" =>
           if(@preset == "state-fetched",
             do: [],
@@ -64,6 +64,10 @@ defmodule IpseKnowledge.Research do
        when @preset == "state-fetched",
        do: fetch_retain(args, state)
 
+  defp invoke(%{"id" => "select_retained", "arguments" => args}, state)
+       when @preset == "state-fetched",
+       do: select_retained(args, state)
+
   defp invoke(_, state), do: finish(state, refused(:invalid_invocation))
 
   defp retention_exports do
@@ -86,6 +90,18 @@ defmodule IpseKnowledge.Research do
         ],
         else: []
     end
+  end
+
+  defp recovery_exports do
+    if @preset == "state-fetched",
+      do: [
+        entry(
+          "select_retained",
+          "Select an inspected retained fetch version without fetching or republishing its body",
+          select_retained_schema()
+        )
+      ],
+      else: []
   end
 
   defp fetch_retain_schema do
@@ -119,6 +135,41 @@ defmodule IpseKnowledge.Research do
       )
     else
       _ -> finish(state, refused(:invalid_fetch_transfer))
+    end
+  end
+
+  defp select_retained_schema do
+    %{
+      "type" => "object",
+      "additionalProperties" => false,
+      "required" => ~w(store fetch uri source_id source_revision expected_selection_revision),
+      "properties" => %{
+        "store" => string(64),
+        "fetch" => string(64),
+        "uri" => string(512),
+        "source_id" => string(256),
+        "source_revision" => integer(1, Evidence.safe_integer_max()),
+        "expected_selection_revision" => integer(0, Evidence.safe_integer_max())
+      }
+    }
+  end
+
+  defp select_retained(args, state) do
+    with true <-
+           exact?(args, ~w(store fetch uri source_id source_revision expected_selection_revision)),
+         {:ok, store} <- Profiles.lookup(state.resolved, "stores", args["store"]),
+         {:ok, fetch} <- Profiles.lookup(state.resolved, "fetch", args["fetch"]) do
+      advance(
+        Store.start_fetch_selection(
+          args["store"],
+          store,
+          fetch,
+          Map.take(args, ~w(uri source_id source_revision expected_selection_revision))
+        ),
+        %{state | phase: :retain_write, ctx: %{kind: :retained_selection}}
+      )
+    else
+      _ -> finish(state, refused(:invalid_fetch_selection))
     end
   end
 
@@ -368,7 +419,46 @@ defmodule IpseKnowledge.Research do
 
   defp advance({:stop, :unknown_effect}, %{phase: :retain_write}), do: {:stop, :unknown_effect}
   defp advance({:stop, :unknown_effect}, state), do: finish(state, refused(:unknown_effect))
+
+  defp advance({:done, {:error, code, details}}, %{phase: :retain_write} = state) do
+    value = refused(code)
+
+    coverage =
+      Map.take(
+        details,
+        ~w(body_publication source_id source_revision selection_publication recovery)
+      )
+
+    finish(state, Map.put(value, "coverage", coverage))
+  end
+
   defp advance({:done, {:error, code, _}}, state), do: finish(state, refused(code))
+
+  defp advance(
+         {:done, {:ok, stored}},
+         %{phase: :retain_write, ctx: %{kind: :retained_selection}} = state
+       ) do
+    finish(
+      state,
+      output(
+        "ok",
+        [],
+        [],
+        [],
+        %{
+          "kind" => "retained_fetch_selection",
+          "durable" => true,
+          "native_receipt" => false,
+          "fresh_fetch" => false,
+          "body_republished" => false,
+          "source_id" => stored["source_id"],
+          "selection_status" => stored["selection_status"],
+          "selected_version" => stored["fetch_version"]
+        },
+        nil
+      )
+    )
+  end
 
   defp advance({:done, {:ok, stored}}, %{phase: :retain_write, ctx: %{kind: :fetch}} = state) do
     finish(
@@ -383,7 +473,8 @@ defmodule IpseKnowledge.Research do
           "durable" => true,
           "native_receipt" => false,
           "source_id" => stored["source_id"],
-          "derivation" => stored["fetch_transfer"]
+          "derivation" => stored["fetch_transfer"],
+          "selected_version" => stored["fetch_version"]
         },
         nil
       )

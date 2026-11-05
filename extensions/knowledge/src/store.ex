@@ -160,6 +160,27 @@ defmodule IpseKnowledge.Store do
 
   defp fetch_transfer_step(other, _), do: other
 
+  def start_fetch_selection(name, profile, fetch, args) do
+    with true <- profile?(profile) and profile["kind"] == "state",
+         true <-
+           keys?(fetch, ~w(kind binding contract)) and fetch["kind"] == "mcp" and
+             name?(fetch["binding"]) and fetch["contract"] == "fetch-v1",
+         true <- keys?(args, ~w(uri source_id source_revision expected_selection_revision)),
+         true <-
+           is_binary(args["uri"]) and String.valid?(args["uri"]) and
+             byte_size(args["uri"]) in 1..512,
+         true <-
+           Evidence.safe_positive?(args["source_revision"]) and
+             Evidence.safe_uint?(args["expected_selection_revision"]),
+         {:call, request, state} <- start(name, profile, :inspect, Map.take(args, ["source_id"])) do
+      {:call, request, Map.put(state, :fetch_selection, %{fetch: fetch, args: args})}
+    else
+      _ -> error(:invalid_fetch_selection)
+    end
+  rescue
+    _ -> error(:invalid_fetch_selection)
+  end
+
   def start(name, profile, operation, args) do
     with true <- name?(name) and profile?(profile) and operation in @operations and is_map(args),
          :ok <- arguments(operation, args) do
@@ -223,6 +244,73 @@ defmodule IpseKnowledge.Store do
     _ -> error(:invalid_store_arguments)
   end
 
+  # Source roots and their fetch selectors share the existing 32-token read API.
+  # Carry one allowance and actual store generation across its bounded chunks.
+  def start_revalidation(name, profile, args) when is_map(args) do
+    tokens = args["tokens"]
+
+    cond do
+      is_list(tokens) and length(tokens) <= 32 ->
+        start(name, profile, :revalidate, args)
+
+      is_list(tokens) and length(tokens) <= 64 ->
+        batch = %{
+          name: name,
+          profile: profile,
+          args: args,
+          tokens: tokens,
+          pending: Enum.chunk_every(tokens, 32),
+          generation: nil
+        }
+
+        revalidation_next(batch)
+
+      true ->
+        error(:invalid_snapshot)
+    end
+  end
+
+  def start_revalidation(_, _, _), do: error(:invalid_snapshot)
+
+  defp revalidation_next(%{pending: []} = batch) do
+    {:done,
+     {:ok,
+      %{
+        "tokens" => batch.tokens,
+        "gaps" => [],
+        "valid" => true,
+        "coverage" => Map.take(batch.args, ~w(effects_used reads_used))
+      }}}
+  end
+
+  defp revalidation_next(%{pending: [tokens | rest]} = batch) do
+    revalidation_step(
+      start(batch.name, batch.profile, :revalidate, Map.put(batch.args, "tokens", tokens)),
+      %{batch | pending: rest}
+    )
+  end
+
+  defp revalidation_step({:call, request, continuation}, batch),
+    do: {:call, request, %{revalidation_batch: Map.put(batch, :continuation, continuation)}}
+
+  defp revalidation_step({:done, {:ok, checked}}, batch) do
+    generation = checked["store_generation"]
+
+    cond do
+      checked["valid"] != true ->
+        {:done, {:ok, checked}}
+
+      batch.generation != nil and batch.generation != generation ->
+        error(:snapshot_changed)
+
+      true ->
+        counts = Map.take(checked["coverage"], ~w(effects_used reads_used))
+        revalidation_next(%{batch | args: Map.merge(batch.args, counts), generation: generation})
+    end
+  end
+
+  defp revalidation_step(other, _), do: other
+
   defp legacy_addition?(%{
          profile: %{"kind" => "mcp_cas", "contract" => contract},
          operation: operation,
@@ -237,6 +325,9 @@ defmodule IpseKnowledge.Store do
 
   defp legacy_addition?(_), do: false
 
+  def resume(%{revalidation_batch: batch}, outcome),
+    do: revalidation_step(resume(batch.continuation, outcome), batch)
+
   def resume(%{fetch_transfer: transfer}, outcome),
     do: fetch_transfer_step(Adapters.resume(transfer.adapter, outcome), transfer)
 
@@ -244,8 +335,22 @@ defmodule IpseKnowledge.Store do
     result = resume_store(state, outcome)
 
     case result do
-      {:done, {:ok, value}} -> {:done, {:ok, Map.put(value, "fetch_transfer", capture)}}
-      other -> other
+      {:done, {:ok, value}} ->
+        {:done, {:ok, Map.put(value, "fetch_transfer", capture)}}
+
+      {:done, {:error, code, details}} when state.stage == :fetch_origin_committed ->
+        {:done,
+         {:error, code,
+          Map.merge(details, %{
+            "body_publication" => if(state[:fetch_selection], do: "existing", else: "known"),
+            "source_id" => state.fetched_stored["source_id"],
+            "source_revision" => state.fetched_stored["revision"],
+            "selection_publication" => "not_confirmed",
+            "recovery" => "inspect_then_select_retained"
+          })}}
+
+      other ->
+        other
     end
   end
 
@@ -259,6 +364,9 @@ defmodule IpseKnowledge.Store do
   end
 
   def root_key(partition, source_key), do: Evidence.id("root", [partition, source_key])
+
+  def fetch_origin_key(partition, binding, uri),
+    do: Evidence.id("fetch-origin", [partition, binding, uri])
 
   @doc "Read-only counts and hashes for a validated adapter snapshot; returns no source text."
   def inventory(cache, partition) do
@@ -339,6 +447,8 @@ defmodule IpseKnowledge.Store do
              end)
            ),
          "root_records" => inventory_count(roots),
+         "fetch_origin_records" =>
+           inventory_count(fetch_origins(%{cache: cache, profile: %{"partition" => partition}})),
          "roots" => root_rows,
          "selected_pages" =>
            inventory_count(Enum.filter(pages, &MapSet.member?(selected, &1["key"]))),
@@ -433,7 +543,31 @@ defmodule IpseKnowledge.Store do
            Evidence.safe_uint?(cache["generation"]) and Evidence.safe_uint?(cache["bytes"]) and
              cache["bytes"] <= 1_048_576,
          :ok <- valid_partition(cache, state.profile["partition"]) do
-      perform(%{state | cache: cache})
+      state = %{state | cache: cache}
+
+      state =
+        if state[:fetched_capture] != nil and state[:fetch_selection] == nil do
+          capture = state.fetched_capture
+
+          key =
+            fetch_origin_key(
+              state.profile["partition"],
+              capture["binding"],
+              capture["requested_uri"]
+            )
+
+          base = revision(cache["records"][key] || missing(key))
+
+          Map.put(
+            state,
+            :fetched_capture,
+            capture |> Map.put("selection_base_revision", base) |> Map.put("version", 2)
+          )
+        else
+          state
+        end
+
+      perform(state)
     else
       _ -> error(:store_corrupt)
     end
@@ -526,8 +660,7 @@ defmodule IpseKnowledge.Store do
   defp advance(%{stage: :committed} = state, value) do
     root = value["record"]["value"]
 
-    {:done,
-     {:ok,
+    stored =
       %{
         "status" => "stored",
         "source_id" => root["source_id"],
@@ -536,7 +669,27 @@ defmodule IpseKnowledge.Store do
         "revision" => value["record"]["revision"],
         "continuation" => nil,
         "coverage" => Map.get(state, :plan, %{})
-      }}}
+      }
+
+    if state[:fetched_capture],
+      do: commit_fetch_origin(state, stored, value["generation"]),
+      else: {:done, {:ok, stored}}
+  end
+
+  defp advance(%{stage: :fetch_origin_committed} = state, value) do
+    selector = value["record"]["value"]
+
+    {:done,
+     {:ok,
+      state.fetched_stored
+      |> Map.put("selection_status", "selected")
+      |> Map.put("fetch_version", %{
+        "origin_key" => value["record"]["key"],
+        "revision" => value["record"]["revision"],
+        "generation" => selector["generation"],
+        "source_id" => selector["source_id"],
+        "body_sha256" => selector["content_sha256"]
+      })}}
   end
 
   defp advance(%{stage: :projection_checked} = state, value) do
@@ -578,6 +731,7 @@ defmodule IpseKnowledge.Store do
         "tokens" => tokens,
         "gaps" => gaps,
         "valid" => gaps == [],
+        "store_generation" => value["generation"],
         "coverage" => counter_coverage(state)
       }}}
   end
@@ -880,6 +1034,64 @@ defmodule IpseKnowledge.Store do
   defp counter_coverage(state),
     do: %{"effects_used" => state.effects, "reads_used" => state.reads}
 
+  defp perform(%{fetch_selection: selection} = state) do
+    args = selection.args
+    record = find_root(state, args["source_id"])
+
+    with true <- record != nil and record["revision"] == args["source_revision"],
+         root = record["value"],
+         true <- root["state"] == "active" and root["draft"] == nil,
+         {:ok, source} <- load_source(state, root),
+         true <- retained_fetch?(state, source, selection),
+         capture = source["origin"]["receipt"],
+         key =
+           fetch_origin_key(
+             state.profile["partition"],
+             capture["binding"],
+             capture["requested_uri"]
+           ),
+         prior = state.cache["records"][key],
+         true <- revision(prior || missing(key)) == args["expected_selection_revision"],
+         current = prior && prior["value"]["source_id"] == source["source_id"],
+         true <-
+           current == true or
+             revision(prior || missing(key)) == capture["selection_base_revision"],
+         state =
+           state
+           |> Map.put(:fetched_capture, capture)
+           |> Map.put(:expected, record)
+           |> Map.put(:fetch_selection_deadline, source["expires_at_ms"]),
+         :ok <- fetch_origin_capacity(state) do
+      stored = %{
+        "status" => "stored",
+        "source_id" => source["source_id"],
+        "source_key" => source["source_key"],
+        "generation" => source["generation"],
+        "revision" => record["revision"]
+      }
+
+      if current == true do
+        version = %{
+          "origin_key" => key,
+          "revision" => prior["revision"],
+          "generation" => prior["value"]["generation"],
+          "source_id" => source["source_id"],
+          "body_sha256" => source["content_sha256"]
+        }
+
+        {:done,
+         {:ok,
+          stored
+          |> Map.put("selection_status", "already_selected")
+          |> Map.put("fetch_version", version)}}
+      else
+        commit_fetch_origin(state, stored, state.cache["generation"])
+      end
+    else
+      _ -> error(:retained_fetch_selection_refused)
+    end
+  end
+
   defp perform(%{operation: :snapshot} = state) do
     with :ok <- snapshot_capacity(state),
          {:ok, sources, projections, tokens, gaps} <- selected(state) do
@@ -928,7 +1140,8 @@ defmodule IpseKnowledge.Store do
                   Enum.map(root["projections"], fn {key, head} ->
                     Map.put(Map.drop(head, ["ref"]), "id", key)
                   end)
-              }}}
+              }
+              |> put_fetch_version(state, root)}}
           else
             _ -> error(:store_corrupt)
           end
@@ -972,7 +1185,7 @@ defmodule IpseKnowledge.Store do
          true <- record == nil or record["value"]["state"] != "suppressed",
          source_key = Evidence.sha256(state.args["source_id"]),
          root = %{
-           "format" => 1,
+           "format" => if(record, do: record["value"]["format"], else: 1),
            "kind" => "root",
            "partition" => state.profile["partition"],
            "source_key" => source_key,
@@ -998,6 +1211,8 @@ defmodule IpseKnowledge.Store do
     record = find_root(state, args["source_id"])
 
     with :ok <- writable(record, args["expected_revision"], args["generation"]),
+         :ok <- immutable_fetch_body(record),
+         :ok <- fetch_origin_capacity(state),
          origin = origin(state, args),
          attrs =
            args
@@ -1036,10 +1251,16 @@ defmodule IpseKnowledge.Store do
              :ok <-
                capacity(
                  state,
-                 length(plan.pages) + if(record, do: 0, else: 1),
+                 length(plan.pages) + if(record, do: 0, else: 1) + fetch_origin_slots(state),
                  if(record, do: 0, else: 1)
                ),
-             :ok <- effect_plan(state, page_effects(state.profile, plan.pages) + 2, 0) do
+             :ok <-
+               effect_plan(
+                 state,
+                 page_effects(state.profile, plan.pages) + 2 +
+                   if(state[:fetched_capture], do: 1, else: 0),
+                 0
+               ) do
           desired =
             active_root(manifest_ref(source, plan.document), plan.progress, plan.chunks, %{}, nil)
 
@@ -1939,9 +2160,12 @@ defmodule IpseKnowledge.Store do
     do: %{"key" => page["key"], "sha256" => Evidence.id("page-record", [ordered(page["value"])])}
 
   defp selected(state) do
-    Enum.reduce_while(roots(state), {:ok, [], %{}, [], []}, fn record,
-                                                               {:ok, sources, projections, tokens,
-                                                                gaps} ->
+    origin_tokens = Enum.map(fetch_origins(state), &token/1)
+
+    Enum.reduce_while(roots(state), {:ok, [], %{}, origin_tokens, []}, fn record,
+                                                                          {:ok, sources,
+                                                                           projections, tokens,
+                                                                           gaps} ->
       root = record["value"]
       token = token(record)
 
@@ -1959,6 +2183,8 @@ defmodule IpseKnowledge.Store do
         true ->
           with {:ok, source} <- load_source(state, root),
                {:ok, projection} <- load_projections(state, root) do
+            source = select_fetch_version(state, source)
+
             {:cont,
              {:ok, sources ++ [source], Map.put(projections, source["source_key"], projection),
               tokens ++ [token], gaps}}
@@ -2536,7 +2762,7 @@ defmodule IpseKnowledge.Store do
     source
     |> Map.take(@source_fields -- ["text"])
     |> Map.merge(%{
-      "format" => 1,
+      "format" => source_root_format(source),
       "kind" => "root",
       "source_key" => source["source_key"],
       "state" => "active",
@@ -2547,6 +2773,17 @@ defmodule IpseKnowledge.Store do
       "draft" => draft
     })
   end
+
+  defp source_root_format(source) do
+    if get_in(source, ["origin", "kind"]) == "fetch" and
+         get_in(source, ["origin", "receipt", "kind"]) == "research.fetch_transfer" and
+         get_in(source, ["origin", "receipt", "version"]) === 2,
+       do: 2,
+       else: 1
+  end
+
+  defp immutable_fetch_body(%{"value" => %{"format" => 2}}), do: {:error, :immutable_fetch_body}
+  defp immutable_fetch_body(_), do: :ok
 
   defp origin(state, args) do
     imported = args["historical_import"]
@@ -2719,35 +2956,253 @@ defmodule IpseKnowledge.Store do
       end)
       |> Enum.sort_by(& &1["key"])
 
+  defp fetch_origins(state),
+    do:
+      state.cache["records"]
+      |> Map.values()
+      |> Enum.filter(fn row ->
+        not row["deleted"] and get_in(row, ["value", "kind"]) == "fetch_origin" and
+          get_in(row, ["value", "partition"]) == state.profile["partition"]
+      end)
+      |> Enum.sort_by(& &1["key"])
+
+  defp commit_fetch_origin(state, stored, generation) do
+    capture = state.fetched_capture
+
+    key =
+      fetch_origin_key(state.profile["partition"], capture["binding"], capture["requested_uri"])
+
+    prior = state.cache["records"][key]
+
+    selector = %{
+      "format" => 1,
+      "kind" => "fetch_origin",
+      "partition" => state.profile["partition"],
+      "source_key" => key,
+      "source_id" => stored["source_id"],
+      "generation" => if(prior, do: prior["value"]["generation"] + 1, else: 1),
+      "state" => "active",
+      "content_sha256" => capture["body_sha256"],
+      "binding" => capture["binding"],
+      "requested_uri" => capture["requested_uri"],
+      "observed_uri" => capture["observed_uri"],
+      "observed_at_ms" => capture["observed_at_ms"],
+      "capture_sha256" => Evidence.sha256(json(capture))
+    }
+
+    io(
+      Map.put(state, :fetched_stored, stored),
+      :cas_root,
+      %{
+        "key" => key,
+        "expected_revision" => revision(prior || missing(key)),
+        "expected_generation" => generation,
+        "next_root" => selector,
+        "write_before_ms" => state[:fetch_selection_deadline]
+      },
+      :fetch_origin_committed
+    )
+  end
+
+  defp fetch_origin_capacity(%{fetched_capture: capture} = state) do
+    key =
+      fetch_origin_key(state.profile["partition"], capture["binding"], capture["requested_uri"])
+
+    prior = state.cache["records"][key]
+
+    cond do
+      prior && (prior["deleted"] or prior["value"]["kind"] != "fetch_origin") ->
+        {:error, :fetch_origin_unavailable}
+
+      prior && prior["value"]["generation"] >= Evidence.safe_integer_max() ->
+        {:error, :fetch_origin_limit}
+
+      prior == nil and length(fetch_origins(state)) >= 32 ->
+        {:error, :fetch_origin_limit}
+
+      true ->
+        capacity(state, if(prior, do: 0, else: 1), 0)
+    end
+  end
+
+  defp fetch_origin_capacity(_), do: :ok
+
+  defp retained_fetch?(state, source, selection) do
+    origin = source["origin"]
+    receipt = origin["receipt"]
+    descriptor = if is_map(receipt), do: receipt["descriptor"]
+
+    origin["kind"] == "fetch" and origin["historical"] == false and
+      origin["store_profile"] == state.name and
+      origin["partition_or_scope"] == state.profile["partition"] and
+      source["generation"] === 1 and source["event_at_ms"] == nil and
+      source["source_id"] == provided_transfer_id(source["text"]) and
+      byte_size(source["text"]) in 1..4096 and
+      Evidence.current?(source, System.system_time(:millisecond)) and
+      keys?(
+        receipt,
+        ~w(version kind descriptor binding requested_uri observed_uri media_type observed_at_ms body_sha256 quote start_byte end_byte coverage selection_base_revision)
+      ) and
+      Evidence.safe_uint?(receipt["selection_base_revision"]) and
+      receipt["version"] === 2 and receipt["kind"] == "research.fetch_transfer" and
+      receipt["binding"] == selection.fetch["binding"] and
+      receipt["requested_uri"] == selection.args["uri"] and
+      receipt["observed_uri"] == source["uri"] and
+      receipt["observed_at_ms"] == source["observed_at_ms"] and
+      receipt["body_sha256"] == source["content_sha256"] and
+      receipt["coverage"] === %{"complete" => true} and
+      is_binary(receipt["quote"]) and byte_size(receipt["quote"]) in 1..1024 and
+      provided_quote_range(source["text"], receipt["quote"]) ==
+        {:ok, receipt["start_byte"], receipt["end_byte"]} and
+      keys?(descriptor, ~w(version kind operation_id source_sha256 byte_count)) and
+      descriptor["version"] === 1 and descriptor["kind"] == "mcp.text" and
+      id?(descriptor["operation_id"]) and
+      Evidence.sha256?(descriptor["source_sha256"]) and is_integer(descriptor["byte_count"]) and
+      descriptor["byte_count"] in 1..65_536
+  rescue
+    _ -> false
+  end
+
+  defp fetch_origin_slots(%{fetched_capture: capture} = state) do
+    key =
+      fetch_origin_key(state.profile["partition"], capture["binding"], capture["requested_uri"])
+
+    if Map.has_key?(state.cache["records"], key), do: 0, else: 1
+  end
+
+  defp fetch_origin_slots(_), do: 0
+
+  # This selects captured bytes in ordinary State; it establishes no remote
+  # freshness, native-note authority or permission for a later effect.
+  defp select_fetch_version(state, %{"origin" => %{"kind" => "fetch"}} = source) do
+    receipt = source["origin"]["receipt"]
+
+    if receipt["kind"] == "research.fetch_transfer" do
+      key =
+        fetch_origin_key(state.profile["partition"], receipt["binding"], receipt["requested_uri"])
+
+      selected = state.cache["records"][key]
+
+      current =
+        selected && not selected["deleted"] &&
+          selected["value"]["source_id"] == source["source_id"]
+
+      put_in(source, ["origin", "historical"], current !== true)
+    else
+      source
+    end
+  end
+
+  defp select_fetch_version(_, source), do: source
+
+  defp fetch_version(state, root) do
+    receipt = get_in(root, ["origin", "receipt"])
+
+    if is_map(receipt) and receipt["kind"] == "research.fetch_transfer" do
+      key =
+        fetch_origin_key(state.profile["partition"], receipt["binding"], receipt["requested_uri"])
+
+      case state.cache["records"][key] do
+        %{"deleted" => false, "value" => selector} = row ->
+          %{
+            "status" =>
+              if(selector["source_id"] == root["source_id"], do: "current", else: "historical"),
+            "origin_key" => key,
+            "revision" => row["revision"],
+            "generation" => selector["generation"],
+            "selected_source_id" => selector["source_id"]
+          }
+
+        _ ->
+          %{"status" => "untracked"}
+      end
+    end
+  end
+
+  defp put_fetch_version(details, state, root) do
+    case fetch_version(state, root) do
+      nil -> details
+      version -> Map.put(details, "fetch_version", version)
+    end
+  end
+
+  defp valid_fetch_origin?(value, partition) do
+    keys?(
+      value,
+      ~w(format kind partition source_key source_id generation state content_sha256 binding requested_uri observed_uri observed_at_ms capture_sha256)
+    ) and
+      value["format"] === 1 and value["kind"] == "fetch_origin" and
+      value["partition"] == partition and value["state"] == "active" and
+      name?(value["binding"]) and
+      Enum.all?(~w(requested_uri observed_uri), fn key ->
+        text = value[key]
+        is_binary(text) and String.valid?(text) and byte_size(text) in 1..512
+      end) and Evidence.safe_positive?(value["generation"]) and
+      Evidence.safe_uint?(value["observed_at_ms"]) and Evidence.sha256?(value["content_sha256"]) and
+      Evidence.sha256?(value["capture_sha256"]) and
+      value["source_id"] == "research.provided:" <> value["content_sha256"] and
+      value["source_key"] == fetch_origin_key(partition, value["binding"], value["requested_uri"])
+  end
+
+  defp valid_fetch_target?(cache, value, partition) do
+    target = cache["records"][root_key(partition, Evidence.sha256(value["source_id"]))]
+
+    if target != nil and not target["deleted"] do
+      root = target["value"]
+      receipt = get_in(root, ["origin", "receipt"])
+
+      root["state"] == "suppressed" or
+        (root["state"] == "active" and root["source_id"] == value["source_id"] and
+           root["content_sha256"] == value["content_sha256"] and
+           get_in(root, ["origin", "kind"]) == "fetch" and is_map(receipt) and
+           receipt["kind"] == "research.fetch_transfer" and receipt["version"] === 2 and
+           Evidence.safe_uint?(receipt["selection_base_revision"]) and
+           Enum.all?(
+             ~w(binding requested_uri observed_uri observed_at_ms),
+             &(receipt[&1] == value[&1])
+           ) and
+           Evidence.sha256(json(receipt)) == value["capture_sha256"])
+    else
+      false
+    end
+  end
+
   defp valid_partition(cache, partition) do
-    if Enum.all?(cache["records"], fn {key, record} ->
-         value = record["value"]
+    origins = fetch_origins(%{cache: cache, profile: %{"partition" => partition}})
 
-         if record["deleted"] or not is_map(value) or value["partition"] != partition do
-           true
-         else
-           case value["kind"] do
-             "root" ->
-               valid_root?(value, partition) and key == root_key(partition, value["source_key"])
+    if length(origins) <= 32 and
+         Enum.all?(cache["records"], fn {key, record} ->
+           value = record["value"]
 
-             "page" ->
-               valid_page?(value, partition) and
-                 key ==
-                   page(
-                     partition,
-                     value["source_key"],
-                     value["generation"],
-                     value["draft_id"],
-                     value["page_kind"],
-                     value["ordinal"],
-                     value["body"]
-                   )["key"]
+           if record["deleted"] or not is_map(value) or value["partition"] != partition do
+             true
+           else
+             case value["kind"] do
+               "fetch_origin" ->
+                 valid_fetch_origin?(value, partition) and key == value["source_key"] and
+                   valid_fetch_target?(cache, value, partition)
 
-             _ ->
-               false
+               "root" ->
+                 valid_root?(value, partition) and key == root_key(partition, value["source_key"])
+
+               "page" ->
+                 valid_page?(value, partition) and
+                   key ==
+                     page(
+                       partition,
+                       value["source_key"],
+                       value["generation"],
+                       value["draft_id"],
+                       value["page_kind"],
+                       value["ordinal"],
+                       value["body"]
+                     )["key"]
+
+               _ ->
+                 false
+             end
            end
-         end
-       end) do
+         end) do
       :ok
     else
       {:error, :store_corrupt}
@@ -2756,7 +3211,8 @@ defmodule IpseKnowledge.Store do
 
   defp valid_root?(%{"state" => "suppressed"} = root, partition) do
     keys?(root, ~w(format kind partition source_key generation state suppressed_at_ms)) and
-      root["format"] === 1 and root["kind"] == "root" and root["partition"] == partition and
+      is_integer(root["format"]) and root["format"] in [1, 2] and root["kind"] == "root" and
+      root["partition"] == partition and
       Evidence.sha256?(root["source_key"]) and Evidence.safe_positive?(root["generation"]) and
       Evidence.safe_uint?(root["suppressed_at_ms"]) and fits?(root)
   end
@@ -2764,7 +3220,11 @@ defmodule IpseKnowledge.Store do
   defp valid_root?(root, partition) do
     attrs = root |> Map.take(@source_fields) |> Map.put("text", "")
 
-    keys?(root, @root_fields) and root["format"] === 1 and root["kind"] == "root" and
+    keys?(root, @root_fields) and root["format"] === source_root_format(root) and
+      root["kind"] == "root" and
+      (root["format"] != 2 or
+         (Evidence.safe_uint?(get_in(root, ["origin", "receipt", "selection_base_revision"])) and
+            root["source_id"] == "research.provided:" <> root["content_sha256"])) and
       root["partition"] == partition and root["state"] in ~w(active staging) and
       Evidence.source_metadata?(attrs) and
       root["source_key"] == Evidence.sha256(root["source_id"]) and
@@ -3034,11 +3494,14 @@ defmodule IpseKnowledge.Store do
       "effects_used" => state.effects,
       "reads_used" => state.reads,
       "revalidate_effects_worst_case" =>
-        if(state.profile["kind"] == "state", do: 0, else: div(length(roots(state)) + 7, 8)),
+        if(state.profile["kind"] == "state",
+          do: 0,
+          else: div(length(roots(state)) + length(fetch_origins(state)) + 7, 8)
+        ),
       "revalidate_reads_worst_case" =>
         if(state.profile["kind"] == "state",
-          do: length(roots(state)),
-          else: 15 * div(length(roots(state)) + 7, 8)
+          do: length(roots(state)) + length(fetch_origins(state)),
+          else: 15 * div(length(roots(state)) + length(fetch_origins(state)) + 7, 8)
         ),
       "complete" => true
     }

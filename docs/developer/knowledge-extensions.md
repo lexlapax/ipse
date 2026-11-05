@@ -1532,8 +1532,56 @@ requested/observed URI, actual effect-result descriptor and exact unique quote
 range. The origin is fetched data with `native_receipt: false`; the stored
 receipt is not a grant or independently authenticated current-source lease.
 Current managed-source/State-write guards stay in force. Same-body forgetting
-covers URI/quote aliases and fresh Sessions in the exact shared namespace, but
-changed-body, stable-origin, cross-backend and derivative suppression remain open.
+covers URI/quote aliases and fresh Sessions in the exact shared namespace.
+
+A new fetched body uses evidence-root format 2 and a version-2 capture receipt
+with the original host selector base; it keeps that root and body immutable. The
+format applies from its first staging claim through publication and suppression.
+Provided/document roots retain their earlier format. Old Store workers must
+refuse format 2 even when no selector was published, rather than treating an
+unselected body as current. Match Research and Corpus artifacts from one build
+and close older pinned Sessions before upgrade; their catalog cannot change in
+place. New readers can inspect legacy format-1 captures but keep them untracked
+and unavailable for current selection/recovery. Preserve their bytes and receipts;
+do not fabricate a base revision or silently migrate their attribution.
+
+A separate bounded
+`fetch_origin` record selects a body for the configured binding and requested URI
+within that partition. The initial validated State snapshot supplies a selector
+base revision recorded with the capture. After known body publication, one CAS
+advances the selector only under the actual resulting namespace generation and
+expected selector revision. Publication order comes from those host State
+revisions, never the gateway's reported timestamp. Preserve older bodies and their
+captured citations; query selection marks a superseded or untracked fetched body
+historical without rewriting its stored root. This is ordinary unverified State
+version selection, not remote freshness or a native current-use receipt.
+
+Snapshot revalidation includes both source roots and selectors. With 32 roots and
+32 selectors, `Store.start_revalidation/3` composes at most two existing 32-token
+reads. It carries cumulative counters and requires the same observed namespace
+generation across them. The existing public single-call bound remains 32. Worker
+continuation state stays process-local; only the bounded request/result envelope
+crosses the SDK transport. Check actual encoded envelopes, including State scan
+responses and paged final output, rather than assuming a token-count bound proves
+the 16-KiB object limit.
+
+For a known body followed by an unconfirmed selector, trace the explicit
+command-only `Research.select_retained/2` through `Store.start_fetch_selection/4`.
+Freshly load the exact source revision and pages; require its canonical body hash,
+original fetch binding/URI and receipt, active metadata and original selector base.
+Then make only an ordinary approved selector CAS. Forward a finite source expiry
+through the existing `write_before_ms` fence. An already selected target is a
+read-only observation; it cannot resolve the old unknown operation. A genuinely
+later conflicting selector, even one with an older gateway timestamp, prevents
+recovery from the old base. Expired/suppressed, altered and legacy untracked
+captures refuse. Default same-body capture refusal remains unchanged.
+
+Exercise denial before and after body publication, selector unknown-before and
+unknown-after, independent inspection and a fresh explicit selection. Verify no
+MCP request, repeated body write, attribution change or old-operation settlement
+occurs during recovery. Interpose a later selection and mutate source revisions,
+receipt bindings, expiry and body bytes to check refusal before a write.
+Cross-backend and derivative suppression remain separate work.
 The [operator task](../operator/research.md#fetch-and-retain-a-selected-source)
 shows complete selection and recovery; no gateway is installed implicitly.
 

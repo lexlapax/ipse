@@ -2121,24 +2121,19 @@ defmodule IpseKnowledge.Corpus do
   defp revalidate(state) do
     args = %{"tokens" => state.ctx.snapshot["tokens"]}
 
-    args =
-      if Map.has_key?(state.ctx, :remote) do
-        counts = Map.take(state.ctx.snapshot["coverage"], ~w(effects_used reads_used))
+    counts = Map.take(state.ctx.snapshot["coverage"], ~w(effects_used reads_used))
 
-        counts =
-          if state.phase == :query_rerank and
-               is_map(state.ctx.rerank_profile) and
-               state.ctx.rerank_profile["kind"] == "model_complete",
-             do: Map.update!(counts, "effects_used", &(&1 + 1)),
-             else: counts
+    counts =
+      if state.phase == :query_rerank and
+           is_map(state.ctx.rerank_profile) and
+           state.ctx.rerank_profile["kind"] == "model_complete",
+         do: Map.update!(counts, "effects_used", &(&1 + 1)),
+         else: counts
 
-        Map.merge(args, counts)
-      else
-        args
-      end
+    args = Map.merge(args, counts)
 
     advance(
-      Store.start(state.ctx.args["store"], state.ctx.store_profile, :revalidate, args),
+      Store.start_revalidation(state.ctx.args["store"], state.ctx.store_profile, args),
       %{state | phase: :query_revalidate}
     )
   end
@@ -2768,9 +2763,14 @@ defmodule IpseKnowledge.Corpus do
 
       is_list(get_in(state.ctx, [:snapshot, "tokens"])) ->
         advance(
-          Store.start(state.ctx.args["store"], state.ctx.store_profile, :revalidate, %{
-            "tokens" => state.ctx.snapshot["tokens"]
-          }),
+          Store.start_revalidation(
+            state.ctx.args["store"],
+            state.ctx.store_profile,
+            Map.merge(
+              Map.take(state.ctx.snapshot["coverage"], ~w(effects_used reads_used)),
+              %{"tokens" => state.ctx.snapshot["tokens"]}
+            )
+          ),
           %{
             state
             | phase: :document_use_store,

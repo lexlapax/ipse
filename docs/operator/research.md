@@ -503,7 +503,18 @@ IPSE_HOME="$IPSE_FETCH_HOME" ./bin/ipse chat --provider demo \
 ```
 
 Review the printed artifact digests, manifests and generated trust before
-selection. Unlike `state-retained`, this preset adds selected MCP access as well
+selection. Build and review matching Research and Corpus workers from the same
+source revision; update any other Research worker sharing that State partition
+as well. New fetched bodies use evidence-root format 2 and capture receipt
+version 2. Older workers refuse that root even if selector publication has not
+finished. The unchanged artifact semantic-version label does not promise storage
+compatibility; use the reviewed content digests and matching storage contract.
+Close previously pinned Sessions before writing this format, then start a new
+Session with both new artifacts. Resume cannot replace an old pinned catalog in
+place. Legacy format-1 captures stay inspectable/exportable without a rewrite,
+but their missing selector base cannot establish current selection or recovery.
+
+Unlike `state-retained`, this preset adds selected MCP access as well
 as State access. Approve the exact fetch URI and, separately, the proposed State
 writes. For a compatible gateway serving the storage chapter's example body,
 run each command separately and wait for `Finished.`:
@@ -522,17 +533,70 @@ is attribution to a recorded fetch, not permission or a native current-source
 receipt. Later stored metadata alone authenticates no new/current fetch.
 Gateway truth, identity and reported timestamps remain unverified.
 
+For each store partition, configured fetch binding and requested URI, a separate
+State selector identifies the last approved captured body. A changed body gets a
+new immutable canonical record before that selector advances. Earlier bytes and
+their original citation receipts remain intact; the ordinary current query treats
+those versions as historical. Here, selected means a local State version, not a
+live-source check, independent publisher identity or native-note authority.
+Gateway timestamps remain attribution and eligibility metadata; State revisions
+order selection. The existing 32-source-root bound includes retained older body
+versions. Selectors also consume bounded State record space. Older captures
+without selection metadata remain untracked and cannot establish a current fetch.
+
 Inspect/forget the returned source ID with the Corpus commands in the previous
 procedure. Re-fetching identical body bytes under another URI/quote or fresh
 Session cannot restore them in that same namespace. A malformed, partial,
-hash-mismatched or missing fetch refuses before State writes. A denied State
-approval can leave a recorded denied intent, but changes no stored records.
-An interrupted write may have happened: preserve its journal/configuration and
-inspect storage before explicit recovery; never automatically retry it.
+hash-mismatched or missing fetch refuses before State writes. Denying the first
+State write leaves storage unchanged. Refusal of a later write can leave earlier
+confirmed body publication intact without a confirmed selector. The result then
+identifies that known body and requests inspection. An interrupted selector may
+already have changed: preserve its journal/configuration and inspect storage;
+never resume or automatically retry the uncertain operation.
+
+### Recover a retained body selection
+
+Use the same admitted Research/Corpus artifacts, State scope/partition, configured
+fetch binding and requested URI. Obtain the canonical body ID from the known
+publication result or its journal. Inspect its revision and current selection,
+then export the retained bytes and original attribution before choosing them:
+
+```text
+/ext ext__corpus__source {"store":"notes","action":"inspect","args":{"source_id":"research.provided:COPY_THE_64_HEX_BODY_DIGEST"}}
+/ext ext__corpus__source {"store":"notes","action":"export","args":{"source_id":"research.provided:COPY_THE_64_HEX_BODY_DIGEST","cursor":null,"limit":2}}
+```
+
+Replace the placeholder with the complete returned ID. Follow the export cursor
+when another page remains. Inspection reports the source `revision` and, for
+tracked fetched bytes, `fetch_version` with its selector revision and selected
+source. If the desired body is already selected, a later observation does not
+resolve or settle the old unknown operation.
+
+For example, if inspection actually reports source revision 2 and selector
+revision 1 for the captured body you want, request this separate explicit command:
+
+```text
+/ext ext__research__select_retained {"store":"notes","fetch":"web","uri":"local:release-policy","source_id":"research.provided:COPY_THE_64_HEX_BODY_DIGEST","source_revision":2,"expected_selection_revision":1}
+```
+
+Use the actual inspected revisions. This command is not a model tool. Review its
+ordinary State write separately. It verifies the unchanged canonical body,
+original fetch binding/URI, current metadata and original selector base revision,
+then conditionally changes only the selector. It performs no fetch or body
+publication and supplies no native permission. A confirmed result says
+`selection_status: selected`; `already_selected` is a read-only observation and
+makes no State write. Both report `fresh_fetch: false` and `body_republished: false`.
+
+The original base revision prevents replacing a later conflicting selection even
+if gateway timestamps run ahead or behind. A changed body/revision, expired or
+forgotten source, different binding/URI or legacy capture without a recorded base
+refuses. A finite stored expiry remains the write deadline. Preserve and inspect
+another unconfirmed result; no old unknown is replayed, refunded or settled by
+this command. Do not delete tombstones or change the source ID to force selection.
 
 The body/quote bounds remain 4,096/1,024 UTF-8 bytes with unique quote matching.
-Changed-body/stable-origin tracking, derivative or cross-backend invalidation and
-managed-notes/model-selected fetched retention remain unqualified. This is not a
+Derivative or cross-backend invalidation and model-selected fetched retention
+remain unqualified; this State path supplies no managed-note authority. This is not a
 promise to suppress every restatement or erase already captured journal text.
 
 ## Add an explicitly named reranker
