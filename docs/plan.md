@@ -77,7 +77,11 @@ These separate outcomes do not form a retroactive all-green aggregate. A newer
 against `9b1a4e5e` ends 4,028/4,029 passed, 130 skipped and 123 excluded, with
 all 44 group integrity checks passing and no invalid cases. Its sole stale Graph
 catalog fixture failure has a separate later focused pass; this aggregate remains
-failed. Later timer, fetched-Research and coalesced-reader changes retain their
+failed. A [later frozen 478-file run](archive/2026-10-26-p30-p31-implementation/source-regression-478-20261104.md)
+against `18e3e0b1` ends with 4,048 passed, one failed and one invalid; all 44
+integrity checks pass. Separate capacity and Research fixture repairs now pass
+their focused controls, without reclassifying that aggregate. Later timer,
+fetched-Research and coalesced-reader changes retain their
 focused evidence outside that freeze. The committed-runtime retained-cohort
 checks remain open before notes acceptance.
 

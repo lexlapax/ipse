@@ -75,6 +75,8 @@ nor resource/offline qualification. No daemon configuration or existing model wa
 
 ## Source checkpoint evidence — 2026-11-04
 
+- [Frozen 478-file source regression](source-regression-478-20261104.md) remains failed with 4,048 passed, one failed and one invalid, despite all 44 integrity checks passing. Separate capacity and Research fixture repairs pass their focused checks; no new whole-suite pass is implied.
+
 - [Ordinary final-use coalescing](ordinary-final-coalescing-20261104.md) reuses the existing observer in both protected passes after a concrete storage-only five-second expiry reproduction; fresh eight-source delivery/Saved/close/idle and separate root-withdrawal controls pass. The first fixture failure, quarantined retained request and day/annual gates remain separate.
 - [Fetched-body selection and explicit recovery](research-fetch-origin-lifecycle-20261104.md) passes one fresh ordinary MCP/State lifecycle with known-body/denied-selector recovery, immutable citations, competing revisions and Saved/idle no replay. Paired format-2 compatibility and pure boundaries stay distinct from installed, quality and cross-store qualification.
 

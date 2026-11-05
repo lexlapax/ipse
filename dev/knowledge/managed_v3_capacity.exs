@@ -374,6 +374,10 @@ defmodule Ipse.Development.ManagedV3Capacity do
 
           [{:def, meta, [head, [do: body]]}]
 
+        # This adversarial-test interposition is not part of publication/readback.
+        {:defp, _, [{:coalesced_root_interposition, _, _}, _]} ->
+          []
+
         {:defp, meta, args} ->
           [{:def, meta, args}]
 
