@@ -1,0 +1,69 @@
+--- a/docs/operator/recovery.md
++++ b/docs/operator/recovery.md
+@@ -6,8 +6,12 @@
+ 
+ A managed extension input can also remain unconfirmed after some or all bytes
+ reached its worker. A delivered-input receipt describes transport settlement;
+-it does not establish callback completion or a successful later effect. Preserve
+-the original Session journal and inspect its action outcomes before starting new
++it does not establish callback completion or a successful later effect. The
++worker's final output must pass a separate current-source check. Successful reads
++can therefore be followed by a withheld result and a failed recall job, even
++when cleanup is confirmed. That failure does not undo an earlier effect or
++establish that an uncertain effect never ran. Preserve the original Session
++journal and inspect the action and output-release outcomes before starting new
+ work. Idle resume recreates no pending input and sends no saved callback again.
+ 
+ ## Find the original session
+--- a/docs/developer/extension-events.md
++++ b/docs/developer/extension-events.md
+@@ -130,10 +130,21 @@
+ | Job has known failed action | Stop later declarations; before-request failure prevents inference | May continue with notice |
+ | Job has unknown action/cleanup | Stop lane | Stop lane |
+ 
+-Job success needs valid final result, confirmed cleanup, and every action ok/answered.
+-Denied/conflicting/failed/cancelled actions fail it regardless of callback claims.
+-Pure successful values remain assertions. Known pre-execution refusal may be not-
+-started; interrupted execution cannot. After-turn failure cannot undo answer/accounting.
++Job success needs a valid final result, confirmed cleanup, and every action
++ok/answered. A managed result additionally needs current output admission:
++successful reads alone do not authorize its release. If final revalidation
++withholds the output, confirmed cleanup records a failed job while preserving
++the earlier action outcomes. Denied/conflicting/failed/cancelled actions also
++fail it regardless of callback claims. Pure successful values remain assertions.
++Known pre-execution refusal may be not-started; interrupted execution cannot.
++After-turn failure cannot undo answer/accounting.
++
++During reconstruction, `Subscriptions` binds that managed outcome to the exact
++job parent and ordered actions, raw result, output admission and cleanup through
++the existing `ManagedOutput` validators. Only confirmed cleanup can establish a
++completed or failed managed delivery. Missing or unknown cleanup cannot be
++relabeled as a known failure; an interrupted delivery retains its unknown outcome.
++These historical checks recreate neither a current-source lease nor a callback.
+ 
+ ## Preserve questions and delayed-write identity
+ 
+@@ -264,6 +275,7 @@
+ 
+ ```sh
+ mix test test/ipse/extension/subscriptions_test.exs test/ipse/extension/event_job_test.exs
++mix test test/ipse/extension/managed_event_output_replay_test.exs
+ mix test test/ipse/extension/feeds_test.exs test/ipse/extension/history_test.exs
+ ```
+ 
+--- a/docs/developer/persistence.md
++++ b/docs/developer/persistence.md
+@@ -20,7 +20,12 @@
+ unknown tool outcomes without executing a tool. `Saved.restore/2` additionally
+ reconstructs accounting, extension action state, saved-result indexes, research
+ validation, pending questions and the last recorded model/request facts. It
+-returns those facts without starting a Session or reading source pages.
++returns those facts without starting a Session or reading source pages. Event-job
++reconstruction also validates any managed output-release chain against its exact
++parent, actions and raw result. Confirmed cleanup with withdrawn output preserves
++the failed job even if its earlier actions succeeded; missing or unknown cleanup
++cannot authenticate that known outcome. Reconstruction does not repeat the
++callback, recheck live source eligibility or settle an uncertain effect.
+ For new reference-layout sessions it also validates the admitted header/catalog,
+ reference epochs, positions, generations and turn bindings. Completed native tool
+ results retain recorded order. References cannot close an unfinished group by

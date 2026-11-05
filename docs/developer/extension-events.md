@@ -130,10 +130,21 @@ No payload exposes hidden reasoning, credentials, raw native data, or arbitrary 
 | Job has known failed action | Stop later declarations; before-request failure prevents inference | May continue with notice |
 | Job has unknown action/cleanup | Stop lane | Stop lane |
 
-Job success needs valid final result, confirmed cleanup, and every action ok/answered.
-Denied/conflicting/failed/cancelled actions fail it regardless of callback claims.
-Pure successful values remain assertions. Known pre-execution refusal may be not-
-started; interrupted execution cannot. After-turn failure cannot undo answer/accounting.
+Job success needs a valid final result, confirmed cleanup, and every action
+ok/answered. A managed result additionally needs current output admission:
+successful reads alone do not authorize its release. If final revalidation
+withholds the output, confirmed cleanup records a failed job while preserving
+the earlier action outcomes. Denied/conflicting/failed/cancelled actions also
+fail it regardless of callback claims. Pure successful values remain assertions.
+Known pre-execution refusal may be not-started; interrupted execution cannot.
+After-turn failure cannot undo answer/accounting.
+
+During reconstruction, `Subscriptions` binds that managed outcome to the exact
+job parent and ordered actions, raw result, output admission and cleanup through
+the existing `ManagedOutput` validators. Only confirmed cleanup can establish a
+completed or failed managed delivery. Missing or unknown cleanup cannot be
+relabeled as a known failure; an interrupted delivery retains its unknown outcome.
+These historical checks recreate neither a current-source lease nor a callback.
 
 ## Preserve questions and delayed-write identity
 
@@ -264,6 +275,7 @@ without rerunning reads. Missing/changed/omitted spans refuse before repair.
 
 ```sh
 mix test test/ipse/extension/subscriptions_test.exs test/ipse/extension/event_job_test.exs
+mix test test/ipse/extension/managed_event_output_replay_test.exs
 mix test test/ipse/extension/feeds_test.exs test/ipse/extension/history_test.exs
 ```
 

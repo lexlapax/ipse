@@ -272,6 +272,7 @@ defmodule Ipse.Extension.Subscriptions do
         job: nil,
         job_completed: false,
         job_actions: [],
+        job_release: nil,
         unsafe: false,
         settling: false,
         request: nil,
@@ -445,6 +446,7 @@ defmodule Ipse.Extension.Subscriptions do
            job: nil,
            job_completed: false,
            job_actions: [],
+           job_release: nil,
            unsafe: false,
            settling: false,
            request: nil,
@@ -584,7 +586,8 @@ defmodule Ipse.Extension.Subscriptions do
            count: s.count + 1,
            job: nil,
            job_completed: false,
-           job_actions: []
+           job_actions: [],
+           job_release: nil
        }}
     else
       _ -> @error
@@ -597,7 +600,7 @@ defmodule Ipse.Extension.Subscriptions do
          true <- event["outcome"] not in ~w(completed failed) or s.job_completed,
          true <-
            event["outcome"] not in ~w(completed failed) or
-             event["outcome"] == Invocation.event_outcome(s.job_actions),
+             event["outcome"] == job_outcome(s),
          true <- event["outcome"] != "not_started" or s.job == nil do
       key = {intent["identity"]["instance"], intent["declaration"]["id"]}
 
@@ -608,6 +611,7 @@ defmodule Ipse.Extension.Subscriptions do
            bound: Map.put(s.bound, key, event["outcome"]),
            job: nil,
            job_completed: false,
+           job_release: nil,
            unsafe:
              s.unsafe or
                (intent["declaration"]["mode"] == "job" and event["outcome"] == "unknown")
@@ -693,9 +697,59 @@ defmodule Ipse.Extension.Subscriptions do
 
   defp reduce(%{"type" => "extension_invocation_result"} = result, %{job: parent} = s, _, _)
        when parent != nil do
-    if Ipse.Extension.Invocation.result_intent(result) == parent and not s.job_completed,
-      do: {:ok, %{s | job_completed: true}},
-      else: @error
+    if Ipse.Extension.Invocation.result_intent(result) == parent and not s.job_completed and
+         (is_nil(s.job_release) or
+            Ipse.Session.ManagedOutput.bound_result?(s.job_release.intent, result)),
+       do:
+         {:ok,
+          %{
+            s
+            | job_completed: true,
+              job_release: if(s.job_release, do: %{s.job_release | raw: result})
+          }},
+       else: @error
+  end
+
+  defp reduce(%{"type" => "managed_output_release_intent"} = event, %{job: parent} = s, _, _)
+       when parent != nil do
+    if s.active != nil and not s.job_completed and is_nil(s.job_release) and
+         Ipse.Session.ManagedOutput.valid_intent?(
+           event,
+           parent["payload"]["session_id"],
+           parent,
+           Ipse.JSON.digest(s.job_actions)
+         ) do
+      {:ok, %{s | job_release: %{intent: event, raw: nil, admission: nil, cleanup: nil}}}
+    else
+      @error
+    end
+  end
+
+  defp reduce(%{"type" => "managed_output_release_result"} = event, %{job: parent} = s, _, _)
+       when parent != nil do
+    with true <- s.active != nil,
+         release when is_map(release) <- s.job_release,
+         true <- is_map(release.raw) and is_nil(release.admission),
+         facts = Ipse.Session.ManagedOutput.write_facts(s.job_actions),
+         true <-
+           Ipse.Session.ManagedOutput.valid_admission?(event, release.intent, release.raw, facts) do
+      {:ok, %{s | job_release: %{release | admission: event}}}
+    else
+      _ -> @error
+    end
+  end
+
+  defp reduce(%{"type" => "managed_output_release_cleanup"} = event, %{job: parent} = s, _, _)
+       when parent != nil do
+    with true <- s.active != nil,
+         release when is_map(release) <- s.job_release,
+         true <- is_map(release.admission) and is_nil(release.cleanup),
+         true <-
+           Ipse.Session.ManagedOutput.valid_cleanup?(event, release.intent, release.admission) do
+      {:ok, %{s | job_release: %{release | cleanup: event["status"]}}}
+    else
+      _ -> @error
+    end
   end
 
   defp reduce(%{"type" => "extension_action_result"} = result, %{job: parent} = s, _, _)
@@ -731,6 +785,17 @@ defmodule Ipse.Extension.Subscriptions do
     do: {:ok, %{s | active: nil}}
 
   defp reduce(_, s, _, _), do: {:ok, s}
+
+  defp job_outcome(%{job_release: nil} = s), do: Invocation.event_outcome(s.job_actions)
+
+  defp job_outcome(%{job_release: %{admission: admission, cleanup: "confirmed"}} = s)
+       when is_map(admission) do
+    if admission["decision"] == "current",
+      do: Invocation.event_outcome(s.job_actions),
+      else: "failed"
+  end
+
+  defp job_outcome(_), do: nil
 
   defp declaration?(%{"mode" => "feed"} = record), do: Ipse.Extension.Feeds.declaration?(record)
 

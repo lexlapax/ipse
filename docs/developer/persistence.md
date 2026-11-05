@@ -20,7 +20,12 @@ The timing of the receipt is part of correctness, not an implementation detail.
 unknown tool outcomes without executing a tool. `Saved.restore/2` additionally
 reconstructs accounting, extension action state, saved-result indexes, research
 validation, pending questions and the last recorded model/request facts. It
-returns those facts without starting a Session or reading source pages.
+returns those facts without starting a Session or reading source pages. Event-job
+reconstruction also validates any managed output-release chain against its exact
+parent, actions and raw result. Confirmed cleanup with withdrawn output preserves
+the failed job even if its earlier actions succeeded; missing or unknown cleanup
+cannot authenticate that known outcome. Reconstruction does not repeat the
+callback, recheck live source eligibility or settle an uncertain effect.
 For new reference-layout sessions it also validates the admitted header/catalog,
 reference epochs, positions, generations and turn bindings. Completed native tool
 results retain recorded order. References cannot close an unfinished group by

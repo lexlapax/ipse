@@ -249,6 +249,12 @@ following limits until the end-to-end paths are qualified:
    build, 33 backend cases including genuine native capacity fallback, and one
    actual eight-source Worker case pass separately. Ordinary retained recall
    remains open; the component timing sample does not establish annual feasibility.
+   A [managed event replay repair](archive/2026-10-26-p30-p31-implementation/managed-event-withdrawal-replay-20261104.md)
+   authenticates confirmed withdrawn output as a failed job despite successful
+   earlier reads. Six pure controls, 36 integrated cases and in-place reconstruction
+   of 207 actual events pass without replay or changes to the originals. The failed
+   partial read and quarantined reservation remain unchanged; live final-use
+   validation and retained recall are still open.
    Workload tooling can advance alongside the notes journey; the completed
    integrated workload depends on the Session and recall behavior it exercises.
 3. **Documents and local retrieval — P31C1b/D1/F.** Independently finish document

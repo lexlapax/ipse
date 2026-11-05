@@ -6,8 +6,12 @@ and never automatically repeats the action.
 
 A managed extension input can also remain unconfirmed after some or all bytes
 reached its worker. A delivered-input receipt describes transport settlement;
-it does not establish callback completion or a successful later effect. Preserve
-the original Session journal and inspect its action outcomes before starting new
+it does not establish callback completion or a successful later effect. The
+worker's final output must pass a separate current-source check. Successful reads
+can therefore be followed by a withheld result and a failed recall job, even
+when cleanup is confirmed. That failure does not undo an earlier effect or
+establish that an uncertain effect never ran. Preserve the original Session
+journal and inspect the action and output-release outcomes before starting new
 work. Idle resume recreates no pending input and sends no saved callback again.
 
 ## Find the original session

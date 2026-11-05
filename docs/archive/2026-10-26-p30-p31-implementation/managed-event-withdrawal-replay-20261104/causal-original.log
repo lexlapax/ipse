@@ -1,0 +1,4 @@
+before_event_subscription: :ok
+before_event_saved: :ok
+after_event_subscription: {:error, :invalid_extension_subscription}
+after_event_saved: {:error, :invalid_extension_action}
