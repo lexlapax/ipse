@@ -360,6 +360,9 @@ defmodule Ipse.JSONTest do
     invalid = [
       %{"type" => "object", "$ref" => "#/definitions/x"},
       %{"type" => "object", "oneOf" => []},
+      %{"type" => "object", "patternProperties" => %{"^(a+)+$" => %{"type" => "integer"}}},
+      %{"type" => "object", "propertyNames" => %{"pattern" => "^(a+)+$"}},
+      %{"type" => "object", "not" => %{"type" => "null"}},
       %{"type" => "object", "properties" => %{"x" => %{"type" => "string", "pattern" => ".*"}}},
       %{"type" => "object", "properties" => %{"x" => %{"type" => "string", "format" => "uri"}}},
       %{"type" => "mystery"},

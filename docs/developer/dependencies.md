@@ -26,7 +26,9 @@ mix test test/ipse/json_test.exs
 ```
 
 `Ipse.JSON` reuses JSONSchex for admitted JSON Schema validation. Ipse still
-owns closed keyword/byte/depth bounds and disables remote loading. A second
+owns closed keyword/byte/depth bounds and disables remote loading. Regex-keyed
+properties, property-name patterns and combinators remain outside that subset;
+upgrading the validator does not enable them. A second
 validator would need to preserve the same boundary and keep two definitions in
 sync. Extend the small adapter only after checking its existing supported subset.
 
@@ -85,8 +87,8 @@ neither approval authorizes package installation or image downloads.
 | Jason | Git tag `v1.4.4`, commit `926d2ac6cc0271b9a7079b2ec16ae0cf802f7963` in `mix.lock`; direct override for shared package requirements | JSON for HTTP, native protocol, journals and bounded SDK validation; read-only evaluation audit children include its existing runtime path | Apache-2.0 |
 | MCP Elixir SDK | Hex `mcp_elixir_sdk` 1.1.0, pinned in `mix.exs` and `mix.lock` | MCP 2025-11-25 client handshake, request matching, and protocol types; Ipse supplies bounded stdio/HTTP transports and reuses the SDK's SSE parser | MIT |
 | elixir_uuid | Hex 1.2.1, transitive SDK dependency, locked in `mix.lock` | SDK UUID utilities | Apache-2.0 |
-| JSONSchex | Hex `jsonschex` 0.10.0, pinned in `mix.exs` and `mix.lock` | JSON Schema Draft 2020-12 validation behind Ipse's bounded keyword allowlist; no remote loader | MIT |
-| ex_json_pointer | Hex 0.8.0, transitive JSONSchex dependency, locked in `mix.lock` | JSON Pointer handling inside schema compilation | MIT |
+| JSONSchex | Hex `jsonschex` 0.11.1, pinned in `mix.exs` and `mix.lock` | JSON Schema Draft 2020-12 validation behind Ipse's bounded keyword allowlist; no remote loader; includes upstream regex-failure validation fix | MIT |
+| ex_json_pointer | Hex 0.9.0, transitive JSONSchex dependency, locked in `mix.lock` | JSON Pointer handling inside schema compilation | MIT |
 | Req and Plug | Hex `req` 0.7.5, `plug` 1.20.3, pinned in `mix.exs` and `mix.lock` | The SDK 1.1.0 advertises optional HTTP dependencies but unconditionally references their modules; required for successful compilation on Elixir 1.20. Ipse also reuses Req for bounded opt-in HTTP MCP; no HTTP server is enabled | Apache-2.0 |
 | Finch | Hex 0.24.0, locked | All-status bounded inference/authentication streaming, explicit local-model metadata inspection and Req/MCP HTTP pools; private HTTP/1 request pools with owned teardown | MIT |
 | Mint | Hex 1.11.0, direct, locked | Finch transport and an experimental unwired HTTP/1 inference primitive, with default certificate/hostname verification and a header bound | Apache-2.0 |

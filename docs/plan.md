@@ -85,6 +85,11 @@ fetched-Research and coalesced-reader changes retain their
 focused evidence outside that freeze. The committed-runtime retained-cohort
 checks remain open before notes acceptance.
 
+A [schema-validator update](archive/2026-10-26-p30-p31-implementation/schema-validator-security-20261104.md)
+replaces the newly retired JSONSchex version with 0.11.1 and its required pointer
+dependency. The closed schema subset remains unchanged; focused checks and the
+normal build pass. Final source/package qualification must use this updated graph.
+
 Separate [P30 current-use controls](archive/2026-10-26-p30-p31-implementation/p30-advice-output-revocation-20261104.md)
 pass settled-output revocation and the proposal's own signed seven-day expiry
 under a fresh day-eight grant. The old service-alias fixture failure remains

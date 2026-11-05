@@ -75,6 +75,8 @@ nor resource/offline qualification. No daemon configuration or existing model wa
 
 ## Source checkpoint evidence — 2026-11-04
 
+- [Schema-validator security update](schema-validator-security-20261104.md) adopts maintained JSONSchex 0.11.1 and its existing Elixir pointer dependency after upstream retirement, preserving Ipse's closed schema gate; focused tests and normal build pass, final integration remains separate.
+
 - [Frozen 478-file source regression](source-regression-478-20261104.md) remains failed with 4,048 passed, one failed and one invalid, despite all 44 integrity checks passing. Separate capacity and Research fixture repairs pass their focused checks; no new whole-suite pass is implied.
 
 - [Ordinary final-use coalescing](ordinary-final-coalescing-20261104.md) reuses the existing observer in both protected passes after a concrete storage-only five-second expiry reproduction; fresh eight-source delivery/Saved/close/idle and separate root-withdrawal controls pass. The first fixture failure, quarantined retained request and day/annual gates remain separate.
