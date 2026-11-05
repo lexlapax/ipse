@@ -747,7 +747,7 @@ defmodule Ipse.CLI.Knowledge do
             descriptor["id"] == "capture") or
            (descriptor["stage"] == "invoke.tool" and
               (descriptor["id"] in ~w(index read search) or
-                 (not is_nil(experiment) and descriptor["id"] == "assess"))) or
+                 (not is_nil(experiment) and descriptor["id"] in ~w(assess select_shadow)))) or
            (descriptor["stage"] == "event.job" and descriptor["id"] == "recall"))
     end)
     |> Enum.flat_map(fn descriptor ->
@@ -770,10 +770,11 @@ defmodule Ipse.CLI.Knowledge do
         end
 
       decision =
-        if experiment && descriptor["id"] == "assess" do
+        if experiment && descriptor["id"] in ~w(assess select_shadow) do
           [
             %{
-              "operation" => "notes.assess",
+              "operation" =>
+                if(descriptor["id"] == "assess", do: "notes.assess", else: "notes.select"),
               "class" => "decision.create",
               "outer_sha256" => outer,
               "inner_op" => "decision.create"
@@ -838,6 +839,9 @@ defmodule Ipse.CLI.Knowledge do
       "After expiry, run knowledge enable to review and restore ordinary permission. " <>
       "The assess tool reads a previously saved eligible note for shadow advice; " <>
       "capturing a note does not start an assessment. " <>
+      "The select_shadow tool compares complete current note packs against the actual context " <>
+      "allocation and ordinary recall without changing context or stored notes. Fitting sets " <>
+      "make no decision call. Neither experiment qualifies a default strategy. " <>
       "Each decision still needs native approval. Admitted requests may finish after expiry; " <>
       "unknown work retains its full reservation.\n" <> Jason.encode!(policy, pretty: true)
   end

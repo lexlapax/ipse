@@ -157,9 +157,10 @@ workflow, follow [Memory](memory.md).
 
 ## Try a local shadow assessment
 
-Ipse can ask a separately approved local decision service for
-shadow advice about one eligible native literal note or one pending proposal
-created under the same grant. Accepted decisions are not supported by this
+Ipse can ask a separately approved local decision service for shadow advice
+about one eligible native literal note or pending proposal, or for a comparison
+of current note packs with ordinary recall. Records must be eligible under the
+same grant. Accepted decisions are not supported by the single-record
 assessment. Set up an Ollama main
 route and a System One-compatible decision service first; Ipse does not supply
 either service. For example, adapt this complete private operator configuration
@@ -246,9 +247,37 @@ record. A null choice with a
 reason such as `low_probability` or `refusal` means no advice was selected.
 The decision action is recorded in the Session journal. Advice does not authorize
 another effect.
-A denied request sends no
-decision call. Work admitted before expiry may finish sending later; an unknown
-outcome retains its reservation. After the experiment, restore the ordinary
+
+To compare note packs instead, use `/ext` to inspect `select_shadow`, then ask:
+
+```text
+Use the knowledge index to find the current note keys. With select_shadow,
+compare two different packs named release and migration, each containing at most
+four of those keys. Use the query: Which conditions must this release satisfy?
+```
+
+The model must choose the tool and supply actual returned keys. The experiment
+reads the complete note set, with at most sixteen records, and checks its current
+sources and context allocation. More records, incomplete reads or a changed
+allocation refuse the comparison. A complete set that fits ordinary recall
+makes no decision request. For an over-budget set, review the separate decision
+request before allowing it.
+
+A `selection_shadow` result reports the ordinary greedy baseline and an optional
+advised pack. The baseline may contain more than four notes; each proposed pack
+is limited to four. Advice changes neither stored notes nor the context supplied
+to your main model. A missing candidate can mean refusal, insufficient confidence
+or unavailable allowance; inspect its receipt. This comparison is experimental
+and does not qualify a default retrieval strategy or model quality.
+
+Large comparisons can return a `saved.result` receipt instead of inline data.
+Use its actual `output_id` with the
+[complete-result procedure](extensions.md#invoke-a-command-and-inspect-its-complete-result)
+to inspect the baseline and candidate. The receipt itself contains no advice;
+reading saved output does not establish that its original sources remain current.
+
+A denied request sends no decision call. Work admitted before expiry may finish
+sending later; an unknown outcome retains its reservation. After the experiment, restore the ordinary
 selection through a fresh review:
 
 ```sh

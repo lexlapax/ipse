@@ -42,7 +42,7 @@ Qualified readiness retains its recorded human/live limits.
 | [P28: operator usability and release](#p28-operator-usability-and-release-readiness) | v0.1.0 published at `341e458` under qualified acceptance after semantic documentation remediation and exact asset inspection | Retain human/live qualifications; evaluate subsequent changes against their own scope |
 | [P29: provider registry, OpenRouter and Gemini](#p29-provider-registry-openrouter-and-gemini) | Original scope and repairs accepted for qualified readiness; added Grok routes pass automated checks | Preserve unverified Grok API/OAuth eligibility and Gemini foreign-history live acceptance |
 | [P31: usable knowledge and prompt assistance](#p31-usable-knowledge-and-prompt-assistance) | Implementation authorized; local host, permission and capture components in progress | Sustainable metadata, current recall, lifecycle and integrated qualification remain open |
-| [P30: decision engines](#p30-advisory-decision-engines) | P30A/B typed/protocol and admitted-operation increments in progress; no qualified consumer | Verify full B baseline; C–E integrate with P31B/E, without waiting for PDF/graph |
+| [P30: decision engines](#p30-advisory-decision-engines) | Typed/protocol and bounded protected-consumer increments in progress; no qualified production strategy | Verify full B baseline; C–E integrate with P31B/E, without waiting for PDF/graph |
 | [P32: voice and media](#p32-voice-and-realtime-media) | Deferred; unimplemented; formerly P31 | Select media contracts and device/service validation in a later increment |
 | [Apache-2.0 transition](#license-transition) | Complete at `7bb642b` | Preserve runtime, dependency and extension license boundaries |
 
@@ -1137,12 +1137,19 @@ any remaining registration or live-account limits explicitly.
 ## P30: advisory decision engines
 
 A [native in-flight cross-process control](archive/2026-10-26-p30-p31-implementation/p30-inflight-native-eof-20261103.md)
-now verifies refusal of a second one-call reservation while the first remains
-admitted, followed by settlement and idle reopen without replay. It corrects
-the earlier fixture's terminal lifecycle. A [subsequent simultaneous cohort](archive/2026-10-26-p30-p31-implementation/p30-simultaneous-preflight-20261104.md)
-reaches both reservation APIs after committed preflights, but still fails before
-decision dispatch and does not qualify simultaneous settlement or idle reopening.
-Whole-milestone qualification remains open.
+verifies refusal while a first call remains admitted. The later
+[simultaneous settlement control](archive/2026-10-26-p30-p31-implementation/p30-simultaneous-settlement-20261104.md)
+observes one known settled winner and both idle/no-replay paths; its loser meets
+native-control contention, not demonstrated budget denial. Earlier failed
+[preflight cohorts](archive/2026-10-26-p30-p31-implementation/p30-simultaneous-preflight-20261104.md)
+remain failed. The [protected selection and assessment increment](archive/2026-10-26-p30-p31-implementation/protected-selection-assessment-20261105.md)
+qualifies a full six-note greedy baseline versus a four-note advised pack, then
+assessment of an actual main-tool pending proposal: nine main/two decision
+requests and two known settled calls under one unchanged finite grant. The
+failed original pipeline, separate saved-output qualification and fresh
+assessment-only continuation retain their distinct chronology. Synthetic
+protocol evidence establishes no model-quality benefit or default strategy;
+whole-milestone, matched evaluation and installed qualification remain open.
 
 **Authorized; typed/protocol and admitted-operation increments in progress.** P31 is the active delivery
 path. P30A/B can proceed independently; later
@@ -1192,8 +1199,8 @@ also observes that refusal in a new OS process using the same protected ledger,
 with no third dispatch. A later [in-flight attempt](archive/2026-10-26-p30-p31-implementation/p30-inflight-allowance-20261103.md)
 failed at the second operator channel before its approval or allowance check;
 that attempt qualifies neither path. The later native in-flight control above
-passes separately; simultaneous known settlement remains unqualified despite
-the later committed-preflight cohort's observed pool exclusion.
+passes separately; the later simultaneous settlement above does not reclassify
+that failed cohort or establish budget-driven exclusion.
 The later [exact Linux package proof](archive/2026-10-26-p30-p31-implementation/package-idle-resume-20261031.md#passing-final-package)
 passes generic installed checks and the independent synthetic decision/document
 artifacts; full-source, consumer-quality and installed knowledge qualification
@@ -1214,8 +1221,8 @@ passes never alter a historical aggregate.
 | P30A | Versioned neutral text contract and pure OpenAI/System One wire subsets implemented; synthetic fixtures and finite experiment/benefit criteria prepared; fixed foundation baseline and incremental audit pass. [Developer contract](developer/decisions.md) |
 | P30B | In progress: operator-only profiles, bounded owned HTTP, `host.decision`, Session/replay bindings, v3 usage/prices and shared budgets implemented; [current-source synthetic controls](archive/2026-10-26-p30-p31-implementation/p30-current-decision-followup.md) cover zero-egress refusal, hosted/compatible wire, tampering, owner loss, inert resume and child approvals. A separately built decision artifact and the exact generic Linux package pass synthetic installed checks; the repaired 9f1707c full-source baseline passes, while later increments and live account access remain unverified. No qualified consumer is implied |
 | P30C | In progress: [pure Knowledge planners and zero-call controls](archive/2026-10-26-p30-p31-implementation/p30c-pure-policy.md) have an [independent pure-scope audit and reporting correction](archive/2026-10-26-p30-p31-implementation/p30c-pure-policy-audit.md). A later [coverage-gap repair](archive/2026-10-26-p30-p31-implementation/p30c-coverage-followup.md) has a [separate pure-scope review and adversarial grid](archive/2026-10-26-p30-p31-implementation/p30c-coverage-independent-audit.md). A [synthetic planner-to-Session fixture](archive/2026-10-26-p30-p31-implementation/p30-current-decision-followup.md#synthetic-planner-to-session-shadow-control) covers approval and advice mapping; protected helper integration and qualified consumer selection remain open after B and P31B |
-| P30D | Implement bounded experiments: notes selection beyond the context budget and candidate assessment in replay/shadow mode on real main-tool inputs; after C and P31E |
-| P30E | Evaluate frozen experiments against engine-free baselines and installed workflows; record useful, rejected/no-benefit and unverified dispositions plus separate live/model access; after D; document/graph routing is a later independently qualified addition |
+| P30D | Bounded implementation and synthetic protected journey qualified: explicit over-budget note selection retains the complete ordinary greedy baseline, followed by assessment of a real main-tool-created pending proposal under one finite two-call grant. Exact source/get/release, accounting, Saved/close/idle and no-replay checks pass with the failed pipelines separately preserved; broader frozen workloads and final combined/installed qualification remain open; after C and P31E |
+| P30E | In progress: frozen selection declaration/scoring is implemented; private assessment declaration/materializer controls preserve pending-only versus observed-durable cases and null timing/cost. The protected synthetic journey is protocol evidence, with quality unverified. Complete matched real-input/independent-label comparisons against engine-free baselines and installed workflows; retain useful, rejected/no-benefit and unverified dispositions, unavailable-engine honesty and separate live/model access. Document/graph routing needs later independent qualification; after D |
 
 Acceptance requires exact result count/type/range/distribution validation, valid
 per-question refusal handling, uncertainty and malformed-output distinctions,

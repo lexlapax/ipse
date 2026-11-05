@@ -82,7 +82,8 @@ mix test test/ipse/extension/decision_session_test.exs
 
 These fixtures verify admission and wire behavior, including hosted wire subsets
 with synthetic keys. They establish no live account eligibility or consumer
-quality. The pure consumer exercise below adds zero-call planning controls. A
+quality. The consumer exercises below distinguish protected worker integration
+from pure planning controls. A
 separately reviewed, finite [local shadow grant](../operator/knowledge-permissions.md#try-a-local-shadow-assessment)
 exists for the specific saved-note experiment; broader saved helper consent and
 qualified automatic consumers remain separate implementation and acceptance work in the
@@ -186,6 +187,59 @@ permission and resources at the ordinary effect boundary. Required prerequisite
 questions must also be checked by that caller. No successful helper return runs
 an action.
 
+## Trace a protected shadow comparison
+
+The bundled `decision-shadow` Knowledge preset exposes `select_shadow` alongside
+single-record `assess`. The ordinary native preset exposes neither experiment
+tool. Use the separately reviewed finite
+[local experiment grant](../operator/knowledge-permissions.md#try-a-local-shadow-assessment)
+and inspect the fresh Session's `/ext` schema before requesting a comparison.
+The CLI admits the exact selection descriptor as `notes.select` with
+`decision.create`; an artifact cannot acquire that permission by using a similar
+tool name.
+
+Follow `Knowledge.invoke/2` from `select_shadow` through its selection phases:
+
+1. Read actual `context.available`, then the complete bounded note index. The
+   experiment requires at most sixteen records and no remaining index page.
+2. Read each record through the existing protected Collection path, retaining
+   its identity, read operation and original-source dependencies. Refuse missing
+   or changed records and recheck the index generation.
+3. Reread the allocation. Measure all eligible rows and each proposed pack with
+   the ordinary recall renderer, using the smaller of the host allocation and
+   the existing 8192-byte recall ceiling.
+4. Bypass the decision when the complete set fits. Otherwise inspect advisory
+   saved-policy availability, then submit the bounded plan through ordinary
+   approval, source checks and the shared atomic reservation.
+5. Reread allocation before returning advice. Compare the advised projection
+   with the complete ordinary greedy baseline, which can contain more than four
+   records. Never substitute a four-record decision pack for that baseline.
+
+The result reports `selection_shadow`, the baseline, an optional candidate and
+the actual source/allocation binding. It changes no context or stored note.
+Refused, malformed or low-probability advice leaves the ordinary comparator;
+unknown work retains its liability. A changed allocation or unavailable source
+withholds the result. Advisory accounting does not reserve capacity or replace
+the host's current publication checks.
+
+Read the actual result delivery when building an experiment record. A large
+comparison can reach the model as a `saved.result` receipt rather than an inline
+projection. Resolve its authenticated output through `Extension.ResultSource`,
+check the recorded hash and byte count, and retain the invocation's current
+output-release evidence. A receipt is not a selection result, and reading saved
+bytes later does not reacquire authority over their original sources.
+
+Exercise the worker independently of native transport:
+
+```sh
+mix test test/extensions/knowledge/selection_shadow_test.exs
+```
+
+These controls cover the actual worker state machine with constructed host
+replies. They do not establish original-source authority, native approval,
+installed behavior or decision quality. The integrated experiment must establish
+those applicable boundaries separately.
+
 ## Exercise a consumer without contacting an engine
 
 The separately built Knowledge artifact includes
@@ -193,8 +247,9 @@ The separately built Knowledge artifact includes
 It plans bounded request data and maps advice to permitted IDs. Capture does not
 call it automatically, and no production strategy is qualified. Neither a
 `qualification_sha256` value nor an `availability` label in supplied facts grants
-authority. Facts remain untrusted until a future host adapter verifies their
-actual producers, current eligibility and resource allocation.
+authority. The protected worker above obtains its own current reads and actual
+allocation; supplying the same fields to this pure library does not reproduce
+those checks.
 
 Run this complete fixture in `iex -S mix`:
 
@@ -234,8 +289,9 @@ Assessment accepts at most eight
 candidates. Profiles use the operator profile grammar: a letter followed by
 letters, digits, underscores or hyphens, at most 64 bytes; this pure exercise
 does not resolve or expand the operator's registry. Supplied facts prove no actual
-allocation: a future trusted host adapter must derive the owner's grant and check
-the complete rendered projection again. A complete eligible set fitting its actual allocation bypasses
+allocation: the caller must derive the owner's grant and check the complete
+rendered projection again, as the protected worker does. A complete eligible set
+fitting its actual allocation bypasses
 advice and retains every supplied eligible record. Unknown or unavailable
 eligibility, incomplete coverage, and a declared fitting set without all rows
 return a null action with an explicit reason. A null action means no selection
@@ -287,8 +343,30 @@ mix test test/dev/evaluation/decision_metrics_test.exs
 mix test test/extensions/knowledge/decision_policy_test.exs test/ipse/decision_test.exs
 ```
 
-The test also compiles the actual independent artifact against a minimal public
-SDK closure, then exercises it in another VM without `Ipse.Session` or
+For a frozen selection study, use
+`dev/evaluation/selection_experiment.exs` to bind the source, runtime, artifact,
+routes, policy, finite shared limits, case inputs and complete engine-free
+baselines before collecting candidate rows. `declare/1` creates an OFF data
+record, not an execution grant. `verify_inputs/3` checks the committed input and
+baseline bytes. Freeze the first candidate rows with `freeze_rows/3` and retain
+their digest before calling `score/6`; only then may its label loader run.
+Independently establish label custody and source authority: matching hashes alone
+prove neither.
+
+The scorer retains full baseline membership separately from the candidate's
+four-record ceiling. Missing, unknown and unavailable rows stay unmeasured;
+absent latency or cost remains null. A retrieval-only output cannot count as a
+supported answer. Synthetic engine replies produce no quality comparison. Even
+a calculated benefit leaves the report's disposition `unverified` and
+qualification `none` until the separate protocol, matched-workload, resource and independent
+review evidence is established. Exercise these distinctions with:
+
+```sh
+mix test test/dev/selection_experiment_test.exs
+```
+
+The decision-policy test also compiles the actual independent artifact against
+a minimal public SDK closure, then exercises it in another VM without `Ipse.Session` or
 `Ipse.Extension.Artifact` on the code path. `Extension` delegates neutral request,
 result and choice validation to the existing `Ipse.Decision` implementation;
 there is one validator. These pure delegates retain the neutral library bounds;
@@ -316,7 +394,7 @@ records, so a caller-supplied decision-pack baseline is not automatically the
 engine-free baseline for an experiment. `recall_pack_projections/4` applies
 the same measurement to up to eight named alternatives of at most four read
 rows each. It refuses duplicate or unknown members and duplicate sets, and
-returns each set in recall order. Its results are data for a future adapter;
+returns each set in recall order. Its results are data for the worker adapter;
 it does not dispatch a decision or establish source freshness.
 
 For a fully read and generation-checked worker set, `recall_decision_facts/7`
@@ -324,9 +402,9 @@ constructs version-2 planner data from those projections and returns a private
 mapping from bounded decision IDs to note keys. Version 2 filters on each whole
 pack's measured envelope, not the sum of note text lengths; a nil measurement
 cannot establish that a pack fits. The adapter refuses incomplete read coverage
-and bounded-SDK overflow. Its inputs and its result remain untrusted: a future
-host integration must bind the selected IDs and allocation to current source
-authority, remeasure before use, and separately authorize an experiment. It
+and bounded-SDK overflow. Its inputs and its result alone establish no authority:
+the protected worker binds the selected IDs and allocation to its actual reads,
+remeasures before use, and requires a separately authorized experiment. The helper
 does not itself send a request or make production advice selectable.
 
 Version-2 facts also carry a digest of the supplied generation, index, record

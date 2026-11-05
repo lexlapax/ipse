@@ -486,11 +486,11 @@ validation and a saved acceptance alone do not authorize that input. The
 [input contract](session-sources.md#deliver-a-managed-export-input-under-its-original-owners)
 defines its owner, deadline and uncertainty checks.
 
-### Trace a finite shadow assessment
+### Trace finite shadow selection and assessment
 
-The separately built `knowledge/decision-shadow` preset adds an `assess` tool;
-the ordinary `knowledge/native` preset continues to make no secondary decision
-calls. Follow the operator's [local assessment](../operator/knowledge-permissions.md#try-a-local-shadow-assessment)
+The separately built `knowledge/decision-shadow` preset adds `assess` and
+`select_shadow`; the ordinary `knowledge/native` preset continues to make no
+secondary decision calls. Follow the operator's [local experiment](../operator/knowledge-permissions.md#try-a-local-shadow-assessment)
 from the reviewed project policy to a fresh Session. `CLI.Knowledge` binds the
 inventoried bundle digest, numeric loopback route, exact `advice` profile, finite
 call count and expiry to the review. The policy replaces the prior project grant;
@@ -499,8 +499,11 @@ it cannot acquire extra authority from worker-supplied labels.
 `SemanticAdmission` recognizes the decision outer only for the reviewed
 protected-read and decision mappings. `Actions` enforces the same restriction
 during live execution and replay: this owner can read a protected collection and
-request `decision.create`, but cannot write the collection, use shell or MCP, or
-invoke unrelated mutations. `ManagedRead` binds the selected literal note or
+request `decision.create`. It also admits the exact read-only
+`{"op":"context.available"}` request under the independently declared
+`host.context` capability. Extra fields refuse; `context.publish`, collection
+writes, shell, MCP and unrelated operations remain unavailable under that outer.
+`ManagedRead` binds the selected literal note or
 pending candidate to its current source and policy. A separate native approval
 precedes the project Consent ledger reservation; the exact shipped shadow digest,
 route and source union are checked
@@ -509,8 +512,23 @@ its liability. An admitted send can finish after expiry, while result release
 checks the reviewed deadline again. None of this establishes a monetary cap or
 qualifies a hosted engine.
 
-The worker retains its bounded assessment plan until the host returns the
-validated decision result. `DecisionPolicy.apply/2` maps that result to the
+For `select_shadow`, follow the initial allocation read into a complete index of
+at most sixteen notes and protected reads of every eligible record. Keep each
+key, revision, value hash, read operation and source dependency. The worker
+rechecks the index and allocation, then renders the complete ordinary greedy
+baseline using the smaller of the host's available bytes and the existing
+8,192-byte recall ceiling. A fitting complete set bypasses the decision. An
+over-budget set can compare explicitly supplied packs of at most four records;
+those packs never replace the full baseline. Advisory saved-policy availability
+does not reserve capacity: the actual decision still needs current source
+owners, native approval and the shared atomic reservation. Recheck allocation
+before releasing the comparison. Neither projection is published into context
+or saved as a note. The [decision training chapter](decisions.md#trace-a-protected-shadow-comparison)
+owns the projection algorithm, frozen experiment inputs and scoring adapters;
+protocol completion supplies no answer-quality result or default strategy change.
+
+For `assess`, the worker retains its bounded assessment plan until the host
+returns the validated decision result. `DecisionPolicy.apply/2` maps it to the
 permitted choice or an abstention reason; the tool returns the choice only when
 the policy selected it. The result is marked experimental and records that it
 does not mutate the note; the separately approved decision call is an effect.
@@ -544,6 +562,7 @@ Run the focused synthetic controls when changing this boundary:
 
 ```sh
 mix test test/ipse/extension/decision_outer_test.exs test/extensions/knowledge/shadow_experiment_session_test.exs test/extensions/knowledge/shadow_pending_candidate_session_test.exs
+mix test test/extensions/knowledge/selection_shadow_test.exs
 mix test test/ipse/extension/managed_collection_call_session_test.exs --only pending_original_source_boundary
 ```
 

@@ -73,6 +73,28 @@ defmodule IpseKnowledge.Knowledge do
                   "assess",
                   "Request shadow advice on one currently eligible note or pending proposal",
                   object(%{"key" => string(96)})
+                ),
+                entry(
+                  "select_shadow",
+                  "Compare one experimental over-budget note pack with ordinary recall; this changes no context or note",
+                  object(%{
+                    "query" => string(1024),
+                    "packs" => %{
+                      "type" => "array",
+                      "minItems" => 2,
+                      "maxItems" => 8,
+                      "items" =>
+                        object(%{
+                          "id" => string(64),
+                          "members" => %{
+                            "type" => "array",
+                            "minItems" => 1,
+                            "maxItems" => 4,
+                            "items" => string(96)
+                          }
+                        })
+                    }
+                  })
                 )
               ],
               else: []
@@ -151,6 +173,19 @@ defmodule IpseKnowledge.Knowledge do
   def handle("host.actions", %{"outcome" => _}, %{phase: :recall_verify} = state),
     do: recall_unavailable(state)
 
+  def handle(
+        "host.actions",
+        %{"outcome" => %{"status" => status} = failure},
+        %{phase: :selection_advice} = state
+      )
+      when status in ["failed", "denied"] do
+    call(%{"op" => "context.available"}, %{
+      state
+      | phase: :selection_output_allocation,
+        ctx: %{state.ctx | decision: {:failure, failure}}
+    })
+  end
+
   def handle("host.actions", %{"outcome" => _}, %{phase: phase, ctx: %{mode: :seed}} = state)
       when phase in [:recall_index, :recall_budget],
       do:
@@ -226,6 +261,27 @@ defmodule IpseKnowledge.Knowledge do
 
       true ->
         refused(state, :invalid_note_key)
+    end
+  end
+
+  defp invoke(%{"id" => "select_shadow", "arguments" => args}, state)
+       when @preset == "decision-shadow" do
+    if exact?(args, ~w(query packs)) and text?(args["query"], 1024) and
+         is_list(args["packs"]) and length(args["packs"]) in 2..8 do
+      ctx =
+        recall_context(:shadow_selection)
+        |> Map.merge(%{
+          query: args["query"],
+          packs: args["packs"],
+          decision: nil,
+          plan: nil,
+          binding: nil,
+          budget_snapshot: nil
+        })
+
+      call(%{"op" => "context.available"}, %{state | phase: :selection_allocation, ctx: ctx})
+    else
+      refused(state, :invalid_selection_shadow)
     end
   end
 
@@ -306,6 +362,86 @@ defmodule IpseKnowledge.Knowledge do
 
   defp advance(:recall_index_only, value, state), do: finish(state, value)
   defp advance(:recall_read_only, value, state), do: finish(state, value)
+
+  defp advance(:selection_allocation, budget, state) do
+    if selection_allocation?(budget) do
+      collection(
+        %{"op" => "index", "prefix" => "note.", "cursor" => nil, "limit" => 16},
+        %{state | phase: :selection_index, ctx: %{state.ctx | budget: budget}}
+      )
+    else
+      refused(state, :selection_allocation_unavailable)
+    end
+  end
+
+  defp advance(:selection_index, value, state) do
+    rows = value["records"]
+
+    if is_list(rows) and length(rows) <= 16 and value["next"] === nil and
+         value["count"] === length(rows) and uint?(value["generation"]) and
+         Enum.all?(
+           rows,
+           &(is_map(&1) and is_binary(&1["key"]) and
+               Regex.match?(~r/\Anote\.[0-9a-f]{64}\z/, &1["key"]))
+         ) and
+         length(Enum.uniq_by(rows, & &1["key"])) === length(rows) do
+      ctx = %{
+        state.ctx
+        | candidates: rows,
+          index: rows,
+          total: length(rows),
+          generation: value["generation"],
+          next: nil,
+          index_pages: 1
+      }
+
+      recall_next(%{state | ctx: ctx})
+    else
+      refused(state, :selection_complete_set_unavailable)
+    end
+  end
+
+  defp advance(:selection_allocation_check, actual, state) do
+    if actual === state.ctx.budget do
+      selection_plan(state)
+    else
+      refused(state, :selection_allocation_changed)
+    end
+  end
+
+  defp advance(:selection_budget, budget, state) do
+    resources = ~w(operations model_calls input_bytes output_bytes download_bytes cost_nanos)
+
+    if is_map(budget) and Ipse.Extension.validate(budget) === :ok and
+         budget["version"] === 1 and budget["scope"] === "saved_policy" and uint?(budget["epoch"]) and
+         Enum.all?(
+           ~w(policy_sha256 project),
+           &(is_binary(budget[&1]) and
+               Regex.match?(~r/\A[0-9a-f]{64}\z/, budget[&1]))
+         ) and
+         is_map(budget["available"]) and
+         Enum.sort(Map.keys(budget["available"])) === Enum.sort(resources) and
+         Enum.all?(Map.values(budget["available"]), &uint?/1) do
+      available = budget["available"]["operations"] > 0 and budget["available"]["model_calls"] > 0
+      selection_request(%{state | ctx: %{state.ctx | budget_snapshot: budget}}, available)
+    else
+      refused(state, :selection_budget_unavailable)
+    end
+  end
+
+  defp advance(:selection_advice, value, state) do
+    call(%{"op" => "context.available"}, %{
+      state
+      | phase: :selection_output_allocation,
+        ctx: %{state.ctx | decision: {:advice, value["result"]}}
+    })
+  end
+
+  defp advance(:selection_output_allocation, actual, state) do
+    if actual === state.ctx.budget,
+      do: selection_result(state),
+      else: refused(state, :selection_allocation_changed)
+  end
 
   defp advance(:assess_read, %{"record" => %{"key" => key, "value" => note}}, state)
        when key == state.ctx.key do
@@ -810,7 +946,168 @@ defmodule IpseKnowledge.Knowledge do
     })
   end
 
+  defp recall_next(%{ctx: %{mode: :shadow_selection}} = state) do
+    if state.ctx.verified and state.ctx.coverage === "complete" and
+         state.ctx.unavailable === 0 and state.ctx.next === nil and
+         state.ctx.total === length(state.ctx.notes) do
+      call(%{"op" => "context.available"}, %{state | phase: :selection_allocation_check})
+    else
+      refused(state, :selection_complete_set_unavailable)
+    end
+  end
+
   defp recall_next(state), do: recall_publish(state)
+
+  defp selection_allocation?(budget) do
+    is_map(budget) and budget["version"] === 1 and text?(budget["instance"], 64) and
+      budget["limit_bytes"] === 16_384 and budget["max_items"] === 8 and
+      budget["max_text_bytes"] === 2048 and uint?(budget["occupied_other_bytes"]) and
+      budget["occupied_other_bytes"] <= 16_384 and
+      budget["available_bytes"] === 16_384 - budget["occupied_other_bytes"]
+  end
+
+  defp selection_plan(state) do
+    ctx = state.ctx
+    instance = ctx.budget["instance"]
+    available = min(ctx.budget["available_bytes"], 8192)
+
+    with {:ok, full} <- recall_projection(ctx, ctx.notes, instance, available) do
+      cond do
+        full.fits ->
+          selection_request(state, false)
+
+        not is_integer(full.rendered_bytes) ->
+          refused(state, :selection_projection_limit)
+
+        true ->
+          call(
+            %{
+              "op" => "collection.call",
+              "purpose" => "saved_policy_budget_v1",
+              "request" => %{"op" => "status"}
+            },
+            %{state | phase: :selection_budget}
+          )
+      end
+    else
+      _ -> refused(state, :invalid_selection_shadow)
+    end
+  end
+
+  defp selection_request(state, budget_available) do
+    ctx = state.ctx
+    instance = ctx.budget["instance"]
+    available = min(ctx.budget["available_bytes"], 8192)
+    # The planner requires a bounded fallback pack. The comparison below still
+    # uses the complete ordinary greedy projection, never this pack as baseline.
+    fallback =
+      case ctx.packs do
+        [%{"id" => id} | _] -> id
+        _ -> nil
+      end
+
+    with {:ok, facts, binding} <-
+           recall_decision_facts(
+             ctx,
+             ctx.packs,
+             instance,
+             available,
+             ctx.query,
+             budget_available,
+             fallback
+           ),
+         policy =
+           DecisionPolicy.default("notes.select")
+           |> Map.merge(%{"strategy" => "decision", "profile" => "advice"}),
+         {:ok, plan} <- DecisionPolicy.plan(policy, facts, :development_experiment) do
+      state = %{state | ctx: %{ctx | plan: plan, binding: binding}}
+
+      if is_map(plan.request) do
+        call(plan.request, %{state | phase: :selection_advice})
+      else
+        selection_result(%{state | ctx: %{state.ctx | decision: {:advice, nil}}})
+      end
+    else
+      _ -> refused(state, :invalid_selection_shadow)
+    end
+  end
+
+  defp selection_result(state) do
+    ctx = state.ctx
+    instance = ctx.budget["instance"]
+
+    comparison =
+      case ctx.decision do
+        {:advice, advice} ->
+          recall_shadow_comparison(ctx, ctx.plan, ctx.binding, advice, instance)
+
+        {:failure, failure} ->
+          recall_shadow_failure(ctx, ctx.plan, ctx.binding, failure, instance)
+      end
+
+    with {:ok, compared} <- comparison,
+         {:ok, input_sha} <-
+           Ipse.Extension.canonical_digest([%{"query" => ctx.query, "packs" => ctx.packs}]) do
+      finish(state, %{
+        "status" => "selection_shadow",
+        "experimental" => true,
+        "context_mutation" => "none",
+        "input_sha256" => input_sha,
+        "source_binding_sha256" => ctx.plan.facts["source_binding_sha256"],
+        "allocation_bytes" => ctx.plan.facts["allocation_bytes"],
+        "eligible_count" => ctx.total,
+        "eligible_rendered_bytes" => ctx.plan.facts["eligible_rendered_bytes"],
+        "baseline" => selection_projection(compared.baseline, instance),
+        "candidate" => if(compared.shadow, do: selection_projection(compared.shadow, instance)),
+        "outcome" => compared.outcome,
+        "reads" =>
+          Enum.map(ctx.notes, fn {row, operation} ->
+            row
+            |> Map.take(~w(key revision sha256 bytes))
+            |> Map.put("read_operation_id", operation)
+          end),
+        "budget_observation" =>
+          if(ctx.budget_snapshot,
+            do:
+              Map.take(
+                ctx.budget_snapshot,
+                ~w(epoch policy_sha256 observed_at_ms charged available)
+              )
+          )
+      })
+    else
+      _ -> refused(state, :invalid_selection_shadow)
+    end
+  end
+
+  defp selection_projection(projection, instance) do
+    actual = recall_publication(projection)
+
+    members =
+      Enum.flat_map(actual.items, fn item ->
+        case :json.decode(item["text"]) do
+          %{"format" => format, "records" => records}
+          when format in ~w(note_parts_v1 note_parts_v2) ->
+            Enum.map(records, &hd/1)
+
+          _ ->
+            []
+        end
+      end)
+      |> Enum.uniq()
+
+    %{
+      "members" => members,
+      "items" => actual.items,
+      "coverage" => actual.coverage,
+      "included" => actual.included,
+      "rendered_bytes" =>
+        if(actual.items === [],
+          do: 0,
+          else: Ipse.Extension.context_rendered_bytes(actual.items, instance)
+        )
+    }
+  end
 
   defp recall_unavailable(state) do
     ctx = %{

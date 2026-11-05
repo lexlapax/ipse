@@ -1306,7 +1306,7 @@ defmodule Ipse.Extension.Actions do
         not mutating?(request)
 
       "decision.create" ->
-        request["op"] == "decision.create" or
+        request === %{"op" => "context.available"} or request["op"] == "decision.create" or
           (CollectionCall.operation?(request) and not CollectionCall.mutating?(request))
 
       _ ->

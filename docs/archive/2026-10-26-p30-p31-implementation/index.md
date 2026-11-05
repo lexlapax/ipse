@@ -73,6 +73,10 @@ nor resource/offline qualification. No daemon configuration or existing model wa
 - [Chat acceptance architectural reassessment](chat-acceptance-reassessment-20261103.md) compares the frozen post-reply contract with the paused Session-owned draft and an unproven separate-owner alternative.
 - [Chat acceptance host-protocol plan](chat-acceptance-host-protocol-plan-20261103.md) records the ownership and later-use gaps for a proposed single-card journey; no implementation or test is claimed.
 
+## Protected decision experiments — 2026-11-05
+
+- [Protected selection and assessment](protected-selection-assessment-20261105.md) retains the full six-note greedy baseline versus a four-note advised pack, then assesses an actual main-tool proposal under the same finite grant: nine main/two decision requests, two known settled calls and Saved/idle no replay. The failed pipeline, exact historical result materialization and fresh assessment-only continuation remain distinct; real quality and installed/full combined qualification stay open.
+
 ## Consent storage checkpoint — 2026-11-05
 
 - [Lossless Consent v3](consent-v3-storage-20261105.md) preserves logical rows and liabilities under unchanged caps; specified 31,052-ID/full-receipt geometry and 22 focused checks pass. Original retained state, populated-day and annual qualification remain separate.
