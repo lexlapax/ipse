@@ -1,0 +1,14 @@
+{
+  "normal_runtime_manifest_sha256": "616fa20b594c01a4cefe09e5d1269813e0c170fc7ac70828d87f933c1923a4f6",
+  "candidate_beams": {
+    "Elixir.Ipse.Session.Draft": "52d897279056638c406da630c4d134d64346d24f16055f02c01d4f83d449f865",
+    "Elixir.Ipse.Session.DraftNative": "38a0a214ec9eb5b4257773de82bd76dc14ab2abfaf47a143a8a01142485d1bd8",
+    "Elixir.Ipse.Session.Saved": "239a21e56815d34f8393c87ba7ae79138f0dc8c8f7a99d159a7de8153f9abc39"
+  },
+  "source_patch_sha256": "8663cc265fcacadbc0ae395647b5dbc9880082d6b1ad7375284b64d03d6f8f4d",
+  "launcher_sha256": "0ee522d47b8e9358a2425537c208619a71c134d171df579035b81d52a38c0c85",
+  "input_manifest_sha256": "8e780166af1bee90304c892de0d88ba9092785325ee45a1872b60393eef2088c",
+  "pure_log_sha256": "aa8e6d2761f48f726d274e76e7399dcd66ca416e946a3c49413b62219d0636ce",
+  "actual_result_sha256": "ee007febca5fb53c2f201ff7d71eca98d2da4ad38f726aa086eb0e410fa06469",
+  "actual_post_sha256": "96ca6386a94a556bd3009fe22de6cc87968db9b6bd516aaba7a6d39fac867fa8"
+}

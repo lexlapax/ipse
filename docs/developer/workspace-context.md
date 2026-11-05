@@ -260,10 +260,21 @@ by `DraftNative.ollama_draft_without_tools?/1`: visible and native text match,
 thinking is a bounded UTF-8 string, tool calls are empty and unknown fields refuse.
 The whole interval, including thinking, is withheld; native messages outside it
 are preserved unchanged. The separate `plain_text_only?/1` predicate remains
-stricter for managed lineage and reference checks. The prefix,
-removed interval and tail each require complete tool grouping. Replay selects the
-policy from the saved provider; unsupported native continuation refuses projection
-instead of dropping selected fields.
+stricter for managed lineage and reference checks. Anthropic uses
+`DraftNative.anthropic_draft_without_tools?/1` for exact native text-only blocks
+whose concatenation matches the visible UTF-8 content. Its ordinary Stream item
+bound still applies. Thinking, signed or redacted blocks, tools, unknown fields
+and mismatched text refuse; the validator never strips a native field to fit.
+Each policy requires complete tool grouping in the prefix, removed interval and
+tail. Native messages outside the interval stay unchanged.
+
+Live projection selects the policy through `DraftNative.policy/1`; Saved's
+historical selector uses the original provider in the session metadata for both
+chronological and final reconstruction. Add the corresponding historical selector
+when introducing a native policy. Unsupported continuation refuses projection
+instead of dropping fields. Verify cancellation, an unrelated ordinary request,
+confirmed close and the same-ID continuation, checking the actual wire and strict
+Saved reconstruction. A live-only check cannot establish replay compatibility.
 `DraftHistory` produces bounded withheld ranges for extension history reads, and
 `SourceWindow` excludes draft material from eligible evidence. Pending drafts
 cannot be exposed through an ordinary history page.

@@ -3,6 +3,7 @@ defmodule Ipse.Session.DraftNative do
 
   def policy(%{provider: :chatgpt}), do: :chatgpt
   def policy(%{provider: :ollama}), do: :ollama
+  def policy(%{provider: :anthropic}), do: :anthropic
   def policy(_), do: :none
 
   @doc false
@@ -33,6 +34,33 @@ defmodule Ipse.Session.DraftNative do
   end
 
   def ollama_draft_without_tools?(_), do: false
+
+  @doc false
+  def anthropic_draft_without_tools?(
+        %{
+          "role" => "assistant",
+          "content" => content,
+          "provider_data" => %{"provider" => "anthropic", "content" => parts} = data
+        } = message
+      ) do
+    is_binary(content) and String.valid?(content) and
+      Enum.all?(Map.keys(data), &(&1 in ~w(provider content reported_model))) and
+      (not Map.has_key?(data, "reported_model") or
+         Ipse.Provider.model_name(data["reported_model"]) === data["reported_model"]) and
+      is_list(parts) and parts != [] and Ipse.Provider.Stream.items?(parts, "tool_use") and
+      Enum.all?(parts, fn
+        %{"type" => "text", "text" => text} = part ->
+          Enum.sort(Map.keys(part)) == ~w(text type) and is_binary(text) and String.valid?(text)
+
+        _ ->
+          false
+      end) and
+      Enum.map_join(parts, & &1["text"]) === content and message["tool_calls"] in [nil, []]
+  rescue
+    _ -> false
+  end
+
+  def anthropic_draft_without_tools?(_), do: false
 
   def visible_models(messages) do
     messages

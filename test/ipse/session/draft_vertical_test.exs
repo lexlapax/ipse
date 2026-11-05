@@ -171,7 +171,11 @@ defmodule Ipse.Session.DraftVerticalTest do
   setup do
     root = Path.join(System.tmp_dir!(), "ipse-draft-vertical-" <> Usage.id())
     File.mkdir_p!(root)
-    on_exit(fn -> File.rm_rf!(root) end)
+
+    on_exit(fn ->
+      if System.get_env("IPSE_KEEP_DRAFT_FIXTURE") != "1", do: File.rm_rf!(root)
+    end)
+
     %{root: root, dir: Path.join(root, "state")}
   end
 
@@ -767,6 +771,107 @@ defmodule Ipse.Session.DraftVerticalTest do
 
     assert {:ok, %{draft: %{status: :consumed}}} =
              Session.Saved.restore(accepted_events, second_id)
+  end
+
+  @tag :anthropic_draft_carryover
+  test "Anthropic text-only draft cancellation preserves native history across ordinary continuation and resume",
+       c do
+    fixture = Ipse.Test.ProviderFixture
+
+    response = fn text, model ->
+      fixture.sse([
+        %{
+          "type" => "message_start",
+          "message" => %{"model" => model, "usage" => %{"input_tokens" => 1}}
+        },
+        %{
+          "type" => "content_block_start",
+          "index" => 0,
+          "content_block" => %{"type" => "text", "text" => text}
+        },
+        %{
+          "type" => "message_delta",
+          "delta" => %{"stop_reason" => "end_turn"},
+          "usage" => %{"output_tokens" => 1}
+        },
+        %{"type" => "message_stop"}
+      ])
+    end
+
+    {base_url, server} =
+      fixture.sequence([
+        response.("prior answer café 雪", "prior-model"),
+        response.("private draft response café 雪", "private-draft-model"),
+        response.("ordinary answer café 雪", "ordinary-model"),
+        response.("resumed answer", "ordinary-model")
+      ])
+
+    on_exit(fn -> if Process.alive?(server.pid), do: Task.shutdown(server, :brutal_kill) end)
+
+    cfg = %{
+      provider: :anthropic,
+      provider_module: Ipse.Provider.Anthropic,
+      base_url: base_url,
+      api_key: "fixture-only"
+    }
+
+    {pid, _} = start(c, cfg)
+    id = Session.info(pid).id
+    assert :ok = Session.prompt(pid, "ordinary prior task")
+    assert_receive {:ipse, ^pid, {:done, :ok}}, 5_000
+    assert :ok = Session.start_draft(pid, "private draft input")
+    assert_receive {:ipse, ^pid, {:done, :ok}}, 5_000
+    assert {:ok, %{status: :completed}} = Session.draft(pid)
+    assert :ok = Session.cancel_draft(pid)
+    assert :ok = Session.prompt(pid, "ordinary next task")
+    assert_receive {:ipse, ^pid, {:done, :ok}}, 5_000
+    assert :ok = Session.close_confirmed(pid)
+    {:ok, before_resume} = Journal.load(c.dir, id)
+    assert {:ok, %{draft: %{status: :cancelled}}} = Session.Saved.restore(before_resume, id)
+    requests = Enum.count(before_resume, &(&1["type"] == "request_admitted"))
+    {resumed, _} = start(c, cfg, id)
+    {:ok, idle} = Journal.load(c.dir, id)
+    assert Enum.count(idle, &(&1["type"] == "request_admitted")) == requests
+    assert :ok = Session.prompt(resumed, "resumed next task")
+    assert_receive {:ipse, ^resumed, {:done, :ok}}, 5_000
+    assert :ok = Session.close_confirmed(resumed)
+    {:ok, final} = Journal.load(c.dir, id)
+    assert {:ok, %{draft: %{status: :cancelled}}} = Session.Saved.restore(final, id)
+    assert Enum.count(final, &(&1["type"] == "request_admitted")) == requests + 1
+
+    assert Enum.count(final, &(&1["type"] == "request_finished" and &1["outcome"] == "completed")) ==
+             4
+
+    assert Enum.any?(
+             final,
+             &(get_in(&1, ["message", "content"]) == "private draft response café 雪")
+           )
+
+    [{_, prior}, {_, draft}, {_, ordinary}, {_, resumed_body}] = Task.await(server, 5_000)
+    assert Jason.encode!(draft["messages"]) =~ "private draft input"
+    assert Jason.encode!(prior["messages"]) =~ "ordinary prior task"
+    assert Jason.encode!(ordinary["messages"]) =~ "ordinary next task"
+    assert Jason.encode!(resumed_body["messages"]) =~ "resumed next task"
+
+    native_prior = %{
+      "role" => "assistant",
+      "content" => [%{"type" => "text", "text" => "prior answer café 雪"}]
+    }
+
+    native_ordinary = %{
+      "role" => "assistant",
+      "content" => [%{"type" => "text", "text" => "ordinary answer café 雪"}]
+    }
+
+    assert native_prior in draft["messages"]
+    assert native_prior in ordinary["messages"]
+    assert native_prior in resumed_body["messages"]
+    assert native_ordinary in resumed_body["messages"]
+
+    for body <- [ordinary, resumed_body],
+        canary <- ["private draft input", "private draft response", "private-draft-model"] do
+      refute Jason.encode!(body) =~ canary
+    end
   end
 
   test "ChatGPT Responses transport isolates cancelled and accepted drafts across resume",

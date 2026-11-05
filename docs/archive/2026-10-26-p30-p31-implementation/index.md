@@ -75,6 +75,8 @@ nor resource/offline qualification. No daemon configuration or existing model wa
 
 ## Source checkpoint evidence — 2026-11-04
 
+- [Anthropic cancelled-draft carryover](anthropic-draft-carryover-20261104.md) repairs live and saved text-only projection, preserves native outside history and passes a fresh four-wire synthetic cancellation/ordinary/same-ID journey. The first saved-policy failure and broader provider/installed/quality limits remain explicit.
+
 - [Simultaneous decision entry and quiescent recovery](p30-simultaneous-settlement-20261104.md) complete one synthetic settled winner, both normal closes and sequential idle/no-replay paths in one fresh cohort. The loser encounters native-control contention, not observed budget denial; earlier failures and consumer quality remain open.
 
 - [Pilot label coverage and provisional intake freeze](pilot-label-intake-freeze-20261104.md) verify all 57 observed turn rows and 39 candidates already have independent-agent labels, preserve the partial run, and pin the unchanged 57-effect/40-turn assumptions in a private developer adapter; no actual day or quality acceptance.

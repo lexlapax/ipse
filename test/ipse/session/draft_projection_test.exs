@@ -230,4 +230,96 @@ defmodule Ipse.Session.DraftProjectionTest do
     assert {:error, :draft_projection_unsafe} =
              Draft.project(draft, history ++ [call_message], MapSet.new(), :ollama)
   end
+
+  test "Anthropic text-only draft withdraws exact interval while retaining native outside history" do
+    native = %{
+      "role" => "assistant",
+      "content" => "private proposal café 雪",
+      "provider_data" => %{
+        "provider" => "anthropic",
+        "reported_model" => "fixture-model",
+        "content" => [%{"type" => "text", "text" => "private proposal café 雪"}]
+      }
+    }
+
+    prior = %{
+      "role" => "assistant",
+      "content" => "prior",
+      "provider_data" => %{
+        "provider" => "anthropic",
+        "content" => [
+          %{"type" => "thinking", "thinking" => "prior hidden", "signature" => "prior signature"},
+          %{"type" => "text", "text" => "prior"}
+        ]
+      }
+    }
+
+    later =
+      put_in(prior, ["content"], "later")
+      |> put_in(["provider_data", "content"], [%{"type" => "text", "text" => "later"}])
+
+    assert Ipse.Session.DraftNative.policy(%{provider: :anthropic}) == :anthropic
+
+    {draft, history} =
+      projection([%{"role" => "user", "content" => "private input"}, native], [prior])
+
+    history = history ++ [later]
+
+    assert {:ok, [^prior, notice, new, ^later]} =
+             Draft.project(draft, history, MapSet.new(), :anthropic)
+
+    assert notice["content"] == Draft.notice()
+    assert new["content"] == "new task"
+    assert {:error, :draft_projection_unsafe} = Draft.project(draft, history)
+  end
+
+  test "Anthropic opaque, changed and tool-bearing drafts refuse instead of stripping fields" do
+    native = %{
+      "role" => "assistant",
+      "content" => "private",
+      "provider_data" => %{
+        "provider" => "anthropic",
+        "content" => [%{"type" => "text", "text" => "private"}]
+      }
+    }
+
+    unsafe = [
+      put_in(native, ["provider_data", "content"], [
+        %{"type" => "thinking", "thinking" => "hidden", "signature" => "signed"},
+        %{"type" => "text", "text" => "private"}
+      ]),
+      put_in(native, ["provider_data", "content"], [
+        %{"type" => "redacted_thinking", "data" => "opaque"}
+      ]),
+      put_in(native, ["provider_data", "content"], [%{"type" => "text", "text" => "different"}]),
+      put_in(native, ["provider_data", "content"], [
+        %{"type" => "text", "text" => "private", "citations" => []}
+      ]),
+      put_in(native, ["provider_data", "content"], [
+        %{"type" => "tool_use", "id" => "call", "name" => "read", "input" => %{}}
+      ]),
+      put_in(native, ["provider_data", "provider"], "gemini"),
+      put_in(native, ["provider_data", "unexpected"], "opaque"),
+      put_in(native, ["provider_data", "reported_model"], %{bad: true}),
+      Map.put(native, "tool_calls", [%{"id" => "call", "function" => %{}}])
+    ]
+
+    for message <- unsafe do
+      {draft, history} = projection([%{"role" => "user", "content" => "private"}, message])
+
+      assert {:error, :draft_projection_unsafe} =
+               Draft.project(draft, history, MapSet.new(), :anthropic)
+    end
+  end
+
+  test "Anthropic validator rejects invalid UTF-8 before JSON history encoding" do
+    refute Ipse.Session.DraftNative.anthropic_draft_without_tools?(%{
+             "role" => "assistant",
+             "content" => <<255>>,
+             "provider_data" => %{
+               "provider" => "anthropic",
+               "content" => [%{"type" => "text", "text" => <<255>>}]
+             }
+           })
+  end
 end

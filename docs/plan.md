@@ -297,6 +297,12 @@ following limits until the end-to-end paths are qualified:
    now passes with active-source revalidation and an exact authenticated
    capture-to-acceptance historical-root mapping. Complete integrated
    qualification remains open.
+   A separate [Anthropic text-only carryover control](archive/2026-10-26-p30-p31-implementation/anthropic-draft-carryover-20261104.md)
+   now passes cancellation, an unrelated ordinary request, strict saved-history
+   reconstruction and same-ID continuation through the actual synthetic Messages
+   adapter. It preserves native history outside the withdrawn interval. Opaque or
+   tool-bearing drafts, broader provider coverage, installed/native-terminal
+   qualification and integrated clarification remain open.
 5. **Decision engines — P30A–E.** Complete the host protocol and protected
    consumer integration independently of document/graph work. Enforce the explicit
    finite allowance across the whole authorized experiment, using the existing
