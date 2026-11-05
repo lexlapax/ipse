@@ -1365,6 +1365,16 @@ semantic/rendering, other installed profile/package combinations and final
 combined qualification remain open; the exact Collection ceiling is qualified
 separately above.
 
+A later [independent logical oracle and v18 repair](archive/2026-10-26-p30-p31-implementation/word-logical-oracle-20261105/index.md)
+freezes complete text, visibility and source coordinates before candidate
+inspection. The existing v17 artifact failed all twelve complete comparisons
+because it emitted footnote layout separators. V18 excludes declared layout
+entries while retaining ordinary notes and original paragraph ordinals. All
+twelve originals, 144 blocks and both payload profiles now agree with that
+oracle; fifty focused regression tests pass. Every document remains partial
+with its body-formatting warning. These exposed remediation inputs do not
+establish fresh held-out quality, installed citation joins or full P31F acceptance.
+
 The [operator-authored planning-decision increment](archive/2026-10-26-p30-p31-implementation/operator-planning-20261103/index.md)
 adds a separate native acceptance and explicit post-exit save with linked original
 provenance. Its synthetic verification passed 11 native journeys and 95 focused

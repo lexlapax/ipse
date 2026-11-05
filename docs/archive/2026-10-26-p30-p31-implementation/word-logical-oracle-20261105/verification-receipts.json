@@ -1,0 +1,56 @@
+{
+  "date": "2026-11-05",
+  "scope": "Actual host build, focused Word regressions and complete exposed-remediation logical comparison; not full P31F qualification",
+  "build": {
+    "exit_status": 0,
+    "environment": {
+      "MIX_ENV": "test",
+      "HEX_OFFLINE": "1",
+      "IPSE_BUILD_PDF": "0"
+    },
+    "host_source_files": 197,
+    "bundled_artifacts": 4,
+    "dependency_cache_used": true,
+    "private_log_path": "_build/verification/p30-word-main-20261105-01/build.log",
+    "log_sha256": "8a47991c4ab977e35561419de51a75fdb55ff134dbe2112650258296dcda6d51",
+    "clean_release_verified": false
+  },
+  "focused_word_tests": {
+    "exit_status": 0,
+    "passed": 50,
+    "failed": 0,
+    "elapsed_seconds": 110.6,
+    "seed": 738180,
+    "files": [
+      "test/extensions/knowledge/documents_fidelity_test.exs",
+      "test/extensions/knowledge/documents_test.exs",
+      "test/extensions/knowledge/document_paragraph_packing_test.exs"
+    ],
+    "private_log_path": "_build/verification/p30-word-main-20261105-01/word-focused.log",
+    "log_sha256": "54fb6b749ed03583de26a0f29ecb21c7a1fd646543ac48273f296c8dcd4cb528",
+    "nested_helper_cases_added_to_total": false
+  },
+  "complete_v18_comparison": {
+    "exit_status": 0,
+    "elapsed_seconds": 0.40,
+    "sources_agree": 12,
+    "source_denominator": 12,
+    "complete_blocks_and_locators": 144,
+    "state_collection_payload_projections": 24,
+    "all_document_statuses": "partial",
+    "receipt": "comparison/v18/first-comparison-receipt.json",
+    "receipt_sha256": "f4e1b04553bf68916d75cc4060f845ef8823e4f378708daaf9c95390c21090ff",
+    "oracle_sha256": "e2af13b29bacd36da26490053f1f2b86b6ab37f0c418d43f553537ceb7851a47"
+  },
+  "formatted_source_manifest": "v18-formatted-source.sha256",
+  "retained_v17_logical_agreement": "0/12; original first outcomes unchanged",
+  "historical_full_product_locators_unverified": 62,
+  "installed_document_join_qualified": false,
+  "semantic_answer_quality": "not_measured",
+  "rendered_fidelity": "not_measured",
+  "full_source_regression": "not_claimed",
+  "documentation_check": "pending integration owner",
+  "format_check": "pending integration owner",
+  "demo": "pending integration owner",
+  "private_logs_copied": false
+}

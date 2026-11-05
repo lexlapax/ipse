@@ -103,7 +103,7 @@ defmodule Ipse.KnowledgeDocumentsFidelityTest do
       assert result["status"]=="complete" and result["warnings"]==[]
       assert result["revision_policy"]=="insertions_included_deletions_excluded"
       assert result["visibility_policy"]=="bounded_style_and_direct_hidden_excluded"
-      assert result["extraction_version"]=="ipse-documents-v17"
+      assert result["extraction_version"]=="ipse-documents-v18"
     end
     for value <- ["false","0","off"] do
       {:ok,result}=D.extract(doc.("<w:p><w:r><w:rPr><w:vanish w:val=\"#{value}\"/></w:rPr><w:t>visible</w:t></w:r></w:p>"),"a.docx")
@@ -234,7 +234,7 @@ defmodule Ipse.KnowledgeDocumentsFidelityTest do
     body=list.(7,"First α")<>"<w:p>"<>run.("interlude")<>"</w:p>"<>list.(7,"Second β")<>list.(8,"Restart γ")<>list.(7,"Third δ")
     bytes=zip.([{"word/document.xml",xml.(body)},{"word/numbering.xml",numbering}])
     {:ok,result}=D.extract(bytes,"numbered.docx")
-    assert result["extraction_version"]=="ipse-documents-v17"
+    assert result["extraction_version"]=="ipse-documents-v18"
     assert result["status"]=="partial"
     assert Enum.map(result["segments"],& &1["text"])==["First α","interlude","Second β","Restart γ","Third δ"]
     [first,plain,second,restart,third]=result["segments"]
@@ -293,18 +293,20 @@ defmodule Ipse.KnowledgeDocumentsFidelityTest do
     changed=put_in(crossing,["document","spans",Access.at(0),Access.at(8),"label"],"4.")
     refute E.valid_span?(packed_source,changed)
 
-    legacy16=put_in(packed,["document","extraction_version"],"ipse-documents-v16")
-    assert E.valid_document?(legacy16["document"],legacy16["text"])
-    legacy_receipt=E.document_storage_receipt!(legacy16["document"])
+    for legacy_recipe <- ~w(ipse-documents-v16 ipse-documents-v17) do
+    legacy=put_in(packed,["document","extraction_version"],legacy_recipe)
+    assert E.valid_document?(legacy["document"],legacy["text"])
+    legacy_receipt=E.document_storage_receipt!(legacy["document"])
     legacy_attrs=packed_attrs |> put_in(["origin","receipt"],legacy_receipt)
-    legacy_attrs=if legacy_receipt["version"]==4, do: Map.put(legacy_attrs,"document",legacy16["document"]), else: Map.delete(legacy_attrs,"document")
+    legacy_attrs=if legacy_receipt["version"]==4, do: Map.put(legacy_attrs,"document",legacy["document"]), else: Map.delete(legacy_attrs,"document")
     {:ok,legacy_source}=E.source(legacy_attrs)
     {:ok,[legacy_chunk|_]}=E.chunks(legacy_source)
     {:ok,legacy_crossing}=E.citation(legacy_source,legacy_chunk,0,byte_size(crossing_text))
-    assert legacy_crossing["document"]["extraction_version"]=="ipse-documents-v16"
+    assert legacy_crossing["document"]["extraction_version"]==legacy_recipe
     assert List.last(legacy_crossing["document"]["span_fields"])=="numbering"
     assert E.valid_span?(legacy_source,legacy_crossing)
     refute E.valid_span?(legacy_source,put_in(legacy_crossing,["document","spans",Access.at(0),Access.at(8),"label"],"9."))
+    end
 
     table=fn content -> "<w:tbl><w:tr><w:tc>"<>content<>"</w:tc></w:tr></w:tbl>" end
     mixed_body="<w:p>"<>run.("Plain")<>"</w:p>"<>list.(7,"Numbered")<>
@@ -431,7 +433,7 @@ defmodule Ipse.KnowledgeDocumentsFidelityTest do
     body="<w:p><w:pPr><w:pStyle w:val=\"Heading1\"/></w:pPr><w:r><w:rPr><w:rStyle w:val=\"MissingChar\"/></w:rPr><w:t>Résumé 雪 evidence.</w:t></w:r></w:p>"
     bytes=doc.(body)
     {:ok,result}=D.extract(bytes,"undefined.docx")
-    assert result["extraction_version"]=="ipse-documents-v17"
+    assert result["extraction_version"]=="ipse-documents-v18"
     assert result["status"]=="complete" and result["warnings"]==[]
     assert [%{"text"=>"Résumé 雪 evidence.","style"=>"Heading1"}]=result["segments"]
     {:ok,payload}=D.source_payload(result)
@@ -446,7 +448,7 @@ defmodule Ipse.KnowledgeDocumentsFidelityTest do
     assert citation["quote"]=="雪 evidence."
     assert citation["document"]["original_sha256"]==E.sha256(bytes)
     assert citation["document"]["start_byte"]==byte_size("Résumé ")
-    assert citation["document"]["extraction_version"]=="ipse-documents-v17"
+    assert citation["document"]["extraction_version"]=="ipse-documents-v18"
     assert E.valid_span?(source,citation)
     refute E.valid_span?(source,put_in(citation,["document","start_byte"],start+1))
     ''')
@@ -515,7 +517,7 @@ defmodule Ipse.KnowledgeDocumentsFidelityTest do
     assert Map.take(first["locator"],~w(kind table row cell))==%{"kind"=>"table_cell","table"=>1,"row"=>1,"cell"=>1}
     assert Map.take(second["locator"],~w(kind table row cell))==%{"kind"=>"table_cell","table"=>2,"row"=>1,"cell"=>1}
     assert result["status"]=="complete" and result["warnings"]==[]
-    assert result["extraction_version"]=="ipse-documents-v17"
+    assert result["extraction_version"]=="ipse-documents-v18"
     ''')
   end
 
@@ -771,7 +773,7 @@ defmodule Ipse.KnowledgeDocumentsFidelityTest do
       {start,count}=:binary.match(payload["text"],quote)
       chunk=Enum.find(chunks,&(start >= &1["start_byte"] and start+count <= &1["end_byte"]))
       {:ok,citation}=E.citation(source,chunk,start,start+count)
-      assert citation["document"]["extraction_version"]=="ipse-documents-v17"
+      assert citation["document"]["extraction_version"]=="ipse-documents-v18"
       assert citation["document"]["locator"]["reference_site"]["byte_offset"]==5
       assert E.valid_span?(source,citation)
       refute E.valid_span?(source,put_in(citation,["document","locator","reference_site","byte_offset"],4))
@@ -904,6 +906,75 @@ defmodule Ipse.KnowledgeDocumentsFidelityTest do
     assert List.last(visible["segments"])["locator"]["reference_range"]["end_byte"]==2
     {:ok,dangling}=D.extract(doc.("<w:p>"<>start<>run.("text")<>finish<>"</w:p>"),"dangling.docx")
     assert dangling["status"]=="partial"
+    assert %{"code"=>"annotation_anchors_unresolved","part"=>"word/document.xml"} in dangling["warnings"]
+    ''')
+  end
+
+  @tag :annotation_layout
+  test "reserved footnote and endnote layout types omit content while retaining paragraph ordinals" do
+    pure(~S'''
+    for {part,item,reference} <- [{"footnotes","footnote","footnoteReference"},{"endnotes","endnote","endnoteReference"}] do
+      entry=fn id,type,content -> "<w:#{item} w:id=\"#{id}\" w:type=\"#{type}\"><w:p>#{content}</w:p></w:#{item}>" end
+      notes="<w:#{part} xmlns:w=\"#{word}\">"<>
+        entry.("-1","separator",run.("not merely a dash")<>"<w:r><w:separator/></w:r>")<>
+        entry.("0","continuationSeparator",run.("ordinary-looking text")<>"<w:r><w:continuationSeparator/></w:r>")<>
+        entry.("3","continuationNotice",run.("layout continuation notice"))<>
+        entry.("7","normal",run.("ordinary-looking text"))<>"</w:#{part}>"
+      body="<w:p>"<>run.("bodyé")<>"<w:r><w:#{reference} w:id=\"7\"/></w:r></w:p>"
+      {:ok,result}=D.extract(zip.([{"word/document.xml",xml.(body)},{"word/#{part}.xml",notes}]),"layout.docx")
+      assert result["extraction_version"]=="ipse-documents-v18"
+      assert result["status"]=="complete" and result["warnings"]==[]
+      assert [%{"text"=>"bodyé"},%{"text"=>"ordinary-looking text","locator"=>locator}]=result["segments"]
+      assert locator["annotation_id"]=="7" and locator["paragraph"]==4
+      assert locator["reference_site"]["byte_offset"]==byte_size("bodyé")
+      for {maximum,chunking} <- [{8192,1},{65536,2}] do
+        {:ok,payload}=D.source_payload(result,maximum,chunking)
+        assert payload["text"]=="bodyé\nordinary-looking text"
+        assert List.last(payload["document"]["segments"])["locator"]==locator
+      end
+    end
+    ''')
+  end
+
+  @tag :annotation_layout
+  test "ordinary negative and unreferenced annotations remain evidence even when their text resembles layout" do
+    pure(~S'''
+    for {part,item} <- [{"footnotes","footnote"},{"endnotes","endnote"}] do
+      entry=fn attrs,text -> "<w:#{item}#{attrs}><w:p>"<>run.(text)<>"</w:p></w:#{item}>" end
+      notes="<w:#{part} xmlns:w=\"#{word}\">"<>
+        entry.(" w:id=\"99\" w:type=\"separator\"","layout content")<>
+        entry.(" w:id=\"-1\" w:type=\"normal\"","—")<>
+        entry.(" w:id=\"0\"","unreferenced ordinary")<>
+        entry.(" w:id=\"8\" xmlns:x=\"urn:foreign\" x:type=\"separator\"","foreign type remains ordinary")<>"</w:#{part}>"
+      {:ok,result}=D.extract(zip.([{"word/document.xml",xml.("<w:p>"<>run.("body")<>"</w:p>")},{"word/#{part}.xml",notes}]),"ordinary.docx")
+      assert Enum.map(tl(result["segments"]),& &1["text"])==["—","unreferenced ordinary","foreign type remains ordinary"]
+      assert Enum.map(tl(result["segments"]),& &1["locator"]["annotation_id"])==["-1","0","8"]
+      assert Enum.map(tl(result["segments"]),& &1["locator"]["paragraph"])==[2,3,4]
+      assert result["status"]=="partial"
+      assert %{"code"=>"annotation_anchors_unresolved","part"=>"word/#{part}.xml"} in result["warnings"]
+    end
+    ''')
+  end
+
+  @tag :annotation_layout
+  test "unknown annotation types and duplicate layout identities refuse instead of hiding evidence" do
+    pure(~S'''
+    for {part,item} <- [{"footnotes","footnote"},{"endnotes","endnote"}] do
+      entry=fn id,type -> "<w:#{item} w:id=\"#{id}\" w:type=\"#{type}\"><w:p>"<>run.("text")<>"</w:p></w:#{item}>" end
+      for content <- [entry.("7","unknown"),entry.("7","Separator"),entry.("7",""),entry.("7","separator")<>entry.("+07","normal"),entry.("-1","separator")<>entry.("-01","continuationSeparator")] do
+        assert {:error,:unsupported_docx_annotation}=D.extract(zip.([{"word/document.xml",xml.("<w:p>"<>run.("body")<>"</w:p>")},{"word/#{part}.xml","<w:#{part} xmlns:w=\"#{word}\">"<>content<>"</w:#{part}>"}]),"invalid.docx")
+      end
+    end
+    comments="<w:comments xmlns:w=\"#{word}\"><w:comment w:id=\"7\" w:type=\"separator\"><w:p>"<>run.("must not become comment layout")<>"</w:p></w:comment></w:comments>"
+    assert {:error,:unsupported_docx_annotation}=D.extract(zip.([{"word/document.xml",xml.("<w:p>"<>run.("body")<>"</w:p>")},{"word/comments.xml",comments}]),"comment.docx")
+    ordinary="<w:footnotes xmlns:w=\"#{word}\"><w:footnote w:id=\"7\"><w:p>"<>run.("ordinary")<>"<w:r><w:separator/></w:r></w:p></w:footnote></w:footnotes>"
+    {:ok,unsupported}=D.extract(zip.([{"word/document.xml",xml.("<w:p>"<>run.("body")<>"</w:p>")},{"word/footnotes.xml",ordinary}]),"marker.docx")
+    assert List.last(unsupported["segments"])["text"]=="ordinary"
+    assert %{"code"=>"unsupported_word_content","part"=>"word/footnotes.xml"} in unsupported["warnings"]
+    layout="<w:footnotes xmlns:w=\"#{word}\"><w:footnote w:id=\"7\" w:type=\"separator\"><w:p>"<>run.("layout")<>"</w:p></w:footnote></w:footnotes>"
+    body="<w:p>"<>run.("body")<>"<w:r><w:footnoteReference w:id=\"7\"/></w:r></w:p>"
+    {:ok,dangling}=D.extract(zip.([{"word/document.xml",xml.(body)},{"word/footnotes.xml",layout}]),"layout-reference.docx")
+    assert [%{"text"=>"body"}]=dangling["segments"]
     assert %{"code"=>"annotation_anchors_unresolved","part"=>"word/document.xml"} in dangling["warnings"]
     ''')
   end

@@ -1,0 +1,1859 @@
+defmodule IpseKnowledge.Documents.Docx do
+  @moduledoc false
+  alias IpseKnowledge.Documents.Zip
+  @word ~c"http://schemas.openxmlformats.org/wordprocessingml/2006/main"
+  @strict ~c"http://purl.oclc.org/ooxml/wordprocessingml/main"
+  @parts ~w(word/document.xml word/footnotes.xml word/endnotes.xml word/comments.xml)
+  @style_parts ~w(word/styles.xml word/stylesWithEffects.xml)
+  @numbering_part "word/numbering.xml"
+  @property_containers ~w(pPr rPr tblPr trPr tcPr sectPr tblGrid)
+  @structural ~w(document body hdr ftr footnotes endnotes comments footnote endnote comment p pPr r rPr t delText tbl tblPr tblGrid gridCol tr trPr tc tcPr ins moveTo del moveFrom hyperlink bookmarkStart bookmarkEnd commentRangeStart commentRangeEnd commentReference footnoteReference endnoteReference proofErr permStart permEnd sectPr lastRenderedPageBreak pStyle rStyle)
+
+  def extract(bytes, limits) do
+    entries = Zip.entries(bytes, limits)
+    names = Enum.map(entries, & &1.name)
+
+    cond do
+      "EncryptedPackage" in names or "EncryptionInfo" in names ->
+        fail(:encrypted_document)
+
+      Enum.any?(
+        names,
+        &(String.starts_with?(&1, "word/embeddings/") or
+              String.ends_with?(String.downcase(&1), "vbaproject.bin"))
+      ) ->
+        fail(:embedded_objects_unsupported)
+
+      "word/document.xml" not in names ->
+        fail(:not_word_document)
+
+      true ->
+        :ok
+    end
+
+    {authority, authority_bytes} =
+      Enum.reduce(["_rels/.rels", "[Content_Types].xml"], {%{}, 0}, fn name, {data, expanded} ->
+        entry =
+          Enum.find(entries, &(&1.name == name)) || fail(:unsupported_docx_package_authority)
+
+        xml = Zip.read(bytes, entry, limits.max_expanded_bytes - expanded)
+        {Map.put(data, name, xml), expanded + byte_size(xml)}
+      end)
+
+    root_relationships =
+      IpseKnowledge.Documents.Docx.Styles.relationships(authority["_rels/.rels"], names, :root)
+
+    content_types =
+      IpseKnowledge.Documents.Docx.Styles.content_types(authority["[Content_Types].xml"], names)
+
+    selected =
+      Enum.filter(entries, &(&1.name in @parts))
+      |> Enum.sort_by(&Enum.find_index(@parts, fn name -> name == &1.name end))
+
+    {relationships, relationship_bytes} =
+      case Enum.find(entries, &(&1.name == "word/_rels/document.xml.rels")) do
+        nil ->
+          {%{parts: %{}, sections: %{}, external?: false, unexamined?: false}, 0}
+
+        entry ->
+          xml = Zip.read(bytes, entry, limits.max_expanded_bytes - authority_bytes)
+          {IpseKnowledge.Documents.Docx.Styles.relationships(xml, names), byte_size(xml)}
+      end
+
+    for name <- @style_parts ++ tl(@parts), name in names do
+      unless Map.has_key?(relationships.parts, name),
+        do: fail(:unsupported_docx_part_relationship)
+    end
+
+    {style_graphs, style_bytes} =
+      Enum.reduce(@style_parts, {%{}, 0}, fn name, {graphs, expanded} ->
+        case Enum.find(entries, &(&1.name == name)) do
+          nil ->
+            {graphs, expanded}
+
+          entry ->
+            xml =
+              Zip.read(
+                bytes,
+                entry,
+                limits.max_expanded_bytes - authority_bytes - relationship_bytes - expanded
+              )
+
+            {Map.put(graphs, name, IpseKnowledge.Documents.Docx.Styles.parse(xml)),
+             expanded + byte_size(xml)}
+        end
+      end)
+
+    if Map.has_key?(style_graphs, "word/stylesWithEffects.xml") and
+         (not Map.has_key?(style_graphs, "word/styles.xml") or
+            style_graphs["word/styles.xml"] != style_graphs["word/stylesWithEffects.xml"]),
+       do: fail(:unsupported_docx_style_visibility)
+
+    styles = Map.get(style_graphs, "word/styles.xml", IpseKnowledge.Documents.Docx.Styles.empty())
+
+    {numbering, numbering_bytes} =
+      case Enum.find(entries, &(&1.name == @numbering_part)) do
+        nil ->
+          {nil, 0}
+
+        entry ->
+          xml =
+            Zip.read(
+              bytes,
+              entry,
+              limits.max_expanded_bytes - authority_bytes - style_bytes - relationship_bytes
+            )
+
+          authorized =
+            Map.has_key?(relationships.parts, @numbering_part) and
+              content_types["/" <> @numbering_part] ==
+                "application/vnd.openxmlformats-officedocument.wordprocessingml.numbering+xml"
+
+          {%{xml: xml, authorized: authorized}, byte_size(xml)}
+      end
+
+    {segments, warnings, expanded, text, refs, references, ranges, ranges_unsafe, annotations} =
+      Enum.reduce(
+        selected,
+        {[], [], authority_bytes + style_bytes + relationship_bytes + numbering_bytes, 0,
+         MapSet.new(), %{}, %{}, false, %{}},
+        fn entry,
+           {segments, warnings, expanded, text, refs, references, ranges, ranges_unsafe,
+            annotations} ->
+          xml = Zip.read(bytes, entry, limits.max_expanded_bytes - expanded)
+          state = parse(xml, entry.name, limits, length(segments), text, styles, numbering)
+
+          references =
+            if entry.name == "word/document.xml", do: state.references, else: references
+
+          {ranges, ranges_unsafe} =
+            if entry.name == "word/document.xml",
+              do: {state.ranges, state.ranges_unsafe},
+              else: {ranges, ranges_unsafe}
+
+          {segments ++ Enum.reverse(state.segments), warnings ++ state.warnings,
+           expanded + byte_size(xml), state.text_bytes, MapSet.union(refs, state.section_refs),
+           references, ranges, ranges_unsafe, Map.put(annotations, entry.name, state.note_ids)}
+        end
+      )
+
+    body_segments =
+      for %{"locator" => %{"part" => "word/document.xml"} = locator, "text" => text} <- segments,
+          into: %{},
+          do: {locator, byte_size(text)}
+
+    segments =
+      Enum.map(segments, &attach_reference(&1, references, ranges, ranges_unsafe, body_segments))
+
+    section_parts =
+      refs
+      |> Enum.map(fn {kind, id} ->
+        case relationships.sections[id] do
+          {^kind, part} ->
+            {kind, part}
+
+          _ ->
+            fail(:unsupported_docx_part_relationship)
+        end
+      end)
+      |> Enum.uniq()
+      |> Enum.sort_by(fn {kind, part} -> {if(kind == "header", do: 0, else: 1), part} end)
+
+    Enum.each(section_parts, fn {kind, part} ->
+      unless content_types["/" <> part] ==
+               "application/vnd.openxmlformats-officedocument.wordprocessingml.#{kind}+xml",
+             do: fail(:unsupported_docx_content_types)
+    end)
+
+    {segments, warnings, _expanded, _text} =
+      Enum.reduce(section_parts, {segments, warnings, expanded, text}, fn {kind, part},
+                                                                          {segments, warnings,
+                                                                           expanded, text} ->
+        entry =
+          Enum.find(entries, &(&1.name == part)) || fail(:unsupported_docx_part_relationship)
+
+        xml = Zip.read(bytes, entry, limits.max_expanded_bytes - expanded)
+        state = parse(xml, part, limits, length(segments), text, styles, numbering, kind)
+
+        {segments ++ Enum.reverse(state.segments), warnings ++ state.warnings,
+         expanded + byte_size(xml), state.text_bytes}
+      end)
+
+    omissions =
+      for name <- names,
+          String.starts_with?(name, "word/") and String.ends_with?(name, ".xml") and
+            name not in (@style_parts ++ @parts) and
+            name not in Enum.map(section_parts, &elem(&1, 1)),
+          do: %{"code" => "part_not_extracted", "part" => name}
+
+    annotation_warnings =
+      annotation_warnings(segments, annotations, references, ranges, ranges_unsafe)
+
+    relationship_warnings =
+      Enum.flat_map(
+        [{"_rels/.rels", root_relationships}, {"word/_rels/document.xml.rels", relationships}],
+        fn {name, observation} ->
+          external =
+            if observation.external?,
+              do: [%{"code" => "external_relationship_not_followed", "part" => name}],
+              else: []
+
+          unexamined =
+            if observation.unexamined?,
+              do: [%{"code" => "internal_relationship_not_examined", "part" => name}],
+              else: []
+
+          external ++ unexamined
+        end
+      )
+
+    unexamined =
+      if Enum.any?(names, fn name ->
+           String.ends_with?(name, ".rels") and
+             name not in ["_rels/.rels", "word/_rels/document.xml.rels"]
+         end),
+         do: [%{"code" => "relationship_part_not_examined"}],
+         else: []
+
+    warnings =
+      Enum.uniq(
+        warnings ++
+          omissions ++
+          annotation_warnings ++ relationship_warnings ++ unexamined
+      )
+
+    {:ok,
+     %{
+       "format" => "docx",
+       "status" => if(warnings == [], do: "complete", else: "partial"),
+       "revision_policy" => "insertions_included_deletions_excluded",
+       "visibility_policy" => "bounded_style_and_direct_hidden_excluded",
+       "segments" => segments,
+       "warnings" => warnings
+     }}
+  end
+
+  defp annotation_warnings(segments, annotations, references, ranges, ranges_unsafe) do
+    grouped =
+      segments
+      |> Enum.filter(&Map.has_key?(&1["locator"], "annotation_id"))
+      |> Enum.group_by(fn %{"locator" => locator} ->
+        {locator["part"], numeric_annotation_id!(locator["annotation_id"])}
+      end)
+
+    resolved =
+      for {key, paragraphs} <- grouped,
+          {part, id} = key,
+          MapSet.member?(Map.get(annotations, part, MapSet.new()), id),
+          is_map(references[key]),
+          Enum.all?(paragraphs, fn %{"locator" => locator} ->
+            is_map(locator["reference_site"]) and
+              (part != "word/comments.xml" or not Map.has_key?(ranges, id) or
+                 is_map(locator["reference_range"]))
+          end),
+          into: MapSet.new(),
+          do: key
+
+    parts =
+      for part <- tl(@parts),
+          Enum.any?(
+            Map.get(annotations, part, MapSet.new()),
+            &(not MapSet.member?(resolved, {part, &1}))
+          ),
+          do: %{"code" => "annotation_anchors_unresolved", "part" => part}
+
+    unresolved_body =
+      ranges_unsafe or Enum.any?(references, fn {key, _} -> not MapSet.member?(resolved, key) end) or
+        Enum.any?(ranges, fn {id, _} ->
+          not MapSet.member?(resolved, {"word/comments.xml", id})
+        end)
+
+    if unresolved_body,
+      do: [%{"code" => "annotation_anchors_unresolved", "part" => "word/document.xml"} | parts],
+      else: parts
+  end
+
+  defp parse(xml, part, limits, count, text, styles, numbering, region \\ nil) do
+    # Refuse DTD syntax before the parser can invoke an entity resolver. DOCX XML
+    # is UTF-8 in this version; UTF-16 is explicitly refused instead of bypassing
+    # the independent declaration check with interleaved NULs.
+    unless String.valid?(xml) and not String.contains?(xml, <<0>>),
+      do: fail(:unsupported_xml_encoding)
+
+    if String.contains?(xml, ["<!DOCTYPE", "<!ENTITY"]), do: fail(:xml_entities_unsupported)
+
+    state = %{
+      part: part,
+      region: region,
+      section_refs: MapSet.new(),
+      limits: limits,
+      depth: 0,
+      stack: [],
+      root: false,
+      dialect: nil,
+      paragraph: 0,
+      current: nil,
+      table_count: 0,
+      tables: [],
+      note: nil,
+      note_layout: nil,
+      annotation_ids: MapSet.new(),
+      note_ids: MapSet.new(),
+      references: %{},
+      reference_count: 0,
+      ranges: %{},
+      ranges_unsafe: false,
+      marker_order: 0,
+      excluded: 0,
+      runs: [],
+      styles: styles,
+      numbering: numbering,
+      number_counters: %{},
+      segments: [],
+      count: count,
+      text_bytes: text,
+      warnings: [],
+      warned: MapSet.new()
+    }
+
+    options = [
+      :disallow_entities,
+      {:external_entities, :none},
+      {:fail_undeclared_ref, true},
+      {:event_state, state},
+      {:event_fun, &event/3}
+    ]
+
+    case :xmerl_sax_parser.stream(xml, options) do
+      {:ok, %{depth: 0, root: true} = result, rest} when rest in ["", []] -> result
+      {:document_error, _, code, _, _} when is_atom(code) -> fail(code)
+      _ -> fail(:malformed_xml)
+    end
+  end
+
+  defp event({:startDTD, _, _, _}, _, _), do: fail(:xml_entities_unsupported)
+  defp event({:processingInstruction, _, _}, _, _), do: fail(:xml_processing_instruction)
+
+  defp event({:startElement, uri, name, _, attrs}, _, state) do
+    if state.depth >= 64 or length(attrs) > 64, do: fail(:xml_structure_limit)
+
+    if Enum.any?(attrs, fn {_, _, _, value} -> length(value) > 4096 end),
+      do: fail(:xml_structure_limit)
+
+    if uri == ~c"http://schemas.openxmlformats.org/markup-compatibility/2006" and
+         name == ~c"AlternateContent",
+       do: fail(:unsupported_docx_alternate_content)
+
+    word? = uri in [@word, @strict]
+    element = if word?, do: List.to_string(name), else: :other
+
+    state =
+      if state.depth == 0 do
+        expected =
+          case state.part do
+            "word/document.xml" -> "document"
+            "word/footnotes.xml" -> "footnotes"
+            "word/endnotes.xml" -> "endnotes"
+            "word/comments.xml" -> "comments"
+            _ -> if(state.region == "header", do: "hdr", else: "ftr")
+          end
+
+        if element != expected, do: fail(:invalid_word_namespace)
+        %{state | root: true, dialect: uri}
+      else
+        state
+      end
+
+    if (word? and uri != state.dialect) or
+         Enum.any?(attrs, fn {attr_uri, _, _, _} ->
+           attr_uri in [@word, @strict] and attr_uri != state.dialect
+         end),
+       do: fail(:invalid_word_namespace)
+
+    state = %{state | depth: state.depth + 1, stack: [element | state.stack]}
+
+    state =
+      if not word?,
+        do: warning(state, "unsupported_namespace_content"),
+        else: state
+
+    if state.excluded == 0 and
+         ((element in ~w(numPr numId ilvl) and not word?) or
+            ("numPr" in state.stack and
+               not match?(["numPr" | _], state.stack) and
+               not (match?([_, "numPr" | _], state.stack) and element in ~w(numId ilvl)))) do
+      fail(:unsupported_docx_numbering)
+    end
+
+    state =
+      if state.current != nil and
+           element in ~w(ins moveTo del moveFrom pPrChange rPrChange numberingChange) do
+        if state.current.numbering_seen, do: fail(:unsupported_docx_numbering)
+        %{state | current: %{state.current | revision_seen: true}}
+      else
+        state
+      end
+
+    state =
+      if state.current != nil and element == "vanish" and
+           not match?(["vanish", "rPr", "r" | _], state.stack) do
+        if state.current.numbering_seen, do: fail(:unsupported_docx_numbering)
+        %{state | current: %{state.current | marker_visibility_ambiguous: true}}
+      else
+        state
+      end
+
+    cond do
+      element == "tab" and match?(["tab", "tabs", "pPr", "p" | _], state.stack) ->
+        state
+
+      element in ~w(t tab br cr noBreakHyphen softHyphen) and
+          not match?([_, "r" | _], state.stack) ->
+        fail(:unsupported_docx_text_structure)
+
+      element in ~w(del moveFrom) ->
+        %{state | excluded: state.excluded + 1}
+
+      element == "r" ->
+        if Enum.any?(state.stack, &(&1 in @property_containers)),
+          do: fail(:unsupported_docx_text_structure)
+
+        if state.runs != [], do: fail(:unsupported_nested_run)
+
+        %{
+          state
+          | runs: [
+              %{
+                hidden: false,
+                style: nil,
+                style_seen: false,
+                visibility_seen: false,
+                content_started: false
+              }
+            ]
+        }
+
+      element == "vanish" ->
+        hidden_property(state, attrs)
+
+      element in ~w(webHidden specVanish) ->
+        if state.excluded > 0 or "rPrChange" in state.stack,
+          do: warning(state, "unsupported_visibility_property", element),
+          else: fail(:unsupported_docx_style_visibility)
+
+      element in ~w(headerReference footerReference) ->
+        section_reference(state, element, attrs)
+
+      element in ~w(footnoteReference endnoteReference commentReference) ->
+        annotation_reference(state, element, attrs)
+
+      element in ~w(commentRangeStart commentRangeEnd) ->
+        comment_range(state, element, attrs)
+
+      element == "tbl" ->
+        index = state.table_count + 1
+
+        table = %{table: index, row: 0, cell: 0, style_seen: false, content_started: false}
+        %{state | table_count: index, tables: [table | state.tables]}
+
+      element == "tblStyle" ->
+        case {state.stack, state.tables} do
+          {["tblStyle", "tblPr", "tbl" | _], [table | rest]}
+          when not table.style_seen and not table.content_started ->
+            IpseKnowledge.Documents.Docx.Styles.check(state.styles, attr(attrs, "val"), "table")
+            %{state | tables: [%{table | style_seen: true} | rest]}
+
+          _ ->
+            fail(:unsupported_docx_style_visibility)
+        end
+
+      element == "tr" and state.tables != [] ->
+        [table | rest] = state.tables
+        %{state | tables: [%{table | row: table.row + 1, cell: 0, content_started: true} | rest]}
+
+      element == "tc" and state.tables != [] ->
+        [table | rest] = state.tables
+        %{state | tables: [%{table | cell: table.cell + 1} | rest]}
+
+      element in ~w(footnote endnote comment) ->
+        annotation(state, element, attrs)
+
+      element == "p" ->
+        if state.part in tl(@parts) and is_nil(state.note),
+          do: fail(:unsupported_docx_annotation)
+
+        start_paragraph(state)
+
+      element == "pStyle" and state.current != nil ->
+        if not match?(["pStyle", "pPr", "p" | _], state.stack) or
+             state.current.style_seen or state.current.content_started,
+           do: fail(:unsupported_docx_style_visibility)
+
+        style = attr(attrs, "val")
+        IpseKnowledge.Documents.Docx.Styles.check(state.styles, style, "paragraph")
+        %{state | current: %{state.current | style: style, style_seen: true}}
+
+      element == "rStyle" ->
+        case {state.stack, state.runs} do
+          {["rStyle", "rPr", "r" | _], [run]} ->
+            if run.style_seen or run.content_started, do: fail(:unsupported_docx_style_visibility)
+            style = attr(attrs, "val")
+            IpseKnowledge.Documents.Docx.Styles.check(state.styles, style, "character")
+            %{state | runs: [%{run | style: style, style_seen: true}]}
+
+          _ ->
+            fail(:unsupported_docx_style_visibility)
+        end
+
+      element in ~w(numPr numId ilvl) and state.excluded > 0 ->
+        state
+
+      element == "numPr" ->
+        start_numbering(state, attrs)
+
+      element in ~w(numId ilvl) ->
+        numbering_property(state, element, attrs)
+
+      element in ~w(tab br cr) ->
+        append(state, if(element == "tab", do: "\t", else: "\n"))
+
+      element == "noBreakHyphen" ->
+        append(state, "\u2011")
+
+      element == "softHyphen" ->
+        append(state, "\u00ad")
+
+      element in ~w(fldSimple fldChar instrText) ->
+        warning(state, "fields_not_recalculated")
+
+      state.note_layout == element and
+        element in ~w(separator continuationSeparator continuationNotice) and
+          match?([_, "r" | _], state.stack) ->
+        state
+
+      element in ~w(drawing pict object altChunk subDoc txbxContent sym ptab) ->
+        warning(state, "unsupported_content", element)
+
+      true ->
+        if word? and element not in @structural,
+          do: warning(state, "unsupported_word_content"),
+          else: state
+    end
+  end
+
+  defp event({:endElement, _, _, _}, _, %{stack: [element | rest]} = state) do
+    state =
+      cond do
+        element in ~w(del moveFrom) -> %{state | excluded: state.excluded - 1}
+        element == "p" -> finish_paragraph(state)
+        element == "numPr" and state.excluded == 0 -> finish_numbering(state)
+        element == "r" -> %{state | runs: tl(state.runs)}
+        element == "tbl" -> %{state | tables: tl(state.tables)}
+        element in ~w(footnote endnote comment) -> %{state | note: nil, note_layout: nil}
+        true -> state
+      end
+
+    %{state | depth: state.depth - 1, stack: rest}
+  end
+
+  defp event({:characters, characters}, _, %{stack: ["t" | _]} = state),
+    do: append(state, :unicode.characters_to_binary(characters))
+
+  defp event({:characters, _}, _, %{excluded: excluded} = state) when excluded > 0,
+    do: state
+
+  defp event({:characters, characters}, _, state) do
+    if characters |> :unicode.characters_to_binary() |> String.trim() == "" do
+      state
+    else
+      if "numPr" in state.stack, do: fail(:unsupported_docx_numbering)
+      warning(state, "unsupported_text_content")
+    end
+  end
+
+  defp event(_, _, state), do: state
+
+  defp start_paragraph(%{current: current}) when current != nil,
+    do: fail(:unsupported_nested_paragraph)
+
+  defp start_paragraph(state) do
+    number = state.paragraph + 1
+    locator = %{"kind" => "paragraph", "part" => state.part, "paragraph" => number}
+    locator = if state.region, do: Map.put(locator, "region", state.region), else: locator
+
+    locator =
+      if state.note == nil, do: locator, else: Map.put(locator, "annotation_id", state.note)
+
+    locator =
+      case state.tables do
+        [table | _] ->
+          Map.merge(locator, %{
+            "kind" => "table_cell",
+            "table" => table.table,
+            "row" => table.row,
+            "cell" => table.cell
+          })
+
+        [] ->
+          locator
+      end
+
+    %{
+      state
+      | paragraph: number,
+        current: %{
+          text: [],
+          bytes: 0,
+          style: nil,
+          style_seen: false,
+          content_started: false,
+          numbering: nil,
+          numbering_seen: false,
+          revision_seen: false,
+          marker_visibility_ambiguous: false,
+          locator: locator
+        }
+    }
+  end
+
+  defp start_numbering(state, attrs) do
+    unless state.part == "word/document.xml" and
+             match?(["numPr", "pPr", "p" | _], state.stack) and attrs == [] and
+             state.current != nil and not state.current.content_started and
+             not state.current.numbering_seen and not state.current.revision_seen and
+             not state.current.marker_visibility_ambiguous and
+             Enum.all?(state.stack, &(&1 not in ~w(ins moveTo del moveFrom pPrChange rPrChange))) do
+      fail(:unsupported_docx_numbering)
+    end
+
+    numbering =
+      case state.numbering do
+        %{authorized: true, parsed: parsed} -> parsed
+        %{authorized: true, xml: xml} -> IpseKnowledge.Documents.Docx.Numbering.parse(xml)
+        _ -> fail(:unsupported_docx_numbering)
+      end
+
+    # The checked subset does not assign numbering semantics across dialects.
+    # This is an extraction boundary, not a judgment about package conformance.
+    if numbering.dialect != state.dialect or
+         (Map.get(state.styles, :dialect) != nil and state.styles.dialect != state.dialect),
+       do: fail(:unsupported_docx_numbering)
+
+    %{
+      state
+      | numbering: Map.put(state.numbering, :parsed, numbering),
+        current: %{state.current | numbering_seen: true, numbering: %{num_id: nil, level: nil}}
+    }
+  end
+
+  defp numbering_property(state, element, attrs) do
+    unless state.current != nil and state.current.numbering_seen and
+             match?([_, "numPr", "pPr", "p" | _], state.stack) and length(attrs) == 1 do
+      fail(:unsupported_docx_numbering)
+    end
+
+    value = attr(attrs, "val")
+
+    unless is_binary(value) and Regex.match?(~r/\A(?:0|[1-9][0-9]{0,9})\z/, value),
+      do: fail(:unsupported_docx_numbering)
+
+    number = String.to_integer(value)
+    key = if element == "numId", do: :num_id, else: :level
+
+    unless is_nil(state.current.numbering[key]) and
+             if(key == :num_id, do: number in 1..2_147_483_647, else: number == 0),
+           do: fail(:unsupported_docx_numbering)
+
+    current = %{state.current | numbering: Map.put(state.current.numbering, key, number)}
+    %{state | current: current}
+  end
+
+  defp finish_numbering(state) do
+    with %{num_id: id, level: 0} when is_integer(id) <- state.current.numbering,
+         {:ok, metadata, counters} <-
+           IpseKnowledge.Documents.Docx.Numbering.next(
+             state.numbering.parsed,
+             id,
+             state.number_counters
+           ) do
+      current = %{state.current | locator: Map.put(state.current.locator, "numbering", metadata)}
+      %{state | current: current, number_counters: counters}
+    else
+      _ -> fail(:unsupported_docx_numbering)
+    end
+  end
+
+  defp finish_paragraph(%{current: nil} = state), do: state
+
+  defp finish_paragraph(state) do
+    text = state.current.text |> Enum.reverse() |> IO.iodata_to_binary()
+
+    if text == "" and state.current.numbering_seen,
+      do: fail(:unsupported_docx_numbering)
+
+    if text == "" do
+      %{state | current: nil}
+    else
+      if state.count >= state.limits.max_segments, do: fail(:segment_limit)
+      segment = %{"text" => text, "locator" => state.current.locator}
+
+      segment =
+        if state.current.style, do: Map.put(segment, "style", state.current.style), else: segment
+
+      %{state | current: nil, count: state.count + 1, segments: [segment | state.segments]}
+    end
+  end
+
+  defp append(%{excluded: excluded} = state, _) when excluded > 0, do: state
+  defp append(%{note_layout: layout} = state, _) when not is_nil(layout), do: state
+  defp append(%{current: nil} = state, ""), do: state
+  defp append(%{current: nil} = state, _), do: warning(state, "unsupported_text_location")
+
+  defp append(state, bytes) do
+    state =
+      case state.runs do
+        [run] -> %{state | runs: [%{run | content_started: true}]}
+        [] -> state
+      end
+
+    hidden = hidden?(state)
+
+    state = %{state | current: %{state.current | content_started: true}}
+
+    if hidden do
+      state
+    else
+      size = state.text_bytes + byte_size(bytes)
+      if size > state.limits.max_text_bytes, do: fail(:text_limit)
+
+      %{
+        state
+        | text_bytes: size,
+          current: %{
+            state.current
+            | text: [bytes | state.current.text],
+              bytes: state.current.bytes + byte_size(bytes)
+          }
+      }
+    end
+  end
+
+  defp hidden?(state) do
+    case state.runs do
+      [run] ->
+        inherited =
+          IpseKnowledge.Documents.Docx.Styles.hidden?(
+            state.styles,
+            state.current.style,
+            run.style
+          )
+
+        if run.visibility_seen, do: run.hidden, else: inherited
+
+      [] ->
+        IpseKnowledge.Documents.Docx.Styles.hidden?(state.styles, state.current.style, nil)
+    end
+  end
+
+  defp annotation_reference(%{excluded: excluded} = state, _, _) when excluded > 0, do: state
+
+  defp annotation_reference(state, element, attrs) do
+    if state.part != "word/document.xml" or state.current == nil or
+         not match?([_, "r" | _], state.stack) or length(state.runs) != 1 do
+      warning(state, "annotation_reference_not_examined", element)
+    else
+      id = numeric_annotation_id!(attr(attrs, "id"))
+      [run] = state.runs
+      hidden = hidden?(state)
+
+      state = %{
+        state
+        | runs: [%{run | content_started: true}],
+          current: %{state.current | content_started: true}
+      }
+
+      if hidden do
+        state
+      else
+        if state.reference_count >= state.limits.max_segments,
+          do: fail(:unsupported_docx_annotation)
+
+        part =
+          %{
+            "footnoteReference" => "word/footnotes.xml",
+            "endnoteReference" => "word/endnotes.xml",
+            "commentReference" => "word/comments.xml"
+          }[element]
+
+        site =
+          state.current.locator
+          |> Map.put("byte_offset", state.current.bytes)
+          |> Map.put("__order", state.marker_order + 1)
+
+        key = {part, id}
+        references = Map.update(state.references, key, site, fn _ -> :ambiguous end)
+
+        %{
+          state
+          | references: references,
+            reference_count: state.reference_count + 1,
+            marker_order: state.marker_order + 1
+        }
+      end
+    end
+  end
+
+  defp attach_reference(
+         %{"locator" => %{"part" => part, "annotation_id" => id} = locator} = segment,
+         references,
+         ranges,
+         ranges_unsafe,
+         body_segments
+       ) do
+    case references[{part, numeric_annotation_id!(id)}] do
+      site when is_map(site) ->
+        {order, site} = Map.pop(site, "__order")
+        {offset, body_locator} = Map.pop(site, "byte_offset")
+
+        if is_integer(body_segments[body_locator]) and offset <= body_segments[body_locator] do
+          locator = Map.put(locator, "reference_site", site)
+
+          locator =
+            attach_range(locator, part, id, body_locator, offset, order, ranges, ranges_unsafe)
+
+          %{segment | "locator" => locator}
+        else
+          segment
+        end
+
+      _ ->
+        segment
+    end
+  end
+
+  defp attach_reference(segment, _, _, _, _), do: segment
+
+  defp comment_range(state, element, attrs) do
+    if state.part != "word/document.xml" do
+      warning(state, "annotation_range_not_examined", element)
+    else
+      if state.excluded > 0 or state.current == nil or
+           not match?([_, "p" | _], state.stack) or hidden?(state) do
+        %{warning(state, "annotation_range_not_examined", element) | ranges_unsafe: true}
+      else
+        if state.marker_order >= 3 * state.limits.max_segments,
+          do: fail(:unsupported_docx_annotation)
+
+        id = numeric_annotation_id!(attr(attrs, "id"))
+        side = if element == "commentRangeStart", do: :start, else: :end
+        order = state.marker_order + 1
+        point = {state.current.locator, state.current.bytes, order}
+        range = Map.get(state.ranges, id, %{})
+
+        range =
+          if Map.has_key?(range, side),
+            do: Map.put(range, side, :ambiguous),
+            else: Map.put(range, side, point)
+
+        %{
+          state
+          | ranges: Map.put(state.ranges, id, range),
+            marker_order: order,
+            current: %{state.current | content_started: true}
+        }
+      end
+    end
+  end
+
+  defp attach_range(
+         locator,
+         "word/comments.xml",
+         id,
+         body_locator,
+         reference_offset,
+         reference_order,
+         ranges,
+         false
+       ) do
+    case ranges[numeric_annotation_id!(id)] do
+      %{
+        start: {^body_locator, start_byte, start_order},
+        end: {^body_locator, end_byte, end_order}
+      }
+      when start_order < end_order and end_order < reference_order and start_byte < end_byte and
+             end_byte <= reference_offset ->
+        Map.put(
+          locator,
+          "reference_range",
+          Map.merge(body_locator, %{"start_byte" => start_byte, "end_byte" => end_byte})
+        )
+
+      _ ->
+        locator
+    end
+  end
+
+  defp attach_range(locator, _, _, _, _, _, _, _), do: locator
+
+  defp hidden_property(%{stack: ["vanish", "rPr", "r" | _], runs: [run]} = state, attrs) do
+    if run.content_started or run.visibility_seen, do: fail(:unsupported_docx_run_properties)
+
+    hidden =
+      case attr(attrs, "val") do
+        value when value in [nil, "1", "true", "on"] -> true
+        value when value in ["0", "false", "off"] -> false
+        _ -> fail(:unsupported_docx_run_properties)
+      end
+
+    %{state | runs: [%{run | hidden: hidden, visibility_seen: true}]}
+  end
+
+  defp hidden_property(state, _), do: warning(state, "unsupported_visibility_property", "vanish")
+
+  defp section_reference(state, element, attrs) do
+    if state.excluded > 0 or "sectPrChange" in state.stack do
+      warning(state, "historical_section_properties_not_extracted")
+    else
+      unless state.part == "word/document.xml" and match?([_, "sectPr" | _], state.stack),
+        do: fail(:unsupported_docx_part_relationship)
+
+      ids =
+        for {uri, _, local, value} <- attrs,
+            uri in [
+              ~c"http://schemas.openxmlformats.org/officeDocument/2006/relationships",
+              ~c"http://purl.oclc.org/ooxml/officeDocument/relationships"
+            ] and local == ~c"id",
+            do: List.to_string(value)
+
+      unless length(ids) == 1 and byte_size(hd(ids)) in 1..256 and
+               attr(attrs, "type") in ~w(default first even),
+             do: fail(:unsupported_docx_part_relationship)
+
+      kind = if element == "headerReference", do: "header", else: "footer"
+      refs = MapSet.put(state.section_refs, {kind, hd(ids)})
+      if MapSet.size(refs) > 1024, do: fail(:unsupported_docx_part_relationship)
+      %{warning(state, "header_footer_layout_unresolved") | section_refs: refs}
+    end
+  end
+
+  defp warning(state, code, element \\ nil) do
+    key = {code, element}
+
+    if MapSet.member?(state.warned, key) do
+      state
+    else
+      warning = %{"code" => code, "part" => state.part}
+      warning = if element, do: Map.put(warning, "element", element), else: warning
+
+      %{state | warnings: [warning | state.warnings], warned: MapSet.put(state.warned, key)}
+    end
+  end
+
+  defp attr(attrs, name) do
+    values =
+      for {uri, _, local, value} <- attrs,
+          uri in [@word, @strict] and List.to_string(local) == name,
+          do: List.to_string(value)
+
+    case values do
+      [] -> nil
+      [value] -> value
+      _ -> fail(:unsupported_docx_run_properties)
+    end
+  end
+
+  defp annotation(state, element, attrs) do
+    expected = %{
+      "footnote" => {"word/footnotes.xml", "footnotes"},
+      "endnote" => {"word/endnotes.xml", "endnotes"},
+      "comment" => {"word/comments.xml", "comments"}
+    }
+
+    {part, root} = Map.fetch!(expected, element)
+    id = attr(attrs, "id")
+
+    unless state.part == part and state.stack == [element, root] and is_nil(state.note),
+      do: fail(:unsupported_docx_annotation)
+
+    normalized = numeric_annotation_id!(id)
+
+    if MapSet.member?(state.annotation_ids, normalized) or
+         MapSet.size(state.annotation_ids) >= state.limits.max_segments,
+       do: fail(:unsupported_docx_annotation)
+
+    type = attr(attrs, "type")
+
+    layout =
+      cond do
+        element == "comment" and is_nil(type) -> nil
+        element == "comment" -> fail(:unsupported_docx_annotation)
+        type in [nil, "normal"] -> nil
+        type in ~w(separator continuationSeparator continuationNotice) -> type
+        true -> fail(:unsupported_docx_annotation)
+      end
+
+    %{
+      state
+      | note: id,
+        note_layout: layout,
+        annotation_ids: MapSet.put(state.annotation_ids, normalized),
+        note_ids:
+          if(is_nil(layout), do: MapSet.put(state.note_ids, normalized), else: state.note_ids)
+    }
+  end
+
+  defp numeric_annotation_id!(id) do
+    unless is_binary(id) and byte_size(id) in 1..128 and Regex.match?(~r/\A[+-]?[0-9]+\z/, id),
+      do: fail(:unsupported_docx_annotation)
+
+    id |> String.to_integer() |> Integer.to_string()
+  end
+
+  defp fail(code), do: throw({:document_error, code})
+end
+
+defmodule IpseKnowledge.Documents.Docx.Numbering do
+  @moduledoc false
+  @word ~c"http://schemas.openxmlformats.org/wordprocessingml/2006/main"
+  @strict ~c"http://purl.oclc.org/ooxml/wordprocessingml/main"
+  @maximum 2_147_483_647
+
+  # This subset derives only single-level decimal labels. A different level,
+  # format, override, style binding or number-rendering property is refused.
+  # Labels are returned separately from paragraph text and are never quotes.
+  def parse(xml) do
+    unless String.valid?(xml) and not String.contains?(xml, [<<0>>, "<!DOCTYPE", "<!ENTITY"]),
+      do: fail()
+
+    state = %{
+      stack: [],
+      count: 0,
+      root: false,
+      dialect: nil,
+      abstracts: %{},
+      instances: %{},
+      abstract: nil,
+      level: nil,
+      instance: nil
+    }
+
+    options = [
+      :disallow_entities,
+      {:external_entities, :none},
+      {:fail_undeclared_ref, true},
+      {:event_state, state},
+      {:event_fun, &event/3}
+    ]
+
+    case :xmerl_sax_parser.stream(xml, options) do
+      {:ok, %{stack: [], root: true} = result, rest} when rest in ["", []] ->
+        unless Enum.all?(result.instances, fn {_, entry} ->
+                 Map.has_key?(result.abstracts, entry.abstract)
+               end),
+               do: fail()
+
+        Map.take(result, [:abstracts, :instances, :dialect])
+
+      _ ->
+        fail()
+    end
+  end
+
+  def next(%{abstracts: abstracts, instances: instances}, id, counters) do
+    with %{abstract: abstract_id, override: override} <- instances[id],
+         %{start: start, template: template, suffix: suffix} <- abstracts[abstract_id],
+         first = if(is_nil(override), do: start, else: override),
+         ordinal = Map.get(counters, id, first - 1) + 1,
+         true <- ordinal in 1..@maximum do
+      {:ok,
+       %{
+         "version" => 1,
+         "num_id" => id,
+         "level" => 0,
+         "ordinal" => ordinal,
+         "template" => template,
+         "label" => String.replace(template, "%1", Integer.to_string(ordinal)),
+         "suffix" => suffix
+       }, Map.put(counters, id, ordinal)}
+    else
+      _ -> {:error, :unsupported_docx_numbering}
+    end
+  end
+
+  def next(_, _, _), do: {:error, :unsupported_docx_numbering}
+
+  defp event({:startDTD, _, _, _}, _, _), do: fail()
+  defp event({:processingInstruction, _, _}, _, _), do: fail()
+
+  defp event({:startElement, uri, name, _, attrs}, _, state) do
+    if uri not in [@word, @strict] or length(state.stack) >= 64 or state.count >= 50_000 or
+         length(attrs) > 16 or Enum.any?(attrs, fn {_, _, _, value} -> length(value) > 4096 end),
+       do: fail()
+
+    dialect = state.dialect || uri
+
+    if uri != dialect or Enum.any?(attrs, fn {attr_uri, _, _, _} -> attr_uri != dialect end),
+      do: fail()
+
+    state = %{state | dialect: dialect}
+
+    element = List.to_string(name)
+    stack = [element | state.stack]
+    state = %{state | stack: stack, count: state.count + 1}
+
+    case stack do
+      ["numbering"] ->
+        if state.root or attrs != [], do: fail()
+        %{state | root: true}
+
+      ["abstractNum", "numbering"] ->
+        id = uint!(single!(attrs, "abstractNumId"), true)
+        if state.abstract != nil or Map.has_key?(state.abstracts, id), do: fail()
+        %{state | abstract: %{id: id, mode: nil, level: nil}}
+
+      ["multiLevelType", "abstractNum", "numbering"] ->
+        if state.abstract.mode != nil or single!(attrs, "val") != "singleLevel", do: fail()
+        put_in(state.abstract.mode, "singleLevel")
+
+      [element, "abstractNum", "numbering"] when element in ["nsid", "tmpl"] ->
+        unless Regex.match?(~r/\A[0-9A-Fa-f]{8}\z/, single!(attrs, "val")), do: fail()
+        state
+
+      ["lvl", "abstractNum", "numbering"] ->
+        if single!(attrs, "ilvl") != "0" or state.level != nil or state.abstract.level != nil,
+          do: fail()
+
+        %{
+          state
+          | level: %{start: nil, format: nil, template: nil, suffix: nil, justification: nil}
+        }
+
+      [element, "lvl", "abstractNum", "numbering"]
+      when element in ~w(start numFmt lvlText suff lvlJc) ->
+        level_property(state, element, single!(attrs, "val"))
+
+      ["pPr", "lvl", "abstractNum", "numbering"] ->
+        if attrs != [], do: fail()
+        state
+
+      ["tabs", "pPr", "lvl", "abstractNum", "numbering"] ->
+        if attrs != [], do: fail()
+        state
+
+      ["tab", "tabs", "pPr", "lvl", "abstractNum", "numbering"] ->
+        ignored_attrs!(attrs, ~w(val pos leader))
+        state
+
+      ["ind", "pPr", "lvl", "abstractNum", "numbering"] ->
+        ignored_attrs!(
+          attrs,
+          ~w(left right start end hanging firstLine leftChars rightChars hangingChars firstLineChars)
+        )
+
+        state
+
+      ["num", "numbering"] ->
+        id = uint!(single!(attrs, "numId"), false)
+        if state.instance != nil or Map.has_key?(state.instances, id), do: fail()
+        %{state | instance: %{id: id, abstract: nil, override: nil}}
+
+      ["abstractNumId", "num", "numbering"] ->
+        if state.instance.abstract != nil, do: fail()
+        put_in(state.instance.abstract, uint!(single!(attrs, "val"), true))
+
+      ["lvlOverride", "num", "numbering"] ->
+        if single!(attrs, "ilvl") != "0" or state.instance.override != nil, do: fail()
+        put_in(state.instance.override, :pending)
+
+      ["startOverride", "lvlOverride", "num", "numbering"] ->
+        if state.instance.override != :pending, do: fail()
+        put_in(state.instance.override, uint!(single!(attrs, "val"), false))
+
+      _ ->
+        fail()
+    end
+  end
+
+  defp event({:endElement, _, _, _}, _, %{stack: [element | rest]} = state) do
+    state =
+      case {element, state.stack} do
+        {"lvl", ["lvl", "abstractNum", "numbering"]} ->
+          level = state.level
+          if level.start == nil or level.format != "decimal" or level.template == nil, do: fail()
+
+          state =
+            put_in(state.abstract.level, %{
+              start: level.start,
+              template: level.template,
+              suffix: level.suffix || "tab"
+            })
+
+          %{state | level: nil}
+
+        {"abstractNum", ["abstractNum", "numbering"]} ->
+          abstract = state.abstract
+          if abstract.mode != "singleLevel" or is_nil(abstract.level), do: fail()
+
+          %{
+            state
+            | abstracts: Map.put(state.abstracts, abstract.id, abstract.level),
+              abstract: nil
+          }
+
+        {"lvlOverride", ["lvlOverride", "num", "numbering"]} ->
+          if state.instance.override == :pending, do: fail()
+          state
+
+        {"num", ["num", "numbering"]} ->
+          instance = state.instance
+          if is_nil(instance.abstract) or instance.override == :pending, do: fail()
+
+          %{
+            state
+            | instances: Map.put(state.instances, instance.id, Map.drop(instance, [:id])),
+              instance: nil
+          }
+
+        _ ->
+          state
+      end
+
+    %{state | stack: rest}
+  end
+
+  defp event({:characters, chars}, _, state) do
+    unless chars |> :unicode.characters_to_binary() |> String.trim() == "", do: fail()
+    state
+  end
+
+  defp event(_, _, state), do: state
+
+  defp level_property(state, element, value) do
+    {key, checked} =
+      case element do
+        "start" ->
+          {:start, uint!(value, false)}
+
+        "numFmt" ->
+          if(value == "decimal", do: {:format, value}, else: fail())
+
+        "lvlText" ->
+          if byte_size(value) <= 128 and String.valid?(value) and
+               Regex.match?(~r/\A[^%\x00-\x1f]{0,32}%1[^%\x00-\x1f]{0,32}\z/u, value),
+             do: {:template, value},
+             else: fail()
+
+        "suff" ->
+          if(value in ~w(tab space nothing), do: {:suffix, value}, else: fail())
+
+        "lvlJc" ->
+          if(value in ~w(left right center), do: {:justification, value}, else: fail())
+      end
+
+    if is_nil(state.level) or not is_nil(Map.get(state.level, key)), do: fail()
+    %{state | level: Map.put(state.level, key, checked)}
+  end
+
+  defp single!([{uri, _, local, value}], name) when uri in [@word, @strict] do
+    if List.to_string(local) == name, do: List.to_string(value), else: fail()
+  end
+
+  defp single!(_, _), do: fail()
+
+  defp ignored_attrs!(attrs, allowed) do
+    names =
+      Enum.map(attrs, fn {uri, _, local, _} ->
+        if uri not in [@word, @strict], do: fail()
+        List.to_string(local)
+      end)
+
+    unless Enum.all?(names, &(&1 in allowed)) and length(names) == length(Enum.uniq(names)),
+      do: fail()
+  end
+
+  defp uint!(value, zero?) do
+    unless Regex.match?(~r/\A(?:0|[1-9][0-9]{0,9})\z/, value), do: fail()
+    number = String.to_integer(value)
+    unless number <= @maximum and (zero? or number > 0), do: fail()
+    number
+  end
+
+  defp fail, do: throw({:document_error, :unsupported_docx_numbering})
+end
+
+defmodule IpseKnowledge.Documents.Docx.Styles do
+  @moduledoc false
+  @word ~c"http://schemas.openxmlformats.org/wordprocessingml/2006/main"
+  @strict ~c"http://purl.oclc.org/ooxml/wordprocessingml/main"
+
+  def empty, do: %{styles: %{}, default: nil, defaults: nil}
+
+  @part_types %{
+    "word/document.xml" => "document.main",
+    "word/styles.xml" => "styles",
+    "word/footnotes.xml" => "footnotes",
+    "word/endnotes.xml" => "endnotes",
+    "word/comments.xml" => "comments"
+  }
+
+  def content_types(xml, names) do
+    safe_xml!(xml)
+
+    options = [
+      :disallow_entities,
+      {:external_entities, :none},
+      {:fail_undeclared_ref, true},
+      {:event_state, %{depth: 0, seen: MapSet.new(), overrides: %{}}},
+      {:event_fun, &content_event/3}
+    ]
+
+    case :xmerl_sax_parser.stream(xml, options) do
+      {:ok, %{depth: 0, overrides: types}, rest} when rest in ["", []] ->
+        Enum.each(@part_types, fn {name, kind} ->
+          if name in names and
+               types["/" <> name] !=
+                 "application/vnd.openxmlformats-officedocument.wordprocessingml.#{kind}+xml",
+             do: fail(:unsupported_docx_content_types)
+        end)
+
+        if "word/stylesWithEffects.xml" in names and
+             types["/word/stylesWithEffects.xml"] !=
+               "application/vnd.ms-word.stylesWithEffects+xml",
+           do: fail(:unsupported_docx_content_types)
+
+        types
+
+      {:document_error, _, code, _, _} when is_atom(code) ->
+        fail(code)
+
+      _ ->
+        fail(:malformed_xml)
+    end
+  end
+
+  def relationships(xml, names, mode \\ :document) do
+    safe_xml!(xml)
+
+    state = %{
+      depth: 0,
+      count: 0,
+      parts: %{},
+      sections: %{},
+      external?: false,
+      unexamined?: false,
+      ids: MapSet.new(),
+      names: names,
+      mode: mode,
+      error:
+        if(mode == :root,
+          do: :unsupported_docx_package_authority,
+          else: :unsupported_docx_style_relationship
+        )
+    }
+
+    options = [
+      :disallow_entities,
+      {:external_entities, :none},
+      {:fail_undeclared_ref, true},
+      {:event_state, state},
+      {:event_fun, &relationship_event/3}
+    ]
+
+    case :xmerl_sax_parser.stream(xml, options) do
+      {:ok, %{depth: 0} = result, rest} when rest in ["", []] ->
+        if mode == :root and not Map.has_key?(result.parts, "word/document.xml"),
+          do: fail(result.error)
+
+        %{
+          parts: result.parts,
+          sections: result.sections,
+          external?: result.external?,
+          unexamined?: result.unexamined?
+        }
+
+      {:document_error, _, code, _, _} when is_atom(code) ->
+        fail(code)
+
+      _ ->
+        fail(:malformed_xml)
+    end
+  end
+
+  def parse(xml) do
+    safe_xml!(xml)
+
+    state =
+      Map.merge(empty(), %{
+        stack: [],
+        current: nil,
+        root: false,
+        dialect: nil,
+        seen: MapSet.new(),
+        default_types: MapSet.new(),
+        default_character: nil
+      })
+
+    options = [
+      :disallow_entities,
+      {:external_entities, :none},
+      {:fail_undeclared_ref, true},
+      {:event_state, state},
+      {:event_fun, &event/3}
+    ]
+
+    case :xmerl_sax_parser.stream(xml, options) do
+      {:ok, %{stack: [], root: true} = result, rest} when rest in ["", []] ->
+        # Validate the inheritance graph, including unused definitions. An invalid
+        # graph cannot acquire different meaning through a later style reference.
+        Enum.each(result.styles, fn {id, style} ->
+          chain(result, id, style.type, MapSet.new(), false)
+        end)
+
+        # The character-style/rStyle rule and generic default-for-type rule do
+        # not establish a qualified Word visibility policy for this case. Keep
+        # a visibility-bearing default character style outside our subset.
+        if result.default_character do
+          flags = chain(result, result.default_character, "character", MapSet.new())
+          if Enum.any?(flags, &(not is_nil(&1))), do: fail(:unsupported_docx_style_visibility)
+        end
+
+        Map.take(result, [:styles, :default, :defaults, :dialect])
+
+      {:document_error, _, code, _, _} when is_atom(code) ->
+        fail(code)
+
+      _ ->
+        fail(:malformed_xml)
+    end
+  end
+
+  def check(styles, id, type) when is_binary(id) and byte_size(id) in 1..256 do
+    selected_chain(styles, id, type)
+    :ok
+  end
+
+  def check(_, _, _), do: fail(:unsupported_docx_style_visibility)
+
+  def hidden?(styles, paragraph, character) do
+    # An undefined explicit reference applies no style. Its interaction with a
+    # visibility-bearing default paragraph style remains outside this subset.
+    # Document defaults and valid paragraph/character styles still apply below.
+    if paragraph != nil and not Map.has_key?(styles.styles, paragraph) and styles.default do
+      flags = chain(styles, styles.default, "paragraph", MapSet.new())
+      if Enum.any?(flags, &(not is_nil(&1))), do: fail(:unsupported_docx_style_visibility)
+    end
+
+    paragraph = paragraph || styles.default
+    p = if paragraph, do: selected_chain(styles, paragraph, "paragraph"), else: []
+    c = if character, do: selected_chain(styles, character, "character"), else: []
+    # Word and ISO differ for multi-level toggle interactions. This supported
+    # subset accepts only a single effective inherited declaration; direct run
+    # overrides remain absolute, but never make an invalid style graph valid.
+    flags = Enum.reject([styles.defaults | p ++ c], &is_nil/1)
+
+    case flags do
+      [] ->
+        false
+
+      [value] ->
+        value
+
+      values ->
+        if Enum.all?(values, &(&1 == false)),
+          do: false,
+          else: fail(:unsupported_docx_style_visibility)
+    end
+  end
+
+  defp selected_chain(styles, id, type) do
+    if type in ~w(paragraph character) and not Map.has_key?(styles.styles, id),
+      do: [],
+      else: chain(styles, id, type, MapSet.new())
+  end
+
+  defp chain(state, id, type, seen, selected? \\ true) do
+    if MapSet.size(seen) >= 64 or MapSet.member?(seen, id),
+      do: fail(:unsupported_docx_style_visibility)
+
+    case Map.fetch(state.styles, id) do
+      {:ok, %{type: ^type} = style} ->
+        if selected? and style.link != nil, do: fail(:unsupported_docx_style_visibility)
+
+        parent =
+          if style.parent,
+            do: chain(state, style.parent, type, MapSet.put(seen, id), selected?),
+            else: []
+
+        parent ++ [style.hidden]
+
+      _ ->
+        fail(:unsupported_docx_style_visibility)
+    end
+  end
+
+  defp event({:startDTD, _, _, _}, _, _), do: fail(:xml_entities_unsupported)
+  defp event({:processingInstruction, _, _}, _, _), do: fail(:xml_processing_instruction)
+
+  defp event({:startElement, uri, local, _, attrs}, _, state) do
+    if length(state.stack) >= 64 or length(attrs) > 64 or
+         Enum.any?(attrs, fn {_, _, _, value} -> length(value) > 4096 end),
+       do: fail(:xml_structure_limit)
+
+    unless uri in [@word, @strict], do: fail(:unsupported_docx_style_visibility)
+    dialect = state.dialect || uri
+
+    if uri != dialect or
+         Enum.any?(attrs, fn {attr_uri, _, _, _} ->
+           attr_uri in [@word, @strict] and attr_uri != dialect
+         end),
+       do: fail(:unsupported_docx_style_visibility)
+
+    element = List.to_string(local)
+    if state.stack == [] and element != "styles", do: fail(:invalid_word_namespace)
+    state = %{state | stack: [element | state.stack], root: true, dialect: dialect}
+
+    cond do
+      state.stack == ["style", "styles"] ->
+        if map_size(state.styles) >= 512 or state.current != nil,
+          do: fail(:unsupported_docx_style_visibility)
+
+        id = attr(attrs, "styleId")
+        type = attr(attrs, "type")
+
+        unless is_binary(id) and byte_size(id) in 1..256 and
+                 type in ~w(paragraph character table numbering) and
+                 not Map.has_key?(state.styles, id),
+               do: fail(:unsupported_docx_style_visibility)
+
+        default = flag(attr(attrs, "default"), false)
+
+        if default and MapSet.member?(state.default_types, type),
+          do: fail(:unsupported_docx_style_visibility)
+
+        state =
+          if default,
+            do: %{state | default_types: MapSet.put(state.default_types, type)},
+            else: state
+
+        state = if default and type == "paragraph", do: %{state | default: id}, else: state
+
+        state =
+          if default and type == "character", do: %{state | default_character: id}, else: state
+
+        %{
+          state
+          | current: %{
+              id: id,
+              type: type,
+              parent: nil,
+              link: nil,
+              hidden: nil,
+              seen: MapSet.new()
+            }
+        }
+
+      element == "style" ->
+        fail(:unsupported_docx_style_visibility)
+
+      state.stack in [
+        ["docDefaults", "styles"],
+        ["rPrDefault", "docDefaults", "styles"],
+        ["rPr", "rPrDefault", "docDefaults", "styles"]
+      ] ->
+        unique(state, List.to_tuple(state.stack))
+
+      element in ~w(basedOn link) and state.current != nil ->
+        unless state.stack == [element, "style", "styles"],
+          do: fail(:unsupported_docx_style_visibility)
+
+        value = attr(attrs, "val")
+
+        unless is_binary(value) and byte_size(value) in 1..256,
+          do: fail(:unsupported_docx_style_visibility)
+
+        state = unique_style(state, element)
+        key = if element == "basedOn", do: :parent, else: :link
+        %{state | current: Map.put(state.current, key, value)}
+
+      element == "vanish" ->
+        value = flag(attr(attrs, "val"), true)
+
+        cond do
+          state.stack == ["vanish", "rPr", "rPrDefault", "docDefaults", "styles"] ->
+            state = unique(state, :default_vanish)
+            %{state | defaults: value}
+
+          state.stack == ["vanish", "rPr", "style", "styles"] and state.current != nil ->
+            state = unique_style(state, :vanish)
+
+            if state.current.type not in ~w(paragraph character),
+              do: fail(:unsupported_docx_style_visibility)
+
+            %{state | current: %{state.current | hidden: value}}
+
+          true ->
+            fail(:unsupported_docx_style_visibility)
+        end
+
+      element in ~w(webHidden specVanish tblStyle numPr rStyle pStyle rPrChange) ->
+        fail(:unsupported_docx_style_visibility)
+
+      true ->
+        state
+    end
+  end
+
+  defp event({:endElement, _, _, _}, _, %{stack: [element | rest]} = state) do
+    state =
+      if element == "style" do
+        style = state.current
+
+        %{
+          state
+          | styles: Map.put(state.styles, style.id, Map.drop(style, [:id, :seen])),
+            current: nil
+        }
+      else
+        state
+      end
+
+    %{state | stack: rest}
+  end
+
+  defp event({:characters, chars}, _, state) do
+    unless chars |> :unicode.characters_to_binary() |> String.trim() == "",
+      do: fail(:unsupported_docx_style_visibility)
+
+    state
+  end
+
+  defp event(_, _, state), do: state
+
+  defp unique(state, key) do
+    if MapSet.member?(state.seen, key), do: fail(:unsupported_docx_style_visibility)
+    %{state | seen: MapSet.put(state.seen, key)}
+  end
+
+  defp unique_style(state, key) do
+    if MapSet.member?(state.current.seen, key), do: fail(:unsupported_docx_style_visibility)
+    %{state | current: %{state.current | seen: MapSet.put(state.current.seen, key)}}
+  end
+
+  defp flag(nil, default), do: default
+  defp flag(value, _) when value in ["1", "true", "on"], do: true
+  defp flag(value, _) when value in ["0", "false", "off"], do: false
+  defp flag(_, _), do: fail(:unsupported_docx_style_visibility)
+
+  defp attr(attrs, name) do
+    values =
+      for {uri, _, local, value} <- attrs,
+          uri in [@word, @strict] and List.to_string(local) == name,
+          do: List.to_string(value)
+
+    case values do
+      [] -> nil
+      [value] -> value
+      _ -> fail(:unsupported_docx_style_visibility)
+    end
+  end
+
+  defp fail(code), do: throw({:document_error, code})
+
+  defp safe_xml!(xml) do
+    unless String.valid?(xml) and not String.contains?(xml, <<0>>),
+      do: fail(:unsupported_xml_encoding)
+
+    if String.contains?(xml, ["<!DOCTYPE", "<!ENTITY"]), do: fail(:xml_entities_unsupported)
+  end
+
+  defp relationship_event({:startDTD, _, _, _}, _, _), do: fail(:xml_entities_unsupported)
+
+  defp relationship_event({:processingInstruction, _, _}, _, _),
+    do: fail(:xml_processing_instruction)
+
+  defp relationship_event({:startElement, uri, local, _, attrs}, _, state) do
+    unless uri == ~c"http://schemas.openxmlformats.org/package/2006/relationships" and
+             ((state.depth == 0 and local == ~c"Relationships") or
+                (state.depth == 1 and local == ~c"Relationship")) and length(attrs) <= 16 and
+             Enum.all?(attrs, fn {_, _, _, value} -> length(value) <= 4096 end),
+           do: fail(state.error)
+
+    if state.count >= 1024, do: fail(state.error)
+
+    if state.depth == 0 do
+      %{state | depth: 1}
+    else
+      attribute = fn name ->
+        Enum.find_value(attrs, fn {namespace, _, key, value} ->
+          if namespace in [[], ~c""] and List.to_string(key) == name, do: List.to_string(value)
+        end)
+      end
+
+      id = attribute.("Id")
+
+      unless is_binary(id) and byte_size(id) in 1..256 and not MapSet.member?(state.ids, id),
+        do: fail(state.error)
+
+      type = attribute.("Type")
+      mode = attribute.("TargetMode")
+      target = attribute.("Target")
+
+      unless is_binary(type) and type != "" and is_binary(target) and target != "" and
+               mode in [nil, "Internal", "External"] and
+               (mode == "External" or
+                  (not String.starts_with?(target, "//") and
+                     not Regex.match?(~r/\A[A-Za-z][A-Za-z0-9+.-]*:/, target))),
+             do: fail(state.error)
+
+      effects = "http://schemas.microsoft.com/office/2007/relationships/stylesWithEffects"
+
+      if String.ends_with?(type, "/stylesWithEffects") and
+           (type != effects or state.mode != :document),
+         do: fail(state.error)
+
+      part =
+        if type == effects do
+          "word/stylesWithEffects.xml"
+        else
+          Enum.find_value(
+            [
+              "http://schemas.openxmlformats.org/officeDocument/2006/relationships/",
+              "http://purl.oclc.org/ooxml/officeDocument/relationships/"
+            ],
+            fn prefix ->
+              if String.starts_with?(type, prefix) do
+                kind = String.replace_prefix(type, prefix, "")
+
+                case {state.mode, kind} do
+                  {:root, "officeDocument"} ->
+                    "word/document.xml"
+
+                  {:document, kind}
+                  when kind in ~w(styles footnotes endnotes comments numbering) ->
+                    "word/#{kind}.xml"
+
+                  _ ->
+                    nil
+                end
+              end
+            end
+          )
+        end
+
+      if part do
+        targets =
+          if state.mode == :root,
+            do: [part, "/" <> part],
+            else: [Path.basename(part), "/" <> part]
+
+        if Map.has_key?(state.parts, part) or attribute.("Target") not in targets or
+             attribute.("TargetMode") not in [nil, "Internal"] or part not in state.names,
+           do: fail(state.error)
+      end
+
+      section_kind =
+        if state.mode == :document do
+          Enum.find(~w(header footer), fn kind ->
+            type in [
+              "http://schemas.openxmlformats.org/officeDocument/2006/relationships/#{kind}",
+              "http://purl.oclc.org/ooxml/officeDocument/relationships/#{kind}"
+            ]
+          end)
+        end
+
+      section =
+        if section_kind do
+          basename = String.replace_prefix(target, "/word/", "")
+
+          unless mode in [nil, "Internal"] and
+                   Regex.match?(~r/\A[A-Za-z0-9_][A-Za-z0-9_.-]{0,200}\.xml\z/, basename),
+                 do: fail(:unsupported_docx_part_relationship)
+
+          path = "word/" <> basename
+
+          if path not in state.names or path in Map.keys(@part_types),
+            do: fail(:unsupported_docx_part_relationship)
+
+          {section_kind, path}
+        end
+
+      %{
+        state
+        | depth: 2,
+          count: state.count + 1,
+          parts: if(part, do: Map.put(state.parts, part, id), else: state.parts),
+          sections: if(section, do: Map.put(state.sections, id, section), else: state.sections),
+          external?: state.external? or mode == "External",
+          unexamined?:
+            state.unexamined? or (is_nil(part) and is_nil(section) and mode != "External"),
+          ids: MapSet.put(state.ids, id)
+      }
+    end
+  end
+
+  defp relationship_event({:endElement, _, _, _}, _, state), do: %{state | depth: state.depth - 1}
+
+  defp relationship_event({:characters, chars}, _, state) do
+    unless chars |> :unicode.characters_to_binary() |> String.trim() == "",
+      do: fail(state.error)
+
+    state
+  end
+
+  defp relationship_event(_, _, state), do: state
+
+  defp content_event({:startDTD, _, _, _}, _, _), do: fail(:xml_entities_unsupported)
+  defp content_event({:processingInstruction, _, _}, _, _), do: fail(:xml_processing_instruction)
+
+  defp content_event({:startElement, uri, local, _, attrs}, _, state) do
+    element = List.to_string(local)
+
+    unless uri == ~c"http://schemas.openxmlformats.org/package/2006/content-types" and
+             ((state.depth == 0 and element == "Types") or
+                (state.depth == 1 and element in ["Default", "Override"])) and length(attrs) <= 16 and
+             Enum.all?(attrs, fn {_, _, _, value} -> length(value) <= 4096 end) and
+             MapSet.size(state.seen) < 1024,
+           do: fail(:unsupported_docx_content_types)
+
+    if state.depth == 0 do
+      %{state | depth: 1}
+    else
+      attribute = fn name ->
+        Enum.find_value(attrs, fn {namespace, _, key, value} ->
+          if namespace == [] and List.to_string(key) == name, do: List.to_string(value)
+        end)
+      end
+
+      name = attribute.(if(element == "Default", do: "Extension", else: "PartName"))
+      value = attribute.("ContentType")
+      key = {element, name}
+
+      unless is_binary(name) and byte_size(name) in 1..1024 and is_binary(value) and
+               byte_size(value) in 1..256 and
+               not MapSet.member?(state.seen, key),
+             do: fail(:unsupported_docx_content_types)
+
+      %{
+        state
+        | depth: 2,
+          seen: MapSet.put(state.seen, key),
+          overrides:
+            if(element == "Override",
+              do: Map.put(state.overrides, name, value),
+              else: state.overrides
+            )
+      }
+    end
+  end
+
+  defp content_event({:endElement, _, _, _}, _, state), do: %{state | depth: state.depth - 1}
+
+  defp content_event({:characters, chars}, _, state) do
+    unless chars |> :unicode.characters_to_binary() |> String.trim() == "",
+      do: fail(:unsupported_docx_content_types)
+
+    state
+  end
+
+  defp content_event(_, _, state), do: state
+end

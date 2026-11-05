@@ -1,0 +1,65 @@
+--- _build/verification/word-independent-oracle-20261105-01/comparison/compare_existing_extractor.exs	2026-11-05 12:23:18.025072106 -0800
++++ _build/verification/word-independent-oracle-20261105-01/comparison/v18/compare_existing_extractor.exs	2026-11-05 12:37:51.235571680 -0800
+@@ -1,6 +1,7 @@
+-defmodule CompareExistingWordExtractor do
++defmodule CompareExistingWordExtractorV18 do
+   @base "_build/verification/word-independent-oracle-20261105-01"
+-  @artifact @base <> "/comparison/corpus-state-documents"
++  @artifact @base <> "/comparison/v18/corpus-state-documents"
++  @artifact_preimages_sha256 "582c1131249d20ed2eec4851af9d8b9f25fa4fee51a1bf420df2f09995be25bd"
+   @body "word/document.xml"
+ 
+   def run do
+@@ -14,7 +15,7 @@
+     Code.prepend_path(Path.expand(@artifact <> "/ebin"))
+     Code.ensure_loaded!(IpseKnowledge.Documents)
+     true = String.starts_with?(IpseKnowledge.Documents |> :code.which() |> List.to_string(), Path.expand(@artifact <> "/ebin/"))
+-    out = @base <> "/comparison/first-outcomes"
++    out = @base <> "/comparison/v18/first-outcomes"
+     :ok = File.mkdir(out)
+     :ok = File.chmod(out, 0o700)
+     results = Enum.map(oracle["sources"], fn expected ->
+@@ -45,7 +46,7 @@
+       "sources" => results, "source_count" => 12, "bounded_logical_agreement" => complete,
+       "historical_full_locators_unchanged_unverified" => 62, "revision_kind_id_product_fields" => "unrepresented/unverified",
+       "fresh_held_out_quality" => false, "installed_qualification" => false, "semantic_answer_quality" => "not_measured"}
+-    write!(@base <> "/comparison/first-comparison-receipt.json", report)
++    write!(@base <> "/comparison/v18/first-comparison-receipt.json", report)
+     IO.puts("RECORDED all 12 first outcomes; bounded logical matches #{Enum.count(results, & &1["bounded_logical_agreement"])}/12; installed and answer quality unmeasured")
+     System.halt(if complete, do: 0, else: 1)
+   end
+@@ -61,7 +62,7 @@
+     segments = document["segments"]
+     text = if is_list(segments), do: Enum.map_join(segments, "\n", & &1["text"]), else: ""
+     checks = %{"exact_original_identity" => document["original_sha256"] == expected["original_sha256"] and document["original_bytes"] == expected["original_bytes"],
+-      "exact_recipe" => document["extraction_version"] == "ipse-documents-v17", "all_ordered_text_blocks" => is_list(segments) and Enum.map(segments, & &1["text"]) == Enum.map(wanted, & &1["text"]),
++      "exact_recipe" => document["extraction_version"] == "ipse-documents-v18", "all_ordered_text_blocks" => is_list(segments) and Enum.map(segments, & &1["text"]) == Enum.map(wanted, & &1["text"]),
+       "all_exact_segments_and_locators" => segments === wanted, "complete_joined_text" => text === expected["text"],
+       "revision_policy" => document["revision_policy"] == "insertions_included_deletions_excluded", "visibility_policy" => document["visibility_policy"] == "bounded_style_and_direct_hidden_excluded"}
+     payloads = for {profile, maximum, chunking} <- [{"state", 8192, 1}, {"collection", 65536, 2}] do
+@@ -78,7 +79,7 @@
+             %{"start_byte" => start, "end_byte" => finish, "text_sha256" => sha(block["text"]), "locator" => locator(block)}
+           end)
+           receipt = payload["document"]
+-          equal = payload["text"] === expected["text"] and receipt["segments"] === spans and receipt["original_sha256"] == expected["original_sha256"] and receipt["original_bytes"] == expected["original_bytes"] and receipt["extraction_version"] == "ipse-documents-v17" and receipt["status"] == document["status"] and receipt["warnings"] == document["warnings"]
++          equal = payload["text"] === expected["text"] and receipt["segments"] === spans and receipt["original_sha256"] == expected["original_sha256"] and receipt["original_bytes"] == expected["original_bytes"] and receipt["extraction_version"] == "ipse-documents-v18" and receipt["status"] == document["status"] and receipt["warnings"] == document["warnings"]
+           %{"profile" => profile, "exact_payload_text_spans_locators_and_identity" => equal, "outcome" => "payload"}
+         _ -> %{"profile" => profile, "exact_payload_text_spans_locators_and_identity" => false, "outcome" => raw}
+       end
+@@ -102,8 +103,8 @@
+   end
+ 
+   defp inventory! do
+-    pins = File.read!(@base <> "/comparison/artifact-preimages.sha256")
+-    true = sha(pins) == "ea044a224dd10e2c2b95831bda94a9dcab3d61fb05d4d36f514f42c60522d996"
++    pins = File.read!(@base <> "/comparison/v18/artifact-preimages.sha256")
++    true = sha(pins) == @artifact_preimages_sha256
+     rows = pins |> String.split("\n", trim: true) |> Enum.map(fn line ->
+       [digest, path] = String.split(line, "  ", parts: 2)
+       true = String.starts_with?(path, @artifact <> "/") and sha(File.read!(path)) == digest
+@@ -116,4 +117,4 @@
+   defp write!(path, value), do: File.write!(path, [Jason.encode!(value), "\n"], [:exclusive])
+ end
+ 
+-CompareExistingWordExtractor.run()
++CompareExistingWordExtractorV18.run()

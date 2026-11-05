@@ -27,7 +27,7 @@ make = fn body ->
 end
 
 run = fn text -> "<w:r><w:t>#{text}</w:t></w:r>" end
-"ipse-documents-v17" = D.version("docx")
+"ipse-documents-v18" = D.version("docx")
 
 {:error, :unsupported_docx_text_structure} =
   D.extract(
@@ -43,7 +43,7 @@ run = fn text -> "<w:r><w:t>#{text}</w:t></w:r>" end
 
 {:ok,
  %{
-   "extraction_version" => "ipse-documents-v17",
+   "extraction_version" => "ipse-documents-v18",
    "segments" => [%{"text" => "visible"}],
    "status" => "complete"
  }} = D.extract(make.("<w:p>" <> run.("visible") <> "</w:p>"), "test.docx")

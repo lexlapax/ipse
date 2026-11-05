@@ -296,6 +296,8 @@ defmodule IpseKnowledge.Documents.Docx do
       table_count: 0,
       tables: [],
       note: nil,
+      note_layout: nil,
+      annotation_ids: MapSet.new(),
       note_ids: MapSet.new(),
       references: %{},
       reference_count: 0,
@@ -524,6 +526,11 @@ defmodule IpseKnowledge.Documents.Docx do
       element in ~w(fldSimple fldChar instrText) ->
         warning(state, "fields_not_recalculated")
 
+      state.note_layout == element and
+        element in ~w(separator continuationSeparator continuationNotice) and
+          match?([_, "r" | _], state.stack) ->
+        state
+
       element in ~w(drawing pict object altChunk subDoc txbxContent sym ptab) ->
         warning(state, "unsupported_content", element)
 
@@ -542,7 +549,7 @@ defmodule IpseKnowledge.Documents.Docx do
         element == "numPr" and state.excluded == 0 -> finish_numbering(state)
         element == "r" -> %{state | runs: tl(state.runs)}
         element == "tbl" -> %{state | tables: tl(state.tables)}
-        element in ~w(footnote endnote comment) -> %{state | note: nil}
+        element in ~w(footnote endnote comment) -> %{state | note: nil, note_layout: nil}
         true -> state
       end
 
@@ -698,6 +705,7 @@ defmodule IpseKnowledge.Documents.Docx do
   end
 
   defp append(%{excluded: excluded} = state, _) when excluded > 0, do: state
+  defp append(%{note_layout: layout} = state, _) when not is_nil(layout), do: state
   defp append(%{current: nil} = state, ""), do: state
   defp append(%{current: nil} = state, _), do: warning(state, "unsupported_text_location")
 
@@ -969,11 +977,29 @@ defmodule IpseKnowledge.Documents.Docx do
 
     normalized = numeric_annotation_id!(id)
 
-    if MapSet.member?(state.note_ids, normalized) or
-         MapSet.size(state.note_ids) >= state.limits.max_segments,
+    if MapSet.member?(state.annotation_ids, normalized) or
+         MapSet.size(state.annotation_ids) >= state.limits.max_segments,
        do: fail(:unsupported_docx_annotation)
 
-    %{state | note: id, note_ids: MapSet.put(state.note_ids, normalized)}
+    type = attr(attrs, "type")
+
+    layout =
+      cond do
+        element == "comment" and is_nil(type) -> nil
+        element == "comment" -> fail(:unsupported_docx_annotation)
+        type in [nil, "normal"] -> nil
+        type in ~w(separator continuationSeparator continuationNotice) -> type
+        true -> fail(:unsupported_docx_annotation)
+      end
+
+    %{
+      state
+      | note: id,
+        note_layout: layout,
+        annotation_ids: MapSet.put(state.annotation_ids, normalized),
+        note_ids:
+          if(is_nil(layout), do: MapSet.put(state.note_ids, normalized), else: state.note_ids)
+    }
   end
 
   defp numeric_annotation_id!(id) do

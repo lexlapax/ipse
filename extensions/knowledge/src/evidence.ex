@@ -14,8 +14,8 @@ defmodule IpseKnowledge.Evidence do
   @collection_chunking %{"version" => 2, "max_bytes" => 4096}
   @document_span_fields ~w(paragraph start_byte end_byte quote_start_byte quote_end_byte table row cell)
   @numbered_document_span_fields @document_span_fields ++ ~w(numbering)
-  @document_block_recipes ~w(ipse-documents-v14 ipse-documents-v15 ipse-documents-v16 ipse-documents-v17)
-  @numbered_document_recipes ~w(ipse-documents-v16 ipse-documents-v17)
+  @document_block_recipes ~w(ipse-documents-v14 ipse-documents-v15 ipse-documents-v16 ipse-documents-v17 ipse-documents-v18)
+  @numbered_document_recipes ~w(ipse-documents-v16 ipse-documents-v17 ipse-documents-v18)
 
   def safe_integer_max, do: @safe
   def safe_uint?(value), do: is_integer(value) and value in 0..@safe

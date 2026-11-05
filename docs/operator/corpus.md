@@ -344,7 +344,7 @@ reader supports a narrow list format: a single decimal level with an explicit
 start and an optional start override. It tracks separate list instances. Its
 citation locator includes a `numbering` map
 with the derived ordinal, label and suffix; for example, `3.` is separate from the
-paragraph's quoted words. A multi-block v16 or v17 citation has fixed span fields for
+paragraph's quoted words. A multi-block v16 through v18 citation has fixed span fields for
 table, row, cell and numbering; absent coordinates or numbering are `null`.
 Inspect the original for layout.
 Numbering parts still leave the document partial. Bullets, nested levels, numbering
@@ -355,12 +355,18 @@ silently changing later numbers. For this numbered-list subset, the body,
 numbering and any styles parts must use the same WordprocessingML dialect; mixed
 parts refuse because their combined interpretation is outside the reader's scope.
 
-The current DOCX recipe is `ipse-documents-v17`. Reacquire and explicitly replace an
+The current DOCX recipe is `ipse-documents-v18`. Reacquire and explicitly replace an
 older source when you need the newer recipe; existing extractions are not silently
-rebuilt. Stored v14, v15 and v16 sources and citations retain their original recipes and
+rebuilt. Stored v14 through v17 sources and citations retain their original recipes and
 remain readable.
 
-Footnotes, endnotes and comments retain their annotation IDs. A unique visible
+Footnotes and endnotes declared as separators, continuation separators or
+continuation notices are page-layout material, excluded from cited note text.
+Their paragraphs still count toward the part's paragraph positions, so later
+note locators are not renumbered. The declared type controls this treatment;
+a negative or zero ID alone does not exclude an ordinary note.
+
+Ordinary footnotes, endnotes and comments retain their annotation IDs. A unique visible
 body reference supplies its paragraph/table-cell location and UTF-8 byte offset;
 a supported comment range also retains its exact span. Missing, orphaned or
 ambiguous links keep coverage partial. Unsupported numbering or layout can keep

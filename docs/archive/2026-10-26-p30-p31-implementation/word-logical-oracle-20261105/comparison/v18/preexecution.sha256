@@ -1,0 +1,4 @@
+d68087c1750e164a4a47a4934e069f89dea7c1970e82ceb533775064c0fba118  _build/verification/word-independent-oracle-20261105-01/comparison/v18/compare_existing_extractor.exs
+582c1131249d20ed2eec4851af9d8b9f25fa4fee51a1bf420df2f09995be25bd  _build/verification/word-independent-oracle-20261105-01/comparison/v18/artifact-preimages.sha256
+e2af13b29bacd36da26490053f1f2b86b6ab37f0c418d43f553537ceb7851a47  _build/verification/word-independent-oracle-20261105-01/author/expected-oracle-v2.json
+24aab8d8d6eccabca80a49769ab8a654b93f2792565569262131bf8095fadee7  _build/verification/word-independent-oracle-20261105-01/checker/ORACLE-VERDICT-V2.md

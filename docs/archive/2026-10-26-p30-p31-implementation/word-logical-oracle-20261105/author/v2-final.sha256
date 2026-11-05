@@ -1,0 +1,5 @@
+37061b96da1ba15bb262a759928c1aa28bcfb937574eba2a358ad7f6add30cf8  _build/verification/word-independent-oracle-20261105-01/author/author_oracle_v2.exs
+e2af13b29bacd36da26490053f1f2b86b6ab37f0c418d43f553537ceb7851a47  _build/verification/word-independent-oracle-20261105-01/author/expected-oracle-v2.json
+2c631f3c5b54de9a4869b73ca20fd5906cfb8f4fb82a056f34e9b75c88374aa2  _build/verification/word-independent-oracle-20261105-01/author/v2-input-preimages.sha256
+11fb99614e49f67b293cb16f940b2ef624b01eaca86a57c77226704fda0c3051  _build/verification/word-independent-oracle-20261105-01/author/v2-null-metadata-fix.md
+6addb0dccb3c3bafe6b6d88746df779222c4975b8945ceab3f092f224f46100a  _build/verification/word-independent-oracle-20261105-01/author/v2-materialization-receipt.md

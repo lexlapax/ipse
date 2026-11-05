@@ -844,11 +844,11 @@ compact receipt version 4, retaining exact manifest hash/byte count, segment and
 warning counts, origin and one immutable manifest-head reference. Storage paging
 does not change the extraction recipe.
 
-For recipes v14 through v17, an extraction with more than 32 blocks can pack adjacent
+For recipes v14 through v18, an extraction with more than 32 blocks can pack adjacent
 plain paragraphs and table cells from one part into groups. Each group contains at most
 64 original blocks and fits the selected chunk-byte bound. Its `block_group`
 locator stores compact rows `[paragraph, text_bytes]` or
-`[paragraph, text_bytes, table, row, cell]`. V16 and v17 rows may append a `numbering` map
+`[paragraph, text_bytes, table, row, cell]`. V16 through v18 rows may append a `numbering` map
 after the optional table coordinates. Original paragraph numbers may have
 gaps; they must increase within the group. Other locator fields, such as annotation
 anchors or header regions, prevent grouping. The complete text keeps the same
@@ -899,7 +899,7 @@ retains the original single locator and local byte range. A quotation crossing
 packed blocks uses version 2, one `part` and compact `spans` rows. `span_fields`
 names their columns: paragraph, local start/end, quotation start/end, then
 table/row/cell coordinates. V14 and v15 rows contain five values for paragraphs
-and eight for table cells. V16 and v17 rows have nine fixed positions: the first five,
+and eight for table cells. V16 through v18 rows have nine fixed positions: the first five,
 nullable table/row/cell coordinates and nullable numbering metadata. Quotation
 offsets retain the newline gaps between original blocks.
 
@@ -1027,7 +1027,7 @@ duplicate references and references after row content. Each table tracks its
 own selection, while its cell locators retain their original table/row/cell
 identity. Ambiguous visibility remains outside the supported subset.
 
-For directly numbered body paragraphs, v16 and v17 derive list locators from
+For directly numbered body paragraphs, v16 through v18 derive list locators from
 the internal `numbering.xml` relationship and matching content type. The supported
 graph has explicit `singleLevel`, level zero, decimal format, start and a bounded
 template containing one `%1`; an optional level-zero start override sets the
@@ -1059,7 +1059,16 @@ inheritance, page layout, or which pages display the text. Only bounded internal
 relationships with matching content types are admitted; unreferenced parts are
 not extracted.
 
-Footnote, endnote and comment paragraphs carry their annotation ID. The parser
+The parser distinguishes footnote/endnote layout entries by their declared
+`type`: `separator`, `continuationSeparator` or `continuationNotice`. It excludes
+their text from emitted segments and their identities from anchor-completeness
+requirements. It still validates their numeric IDs and uniqueness against all
+entries in that part, and visits their paragraphs in the same part-wide ordinal
+sequence. A normal or omitted type keeps an ordinary note, including one with a
+negative or zero ID; an unknown type refuses rather than guessing. Comments do
+not accept note-layout types.
+
+Ordinary footnote, endnote and comment paragraphs carry their annotation ID. The parser
 requires distinct numeric IDs within each part and refuses paragraphs outside
 an annotation. A uniquely matched visible reference in the main body supplies a
 `reference_site` paragraph or table-cell locator and UTF-8 byte offset; it is a point, not a
@@ -1096,13 +1105,15 @@ relationship still refuses; this does not implement general Word text effects.
 Both parts count toward the aggregate expanded-byte bound.
 
 Recipes are format-specific: `Documents.version("docx")` is
-`ipse-documents-v17`, while text, Markdown and PDF use `ipse-documents-v2`.
+`ipse-documents-v18`, while text, Markdown and PDF use `ipse-documents-v2`.
 The legacy `version/0` returns the v2 value; use `version/1` when binding an
 extraction to a source version. Earlier DOCX results are not automatically
-migrated or equivalent. V14, v15 and v16 packed receipts and citations retain their
+migrated or equivalent. V14 through v17 packed receipts and citations retain their
 original recipes and remain readable; v16 extends the bounded block-map geometry
 with the separate numbering map. V17 retains that geometry and changes only
-undefined selected paragraph/character style handling. A future recipe cannot inherit that geometry without explicit validation support.
+undefined selected paragraph/character style handling. V18 retains that geometry
+and excludes the declared footnote/endnote layout entries described above.
+A future recipe cannot inherit that geometry without explicit validation support.
 Future indexing must explicitly rebuild or requalify older extraction results.
 The optional PDF backend requires a separately host-admitted protected parser;
 its installation does not activate PDF acquisition. The
@@ -1120,6 +1131,12 @@ elixir --erl '+S 2:2' \
   -pa _build/dev/lib/ipse/ebin -pa _build/dev/lib/jason/ebin \
   -e 'Application.load(:ipse); ExUnit.start(seed: 791782); Code.require_file("test/extensions/knowledge/documents_fidelity_test.exs"); Code.require_file("test/extensions/knowledge/documents_test.exs"); Code.require_file("test/extensions/knowledge/document_paragraph_packing_test.exs")'
 ```
+
+Include declared layout entries before an ordinary footnote/endnote and verify
+both the emitted text and the later note's original paragraph position. Also
+check ordinary negative-ID and unreferenced notes: neither punctuation-like text
+nor an absent body reference permits omitting their content. Duplicate numeric
+IDs across layout and ordinary entries must still refuse.
 
 The artifact control uses the built SDK above without starting the Ipse
 application. One fixture opens a loopback listener to verify that an external
@@ -1160,7 +1177,7 @@ objects. Use Elixir `JSON.encode!/decode!`, not raw Erlang encoding: binary sizi
 and `nil`→null semantics matter to persisted IDs. Sources allow 64 KiB UTF-8,
 with at most 32 chunks. Legacy sources keep their 2048-byte recipe; explicit
 Collection Source3 uses the versioned 4096-byte recipe. Document chunks remain
-inside their typed segments. V14–v17 groups may contain several original blocks and
+inside their typed segments. V14–v18 groups may contain several original blocks and
 their newline joins; separators between groups need not belong to a chunk.
 Citations bind generation/content/chunk,
 absolute byte range, literal quote/hash, URI, times, and origin. Quote bounds are

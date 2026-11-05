@@ -54,7 +54,7 @@ defmodule Ipse.KnowledgeDocumentsTest do
     assert D.version("markdown")=="ipse-documents-v2"
     assert D.version("text")=="ipse-documents-v2"
     assert D.version("pdf")=="ipse-documents-v2"
-    assert D.version("docx")=="ipse-documents-v17"
+    assert D.version("docx")=="ipse-documents-v18"
     assert Enum.map(result["segments"],& &1["text"])==["# Café\r","保持 exact",""]
     for segment <- result["segments"] do
       l=segment["locator"]
@@ -133,7 +133,7 @@ defmodule Ipse.KnowledgeDocumentsTest do
     entries=[{"word/document.xml",main},{"word/_rels/document.xml.rels",relations},{"[Content_Types].xml",types},{"word/header1.xml",header},{"word/footer1.xml",footer},{"word/orphan.xml","not parsed"}]
     {:ok,result}=D.extract(zip.(entries),"headers.docx")
     assert result["status"]=="partial"
-    assert result["extraction_version"]=="ipse-documents-v17"
+    assert result["extraction_version"]=="ipse-documents-v18"
     assert Enum.map(result["segments"],& &1["text"])==["body","heading","footer"]
     assert Enum.map(result["segments"],& &1["locator"]["region"])==[nil,"header","footer"]
     assert %{"code"=>"header_footer_layout_unresolved","part"=>"word/document.xml"} in result["warnings"]
