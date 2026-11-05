@@ -1313,6 +1313,28 @@ Duplicate operation IDs are inspection facts and never new permission to execute
 Cancellation or owner loss stops the current owned lane; a saved prefix never
 replays either publication or deferred settlement.
 
+Keep that logical accounting separate from the control file's encoding.
+`Consent` reads storage versions 1 and 2 without rewriting them; the next
+successful protected mutation writes version 3. Only compacted terminal rows
+change representation. Their request and receipt SHA256 values are packed
+losslessly as one canonical unpadded URL-base64 string, with a strict integer
+terminal-status tag. Decode restores the existing hexadecimal hashes, status
+strings and six-resource vector before validation and accounting. Public
+inspection retains that logical version-2 shape. Unknown liabilities and the
+latest 64 full receipts remain unchanged. Neither compaction nor a policy change
+removes IDs, refunds usage or renews permission.
+
+Count capacity and byte capacity independently: 32,768 retained operations do
+not promise that every legal vector/receipt mix fits. The control reader retains
+its eight-MiB bound; writes retain the 6,225,920-byte maximum-maintenance budget,
+including room for settlement, 64 maximum receipts and a replacement policy.
+An oversized representation refuses the write rather than pruning
+facts or raising that limit. Pure `encode_control/2` and `decode_control/2`
+exercise storage validation only; neither writes a file nor establishes a live
+policy owner. Upgrade the host before a v3 mutation: older hosts cannot read that
+format. Follow the [storage feasibility procedure](knowledge-storage.md#budget-native-effects-before-an-endurance-run)
+before projecting an endurance workload from an operation count.
+
 Session validates the exact current action/job/worker lease before source queries.
 `Resources.authorized_effect?/2` is callable only by the actual owning Session and
 recognizes its live worker or registered file-effect descendant. A sibling task,
@@ -1326,6 +1348,7 @@ From a coherent built checkout, start with the boundary your change affects:
 ```sh
 mix test test/ipse/extension/collection_deadline_gate_test.exs
 mix test test/ipse/extension/notes_publication_admission_test.exs
+mix test test/ipse/extension/consent_storage_test.exs test/ipse/extension/consent_compaction_test.exs test/ipse/extension/consent_budget_test.exs --max-cases 1
 mix test test/ipse/extension/collection_normalizer_v3_integration_test.exs --only typed_expiry
 mix test test/extensions/knowledge/knowledge_recall_test.exs
 mix test test/ipse/session/managed_tool_use_test.exs --only publication_prerequisite

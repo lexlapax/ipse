@@ -1,0 +1,25 @@
+{
+  "parent_head": "d37c6eb3c78f929ec41ecf93ac546989c45d3fd5",
+  "private_whole_manual_check": {
+    "errors": 0,
+    "links": 9933,
+    "markdown_files": 1205,
+    "receipt_sha256": "1609273f858f3ecb928534b60ccade97216b50b965990ae3daddf311d504ccf2"
+  },
+  "scope": "three owned main files only; unrelated concurrent changes excluded",
+  "source": [
+    {
+      "path": "lib/ipse/extension/consent.ex",
+      "sha256": "9a93eaef7b0376b714ffc1b9f752b1f4f00ffed2415dd43ac228cf2b57971bb7"
+    },
+    {
+      "path": "test/ipse/extension/consent_compaction_test.exs",
+      "sha256": "dc1f2c6ef68d6841ac888256db864ce452fe75a17e692fae708018655338a1a5"
+    },
+    {
+      "path": "test/ipse/extension/consent_storage_test.exs",
+      "sha256": "d5fbde7458ff5cc8ec3791f1be7328c6d77e7f6075b7abb3b112dabfb1ab9822"
+    }
+  ],
+  "source_unchanged_during_native_run": true
+}

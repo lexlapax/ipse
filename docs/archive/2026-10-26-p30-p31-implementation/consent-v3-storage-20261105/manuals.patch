@@ -1,0 +1,92 @@
+diff --git a/docs/developer/collection-sdk.md b/docs/developer/collection-sdk.md
+index f97fad3..40a3204 100644
+--- a/docs/developer/collection-sdk.md
++++ b/docs/developer/collection-sdk.md
+@@ -1313,6 +1313,28 @@ Duplicate operation IDs are inspection facts and never new permission to execute
+ Cancellation or owner loss stops the current owned lane; a saved prefix never
+ replays either publication or deferred settlement.
+ 
++Keep that logical accounting separate from the control file's encoding.
++`Consent` reads storage versions 1 and 2 without rewriting them; the next
++successful protected mutation writes version 3. Only compacted terminal rows
++change representation. Their request and receipt SHA256 values are packed
++losslessly as one canonical unpadded URL-base64 string, with a strict integer
++terminal-status tag. Decode restores the existing hexadecimal hashes, status
++strings and six-resource vector before validation and accounting. Public
++inspection retains that logical version-2 shape. Unknown liabilities and the
++latest 64 full receipts remain unchanged. Neither compaction nor a policy change
++removes IDs, refunds usage or renews permission.
++
++Count capacity and byte capacity independently: 32,768 retained operations do
++not promise that every legal vector/receipt mix fits. The control reader retains
++its eight-MiB bound; writes retain the 6,225,920-byte maximum-maintenance budget,
++including room for settlement, 64 maximum receipts and a replacement policy.
++An oversized representation refuses the write rather than pruning
++facts or raising that limit. Pure `encode_control/2` and `decode_control/2`
++exercise storage validation only; neither writes a file nor establishes a live
++policy owner. Upgrade the host before a v3 mutation: older hosts cannot read that
++format. Follow the [storage feasibility procedure](knowledge-storage.md#budget-native-effects-before-an-endurance-run)
++before projecting an endurance workload from an operation count.
++
+ Session validates the exact current action/job/worker lease before source queries.
+ `Resources.authorized_effect?/2` is callable only by the actual owning Session and
+ recognizes its live worker or registered file-effect descendant. A sibling task,
+@@ -1326,6 +1348,7 @@ From a coherent built checkout, start with the boundary your change affects:
+ ```sh
+ mix test test/ipse/extension/collection_deadline_gate_test.exs
+ mix test test/ipse/extension/notes_publication_admission_test.exs
++mix test test/ipse/extension/consent_storage_test.exs test/ipse/extension/consent_compaction_test.exs test/ipse/extension/consent_budget_test.exs --max-cases 1
+ mix test test/ipse/extension/collection_normalizer_v3_integration_test.exs --only typed_expiry
+ mix test test/extensions/knowledge/knowledge_recall_test.exs
+ mix test test/ipse/session/managed_tool_use_test.exs --only publication_prerequisite
+diff --git a/docs/developer/knowledge-storage.md b/docs/developer/knowledge-storage.md
+index 2c592ee..9816ef2 100644
+--- a/docs/developer/knowledge-storage.md
++++ b/docs/developer/knowledge-storage.md
+@@ -231,6 +231,26 @@ before the listed unplanned requirements. A higher intake that exceeds the daily
+ limit reports its full required actions and excess instead of trimming capture.
+ No native publication, main request or actual turn runs in this command.
+ 
++Check the protected Consent representation as well as this ID count. The
++31,052-ID schedule leaves 30,988 compacted rows after retaining 64 full receipts.
++With 13-digit calendar times, the older v2 compacted object alone needs at least
++6,713,291 bytes, even with six single-digit resource counters. It cannot fit the
++unchanged 6,225,920-byte reserved-write budget. Consent storage v3 packs only the
++terminal rows' two digests and status, preserving the logical accounting and
++public inspection described in the [SDK contract](collection-sdk.md#keep-approval-and-replay-facts-distinct).
++Reads retain old bytes; migration happens only during a successful authorized
++mutation. Keep the matching host installed after that mutation.
++
++Before a long run, encode its actual six-resource vector geometry and all 64
++recent receipt bodies, then apply the same maximum-maintenance calculation as
++the writer. The focused synthetic control uses 31,052 IDs, 64 full eight-KiB
++receipts and a conservative six-digit input-byte vector; it is a representation
++bound, not a measured annual workload. A passing byte preflight still leaves
++native allocation entries, signed metadata, source/management journals, expiry,
++process-tree peaks and complete-day latency to measure. Count the 10,000 mixed
++changes once: they already occur in the calendar's 28,952 scheduled effects.
++Do not extrapolate the first day's 57 effects to every annual date.
++
+ Before building a continuation, inspect the bounded segment geometry:
+ 
+ ```sh
+diff --git a/docs/operator/knowledge-permissions.md b/docs/operator/knowledge-permissions.md
+index 1d9c981..e19afd5 100644
+--- a/docs/operator/knowledge-permissions.md
++++ b/docs/operator/knowledge-permissions.md
+@@ -73,6 +73,15 @@ The permission is tied to the reviewed artifact. If an upgrade changes that
+ artifact, check `ipse knowledge status --cwd /path/to/project` and complete a
+ fresh `enable` review when needed; an earlier grant does not silently transfer.
+ 
++Keep the matching Ipse installation when upgrading protected permission data.
++Inspection leaves older control files unchanged; a later successful authorized
++write can save the newer format while preserving usage, operation IDs and
++unresolved effects. Older Ipse versions may then refuse that file. Preserve the
++original home and lock files, use the matching newer installation, and follow
++[protected recovery](recovery.md#inspect-unconfirmed-protected-knowledge) if a
++write is unconfirmed. Replacing the control file or deleting its history is not
++a migration or a way to restore allowance.
++
+ The native preset permits reviewed statements, literal typed tool outcomes and
+ attributed pending proposals. Plain messages, quoted third-party reports, native
+ question answers and generated text remain pending candidates. An exact quotation

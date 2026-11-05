@@ -73,6 +73,10 @@ nor resource/offline qualification. No daemon configuration or existing model wa
 - [Chat acceptance architectural reassessment](chat-acceptance-reassessment-20261103.md) compares the frozen post-reply contract with the paused Session-owned draft and an unproven separate-owner alternative.
 - [Chat acceptance host-protocol plan](chat-acceptance-host-protocol-plan-20261103.md) records the ownership and later-use gaps for a proposed single-card journey; no implementation or test is claimed.
 
+## Consent storage checkpoint — 2026-11-05
+
+- [Lossless Consent v3](consent-v3-storage-20261105.md) preserves logical rows and liabilities under unchanged caps; specified 31,052-ID/full-receipt geometry and 22 focused checks pass. Original retained state, populated-day and annual qualification remain separate.
+
 ## Source checkpoint evidence — 2026-11-04
 
 - [Schema-validator security update](schema-validator-security-20261104.md) adopts maintained JSONSchex 0.11.1 and its existing Elixir pointer dependency after upstream retirement, preserving Ipse's closed schema gate; focused tests and normal build pass, final integration remains separate.

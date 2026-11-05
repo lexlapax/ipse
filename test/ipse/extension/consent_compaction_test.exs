@@ -197,9 +197,29 @@ defmodule Ipse.Extension.ConsentCompactionTest do
     assert {:ok, %{"version" => 2, "compacted" => %{}}} = C.snapshot(c.root, c.project)
     assert File.read!(c.control_file) == original
     assert {:ok, _} = C.revoke(c.root, c.project, 1)
-    assert Jason.decode!(File.read!(c.control_file))["version"] == 2
+    assert Jason.decode!(File.read!(c.control_file))["version"] === 3
     write_fixture(c, Map.put(legacy, "unexpected", true))
     assert {:error, :consent_unavailable} = C.snapshot(c.root, c.project)
+  end
+
+  test "v2 reads and rejected mutations leave storage intact; authorized mutation writes v3", c do
+    state = seed_compacted(c, 2)
+    original = File.read!(c.control_file)
+    assert Jason.decode!(original)["version"] === 2
+    assert {:ok, ^state} = C.existing_snapshot(c.root, c.project)
+    assert File.read!(c.control_file) === original
+    assert {:error, :consent_conflict} = C.revoke(c.root, c.project, state["epoch"] + 1)
+    assert File.read!(c.control_file) === original
+    assert {:ok, _} = C.revoke(c.root, c.project, state["epoch"])
+    stored = Jason.decode!(File.read!(c.control_file))
+    assert stored["version"] === 3
+    assert map_size(stored["compacted"]) === 2
+    assert {:ok, logical} = C.existing_snapshot(c.root, c.project)
+    assert logical["version"] === 2
+    assert logical["compacted"] === state["compacted"]
+    assert logical["operations"] === state["operations"]
+    assert logical["sequence"] === state["sequence"]
+    assert logical["policy"] === nil
   end
 
   @tag timeout: 120_000

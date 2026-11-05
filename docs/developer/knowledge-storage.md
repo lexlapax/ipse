@@ -231,6 +231,26 @@ before the listed unplanned requirements. A higher intake that exceeds the daily
 limit reports its full required actions and excess instead of trimming capture.
 No native publication, main request or actual turn runs in this command.
 
+Check the protected Consent representation as well as this ID count. The
+31,052-ID schedule leaves 30,988 compacted rows after retaining 64 full receipts.
+With 13-digit calendar times, the older v2 compacted object alone needs at least
+6,713,291 bytes, even with six single-digit resource counters. It cannot fit the
+unchanged 6,225,920-byte reserved-write budget. Consent storage v3 packs only the
+terminal rows' two digests and status, preserving the logical accounting and
+public inspection described in the [SDK contract](collection-sdk.md#keep-approval-and-replay-facts-distinct).
+Reads retain old bytes; migration happens only during a successful authorized
+mutation. Keep the matching host installed after that mutation.
+
+Before a long run, encode its actual six-resource vector geometry and all 64
+recent receipt bodies, then apply the same maximum-maintenance calculation as
+the writer. The focused synthetic control uses 31,052 IDs, 64 full eight-KiB
+receipts and a conservative six-digit input-byte vector; it is a representation
+bound, not a measured annual workload. A passing byte preflight still leaves
+native allocation entries, signed metadata, source/management journals, expiry,
+process-tree peaks and complete-day latency to measure. Count the 10,000 mixed
+changes once: they already occur in the calendar's 28,952 scheduled effects.
+Do not extrapolate the first day's 57 effects to every annual date.
+
 Before building a continuation, inspect the bounded segment geometry:
 
 ```sh

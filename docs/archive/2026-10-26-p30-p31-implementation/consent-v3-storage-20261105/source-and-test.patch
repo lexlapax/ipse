@@ -1,0 +1,371 @@
+diff --git a/lib/ipse/extension/consent.ex b/lib/ipse/extension/consent.ex
+index 13004cb..0a025be 100644
+--- a/lib/ipse/extension/consent.ex
++++ b/lib/ipse/extension/consent.ex
+@@ -27,6 +27,40 @@ defmodule Ipse.Extension.Consent do
+   @error {:error, :consent_unavailable}
+ 
+   def resources, do: @resources
++
++  @doc false
++  # Pure storage decoding establishes no current policy or publication authority.
++  # The public/in-memory representation keeps the existing hexadecimal rows.
++  def decode_control(bytes, project) when is_binary(bytes) and byte_size(bytes) <= @bytes do
++    with {:ok, stored} <- JSON.decode_unique(bytes),
++         {:ok, state} <- decode_storage(stored),
++         true <- valid_state?(state, project),
++         do: {:ok, upgrade(state)},
++         else: (_ -> @error)
++  rescue
++    _ -> @error
++  end
++
++  def decode_control(_, _), do: @error
++
++  @doc false
++  # Called only by the existing protected mutation path. Reads never rewrite.
++  def encode_control(state, project) do
++    with true <- valid_state?(state, project),
++         state = compact(upgrade(state)),
++         stored = encode_storage(state),
++         {:ok, bytes} <- Jason.encode(stored),
++         :ok <- maintenance_capacity(state, bytes),
++         {:ok, ^state} <- decode_control(bytes, project),
++         do: {:ok, bytes},
++         else: (
++           {:error, :consent_capacity} = error -> error
++           _ -> @error
++         )
++  rescue
++    _ -> @error
++  end
++
+   @doc false
+   def operation_limit, do: @entries
+   def zero, do: Map.new(@resources, &{&1, 0})
+@@ -1164,21 +1198,17 @@ defmodule Ipse.Extension.Consent do
+     with true <- safe_file?(stat, uid) and stat.size <= @bytes,
+          {:ok, bytes} <- Transaction.read(lock, ".", "control.json", @bytes),
+          true <- is_binary(bytes) and byte_size(bytes) <= @bytes,
+-         {:ok, s} <- JSON.decode_unique(bytes),
+-         true <- valid_state?(s, project),
+-         do: {:ok, upgrade(s)},
++         {:ok, s} <- decode_control(bytes, project),
++         do: {:ok, s},
+          else: (_ -> @error)
+   end
+ 
+   defp write(path, s) do
+-    s = compact(s)
+     pending = ".pending-" <> Ipse.Usage.id()
+     lock = Process.get(@lock_key)
+ 
+     with true <- lock != nil and Path.basename(path) == s["project"],
+-         {:ok, bytes} <- Jason.encode(s),
+-         :ok <- maintenance_capacity(s, bytes),
+-         {:ok, ^s} <- JSON.decode_unique(bytes),
++         {:ok, bytes} <- encode_control(s, s["project"]),
+          :ok <- Transaction.quota(lock, :flat, @allocated_bytes),
+          :ok <- Transaction.preflight(lock, [byte_size(bytes)]),
+          {:ok, before} <- Transaction.allocation(lock, :flat),
+@@ -1267,6 +1297,61 @@ defmodule Ipse.Extension.Consent do
+   defp upgrade(%{"version" => 1} = s), do: s |> Map.put("compacted", %{}) |> Map.put("version", 2)
+   defp upgrade(s), do: s
+ 
++  # Only compacted terminal facts use the v3 disk encoding. IDs, full recent
++  # receipts and all unresolved liabilities retain their original representation.
++  defp encode_storage(state) do
++    rows =
++      Map.new(state["compacted"], fn
++        {id, [sequence, epoch, request, created, status, actual, receipt]} ->
++          digests = Base.decode16!(request, case: :lower) <> Base.decode16!(receipt, case: :lower)
++          status = if status == "settled", do: 0, else: 1
++
++          {id,
++           [sequence, epoch, Base.url_encode64(digests, padding: false), created, status, actual]}
++      end)
++
++    state |> Map.put("version", 3) |> Map.put("compacted", rows)
++  end
++
++  defp decode_storage(%{"version" => 3, "compacted" => compacted} = state)
++       when is_map(compacted) and map_size(compacted) <= @entries do
++    Enum.reduce_while(compacted, {:ok, %{}}, fn {id, row}, {:ok, rows} ->
++      case decode_compact(row) do
++        {:ok, decoded} -> {:cont, {:ok, Map.put(rows, id, decoded)}}
++        _ -> {:halt, @error}
++      end
++    end)
++    |> case do
++      {:ok, rows} -> {:ok, state |> Map.put("version", 2) |> Map.put("compacted", rows)}
++      _ -> @error
++    end
++  end
++
++  defp decode_storage(%{"version" => version} = state) when version in [1, 2], do: {:ok, state}
++  defp decode_storage(_), do: @error
++
++  defp decode_compact([sequence, epoch, packed, created, status, actual])
++       when is_binary(packed) and byte_size(packed) == 86 and status in [0, 1] do
++    with {:ok, <<request::binary-size(32), receipt::binary-size(32)>> = digests} <-
++           Base.url_decode64(packed, padding: false),
++         true <- Base.url_encode64(digests, padding: false) === packed do
++      {:ok,
++       [
++         sequence,
++         epoch,
++         Base.encode16(request, case: :lower),
++         created,
++         if(status == 0, do: "settled", else: "reconciled_overrun"),
++         actual,
++         Base.encode16(receipt, case: :lower)
++       ]}
++    else
++      _ -> @error
++    end
++  end
++
++  defp decode_compact(_), do: @error
++
+   defp valid_state?(s, project) do
+     legacy = s["version"] === 1 and keys?(s, ~w(version project epoch sequence policy operations))
+ 
+diff --git a/test/ipse/extension/consent_compaction_test.exs b/test/ipse/extension/consent_compaction_test.exs
+index fc45f7f..c44dd9b 100644
+--- a/test/ipse/extension/consent_compaction_test.exs
++++ b/test/ipse/extension/consent_compaction_test.exs
+@@ -197,11 +197,31 @@ defmodule Ipse.Extension.ConsentCompactionTest do
+     assert {:ok, %{"version" => 2, "compacted" => %{}}} = C.snapshot(c.root, c.project)
+     assert File.read!(c.control_file) == original
+     assert {:ok, _} = C.revoke(c.root, c.project, 1)
+-    assert Jason.decode!(File.read!(c.control_file))["version"] == 2
++    assert Jason.decode!(File.read!(c.control_file))["version"] === 3
+     write_fixture(c, Map.put(legacy, "unexpected", true))
+     assert {:error, :consent_unavailable} = C.snapshot(c.root, c.project)
+   end
+ 
++  test "v2 reads and rejected mutations leave storage intact; authorized mutation writes v3", c do
++    state = seed_compacted(c, 2)
++    original = File.read!(c.control_file)
++    assert Jason.decode!(original)["version"] === 2
++    assert {:ok, ^state} = C.existing_snapshot(c.root, c.project)
++    assert File.read!(c.control_file) === original
++    assert {:error, :consent_conflict} = C.revoke(c.root, c.project, state["epoch"] + 1)
++    assert File.read!(c.control_file) === original
++    assert {:ok, _} = C.revoke(c.root, c.project, state["epoch"])
++    stored = Jason.decode!(File.read!(c.control_file))
++    assert stored["version"] === 3
++    assert map_size(stored["compacted"]) === 2
++    assert {:ok, logical} = C.existing_snapshot(c.root, c.project)
++    assert logical["version"] === 2
++    assert logical["compacted"] === state["compacted"]
++    assert logical["operations"] === state["operations"]
++    assert logical["sequence"] === state["sequence"]
++    assert logical["policy"] === nil
++  end
++
+   @tag timeout: 120_000
+   test "lifetime capacity refuses visibly while retained duplicate IDs stay inspectable", c do
+     seed_compacted(c, 32_768)
+diff --git a/test/ipse/extension/consent_storage_test.exs b/test/ipse/extension/consent_storage_test.exs
+new file mode 100644
+index 0000000..6042a83
+--- /dev/null
++++ b/test/ipse/extension/consent_storage_test.exs
+@@ -0,0 +1,196 @@
++defmodule Ipse.Extension.ConsentStorageTest do
++  use ExUnit.Case, async: false
++  alias Ipse.JSON
++  alias Ipse.Extension.Consent, as: C
++
++  def state(count, actual \\ [1, 0, 131_072, 16_384, 0, 0]) do
++    project = JSON.sha256("synthetic consent geometry")
++    hash = JSON.sha256("synthetic request/receipt")
++
++    rows =
++      Map.new(1..count, fn sequence ->
++        {Integer.to_string(sequence, 16) |> String.downcase() |> String.pad_leading(32, "0"),
++         [sequence, 5, hash, 1_795_485_346_653, "settled", actual, hash]}
++      end)
++
++    %{
++      "version" => 2,
++      "project" => project,
++      "epoch" => 5,
++      "sequence" => count,
++      "policy" => nil,
++      "operations" => %{},
++      "compacted" => rows
++    }
++  end
++
++  test "v1/v2 remain readable in memory with no storage mutation" do
++    state = state(1)
++
++    for logical <- [
++          state,
++          %{state | "version" => 1, "sequence" => 0, "compacted" => %{}}
++          |> Map.delete("compacted")
++        ] do
++      bytes = Jason.encode!(logical)
++      assert {:ok, decoded} = C.decode_control(bytes, state["project"])
++      assert decoded["version"] === 2
++      assert Jason.encode!(logical) === bytes
++    end
++  end
++
++  test "disk v3 is lossless and ordinary in-memory operation/public hex rows stay exact" do
++    state = state(2)
++    [id | _] = Map.keys(state["compacted"])
++    state = put_in(state, ["compacted", id, Access.at(4)], "reconciled_overrun")
++    assert {:ok, bytes} = C.encode_control(state, state["project"])
++    stored = Jason.decode!(bytes)
++    assert stored["version"] === 3
++
++    assert Map.keys(stored["compacted"]) |> Enum.sort() ===
++             Enum.sort(Map.keys(state["compacted"]))
++
++    assert {:ok, ^state} = C.decode_control(bytes, state["project"])
++
++    assert Enum.all?(stored["compacted"], fn {_, [_, _, packed, _, status, _]} ->
++             byte_size(packed) === 86 and status in [0, 1]
++           end)
++  end
++
++  test "reject aliases, malformed packed hashes, float discriminants and extra fields" do
++    state = state(1)
++    assert {:ok, bytes} = C.encode_control(state, state["project"])
++    stored = Jason.decode!(bytes)
++    [{id, row}] = Map.to_list(stored["compacted"])
++    packed = Enum.at(row, 2)
++    last = binary_part(packed, 85, 1)
++    alphabet = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_"
++    {index, 1} = :binary.match(alphabet, last)
++    alias_hash = binary_part(packed, 0, 85) <> binary_part(alphabet, index + 1, 1)
++
++    for bad <- [
++          Map.put(stored, "version", 3.0),
++          Map.put(stored, "extra", true),
++          put_in(stored, ["compacted", id], List.replace_at(row, 2, packed <> "==")),
++          put_in(stored, ["compacted", id], List.replace_at(row, 2, alias_hash)),
++          put_in(stored, ["compacted", id], List.replace_at(row, 2, String.duplicate("A", 85))),
++          put_in(stored, ["compacted", id], List.replace_at(row, 4, 0.0)),
++          put_in(stored, ["compacted", id], List.replace_at(row, 4, 2)),
++          put_in(stored, ["compacted", id], row ++ ["extra"])
++        ] do
++      assert {:error, :consent_unavailable} =
++               C.decode_control(Jason.encode!(bad), state["project"])
++    end
++
++    assert {:error, :consent_unavailable} = C.decode_control(bytes, JSON.sha256("foreign"))
++
++    assert {:error, :consent_unavailable} =
++             C.decode_control("{\"version\":3,\"version\":3}", state["project"])
++  end
++
++  test "unknown liabilities and full recent receipts are byte-for-byte fields" do
++    state = state(1)
++    hash = JSON.sha256("synthetic full row")
++    id = String.duplicate("f", 32)
++
++    request = %{
++      "id" => id,
++      "operation" => "knowledge.capture",
++      "artifact_sha256" => hash,
++      "source_sha256" => hash,
++      "policy_sha256" => hash,
++      "request_sha256" => hash,
++      "source_generation" => 1,
++      "reserved" => Map.new(C.resources(), &{&1, 1}),
++      "headless" => false,
++      "sequence" => 2,
++      "epoch" => 5,
++      "created_at_ms" => 1_795_485_346_654,
++      "status" => "unknown",
++      "actual" => nil,
++      "receipt" => nil
++    }
++
++    state = %{state | "sequence" => 2, "operations" => %{id => request}}
++    assert {:ok, bytes} = C.encode_control(state, state["project"])
++    assert Jason.decode!(bytes)["operations"] === state["operations"]
++    assert {:ok, ^state} = C.decode_control(bytes, state["project"])
++  end
++
++  @tag timeout: 120_000
++  test "specified annual geometry with64 full recent8KiB receipts retains reserved write headroom" do
++    count = 31_052
++    state = state(count - 64)
++    hash = JSON.sha256("synthetic full row")
++    actual = Map.new(Enum.zip(C.resources(), [1, 0, 131_072, 16_384, 0, 0]))
++    receipt = %{"payload" => String.duplicate("x", 8_178)}
++    assert byte_size(Jason.encode!(receipt)) === 8192
++
++    recent =
++      Map.new((count - 63)..count, fn seq ->
++        id = Integer.to_string(seq, 16) |> String.downcase() |> String.pad_leading(32, "0")
++
++        {id,
++         %{
++           "id" => id,
++           "operation" => "knowledge.capture",
++           "artifact_sha256" => hash,
++           "source_sha256" => hash,
++           "policy_sha256" => hash,
++           "request_sha256" => hash,
++           "source_generation" => seq,
++           "reserved" => actual,
++           "headless" => true,
++           "sequence" => seq,
++           "epoch" => 5,
++           "created_at_ms" => 1_795_485_346_653,
++           "status" => "settled",
++           "actual" => actual,
++           "receipt" => receipt
++         }}
++      end)
++
++    state = %{state | "sequence" => count, "operations" => recent}
++    {encode_us, {:ok, bytes}} = :timer.tc(fn -> C.encode_control(state, state["project"]) end)
++    {decode_us, {:ok, ^state}} = :timer.tc(fn -> C.decode_control(bytes, state["project"]) end)
++    compact_old = byte_size(Jason.encode!(state["compacted"]))
++    stored = Jason.decode!(bytes)
++    compact_new = byte_size(Jason.encode!(stored["compacted"]))
++    assert compact_old - compact_new === 53 * (count - 64)
++    receipt_bytes = 64 * 8192
++    required = byte_size(bytes) - receipt_bytes - 4 + receipt_bytes + 32_768 + 16 - 1
++    assert required <= 6_225_920
++
++    geometry = %{
++      "kind" => "pure_synthetic_annual_consent_geometry",
++      "identities" => count,
++      "compacted" => count - 64,
++      "full_recent" => 64,
++      "actual_vector_envelope" => [1, 0, 131_072, 16_384, 0, 0],
++      "actual_vector_note" =>
++        "source recipe output16384 and zero model/download/cost; input131072 is conservative envelope, not measured future actual",
++      "old_compacted_object_bytes" => compact_old,
++      "v3_compacted_object_bytes" => compact_new,
++      "v3_encoded_state_bytes" => byte_size(bytes),
++      "v3_reserved_maintenance_bytes" => required,
++      "write_cap" => 6_225_920,
++      "reserved_headroom_bytes" => 6_225_920 - required,
++      "saved_bytes_per_settled_compacted_row" => 53,
++      "encode_validation_roundtrip_us" => encode_us,
++      "decode_validation_us" => decode_us,
++      "receipts" => "64full8192B retained; compacted SHA unchanged",
++      "app_started" => false,
++      "original_accessed" => false,
++      "annual_feasibility_qualified" => false
++    }
++
++    assert geometry["reserved_headroom_bytes"] > 200_000
++  end
++
++  @tag timeout: 120_000
++  test "unchanged serialized budget refuses worst-size legal vectors without pruning" do
++    state = state(32_768, List.duplicate(9_007_199_254_740_991, 6))
++    assert {:error, :consent_capacity} = C.encode_control(state, state["project"])
++    assert map_size(state["compacted"]) === 32_768
++  end
++end

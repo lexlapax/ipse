@@ -273,6 +273,14 @@ following limits until the end-to-end paths are qualified:
    remains preserved. Retained recall still requires explicit quarantined-request
    recovery/upgrade review, fresh current proofs and a successful ordinary read;
    the populated-day and annual driver remains OFF.
+   A [lossless Consent v3 storage increment](archive/2026-10-26-p30-p31-implementation/consent-v3-storage-20261105.md)
+   addresses a separate serialized-capacity failure: the specified 31,052 IDs
+   fit the count cap but their old compacted rows exceed the write budget.
+   Canonical disk-only digest/status packing preserves all accounting, unknowns
+   and current full receipts; 22 focused storage/compaction/budget tests pass.
+   The specified full-receipt geometry fits the unchanged maintenance cap.
+   No original cohort is migrated by that result, and actual retained recall,
+   populated-day resource measurement and annual feasibility remain open.
    Workload tooling can advance alongside the notes journey; the completed
    integrated workload depends on the Session and recall behavior it exercises.
 3. **Documents and local retrieval — P31C1b/D1/F.** Independently finish document

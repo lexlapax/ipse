@@ -27,6 +27,40 @@ defmodule Ipse.Extension.Consent do
   @error {:error, :consent_unavailable}
 
   def resources, do: @resources
+
+  @doc false
+  # Pure storage decoding establishes no current policy or publication authority.
+  # The public/in-memory representation keeps the existing hexadecimal rows.
+  def decode_control(bytes, project) when is_binary(bytes) and byte_size(bytes) <= @bytes do
+    with {:ok, stored} <- JSON.decode_unique(bytes),
+         {:ok, state} <- decode_storage(stored),
+         true <- valid_state?(state, project),
+         do: {:ok, upgrade(state)},
+         else: (_ -> @error)
+  rescue
+    _ -> @error
+  end
+
+  def decode_control(_, _), do: @error
+
+  @doc false
+  # Called only by the existing protected mutation path. Reads never rewrite.
+  def encode_control(state, project) do
+    with true <- valid_state?(state, project),
+         state = compact(upgrade(state)),
+         stored = encode_storage(state),
+         {:ok, bytes} <- Jason.encode(stored),
+         :ok <- maintenance_capacity(state, bytes),
+         {:ok, ^state} <- decode_control(bytes, project),
+         do: {:ok, bytes},
+         else: (
+           {:error, :consent_capacity} = error -> error
+           _ -> @error
+         )
+  rescue
+    _ -> @error
+  end
+
   @doc false
   def operation_limit, do: @entries
   def zero, do: Map.new(@resources, &{&1, 0})
@@ -1164,21 +1198,17 @@ defmodule Ipse.Extension.Consent do
     with true <- safe_file?(stat, uid) and stat.size <= @bytes,
          {:ok, bytes} <- Transaction.read(lock, ".", "control.json", @bytes),
          true <- is_binary(bytes) and byte_size(bytes) <= @bytes,
-         {:ok, s} <- JSON.decode_unique(bytes),
-         true <- valid_state?(s, project),
-         do: {:ok, upgrade(s)},
+         {:ok, s} <- decode_control(bytes, project),
+         do: {:ok, s},
          else: (_ -> @error)
   end
 
   defp write(path, s) do
-    s = compact(s)
     pending = ".pending-" <> Ipse.Usage.id()
     lock = Process.get(@lock_key)
 
     with true <- lock != nil and Path.basename(path) == s["project"],
-         {:ok, bytes} <- Jason.encode(s),
-         :ok <- maintenance_capacity(s, bytes),
-         {:ok, ^s} <- JSON.decode_unique(bytes),
+         {:ok, bytes} <- encode_control(s, s["project"]),
          :ok <- Transaction.quota(lock, :flat, @allocated_bytes),
          :ok <- Transaction.preflight(lock, [byte_size(bytes)]),
          {:ok, before} <- Transaction.allocation(lock, :flat),
@@ -1266,6 +1296,61 @@ defmodule Ipse.Extension.Consent do
 
   defp upgrade(%{"version" => 1} = s), do: s |> Map.put("compacted", %{}) |> Map.put("version", 2)
   defp upgrade(s), do: s
+
+  # Only compacted terminal facts use the v3 disk encoding. IDs, full recent
+  # receipts and all unresolved liabilities retain their original representation.
+  defp encode_storage(state) do
+    rows =
+      Map.new(state["compacted"], fn
+        {id, [sequence, epoch, request, created, status, actual, receipt]} ->
+          digests = Base.decode16!(request, case: :lower) <> Base.decode16!(receipt, case: :lower)
+          status = if status == "settled", do: 0, else: 1
+
+          {id,
+           [sequence, epoch, Base.url_encode64(digests, padding: false), created, status, actual]}
+      end)
+
+    state |> Map.put("version", 3) |> Map.put("compacted", rows)
+  end
+
+  defp decode_storage(%{"version" => 3, "compacted" => compacted} = state)
+       when is_map(compacted) and map_size(compacted) <= @entries do
+    Enum.reduce_while(compacted, {:ok, %{}}, fn {id, row}, {:ok, rows} ->
+      case decode_compact(row) do
+        {:ok, decoded} -> {:cont, {:ok, Map.put(rows, id, decoded)}}
+        _ -> {:halt, @error}
+      end
+    end)
+    |> case do
+      {:ok, rows} -> {:ok, state |> Map.put("version", 2) |> Map.put("compacted", rows)}
+      _ -> @error
+    end
+  end
+
+  defp decode_storage(%{"version" => version} = state) when version in [1, 2], do: {:ok, state}
+  defp decode_storage(_), do: @error
+
+  defp decode_compact([sequence, epoch, packed, created, status, actual])
+       when is_binary(packed) and byte_size(packed) == 86 and status in [0, 1] do
+    with {:ok, <<request::binary-size(32), receipt::binary-size(32)>> = digests} <-
+           Base.url_decode64(packed, padding: false),
+         true <- Base.url_encode64(digests, padding: false) === packed do
+      {:ok,
+       [
+         sequence,
+         epoch,
+         Base.encode16(request, case: :lower),
+         created,
+         if(status == 0, do: "settled", else: "reconciled_overrun"),
+         actual,
+         Base.encode16(receipt, case: :lower)
+       ]}
+    else
+      _ -> @error
+    end
+  end
+
+  defp decode_compact(_), do: @error
 
   defp valid_state?(s, project) do
     legacy = s["version"] === 1 and keys?(s, ~w(version project epoch sequence policy operations))

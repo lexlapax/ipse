@@ -1,0 +1,29 @@
+{
+  "actual_vector_envelope": [
+    1,
+    0,
+    131072,
+    16384,
+    0,
+    0
+  ],
+  "actual_vector_note": "source recipe output16384 and zero model/download/cost; input131072 is conservative envelope, not measured future actual",
+  "annual_feasibility_qualified": false,
+  "app_started": false,
+  "compacted": 30988,
+  "decode_validation_us": 310899,
+  "encode_validation_roundtrip_us": 678894,
+  "full_recent": 64,
+  "identities": 31052,
+  "kind": "pure_synthetic_annual_consent_geometry",
+  "old_compacted_object_bytes": 6992183,
+  "original_accessed": false,
+  "receipts": "64full8192B retained; compacted SHA unchanged",
+  "reserved_headroom_bytes": 266971,
+  "saved_bytes_per_settled_compacted_row": 53,
+  "v2_compacted_object_absolute_minimum_bytes": 6713291,
+  "v3_compacted_object_bytes": 5349819,
+  "v3_encoded_state_bytes": 5926170,
+  "v3_reserved_maintenance_bytes": 5958949,
+  "write_cap": 6225920
+}

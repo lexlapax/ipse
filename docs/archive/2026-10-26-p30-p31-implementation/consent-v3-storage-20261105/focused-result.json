@@ -1,0 +1,30 @@
+{
+  "annual_workload_qualified": false,
+  "async_threads": 1,
+  "budget_cases": 7,
+  "compaction_cases": 9,
+  "elapsed_test_seconds": 183.3,
+  "elixir_schedulers": 1,
+  "exit_code": 0,
+  "exunit_max_cases": 1,
+  "failed": 0,
+  "files": [
+    "test/ipse/extension/consent_storage_test.exs",
+    "test/ipse/extension/consent_compaction_test.exs",
+    "test/ipse/extension/consent_budget_test.exs"
+  ],
+  "kind": "disposable_main_consent_v3_focused_native_verification",
+  "original_grant_or_read": false,
+  "owned_helper_processes_after": 0,
+  "passed": 22,
+  "private_terminal_receipt_sha256": "9d6c65a376f9b0ec9a69ad8af384888ad443f03123a2cbb47031d50943a80782",
+  "private_test_log_sha256": "ec0cabcb569ecb959777838283ce325bb292321f21661f3d0aa2f2243d7ae0b4",
+  "quota_probe_bytes": 33554432,
+  "quota_probe_fsync": true,
+  "quota_probe_removed": true,
+  "retained_original_accessed": false,
+  "selected_owner_bodies_excluded": 0,
+  "source_post_exit": 0,
+  "storage_cases": 6,
+  "task_fixture_removed_after_pass": true
+}

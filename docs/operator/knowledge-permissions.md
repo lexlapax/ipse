@@ -73,6 +73,15 @@ The permission is tied to the reviewed artifact. If an upgrade changes that
 artifact, check `ipse knowledge status --cwd /path/to/project` and complete a
 fresh `enable` review when needed; an earlier grant does not silently transfer.
 
+Keep the matching Ipse installation when upgrading protected permission data.
+Inspection leaves older control files unchanged; a later successful authorized
+write can save the newer format while preserving usage, operation IDs and
+unresolved effects. Older Ipse versions may then refuse that file. Preserve the
+original home and lock files, use the matching newer installation, and follow
+[protected recovery](recovery.md#inspect-unconfirmed-protected-knowledge) if a
+write is unconfirmed. Replacing the control file or deleting its history is not
+a migration or a way to restore allowance.
+
 The native preset permits reviewed statements, literal typed tool outcomes and
 attributed pending proposals. Plain messages, quoted third-party reports, native
 question answers and generated text remain pending candidates. An exact quotation
