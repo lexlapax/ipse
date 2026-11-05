@@ -1,0 +1,93 @@
+{
+  "additional_changes_annual": 10000,
+  "additional_changes_day": 27,
+  "additional_mix_day": {
+    "correct": 9,
+    "forget": 9,
+    "update": 9
+  },
+  "annual_turns": 14600,
+  "conditional_pilot_event_floor": 24,
+  "day_effects": 57,
+  "day_effects_by_operation": {
+    "capture": 20,
+    "correct": 13,
+    "forget": 11,
+    "update": 13
+  },
+  "day_turns": 40,
+  "existing_calendar_delta": "none",
+  "first_day_actions_sha256": "7da7c6cff46eeac2b30b5487066dc0a94dd8ea8cffb200f5c5764321c7d40e8d",
+  "first_day_reasons": {
+    "additional_churn": 27,
+    "explicit_forgets": 2,
+    "ordinary_additions": 20,
+    "ordinary_corrections": 4,
+    "temporal_supersessions": 4
+  },
+  "fresh_ordinary_records": 20,
+  "intake_ratified": false,
+  "kind": "provisional_native_day_declaration",
+  "maximum_native_payload_gate": "Required, not implemented by this declaration; primitive padded maps cannot substitute",
+  "minimal_adapter_delta": "Pin reviewed declaration in existing prepared-day manifest/attachment and compare existing reason counts and 40-turn schedule",
+  "native_mix_basis": "Declared baseline assumptions, not prototype persistent-category mapping",
+  "normal_corrections": 4,
+  "normal_forgets": 2,
+  "normal_materialization_events": 28,
+  "normal_temporal_supersessions": 4,
+  "old_execution_credit": {
+    "changes": 0,
+    "turns": 0
+  },
+  "pilot_new_only_floor": 20,
+  "proposal_burst_gate": {
+    "actual_finite_grant": "Must be independently revalidated; calendar cap grants no permission",
+    "calendar_daily_schedule_cap": 100,
+    "items_per_turn": 8,
+    "proposals": 320,
+    "status": "Required separate gate; existing day90 twofold schedule does not cover it",
+    "turns": 40,
+    "warning_percent": 80
+  },
+  "qualification": false,
+  "representative_payload": {
+    "basis": "Existing synthetic native driver shape, not typicality measurement",
+    "endorsed_source_bytes": 1024
+  },
+  "reviewed": true,
+  "schedule": [
+    {
+      "first_effect": 1,
+      "first_turn": 1,
+      "last_effect": 14,
+      "process_offset_day": 21,
+      "segment": 1,
+      "turns": 10
+    },
+    {
+      "first_effect": 15,
+      "first_turn": 11,
+      "last_effect": 28,
+      "process_offset_day": 21,
+      "segment": 2,
+      "turns": 10
+    },
+    {
+      "first_effect": 29,
+      "first_turn": 21,
+      "last_effect": 42,
+      "process_offset_day": 21,
+      "segment": 3,
+      "turns": 10
+    },
+    {
+      "first_effect": 43,
+      "first_turn": 31,
+      "last_effect": 57,
+      "process_offset_day": 21,
+      "segment": 4,
+      "turns": 10
+    }
+  ],
+  "version": 2
+}

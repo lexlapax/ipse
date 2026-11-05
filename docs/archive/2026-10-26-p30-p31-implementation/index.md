@@ -75,6 +75,8 @@ nor resource/offline qualification. No daemon configuration or existing model wa
 
 ## Source checkpoint evidence — 2026-11-04
 
+- [Pilot label coverage and provisional intake freeze](pilot-label-intake-freeze-20261104.md) verify all 57 observed turn rows and 39 candidates already have independent-agent labels, preserve the partial run, and pin the unchanged 57-effect/40-turn assumptions in a private developer adapter; no actual day or quality acceptance.
+
 - [Coalesced notes Worker-input observations](coalesced-worker-readview-20261104.md) record a fresh complete current build, 33 backend passes, one eight-source Worker pass, genuine native index/slot fallback and unchanged authority bounds; ordinary retained recall remains open.
 - [Fetched Research to State Corpus](research-fetched-state-20261104.md) records current-main ordinary MCP/State transfer, exact source attribution, same-body suppression, interrupted-write/no-replay and unchanged old presets; broader lineage and installed qualification remain open.
 - [Research retention beside managed recall](research-managed-coexistence-20261104.md) passes one complete fresh native coexistence case with explicit user State approval, same-ID Corpus query/citations and a refused model-selected State write; earlier fixture failures and broader transfer gaps remain explicit.

@@ -166,7 +166,7 @@ The pure API's optional fourth argument is an audit callback returning `:ok`.
 Its ordinary third argument remains the public progress callback. Keep these
 outputs separate when embedding the pilot in another development command.
 
-## Freeze evidence before judging proposals
+## Bind judgments to the observed evidence
 
 Retain the exact source revision/diff, case/tool hashes, selected route/model,
 request limits, attempted-call count, first failures, numerical output and private
@@ -176,6 +176,57 @@ executing in the VM. Keep candidate data private for the authorized reviewers; d
 commit private model transcripts or credentials. Review original source and
 candidate together, including omitted, uncertain, contradictory and repeated
 cases. Source-byte validity does not establish entailment or usefulness.
+
+Store labels separately from the original audit. Bind their exact input hash,
+conversation/request IDs and candidate indices; include empty-candidate turns.
+Distinguish an independent agent's development judgment from human review and
+held-out quality. Check that every observed initial response has its audit and
+label row and that every candidate has the required typed verdicts. Continuation
+response records do not add candidate-bearing turns. Recompute aggregates from
+the rows rather than copying a summary. Original audit fields saying labels were
+absent describe the time of capture; do not rewrite them when later labels exist.
+
+For a partial run, preserve the missing turns and final receipt as unknown.
+An absent final result cannot establish the exact attempted-call count or refund
+its allowance. Complete labels for observed rows do not make the run complete,
+prove critical-fact coverage or establish a representative intake rate. Do not
+run another paid or local pilot merely because an old startup field still says
+labels were absent.
+
+## Freeze a provisional integrated workload
+
+Apply the frozen baseline's intake rule only after naming its denominator and
+what counts as a useful unique item. A replacement is a capture event without
+necessarily adding a new current fact. For example, a declared 40-turn schedule
+with twenty new captures, four corrections and four temporal supersessions has
+28 materialization events, not 28 new facts. Two forgets are separate reducing
+effects. Additional churn belongs in its own ledger; ordinary lifecycle actions
+cannot also count toward the additional-change requirement.
+
+Keep prototype duration categories separate from native retention. A pilot label
+of `persistent` does not choose a pin, preference, current statement or ordinary
+90-day note. Record the native mix and representative payload shape as explicit
+assumptions when the pilot does not measure them. A maximum source statement is
+not necessarily a maximum encoded signed record. Primitive padded storage maps
+cannot replace source-authenticated native maximum-payload evidence.
+
+Keep the declaration beside the prepared developer workload, with an exact hash
+in its manifest and retained attachment. Verify the selected ordered effects and
+the full turn schedule before execution; changing the declaration or plan requires
+a fresh review. This is an assumption freeze, not a permission grant. A planner's
+100-operation daily scheduling cap does not prove the actual saved allowance;
+revalidate that permission independently. Preserve original sources, unknown
+effects and one-shot run markers rather than editing them to fit a new calendar.
+
+The [provisional day fixture](../../dev/fixtures/knowledge-qualification/notes/provisional-day-v2.json)
+illustrates event accounting and explicit assumptions. Its ordinary day and
+twofold calendar stress do not cover the separate 320-proposal burst. That gate
+must exercise actual finite allowance, validation/deduplication, warning and pause
+behavior without evicting protected records. Keep native maximum payloads,
+concurrent owners, offline/restart, imports, complete Session turns and measured
+resource/history/cache behavior as separate required checks. There is no public
+knowledge CLI command that turns a workload declaration into permission or
+executes this development calendar.
 
 This exposed development pilot is not a protected Session capture journey,
 installed-user acceptance or held-out quality evaluation. For decision-engine

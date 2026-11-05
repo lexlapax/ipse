@@ -1,0 +1,16 @@
+{
+  "actual_ipse_app_starts": 0,
+  "actual_native_operations": 0,
+  "actual_turns": 0,
+  "native_integrated_full_explicitly_excluded": true,
+  "no_test_helper_loaded": true,
+  "original_retained_notes_access": false,
+  "result": {
+    "total": 24,
+    "failures": 0,
+    "excluded": 1,
+    "skipped": 0
+  },
+  "scope": "Existing pure calendar/operation/clock/no-replay controls plus exact declaration and ordered-plan refusal controls. No actual day.",
+  "strict_two_adapter_sources_warning_free": true
+}

@@ -1,0 +1,227 @@
+diff --git a/dev/knowledge/native_notes_retained.ex b/dev/knowledge/native_notes_retained.ex
+index 5b0c0236..64355bb0 100644
+--- a/dev/knowledge/native_notes_retained.ex
++++ b/dev/knowledge/native_notes_retained.ex
+@@ -6,6 +6,7 @@ defmodule Ipse.Development.NativeNotesRetained do
+   @evidence "/dev/shm/ipse-recall-seed-populated-d739-20261103-01"
+   @control_sha "6ffc314e2ab1025c5c0bb1615d20c0fd6492fae12a300441fe1f844dbc63e242"
+   @day 86_400_000
++  @day_declaration_sha256 "047666e90ab3c5498c9ee181e35ae959decddf70b52f477c6cbd2e3137a9c87a"
+   @event_ms_keys ~w(checked_at_ms observed_at_ms created_at_ms accepted_at_ms reviewed_at_ms started_at_ms finished_at_ms published_at_ms started_virtual_ms ended_virtual_ms at_ms)
+   @event_iso_keys ~w(created_at recorded_at timestamp)
+ 
+@@ -15,6 +16,7 @@ defmodule Ipse.Development.NativeNotesRetained do
+     descriptor = read(ref)
+     assert descriptor["version"] == 1 and descriptor["kind"] == "retained_native_day_attachment"
+     assert descriptor["root"] == @root
++    day_declaration!(Map.fetch!(descriptor, "day_declaration"))
+     audit = descriptor["audit"]
+ 
+     assert audit["path"] ==
+@@ -273,6 +275,45 @@ defmodule Ipse.Development.NativeNotesRetained do
+ 
+   def from_manifest!(_), do: nil
+ 
++  def default_day_declaration! do
++    ref =
++      Path.expand("../fixtures/knowledge-qualification/notes/provisional-day-v2.json", __DIR__)
++      |> fingerprint()
++
++    day_declaration!(ref)
++    ref
++  end
++
++  def day_declaration!(ref) do
++    assert ref["sha256"] == @day_declaration_sha256
++    verify!(ref)
++    assert {:ok, declaration} = JSON.decode_unique(File.read!(ref["path"]))
++    assert declaration["version"] == 2
++    assert declaration["kind"] == "provisional_native_day_declaration"
++    assert declaration["reviewed"] == true
++    assert declaration["intake_ratified"] == false and declaration["qualification"] == false
++    declaration
++  end
++
++  def verify_day_plan!(ref, fixture, schedule) do
++    declaration = day_declaration!(ref)
++    assert fixture["day_declaration"] === ref
++    assert fixture["intake_ratified"] == false and fixture["qualification"] == false
++    assert fixture["ordinary_intake"] == declaration["fresh_ordinary_records"]
++    assert fixture["additional_mixed_changes"] == declaration["additional_changes_day"]
++    assert fixture["reasons"] === declaration["first_day_reasons"]
++    assert length(fixture["segments"]) == declaration["day_effects"]
++    assert Enum.all?(fixture["segments"], &(length(&1["actions"]) == 1))
++    actions = Enum.flat_map(fixture["segments"], & &1["actions"])
++    assert JSON.digest([actions]) == declaration["first_day_actions_sha256"]
++    assert Enum.frequencies_by(actions, & &1["reason"]) === declaration["first_day_reasons"]
++    assert Enum.frequencies_by(actions, & &1["op"]) === declaration["day_effects_by_operation"]
++    shape = fn rows -> Enum.map(rows, &Map.delete(&1, "process_offset_day")) end
++    assert shape.(schedule) === shape.(declaration["schedule"])
++    assert Enum.sum(Enum.map(schedule, & &1["turns"])) == declaration["day_turns"]
++    :ok
++  end
++
+   def runtime_args(nil, root),
+     do: Path.wildcard(Path.join(root, "stdio-runtime/*/ebin")) |> Enum.flat_map(&["-pa", &1])
+ 
+diff --git a/dev/knowledge/native_notes_integrated_full.ex b/dev/knowledge/native_notes_integrated_full.ex
+index 1ab0f160..df7f63a1 100644
+--- a/dev/knowledge/native_notes_integrated_full.ex
++++ b/dev/knowledge/native_notes_integrated_full.ex
+@@ -548,6 +548,12 @@ defmodule Ipse.Development.NativeNotesIntegratedFull do
+   def main(_), do: raise("use --prepare ROOT PORT or --run ROOT")
+ 
+   defp prepare(root, port, kind, attachment \\ nil) do
++    declaration =
++      if attachment,
++        do: Map.fetch!(attachment, "day_declaration"),
++        else: Retained.default_day_declaration!()
++
++    Retained.day_declaration!(declaration)
+     preparation_started = System.monotonic_time(:microsecond)
+     {port, ""} = Integer.parse(port)
+     assert port in 1..65_535
+@@ -580,6 +586,11 @@ defmodule Ipse.Development.NativeNotesIntegratedFull do
+     dir = Path.join(root, "integrated-full")
+     File.mkdir!(dir)
+     File.chmod!(dir, 0o700)
++    declaration_copy = Path.join(dir, "day-declaration.json")
++    File.cp!(declaration["path"], declaration_copy)
++    File.chmod!(declaration_copy, 0o600)
++    declaration = fingerprint(declaration_copy)
++    Retained.day_declaration!(declaration)
+     File.cp!(__ENV__.file, Path.join(dir, "native_notes_integrated_full.ex"))
+ 
+     File.cp!(
+@@ -643,6 +654,7 @@ defmodule Ipse.Development.NativeNotesIntegratedFull do
+       "scope" =>
+         "synthetic one-day fixture; intake and mix are provisional, not pilot-derived or representative",
+       "intake_ratified" => false,
++      "day_declaration" => declaration,
+       "ordinary_intake" => 20,
+       "additional_mixed_changes" => 27,
+       "reasons" => reasons,
+@@ -651,6 +663,7 @@ defmodule Ipse.Development.NativeNotesIntegratedFull do
+     })
+ 
+     schedule = full_schedule(first_day, length(day_segments))
++    :ok = Retained.verify_day_plan!(declaration, read(fixture_path), schedule)
+     fixture = fingerprint(fixture_path)
+ 
+     save(Path.join(dir, "prepared.json"), %{
+@@ -666,6 +679,7 @@ defmodule Ipse.Development.NativeNotesIntegratedFull do
+         ),
+       "schedule" => schedule,
+       "fixture_day" => fixture,
++      "day_declaration" => declaration,
+       "seed_elapsed_us" => seed_finished - preparation_started,
+       "seed_audit_elapsed_us" => seed_audit_finished - seed_finished,
+       "resource_scope" =>
+@@ -699,6 +713,7 @@ defmodule Ipse.Development.NativeNotesIntegratedFull do
+     dir = Path.join(root, "integrated-full")
+     m = read(Path.join(dir, "prepared.json"))
+     assert m["version"] == 1 and m["root"] == root and m["kind"] == "initial"
++    Retained.day_declaration!(Map.fetch!(m, "day_declaration"))
+ 
+     for key <-
+           ~w(driver attachment_adapter launcher provider seed_manifest seed_audit turnover_manifest turnover_driver),
+@@ -706,6 +721,12 @@ defmodule Ipse.Development.NativeNotesIntegratedFull do
+ 
+     verify(m["fixture_day"])
+     fixture = read(m["fixture_day"]["path"])
++    :ok = Retained.verify_day_plan!(m["day_declaration"], fixture, m["schedule"])
++    turnover = read(m["turnover_manifest"]["path"])
++    verify(turnover["segments_file"])
++    segments = read(turnover["segments_file"]["path"])
++    day = hd(segments)["process_offset_day"]
++    assert fixture["segments"] === Enum.take_while(segments, &(&1["process_offset_day"] == day))
+     assert fixture["intake_ratified"] == false and fixture["ordinary_intake"] == 20
+     assert length(fixture["segments"]) == 57
+     first_day = hd(fixture["segments"])["process_offset_day"]
+diff --git a/test/dev/knowledge/native_notes_retained_test.exs b/test/dev/knowledge/native_notes_retained_test.exs
+index d77306e6..128cc0db 100644
+--- a/test/dev/knowledge/native_notes_retained_test.exs
++++ b/test/dev/knowledge/native_notes_retained_test.exs
+@@ -5,6 +5,82 @@ defmodule Ipse.Development.NativeNotesRetainedTest do
+   alias Ipse.Development.NativeNotesRetained, as: Retained
+   @day 86_400_000
+ 
++  test "the exact provisional declaration pins ordered effects and all forty turns" do
++    Code.require_file("../../../dev/knowledge/native_notes_seed.ex", __DIR__)
++    Code.require_file("../../../dev/knowledge/native_notes_workload.ex", __DIR__)
++    Code.require_file("../../../dev/knowledge/native_notes_integrated_full.ex", __DIR__)
++    ref = Retained.default_day_declaration!()
++    plan = Ipse.Development.NativeNotesWorkload.calendar(20)
++    day = hd(plan["days"])
++    segments = Ipse.Development.NativeNotesWorkload.segments(plan, 1) |> Enum.take(57)
++
++    fixture = %{
++      "day_declaration" => ref,
++      "intake_ratified" => false,
++      "qualification" => false,
++      "ordinary_intake" => 20,
++      "additional_mixed_changes" => 27,
++      "reasons" => Enum.frequencies_by(day["actions"], & &1["reason"]),
++      "segments" => segments
++    }
++
++    schedule = Ipse.Development.NativeNotesIntegratedFull.full_schedule(21, 57)
++    assert :ok = Retained.verify_day_plan!(ref, fixture, schedule)
++
++    directory =
++      Path.join(System.tmp_dir!(), "day-declaration-#{System.unique_integer([:positive])}")
++
++    File.mkdir!(directory)
++    on_exit(fn -> File.rm_rf!(directory) end)
++    changed = Path.join(directory, "declaration.json")
++    bytes = File.read!(ref["path"]) |> String.replace("\"day_turns\": 40", "\"day_turns\": 39")
++    File.write!(changed, bytes)
++    changed_ref = Retained.fingerprint(changed)
++    assert_raise ExUnit.AssertionError, fn -> Retained.day_declaration!(changed_ref) end
++
++    assert_raise ExUnit.AssertionError, fn ->
++      Retained.day_declaration!(%{ref | "path" => changed})
++    end
++
++    # Preserve all counts while changing a target: aggregate-only checks must not pass.
++    changed_segments =
++      List.update_at(segments, 20, fn segment ->
++        update_in(segment["actions"], fn [action] -> [Map.put(action, "target", "seed/other")] end)
++      end)
++
++    assert_raise ExUnit.AssertionError, fn ->
++      Retained.verify_day_plan!(ref, %{fixture | "segments" => changed_segments}, schedule)
++    end
++
++    assert_raise ExUnit.AssertionError, fn ->
++      Retained.verify_day_plan!(
++        ref,
++        fixture,
++        List.update_at(schedule, 0, &Map.put(&1, "turns", 9))
++      )
++    end
++  end
++
++  test "an attachment missing its declaration refuses before any retained-state read" do
++    directory =
++      Path.join(System.tmp_dir!(), "missing-declaration-#{System.unique_integer([:positive])}")
++
++    File.mkdir!(directory)
++    on_exit(fn -> File.rm_rf!(directory) end)
++    path = Path.join(directory, "attachment.json")
++
++    bytes =
++      Jason.encode!(%{
++        "version" => 1,
++        "kind" => "retained_native_day_attachment",
++        "root" => "/dev/shm/ipse-native-seed-recall-d739-20261103-01"
++      })
++
++    File.write!(path, bytes)
++    assert_raise KeyError, fn -> Retained.load!(path, Ipse.JSON.sha256(bytes)) end
++    assert File.ls!(directory) == ["attachment.json"]
++  end
++
+   test "only the reviewed epoch and policy replacement can differ" do
+     original = %{
+       "epoch" => 1,

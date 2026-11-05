@@ -1,0 +1,156 @@
+{
+  "status": "PASS",
+  "private_evidence_unchanged": true,
+  "sessions": [
+    {
+      "complete": true,
+      "session": 1,
+      "observed_turns": 20,
+      "planned_turns": 20,
+      "proposed": 14,
+      "useful_nonduplicate_candidates": 12,
+      "useful_new": 10,
+      "useful_replacements": 2,
+      "useful_prototype_categories": {
+        "persistent": 9,
+        "temporal": 3
+      }
+    },
+    {
+      "complete": true,
+      "session": 2,
+      "observed_turns": 20,
+      "planned_turns": 20,
+      "proposed": 14,
+      "useful_nonduplicate_candidates": 12,
+      "useful_new": 10,
+      "useful_replacements": 2,
+      "useful_prototype_categories": {
+        "persistent": 9,
+        "temporal": 3
+      }
+    },
+    {
+      "complete": false,
+      "session": 3,
+      "observed_turns": 17,
+      "planned_turns": 20,
+      "proposed": 11,
+      "useful_nonduplicate_candidates": 10,
+      "useful_new": 8,
+      "useful_replacements": 2,
+      "useful_prototype_categories": {
+        "persistent": 8,
+        "temporal": 2
+      }
+    }
+  ],
+  "task_scope": "Existing independent-agent development label binding and coverage; no new semantic judgment",
+  "reviewer": "independent_agent_objective_verifier",
+  "human": false,
+  "new_semantic_labels_created": false,
+  "prior_labels_exposed_to_verifier": true,
+  "observed_responses": 96,
+  "initial_audited_turns": 57,
+  "continuation_responses": 39,
+  "candidate_labels": 39,
+  "zero_candidate_turns": 18,
+  "every_observed_initial_turn_has_one_row": true,
+  "every_candidate_has_all_existing_verdict_fields": true,
+  "existing_independent_agent_label_coverage_complete": true,
+  "private_input_sha256": "ad0b7fc7a111386551896c95eab0f375236ba588d9cadb2619ca400e893468c8",
+  "private_label_sha256": "a81a4df2599ca08865394fffff93fc8a28edaa03649161456caf00abaaf4d83a",
+  "public_label_sha256": "38b3572220334a96cf3f9e40c323521b83b1f9c05094d22adae43a7a3d3c2abc",
+  "existing_validator_sha256": "62183ceffcb96ce6d5598f627a0515b42ac52f92de20fe5bc6050252e71ac21b",
+  "existing_validator_passed": true,
+  "actual_quote_integrity": "All39 candidate quotes occur exactly once in the bound actual synthetic source; integrity is not entailment",
+  "prototype_category_counts": {
+    "persistent": 29,
+    "temporal": 10
+  },
+  "useful_prototype_category_counts": {
+    "persistent": 26,
+    "temporal": 8
+  },
+  "existing_aggregate_counts": {
+    "candidate_reason_codes": {
+      "correction": 6,
+      "duplicate": 3,
+      "entailed": 39,
+      "judgement_uncertain": 2,
+      "preference": 6,
+      "temporal_update": 8,
+      "uncertain_commitment": 2,
+      "useful_project_fact": 20
+    },
+    "candidates": 39,
+    "category_appropriate": {
+      "false": 0,
+      "null": 0,
+      "true": 39
+    },
+    "duplicate_of_prior_same_session": {
+      "false": 36,
+      "true": 3
+    },
+    "intake_relation": {
+      "duplicate": 3,
+      "new": 28,
+      "replacement": 6,
+      "uncertain": 2
+    },
+    "omitted_opportunity": {
+      "durable": 0,
+      "none": 17,
+      "temporal": 0,
+      "uncertain": 1
+    },
+    "omitted_rows": 18,
+    "opportunity": {
+      "durable": 26,
+      "none": 20,
+      "temporal": 8,
+      "uncertain": 3
+    },
+    "row_reason_codes": {
+      "appropriate_omission": 17,
+      "correction": 6,
+      "duplicate": 3,
+      "ephemeral_task": 12,
+      "judgement_uncertain": 3,
+      "preference": 6,
+      "quoted_instruction": 3,
+      "temporal_update": 8,
+      "third_party_unverified": 2,
+      "uncertain_commitment": 3,
+      "useful_project_fact": 20
+    },
+    "rows": 57,
+    "source_entailment": {
+      "overclaim": 0,
+      "supported": 39,
+      "uncertain": 0
+    },
+    "useful": {
+      "false": 3,
+      "null": 2,
+      "true": 34
+    }
+  },
+  "conditional_arithmetic": {
+    "including_useful_replacements_items_per_40_turns_floor20": 24,
+    "useful_new_only_items_per_40_turns_floor20": 20,
+    "ratified_intake": false,
+    "limitation": "Two complete20-turn exposed sessions and one17-turn partial. Counting useful replacements as intake events versus additional new records needs an explicit frozen workload definition; no missing turns are imputed."
+  },
+  "open_fields": [
+    "Three final source turns and final run receipt absent; exact attempted call count unknown",
+    "Representative/live integrated intake and critical-fact completeness are not established",
+    "Prototype persistent/temporal labels do not map to native ordinary90-day/pin/preference/current retention choices",
+    "Useful new vs replacement accounting and additional correction/supersession mix are not ratified",
+    "Burst margin, representative/max payload schedule, full Session turns and resource/history/compaction metrics remain to freeze/measure",
+    "Unavailable local/API routes, held-out/human/installed quality remain unverified"
+  ],
+  "no_app_native_provider_or_original_notes_access": true,
+  "no_raw_response_source_candidate_or_credentials_exported": true
+}
