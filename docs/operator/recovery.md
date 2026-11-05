@@ -293,7 +293,9 @@ A concurrent ledger change refuses; inspect the new state and reassess it.
 
 Success records an operator reconciliation receipt, clears that active marker
 and retains lock files. It replays no request and grants no new project or
-knowledge permission. Inspect status again before continuing ordinary work.
+knowledge permission. The original request's unknown usage remains unknown;
+reconciliation neither marks it completed nor refunds its liability.
+Inspect status again before continuing ordinary work.
 If the outcome is unknown, preserve the first result and inspect the current
 active/recent records; do not replay the command automatically. Recent outcomes
 are bounded to32 entries and are not a complete request-history archive.

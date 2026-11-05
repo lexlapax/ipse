@@ -265,6 +265,12 @@ following limits until the end-to-end paths are qualified:
    identities and idle reopen without replay. This closes that fitting-set case;
    earlier failed attempts remain preserved. Next qualify a distinct read against the retained
    2,000-note cohort, then one complete populated day before the annual workload.
+   The [retained-cohort recovery pair](archive/2026-11-05-retained-recovery/index.md)
+   now closes the stopped request's admission marker and renews permission on
+   the frozen committed runtime. Both independent audits pass, preserving all
+   2,100 operation records, unknown usage, sources and six inert consumers during
+   the lossless control-format upgrade. Four fresh source proofs, the populated
+   recall and measured day remain open; no old consumer is resumed.
    A [native renewed-recall control](archive/2026-10-26-p30-p31-implementation/authenticated-expired-recall-20261104.md)
    now passes after narrowly classifying authenticated expired ordinary neighbors,
    preserving current permission and original-source gates. Two later retained-cohort reads on c8245f87 remain failed: the first
