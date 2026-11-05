@@ -1,0 +1,10 @@
+seed_exit=0
+test_exit=1
+source_post=0
+runtime_post=0
+private_post=0
+drivers_post=0
+pathset_post=0
+links_post=0
+operator_fuser_exit=1
+process_pgrep_exit=1

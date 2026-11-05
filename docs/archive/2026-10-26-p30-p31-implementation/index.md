@@ -75,6 +75,7 @@ nor resource/offline qualification. No daemon configuration or existing model wa
 
 ## Source checkpoint evidence — 2026-11-04
 
+- [Ordinary final-use coalescing](ordinary-final-coalescing-20261104.md) reuses the existing observer in both protected passes after a concrete storage-only five-second expiry reproduction; fresh eight-source delivery/Saved/close/idle and separate root-withdrawal controls pass. The first fixture failure, quarantined retained request and day/annual gates remain separate.
 - [Fetched-body selection and explicit recovery](research-fetch-origin-lifecycle-20261104.md) passes one fresh ordinary MCP/State lifecycle with known-body/denied-selector recovery, immutable citations, competing revisions and Saved/idle no replay. Paired format-2 compatibility and pure boundaries stay distinct from installed, quality and cross-store qualification.
 
 - [Confirmed withdrawn event replay](managed-event-withdrawal-replay-20261104.md) authenticates exact managed completion during Saved reconstruction, with six pure controls, 36 integrated cases and an unchanged 207-event in-place replay. The actual partial read remains failed and quarantined; live final use and retained recall stay open.

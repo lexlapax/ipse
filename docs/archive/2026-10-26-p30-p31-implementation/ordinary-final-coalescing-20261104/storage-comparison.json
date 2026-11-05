@@ -1,0 +1,76 @@
+{
+  "both_succeeded": false,
+  "current_use_authority": false,
+  "kind": "protected_storage_pass_comparison",
+  "limits": {
+    "body_bytes": 6144,
+    "bytes": 196608,
+    "input_bytes": 1048576,
+    "lifetime_ms": 5000,
+    "namespaces": 256,
+    "per_project": 8,
+    "seal_calls": 16,
+    "verify_calls": 128
+  },
+  "minimal_vm_services": [
+    "telemetry",
+    "private_registry",
+    "owned_resource_scope"
+  ],
+  "observations_equal": null,
+  "postchecks": "pending",
+  "qualification": false,
+  "read_or_day_pass": false,
+  "results": [
+    {
+      "arm": "coalesced",
+      "authentication_started": true,
+      "calls": {
+        "crypto": 96,
+        "managed_record_pairs": 0,
+        "open_view": 0,
+        "open_view_classified": 1,
+        "seal": 0,
+        "verify": 96
+      },
+      "cap_callback_elapsed_us": 655325,
+      "cap_to_return_us": 662477,
+      "confirmed_ordinary_records_before_return": 0,
+      "crypto_callback_counter_coverage": true,
+      "elapsed_us": 670923,
+      "input_byte_limit_excluded_by_upper_bound": true,
+      "observation_sha256": "c980094fc99cd18f5c5baf3d20fa6ea4befd0d4ceb1c16bac8802a53f400f0f2",
+      "read_only_input_upper_bound_bytes": 595968,
+      "records": 32,
+      "roots_sha256": "8902c312d025a5e658a8d74e9b457de6a347a6560fb6a6e7cddec46de46051e2",
+      "status": "ok",
+      "upstream_is_parent_and_parent_survived": true,
+      "verify_call_limit_excluded_by_count": true
+    },
+    {
+      "arm": "ordinary",
+      "authentication_started": true,
+      "calls": {
+        "crypto": 73,
+        "managed_record_pairs": 0,
+        "open_view": 25,
+        "open_view_classified": 0,
+        "seal": 0,
+        "verify": 73
+      },
+      "cap_callback_elapsed_us": 5058054,
+      "cap_to_return_us": 5066031,
+      "confirmed_ordinary_records_before_return": 24,
+      "crypto_callback_counter_coverage": true,
+      "elapsed_us": 5076106,
+      "input_byte_limit_excluded_by_upper_bound": true,
+      "read_only_input_upper_bound_bytes": 453184,
+      "status": "domain_callback_expired",
+      "upstream_is_parent_and_parent_survived": true,
+      "verify_call_limit_excluded_by_count": true
+    }
+  ],
+  "session_provider_inference_or_mcp_call": false,
+  "source_ownership_checked": false,
+  "specs_sha256": "22b41a6ccd21d4490ac71543a69448a105a16c12bc51ed57de0bc4871f4a1b8f"
+}

@@ -1,0 +1,15 @@
+--- a/test/ipse/extension/managed_collection_call_session_test.exs
++++ b/test/ipse/extension/managed_collection_call_session_test.exs
+@@ -9106,8 +9106,11 @@
+                      get_in(event, ["request", "request", "op"]) == "commit"))
+            end)
+ 
+-    assert {:ok, _} = Ipse.Session.Saved.restore(events, Session.info(pid).id)
++    id = Session.info(pid).id
++    assert {:ok, saved} = Ipse.Session.Saved.restore(events, id)
+     assert :ok = Session.close_confirmed(pid)
++    idle_context = %{c | config: Map.merge(c.config, %{approval: :allow, approval_origin: :yes})}
++    assert_capture_idle_resume(idle_context, id, saved)
+   end
+ 
+   @tag literal_v4_ab: true,

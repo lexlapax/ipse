@@ -1,0 +1,40 @@
+{
+  "actor_inputs_sha256": "f507fd296568fccfb12b74bba11c1d24e2f683103008952d600e3c60293219b3",
+  "compiled_module_origins": [
+    {
+      "beam_sha256": "20a892393a39af0dffab067bc547d2b387afdba8f73b20aafc7dbf123158fd04",
+      "compiled_source": "lib/ipse/session/managed_use.ex",
+      "current_source_sha256": "5b3a6594979235520cba965b65deaa968fe21c386a75720abb7b9100c802ad59",
+      "module": "Elixir.Ipse.Session.ManagedUse"
+    },
+    {
+      "beam_sha256": "470cf248be25f6f662fc43c37ff5d48b39a3e7f44c749818b248696016b41dd6",
+      "compiled_source": "lib/ipse/extension/subscriptions.ex",
+      "current_source_sha256": "6497676b843b2d63baaef1e89d0b7d0ffbec2a7a627b7e8779c68e46a873e189",
+      "module": "Elixir.Ipse.Extension.Subscriptions"
+    },
+    {
+      "beam_sha256": "b876c7ae2bfd591a48045b898321a1734dac6a9a828b116c1d172307cdbfb5d1",
+      "compiled_source": "lib/ipse/session/saved.ex",
+      "current_source_sha256": "cce0d826d1f6866079f173481c2c7efeaf4a87742acdc0fe09006f8cf92a76ac",
+      "module": "Elixir.Ipse.Session.Saved"
+    }
+  ],
+  "complete_app_modules": 241,
+  "entry_sha256": "786b7b44051552476827d3b0b5d8e3f47dcf2d0561b6e333f3f9d2a862cd8ce2",
+  "idle_fixture_delta_sha256": "adf2badce7575c22f73dd5a8c14dd4287803200063679c30937287d23bb458a4",
+  "kind": "current_worktree_test_runtime_snapshot",
+  "launcher_sha256": "2bc2f2c62a033153cb51313df7be802323af2709cab4e5ff94c45fa44dd9067e",
+  "manual_patch_sha256": "1da36f52f2a25ef5bba49d6ce4dd428efee4a40caf19bdf46b27ce859e05abe7",
+  "native_helper_sha256": "ac424d10e2ce6809cedcb157acd70092b00ca68aa7a48201a6007ac5dccbf33b",
+  "private_files_manifest_sha256": "b3292fcc26eb69c2ef749a1310a39201e8aeda78c7fbcc6554b77726a4044ff0",
+  "private_links_sha256": "6923748245860aa7e025b7ab675ba35c4639319e60dcb1f744a02692d7c7070b",
+  "private_pathset_sha256": "456ad2d4a037f7188a24c03e2d98fe29496ef563eb3a1f75150b51a1f00df2e5",
+  "runtime_manifest_sha256": "380fffc626447ca779c048cdc61dc7eba5451600cc89dc892d240ba5f3106edd",
+  "source_and_test_patch_sha256": "cf274a40d0d551e415c7f86c000136d282d12497aaf5cbd5b0f81fedc5098724",
+  "source_manifest_sha256": "9ca1d458d43fc03f50882b8b33137c6e33a99694aba924f894b11fb41a39fa5c",
+  "storage_component_closed_result_sha256": "aaf9aa72674feab64b01d7be3a5a7d47e559a71e234d1bbadb00af5769185e3f",
+  "storage_component_result_sha256": "cb3c94a087eae04f1e080f4f6d41b14ea565098e1e259492d5276c4ea4c066a3",
+  "storage_component_runtime_closed_result_sha256": "4d42a7f8551a577f2cee5352aeca42ba025662a6b24c46fa7b0fddc73141352b",
+  "test_source_sha256": "3b2a1368b550bdfd48109357a027e38975114c14a51858ebb9181f7b64fb8859"
+}

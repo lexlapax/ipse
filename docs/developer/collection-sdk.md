@@ -1025,27 +1025,39 @@ selected root/literal observations and checks policy/literal deadlines after the
 last observation. Unchanged signed literals can refresh at newer unrelated roots
 without renewing their lifetimes; an exact-root selection cannot.
 
-Worker delivery makes two independent protected observations: one discovers
+Worker delivery and ordinary `ManagedUse.with_dependencies/3` use make two
+independent protected observations: one discovers
 the required originals, and another reproduces the same records and proofs
 after their owners have been acquired. Within either pass, a batch of
 authenticated version-4 literals can supply its exact native-checked root
 identity for version-3 root comparisons. All batches must agree on that
 identity; each root-only dependency must still match it exactly. A pass
 without literals reads the root separately. No observation cache crosses
-between these passes. After the second pass, the final native Collection
+between these passes. For Worker delivery, the final native Collection
 owner must still match every current dependency's root before the delivery
 callback can run. Reusing an identity supplies neither a retained lock nor
 permission, and does not remove source, policy or deadline checks.
 
-The worker's literal observations use the existing held notes reader in
-pairs. A pair consumes 26 of its 32 observation units under one actual
-Collection owner, which releases before original-source IO. Reconstruction
-retains the eight-MiB decoded block bound and 8,192-record index ceiling,
-plus selected value/reply bounds. The separate four-MiB encoded ReadView
-cache limit applies to ReadView callers; the paired reader creates no such
-cache. Its observations require actual version-4 or version-5 roots. Each pair
-performs its own native quota inventory and full index validation. Measure the
-complete populated turn: fewer inventories alone do not establish throughput.
+Both paths coalesce at most 32 version-4 literals per batch through the existing
+notes ReadView adapter. It deduplicates selected pages within one pass while
+freshly reading their actual bytes under the same native-checked root. Historical
+neighbor planning grants no authority; signed metadata authentication and the
+final native format/root check remain mandatory. Ordinary use must reproduce
+the first observation and check current dependency equality and expiry before
+entering its send or release callback. The shared DomainAuth capability retains
+its five-second, 128-verification and one-MiB input bounds; grouping does not
+renew it. See [the source-owner walkthrough](session-sources.md#deliver-a-managed-export-input-under-its-original-owners)
+for the bounded raw map, view units and independent source retention.
+
+The document profile and notes whose initial view reports a validated index
+above four MiB or all sixteen slots occupied retain the held paired reader.
+Fallback occurs before borrowing or authenticating values; corruption, owner
+loss, expiry and later failures refuse. A notes pair consumes 26 of its unchanged
+32 observation units and releases its actual Collection owner before source IO.
+It creates no ReadView cache and retains the eight-MiB decoded-block and
+8,192-record native-index bounds. Actual version-4 or version-5 roots and selected
+value/reply bounds remain required. Measure the complete populated turn; fewer
+inventories alone do not establish throughput or annual-workload feasibility.
 
 The native registered transport applies that current authority to Mint's one-use
 exact request-body continuation. No authority lock is held while awaiting model

@@ -1,0 +1,16 @@
+{
+  "assertion_weakened": false,
+  "attempt": "actual01",
+  "failing_boundary": "idle_resume_journal_suffix",
+  "fixture_cause": "reopened_default_approval_instead_of_initial_allow_yes",
+  "fixture_repair": "preserve_exact_initial_approval_mode_for_fresh_idle_reopening",
+  "idle_phase_and_saved_messages_matched": true,
+  "observed_suffix_types": [
+    "session_release_owner_started",
+    "execution_mode_resumed"
+  ],
+  "old_root_resumed_for_retry": false,
+  "source_product_checks_before_boundary_passed": true,
+  "status": "failed",
+  "strict_saved_and_confirmed_close_before_boundary_passed": true
+}

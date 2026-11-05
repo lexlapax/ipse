@@ -687,8 +687,9 @@ to the Writer snapshot. Even a metadata-only request retains the consuming
 Session owner. No synthetic terminal or approval is involved in this typed
 input purpose. Ordinary effect approval remains separate.
 
-Within each of its two independent protected observations, the Worker-input
-path groups version-4 literal dependencies in their original relative order,
+Worker input and ordinary current use through `ManagedUse.with_dependencies/3`
+each make two independent protected observations. Within each pass, they group
+version-4 literal dependencies in their original relative order,
 including those separated by other versions. It requests at most 32 at a time,
 using `ObservedRead.managed_records_coalesced/5`. For the notes profile, this
 opens one bounded Collection read view for that pass. It reads the selected
@@ -705,11 +706,13 @@ consume at most 417 of the existing 512 view units, within its unchanged
 60-second lifetime. No authentication fact is cached across passes or requests.
 The second observation reacquires current
 authority and must reproduce the first. Original source ownership is retained
-between those observations, outside Collection ownership; the final retained
-Collection owner must match every observed root before the input can be delivered.
+between those observations, outside Collection ownership. Ordinary use checks
+current dependency equality and the earliest expiry before its send or release
+callback. Worker delivery additionally requires its final retained Collection
+owner to match every observed root before stdin delivery.
 The complete result and proof union remain in their original dependency order.
-The view closes before other versions are observed. Other dependency versions
-and managed-use paths retain their existing observations.
+The view closes before other versions are observed. Other dependency versions,
+historical verdicts, approval/display and publication retain their existing paths.
 
 The document profile uses the existing paired native reader. Notes use that same
 reader only when the initial view open reports a validated index above its 4-MiB

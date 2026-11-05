@@ -8802,8 +8802,8 @@ defmodule Ipse.Extension.ManagedCollectionCallSessionTest do
 
     # The retained source fixture supplies authenticated v4 dependencies. Make
     # root dependencies from different actual observations so the canonical
-    # digest order interleaves versions, then compare worker and approval paths.
-    # Approval retains the original single-observation behavior.
+    # digest order interleaves versions, then compare worker, ordinary-use and
+    # approval paths. Approval retains the single-observation behavior.
     alias Ipse.Extension.Collection.ObservedRead
     alias Ipse.Session.{ManagedReference, ManagedUse}
     state = :sys.get_state(pid)
@@ -8887,6 +8887,24 @@ defmodule Ipse.Extension.ManagedCollectionCallSessionTest do
       send(counter, {:count, self()})
       assert_receive {:managed_batch_calls, %{batches: 2, root_reads: 0}}, 5_000
 
+      # Ordinary final delivery must independently observe the same batch on
+      # both sides of original-source retention, with a fresh current root.
+      send(counter, {:reset, self()})
+      assert_receive :managed_batch_counter_reset, 5_000
+      assert 1 == :erlang.trace(self(), true, [:call, :arity, :set_on_spawn, {:tracer, counter}])
+
+      assert {:ok, current} =
+               ManagedUse.with_dependencies(context, dependencies, fn current ->
+                 {:ok, current}
+               end)
+
+      assert current === expected.current
+      assert 1 == :erlang.trace(self(), false, [:call, :arity, :set_on_spawn])
+      delivered = :erlang.trace_delivered(:all)
+      assert_receive {:trace_delivered, :all, ^delivered}, 5_000
+      send(counter, {:count, self()})
+      assert_receive {:managed_batch_calls, %{batches: 2, root_reads: 0}}, 5_000
+
       # Without a v4 witness, each pass must still obtain its own current root.
       send(counter, {:reset, self()})
       assert_receive :managed_batch_counter_reset, 5_000
@@ -8895,6 +8913,19 @@ defmodule Ipse.Extension.ManagedCollectionCallSessionTest do
 
       assert {:ok, %{current: ^roots_only, proofs: []}} =
                ManagedUse.with_worker_dependencies(context, roots_only, capture)
+
+      assert 1 == :erlang.trace(self(), false, [:call, :arity, :set_on_spawn])
+      delivered = :erlang.trace_delivered(:all)
+      assert_receive {:trace_delivered, :all, ^delivered}, 5_000
+      send(counter, {:count, self()})
+      assert_receive {:managed_batch_calls, %{batches: 0, root_reads: 2}}, 5_000
+
+      send(counter, {:reset, self()})
+      assert_receive :managed_batch_counter_reset, 5_000
+      assert 1 == :erlang.trace(self(), true, [:call, :arity, :set_on_spawn, {:tracer, counter}])
+
+      assert {:ok, ^roots_only} =
+               ManagedUse.with_dependencies(context, roots_only, fn current -> {:ok, current} end)
 
       assert 1 == :erlang.trace(self(), false, [:call, :arity, :set_on_spawn])
       delivered = :erlang.trace_delivered(:all)
@@ -8928,12 +8959,39 @@ defmodule Ipse.Extension.ManagedCollectionCallSessionTest do
       {:ok, :unexpected}
     end
 
+    ordinary_refused = fn _ ->
+      send(owner, :coalesced_input_delivered)
+      {:ok, :unexpected}
+    end
+
+    assert_ordinary_refuses = fn current_context, selected ->
+      refute match?(
+               {:ok, _},
+               ManagedUse.with_dependencies(current_context, selected, ordinary_refused)
+             )
+
+      refute_received :coalesced_input_delivered
+    end
+
+    wrong_context =
+      put_in(context, [:config, :semantic_admission, "pin", "epoch"], pin["epoch"] + 1)
+
+    assert_ordinary_refuses.(wrong_context, dependencies)
+
+    unavailable_recipe =
+      put_in(original, ["subject", "validity", "recipe_sha256"], JSON.sha256("missing recipe"))
+
+    assert ManagedReference.dependency?(unavailable_recipe)
+    assert {:ok, unavailable_metadata} = ManagedReference.union([[unavailable_recipe], roots])
+    assert_ordinary_refuses.(context, unavailable_metadata)
+
     refute match?(
              {:ok, _},
              ManagedUse.with_worker_dependencies(context, duplicate_key_dependencies, refused)
            )
 
     refute_received :coalesced_input_delivered
+    assert_ordinary_refuses.(context, duplicate_key_dependencies)
 
     # A valid v4 observation must never launder a different v3 claimed root.
     stale_root = put_in(hd(roots), ["collection", "root_sha256"], JSON.sha256("other root"))
@@ -8946,6 +9004,7 @@ defmodule Ipse.Extension.ManagedCollectionCallSessionTest do
            )
 
     refute_received :coalesced_input_delivered
+    assert_ordinary_refuses.(context, mixed_stale_root)
 
     # The v4 claim itself cannot replace the root of the authenticated batch.
     stale_literal = put_in(original, ["collection", "root_sha256"], JSON.sha256("other root"))
@@ -8958,6 +9017,42 @@ defmodule Ipse.Extension.ManagedCollectionCallSessionTest do
            )
 
     refute_received :coalesced_input_delivered
+    assert_ordinary_refuses.(context, mixed_stale_literal)
+
+    # Genuine global cache-slot capacity still takes the existing held-pair
+    # fallback before any borrow/authentication; it must preserve final use.
+    holders =
+      for _ <- 1..16 do
+        spawn_monitor(fn ->
+          {:ok, view} = Ipse.Extension.Collection.ReadView.begin()
+          send(owner, {:final_use_slot_ready, self()})
+
+          receive do
+            :close_final_use_slot -> assert :ok = Ipse.Extension.Collection.ReadView.close(view)
+          after
+            20_000 -> flunk("final-use slot fixture not released")
+          end
+        end)
+      end
+
+    try do
+      for {holder, _} <- holders, do: assert_receive({:final_use_slot_ready, ^holder}, 5_000)
+
+      assert {:error, :collection_view_slots_capacity} =
+               Ipse.Extension.Collection.ReadView.begin_classified()
+
+      assert {:ok, current} =
+               ManagedUse.with_dependencies(context, dependencies, fn current ->
+                 {:ok, current}
+               end)
+
+      assert current === expected.current
+    after
+      for {holder, _} <- holders, do: send(holder, :close_final_use_slot)
+
+      for {holder, monitor} <- holders,
+          do: assert_receive({:DOWN, ^monitor, :process, ^holder, :normal}, 5_000)
+    end
 
     # An unavailable original source must withhold the entire input, and its
     # synthetic fixture is restored even when an assertion fails.
@@ -8972,6 +9067,7 @@ defmodule Ipse.Extension.ManagedCollectionCallSessionTest do
     try do
       refute match?({:ok, _}, ManagedUse.with_worker_dependencies(context, dependencies, refused))
       refute_received :coalesced_input_delivered
+      assert_ordinary_refuses.(context, dependencies)
     after
       refute File.exists?(source_path), "original source path was unexpectedly recreated"
       File.rename!(held_path, source_path)
@@ -8990,11 +9086,13 @@ defmodule Ipse.Extension.ManagedCollectionCallSessionTest do
            )
 
     refute_received :coalesced_input_delivered
+    assert_ordinary_refuses.(context, expired_dependencies)
 
     assert {:ok, policy} = Consent.snapshot(c.control, c.binding["project_id"])
     assert {:ok, _} = Consent.revoke(c.control, c.binding["project_id"], policy["epoch"])
     refute match?({:ok, _}, ManagedUse.with_worker_dependencies(context, dependencies, refused))
     refute_received :coalesced_input_delivered
+    assert_ordinary_refuses.(context, dependencies)
 
     assert Enum.any?(
              events,
@@ -9008,8 +9106,11 @@ defmodule Ipse.Extension.ManagedCollectionCallSessionTest do
                      get_in(event, ["request", "request", "op"]) == "commit"))
            end)
 
-    assert {:ok, _} = Ipse.Session.Saved.restore(events, Session.info(pid).id)
+    id = Session.info(pid).id
+    assert {:ok, saved} = Ipse.Session.Saved.restore(events, id)
     assert :ok = Session.close_confirmed(pid)
+    idle_context = %{c | config: Map.merge(c.config, %{approval: :allow, approval_origin: :yes})}
+    assert_capture_idle_resume(idle_context, id, saved)
   end
 
   @tag literal_v4_ab: true,

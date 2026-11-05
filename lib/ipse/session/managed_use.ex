@@ -312,7 +312,7 @@ defmodule Ipse.Session.ManagedUse do
 
     with {:ok, first} <-
            protected(context, dependencies, fn cap, catalog, _ ->
-             observe(context, dependencies, cap, catalog, journals)
+             observe(context, dependencies, cap, catalog, journals, true)
            end),
          true <- length(first.proofs) <= @max_sources do
       use = fn _ ->
@@ -320,7 +320,7 @@ defmodule Ipse.Session.ManagedUse do
           checked_observation(
             use_deadline(policy, first.current),
             fn ->
-              with {:ok, ^first} <- observe(context, dependencies, cap, catalog, journals),
+              with {:ok, ^first} <- observe(context, dependencies, cap, catalog, journals, true),
                    true <-
                      Enum.all?(Enum.zip(dependencies, first.current), fn {old, current} ->
                        ManagedReference.current?(old, current, System.system_time(:millisecond))
@@ -1156,7 +1156,7 @@ defmodule Ipse.Session.ManagedUse do
   defp observe(c, dependencies, cap, catalog, journals, batch_v4 \\ false) do
     observed =
       if batch_v4,
-        do: observe_all_worker(c, dependencies, cap, catalog, journals),
+        do: observe_all_coalesced(c, dependencies, cap, catalog, journals),
         else: observe_all(c, dependencies, cap, catalog, journals)
 
     with {:ok, results} <- observed do
@@ -1174,13 +1174,13 @@ defmodule Ipse.Session.ManagedUse do
     end
   end
 
-  # Worker input is all-or-nothing. Only this path coalesces v4 records across
-  # other dependency versions; other consumers retain per-dependency verdicts.
+  # Worker input and ordinary use are all-or-nothing. Coalesce their v4 records
+  # across other dependency versions; historical verdicts remain per-dependency.
   # This changes internal observation and failure order: v4 reads run before
   # v3/v5/v6/v7 reads. Their current root identity can satisfy v3 comparisons in
   # this same pass. Each collection scope closes before other observations;
   # no authority or results are shared between the two independent passes.
-  defp observe_all_worker(c, dependencies, cap, catalog, journals) do
+  defp observe_all_coalesced(c, dependencies, cap, catalog, journals) do
     pin = c.config[:semantic_admission]["pin"]
     root = SemanticAdmission.collection_root(c.config[:home])
 

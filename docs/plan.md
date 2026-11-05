@@ -253,8 +253,17 @@ following limits until the end-to-end paths are qualified:
    authenticates confirmed withdrawn output as a failed job despite successful
    earlier reads. Six pure controls, 36 integrated cases and in-place reconstruction
    of 207 actual events pass without replay or changes to the originals. The failed
-   partial read and quarantined reservation remain unchanged; live final-use
-   validation and retained recall are still open.
+   partial read and quarantined reservation remain unchanged.
+   A [separate ordinary final-use repair](archive/2026-10-26-p30-p31-implementation/ordinary-final-coalescing-20261104.md)
+   reuses that existing coalesced observer in both independent protected passes.
+   A storage-only 32-record comparison reproduces the unchanged five-second
+   DomainAuth callback expiry in the per-record route while coalesced succeeds;
+   it does not directly trace the earlier Session failure. Forty-three pure
+   checks, a fresh actual eight-source delivery/Saved/close/idle case, and separate
+   current-main root-withdrawal controls pass. The first idle-mode fixture failure
+   remains preserved. Retained recall still requires explicit quarantined-request
+   recovery/upgrade review, fresh current proofs and a successful ordinary read;
+   the populated-day and annual driver remains OFF.
    Workload tooling can advance alongside the notes journey; the completed
    integrated workload depends on the Session and recall behavior it exercises.
 3. **Documents and local retrieval — P31C1b/D1/F.** Independently finish document
