@@ -1,0 +1,65 @@
+--- prior-public/paired_session.exs
++++ packaged/paired_session.exs
+@@ -4,7 +4,7 @@
+   alias Ipse.{JSON, Journal, Session}
+   alias Ipse.Development.Evaluation.{ProtectedAnswer, SelectionExperiment}
+   alias Ipse.Extension.{Activation, Artifact, Collection, Consent, ModelCall, ProjectIdentity,
+-    Registry, SemanticAdmission, SemanticConsent, SemanticRoutes}
++    SemanticAdmission, SemanticRoutes}
+   alias Ipse.Session.ManagedReference
+   @phases ~w(setup read baseline selection candidate)
+   @query "What does the first synthetic observation record?"
+@@ -66,36 +66,29 @@
+   defp setup(c) do
+     {:ok, artifact} = Artifact.import(c.helper_artifact, Path.join(c.home, "extensions/artifacts"))
+     configure(c, artifact)
+-    assert Ipse.CLI.run(["knowledge", "experiment", "advice", "2", "1800", "--cwd", c.cwd,
++    configured = File.read!(c.path)
++    assert Ipse.CLI.run(["knowledge", "experiment", "advice", "2", "1800", "--helper-profile", "extract", "--cwd", c.cwd,
+       "--config", c.path, "--no-project-config"]) === 0
++    assert File.read!(c.path) === configured
+     c = runtime(c)
+-    {:ok, old} = Consent.existing_snapshot(c.control, c.project["project_id"])
+-    entry = Enum.find(c.runtime.extensions, &(&1.identity["instance"] === "knowledge"))
+-    assert entry.identity["artifact_sha256"] === old["policy"]["artifact_sha256"]
++    {:ok, granted} = Consent.existing_snapshot(c.control, c.project["project_id"])
++    policy = granted["policy"]
++    knowledge = Enum.find(c.runtime.extensions, &(&1.identity["instance"] === "knowledge"))
++    assert knowledge.identity["artifact_sha256"] === policy["artifact_sha256"]
++    assert JSON.digest([knowledge.identity]) === policy["settings"]["identity_sha256"]
++    refute "host.model" in knowledge.identity["capabilities"]
++    assert Enum.any?(c.runtime.extensions, &(&1.identity["artifact_sha256"] === artifact.digest and "host.model" in &1.identity["capabilities"]))
+     labels = Map.new(~w(processing_region storage_region cache_retention account_controls), &{&1, nil})
+     selectors = for {operation, profile} <- [{"main", nil}, {"decision.create", "advice"}, {"model.complete", "extract"}],
+       do: Map.merge(labels, %{"operation" => operation, "profile" => profile})
+     {:ok, routes} = SemanticRoutes.resolve(c.runtime, selectors)
+-    activation = old["policy"]["settings"]["activation"]
+-    activation = Map.put(activation, "service_refs", Enum.map(routes, &Map.take(&1, ~w(operation service_id profile))))
+-    {:ok, draft} = Activation.draft(c.project["project_id"], activation, c.runtime.base_extension_catalog)
+-    {:ok, entries} = Registry.prepare(draft.catalog, c.home)
+-    knowledge = Enum.find(entries, &(&1.identity["instance"] === "knowledge"))
+-    selection = old["policy"]["settings"] |> Map.drop(~w(instance identity_sha256))
+-      |> Map.merge(Map.take(old["policy"], ~w(limits period_ms expires_at_ms headless)))
+-      |> Map.put("routes", routes) |> Map.put("activation", activation)
+-    {:ok, policy} = SemanticConsent.prepare(c.project, knowledge.identity, selection)
+-    assert Activation.matches_policy?(activation, policy)
+-    assert Map.drop(policy, ["settings"]) === Map.drop(old["policy"], ["settings"])
+-    assert Map.drop(policy["settings"], ~w(identity_sha256 routes activation)) ===
+-      Map.drop(old["policy"]["settings"], ~w(identity_sha256 routes activation))
+-    {:ok, _} = Consent.replace(c.control, c.project["project_id"], old["epoch"], policy, System.system_time(:millisecond))
+-    {:ok, selected} = Ipse.Config.Semantics.selection(policy)
+-    data = load(c.home, "config.json") |> Map.put("semantic_selections", selected)
+-    save(c.home, "config.json", data)
+-    c = runtime(c)
+-    actual = Enum.find(c.runtime.extensions, &(&1.identity["instance"] === "knowledge"))
+-    assert actual.identity === knowledge.identity
++    assert routes === policy["settings"]["routes"]
++    assert Activation.matches_policy?(policy["settings"]["activation"], policy)
++    assert granted["epoch"] === 1 and granted["operations"] === %{}
++    assert policy["limits"]["model_calls"] === 2
++    issued = policy["settings"]["experiment"]["issued_at_ms"]
++    assert policy["expires_at_ms"] === min(issued + 1_800_000, (div(issued, 86_400_000) + 1) * 86_400_000)
++    refute Enum.any?(policy["settings"]["effects"], &(&1["class"] === "model.complete"))
+     {:ok, source} = start(c)
+     source_id = Session.info(source).id
+     namespace = :sys.get_state(source).config.semantic_admission["pin"]["namespace"]

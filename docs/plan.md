@@ -128,8 +128,14 @@ now supports reviewing a separately admitted answer profile alongside main and
 advice before capture. All 58 CLI/Knowledge tests pass, including native save,
 new-Session identity pinning and refusal after a configuration change during
 review. The earlier fixture assertion failure remains recorded separately.
-The actual CLI-to-paired workflow, installed checks and independent quality
-evaluation remain open; this option supplies no bundled answer extension.
+The [packaged CLI paired checkpoint](archive/2026-11-05-packaged-paired-cli/index.md)
+now passes all five synthetic phases on the exact aa1c Linux package: native
+review establishes the final helper routes before eight eligible notes produce
+the complete six-note baseline and four-note projection. All immutable guards
+and independent host cleanup pass. Earlier fixture failures remain distinct.
+Independent quality, comparative time/cost, standalone evaluation and broader
+installed-user workflows remain open; the helper is a separately supplied test
+artifact, and this option supplies no bundled answer extension.
 
 For each active lane, name the next end-to-end result, its owner, required inputs
 and observable pass/fail checks. Use focused tests during implementation; preserve
@@ -1256,7 +1262,7 @@ passes never alter a historical aggregate.
 | P30B | In progress: operator-only profiles, bounded owned HTTP, `host.decision`, Session/replay bindings, v3 usage/prices and shared budgets implemented; [current-source synthetic controls](archive/2026-10-26-p30-p31-implementation/p30-current-decision-followup.md) cover zero-egress refusal, hosted/compatible wire, tampering, owner loss, inert resume and child approvals. A separately built decision artifact and the exact generic Linux package pass synthetic installed checks; the repaired 9f1707c full-source baseline passes, while later increments and live account access remain unverified. No qualified consumer is implied |
 | P30C | In progress: [pure Knowledge planners and zero-call controls](archive/2026-10-26-p30-p31-implementation/p30c-pure-policy.md) have an [independent pure-scope audit and reporting correction](archive/2026-10-26-p30-p31-implementation/p30c-pure-policy-audit.md). A later [coverage-gap repair](archive/2026-10-26-p30-p31-implementation/p30c-coverage-followup.md) has a [separate pure-scope review and adversarial grid](archive/2026-10-26-p30-p31-implementation/p30c-coverage-independent-audit.md). A [synthetic planner-to-Session fixture](archive/2026-10-26-p30-p31-implementation/p30-current-decision-followup.md#synthetic-planner-to-session-shadow-control) covers approval and advice mapping; protected helper integration and qualified consumer selection remain open after B and P31B |
 | P30D | Bounded implementation and synthetic protected journey qualified: explicit over-budget note selection retains the complete ordinary greedy baseline, followed by assessment of a real main-tool-created pending proposal under one finite two-call grant. Exact source/get/release, accounting, Saved/close/idle and no-replay checks pass with the failed pipelines separately preserved; broader frozen workloads and final combined/installed qualification remain open; after C and P31E |
-| P30E | In progress: frozen declarations/scoring, an OFF assessment owner and protected answer projection retain complete baseline reprojection, inherited provenance, citation byte joins, pending-only versus observed-durable strata and null timing/cost. A synthetic paired 8→6→4 protocol passes with three main, two helper and one decision wire; the adopted version-2 source passes 61 focused tests and the working integration build. Independent quality, matched real-input/label comparisons, whole-task time/cost and standalone/installed CLI workflows remain open. Retain useful, rejected/no-benefit and unverified dispositions, unavailable-engine honesty and separate live/model access. Document/graph routing needs later independent qualification; after D |
+| P30E | In progress: frozen declarations/scoring, an OFF assessment owner and protected answer projection retain complete baseline reprojection, inherited provenance, citation byte joins, pending-only versus observed-durable strata and null timing/cost. A synthetic paired 8→6→4 protocol passes with three main, two helper and one decision wire; the adopted version-2 source passes 61 focused tests and the working integration build. Independent quality, matched real-input/label comparisons, whole-task time/cost, broader standalone evaluation and installed consumer workflows remain open. Retain useful, rejected/no-benefit and unverified dispositions, unavailable-engine honesty and separate live/model access. Document/graph routing needs later independent qualification; after D |
 
 Acceptance requires exact result count/type/range/distribution validation, valid
 per-question refusal handling, uncertainty and malformed-output distinctions,
