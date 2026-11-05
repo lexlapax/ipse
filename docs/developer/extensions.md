@@ -306,6 +306,12 @@ Model tools/later mutations in these fixtures remain denied without explicit
 `--yes`; fixtures do not construct a protected semantic grant.
 
 Cases share scratch home/workspace, with fresh Session IDs for state sequences.
+The fresh workspace has its own instruction-discovery boundary, so placing the
+caller’s temporary directory inside a checkout does not import that checkout’s
+ancestor guidance. Declared fixture-local `AGENTS.md`, `README.md` and linked
+resources still participate in the ordinary Workspace snapshot. Keep those
+inputs small enough for the unchanged context budget; isolation does not disable
+instruction loading or enable compaction.
 `{{workspace}}`/`{{home}}` substitute values, not keys, without shell/environment
 interpolation. Absolute adapter paths are not redirected. Host inference is
 synthetic; MCP/delegation/compaction are not activated. Live/replay flags refuse.

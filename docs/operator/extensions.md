@@ -49,6 +49,13 @@ The annotation is attributed reference context, not a separate printed message o
 permission grant. Original provider data remains in the journal. Formatting
 changes completed presentation; raw text may stream first.
 
+For a reproducible extension check, use a reviewed
+[synthetic conformance scenario](../developer/extensions.md#turn-the-behavior-into-a-conformance-scenario).
+Its private workspace excludes the caller's ancestor instructions while retaining
+guidance declared by the fixture. Inspect that guidance and the exact expected
+results before running it. Synthetic inference checks protocol behavior; it
+does not establish live provider access or answer quality.
+
 Managed knowledge answers currently refuse presentation formatting before the
 formatter starts. To use notes in that chat, set the formatter instance's
 `enabled` field to `false` in your operator configuration, omit any `--extension`

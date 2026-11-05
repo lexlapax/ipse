@@ -177,6 +177,13 @@ defmodule Ipse.Extension.Conformance do
         home = Path.join(root, "home")
         File.mkdir!(workspace)
         File.mkdir!(home)
+        # Bound synthetic guidance without requiring an installed Git executable.
+        File.mkdir!(Path.join(workspace, ".git"))
+
+        File.write!(Path.join(workspace, ".git/HEAD"), "ref: refs/heads/conformance\n", [
+          :exclusive
+        ])
+
         :ok = seed(workspace, expand(Map.get(fixture, "files", %{}), workspace, home))
 
         cases =

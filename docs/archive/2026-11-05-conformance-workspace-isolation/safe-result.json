@@ -1,0 +1,53 @@
+{
+  "version": 1,
+  "kind": "conformance_workspace_isolation_evidence",
+  "source_commit_before_fix": "d0a3ca758c76c3217e769e129676ff3e88209d42",
+  "original_package": {
+    "archive_sha256": "239db2447cc120bbb902ac0e4fbd2b9011bf9bf242b601e58588d1e7dda90855",
+    "build_status": "passed",
+    "official_bundled_verification_status": "failed",
+    "failure_owner": "priv/demo/extensions.exs:426",
+    "observed": {"status": "error", "model_requests": 0, "extension_transform_results": 1, "cleanup_confirmed": true, "journal_valid": true},
+    "expected": {"status": "ok", "model_requests": 1, "extension_transform_results": 2},
+    "verify_log_sha256": "a2bda148e70d8052c259c637234bff530d53913839048403635d00e54bbdebaf"
+  },
+  "unchanged_runtime_diagnostic": {
+    "exit_status": 0,
+    "meaning": "evidence_recorded_not_conformance_pass",
+    "conformance_passed": false,
+    "model_requests": 0,
+    "extension_transform_results": 1,
+    "workspace_boundary_was_caller_repository": true,
+    "instruction_sources": 10,
+    "instruction_content_bytes": 119421,
+    "instruction_formatted_bytes": 122687,
+    "context_budget_bytes": 65536,
+    "automatic_compaction": false,
+    "error_class": "compaction_failed",
+    "fixed_reason_sha256": "d5155af2f54106f3838e322b5a9608b74e3031e1346701280a44d3c21f3f5985",
+    "strict_saved_valid": true,
+    "runtime_inventory_unchanged": true,
+    "conformance_cleanup_confirmed": true,
+    "private_result_sha256": "4f8da67ed07c97049abaf844110d5bae314fe848d4f03a8efe5e97d102c831d5",
+    "diagnostic_source_sha256": "c44b0288b294afd2fc638410948fd6611eb1ff825976bdb653f22d1f872f4331",
+    "frozen_conformance_beam_sha256": "9a0f41dc922b2165eb8b20b3d49d375880d84295f493fb9a883d56be73ed5580"
+  },
+  "repair": {
+    "owners": ["lib/ipse/extension/conformance.ex", "test/ipse/extension/conformance_test.exs"],
+    "source_proposal_sha256": "28b66ed884bf23951ff9af26864aa9dfb94541dca1ff6e2c739b5e76f9423f9e",
+    "formatted_production_source_sha256": "004f4c5dbfbfdb1c73a1eedbb2149b0f8e264324f1258b78c4cb4b4c5bb8e8df",
+    "formatted_test_source_sha256": "ad4cd5112b8b23fbe18561e643577bf08e42625d36334b098716b0819527a86c",
+    "caps_expectations_and_deadlines_unchanged": true,
+    "fixture_local_guidance_retained": true
+  },
+  "test_attempts": [
+    {"kind": "invalid_no_start_full_file", "status": "failed", "passed": 1, "failed": 11, "seed": 810450, "seconds": 0.7, "cause": "required_application_supervision_absent", "log_sha256": "684e2104416a18db12a4eaa7300902d08e6599b6e85e8b745a9a980ba957b96d"},
+    {"kind": "ordinary_start_single_existing_case_with_temporary_safe_diagnostic", "status": "passed", "passed": 1, "excluded": 11, "seed": 810450, "seconds": 0.7, "temporary_diagnostic_compile_warning": true, "diagnostic_instrumentation_restored": true, "log_sha256": "7142bb6d7e8187a64147dc128bf61cfeddef0ffa9b93fd4af5cdec0253a491a3"},
+    {"kind": "restored_production_compile", "status": "passed", "warnings_as_errors": true, "log_sha256": "d9904e527cccaec0e854b323b04ec7f0b408ecb02771ac243d1284fc624b3205"},
+    {"kind": "ordinary_start_full_file", "status": "passed", "exit_status": 0, "passed": 12, "failed": 0, "seed": 412641, "seconds": 3.7, "terminal_confirmed_by_parent": true, "independent_process_input_neutral_check": null, "log_sha256": "aedd77ac2c7414b7c7c03360a98498a2f24a1503f5c2d5a422b4312dd2d1f43f"}
+  ],
+  "overlapping_test_totals_additive": false,
+  "fresh_fixed_package_verification": null,
+  "installed_word_24_case_journey": null,
+  "raw_private_context_or_journals_exported": false
+}

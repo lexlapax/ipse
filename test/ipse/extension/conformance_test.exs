@@ -306,6 +306,112 @@ defmodule Ipse.Extension.ConformanceTest do
     refute Jason.encode!(report) =~ "synthetic-private"
   end
 
+  test "temporary workspaces isolate oversized ancestor guidance without dropping fixture guidance",
+       c do
+    parent = Path.join(c.root, "ancestor-project")
+    File.mkdir_p!(Path.join(parent, ".git"))
+    File.write!(Path.join(parent, ".git/HEAD"), "ref: refs/heads/parent\n")
+
+    agents =
+      "[first](first.md)\n[second](second.md)\n[third](third.md)\n" <>
+        String.duplicate("ancestor guidance ", 1000)
+
+    File.write!(Path.join(parent, "AGENTS.md"), agents)
+
+    for name <- ~w(first second third),
+        do:
+          File.write!(
+            Path.join(parent, name <> ".md"),
+            String.duplicate("ancestor resource ", 1400)
+          )
+
+    temporary = Path.join(parent, "temporary")
+    probe = Path.join(temporary, "unisolated-probe")
+    File.mkdir_p!(probe)
+    assert {:ok, snapshot} = Ipse.Workspace.snapshot(probe, c.home)
+    assert snapshot["boundary"] == parent
+    assert byte_size(Ipse.Workspace.format(snapshot)) > 65_536
+
+    data = %{
+      "extensions" => [
+        %{
+          "instance" => "annotation",
+          "artifact" => "builtin:prompt-annotation:1",
+          "enabled" => true,
+          "options" => %{"text" => "Fixture context"},
+          "order" => 1,
+          "lifetime" => "session"
+        },
+        %{
+          "instance" => "formatter",
+          "artifact" => "builtin:answer-format:1",
+          "enabled" => true,
+          "options" => %{"prefix" => "<answer>", "suffix" => "</answer>"},
+          "order" => 2,
+          "lifetime" => "session"
+        }
+      ],
+      "extension_trust" =>
+        Enum.map(Ipse.Extension.Registry.builtins(), fn descriptor ->
+          %{
+            "artifact" => descriptor["artifact"],
+            "capabilities" => descriptor["capabilities"],
+            "allow_project" => false,
+            "allow_children" => false
+          }
+        end)
+    }
+
+    assert {:ok, catalog} =
+             Config.resolve([%{scope: "operator", path: "/fixture/builtin.json", data: data}], [])
+
+    input =
+      fixture(
+        [
+          %{
+            "id" => "hooks",
+            "kind" => "prompt",
+            "text" => "Synthetic conformance input",
+            "expect" => %{
+              "status" => "ok",
+              "requests" => 1,
+              "final" => "<answer>Conformance fixture completed.</answer>",
+              "records" => %{"extension_transform_result" => 2}
+            }
+          }
+        ],
+        %{"files" => %{"AGENTS.md" => "fixture-owned guidance\n"}}
+      )
+
+    previous = System.get_env("TMPDIR")
+    System.put_env("TMPDIR", temporary)
+
+    try do
+      assert {:ok, report} = Conformance.run(catalog, c.home, input, keep: true)
+      assert report["passed"] and report["safe_to_continue"]
+      [result] = report["cases"]
+      assert result["model_requests"] == 1
+      assert result["record_counts"] == %{"extension_transform_result" => 2}
+      assert result["cleanup_confirmed"] and result["journal_valid"]
+      workspace = Path.join(report["directory"], "workspace")
+      [journal] = Path.wildcard(Path.join(report["directory"], "sessions/*.jsonl"))
+      id = Path.basename(journal, ".jsonl")
+      assert {:ok, events} = Ipse.Journal.load(Path.dirname(journal), id)
+      assert {:ok, _} = Ipse.Session.Saved.restore(events, id)
+
+      [context] =
+        for %{"type" => "workspace_context_snapshot", "snapshot" => value} <- events, do: value
+
+      assert context["boundary"] == workspace
+      assert [%{"path" => local, "content" => "fixture-owned guidance\n"}] = context["sources"]
+      assert local == Path.join(workspace, "AGENTS.md")
+      refute Enum.any?(events, &(&1["type"] == "compaction_failed"))
+      assert File.read!(Path.join(parent, "AGENTS.md")) == agents
+    after
+      if previous, do: System.put_env("TMPDIR", previous), else: System.delete_env("TMPDIR")
+    end
+  end
+
   test "cancellation and assertion failures produce bounded honest reports", c do
     cancelled =
       scenario("cancel", "command", "hang", %{"status" => "cancelled"})

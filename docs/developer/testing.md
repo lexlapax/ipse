@@ -98,6 +98,20 @@ module they load and use absolute source/code paths with a private working
 directory. A plain Elixir VM can otherwise resolve an application from the
 checkout's basename, and a previously loaded fixture can hide a missing dependency.
 
+A temporary directory alone does not isolate workspace instructions. Discovery
+can reach a caller's ancestor `AGENTS.md` and linked resources. Conformance
+creates a fresh repository boundary using a private `.git/HEAD` marker, without
+requiring Git; an empty `.git` directory is not a valid boundary. Its declared
+local guidance remains ordinary snapshot input. Test both exclusion of oversized
+ancestor guidance and retention of fixture-owned guidance without raising the
+context cap.
+
+Use ordinary `mix test` startup for tests that create Sessions or extension
+workers, including `ConformanceTest`. `--no-start` is suitable only when a fixture
+explicitly supplies every required application owner or is definition-only.
+An absent DynamicSupervisor is a setup failure, not evidence that a conformance
+expectation or cleanup boundary should change.
+
 The declaration-CLI fixture copies tracked and nonignored untracked repository
 files into a temporary synthetic repository. Run the full suite from a clean
 committed clone when the working checkout contains private or unrelated untracked
