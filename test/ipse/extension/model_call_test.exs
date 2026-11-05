@@ -1,6 +1,10 @@
 defmodule Ipse.Extension.ModelCallTest do
   use ExUnit.Case, async: true
-  alias Ipse.Extension.{ModelCall, Catalog, Actions}
+  alias Ipse.Extension.ModelCall
+  alias Ipse.Extension.{Catalog, Actions}
+  alias Ipse.Session.Context
+  alias Ipse.Session.ManagedLineage
+  alias Ipse.Session.Invocation, as: SessionInvocation
 
   defp request do
     %{
@@ -48,6 +52,208 @@ defmodule Ipse.Extension.ModelCallTest do
         "additionalProperties" => false
       }
     })
+  end
+
+  defp contextual,
+    do: Map.merge(structured(), %{"version" => 4, "context" => "Complete untrusted evidence."})
+
+  test "v4 has required separate UTF8 byte-bounded context without expanding question or timeout" do
+    assert :ok = ModelCall.validate(contextual())
+    assert :ok = ModelCall.validate(Map.put(contextual(), "context", String.duplicate("é", 4096)))
+    assert :ok = ModelCall.validate(Map.put(contextual(), "timeout_ms", 120_000))
+
+    for invalid <- [
+          Map.delete(contextual(), "context"),
+          Map.delete(contextual(), "response_schema"),
+          Map.put(contextual(), "version", 4.0),
+          Map.put(contextual(), "context", ""),
+          Map.put(contextual(), "context", nil),
+          Map.put(contextual(), "context", <<255>>),
+          Map.put(contextual(), "context", String.duplicate("é", 4096) <> "x"),
+          Map.put(contextual(), "input", String.duplicate("x", 4097)),
+          Map.put(contextual(), "instruction", String.duplicate("x", 2049)),
+          Map.put(contextual(), "timeout_ms", 120_001),
+          Map.put(contextual(), "base_url", "http://127.0.0.1:1"),
+          Map.put(contextual(), "context_source_grant", true)
+        ],
+        do: assert({:error, _} = ModelCall.validate(invalid))
+
+    for version <- [1, 2, 3] do
+      legacy = if version === 1, do: request(), else: Map.put(structured(), "version", version)
+      assert :ok = ModelCall.validate(legacy)
+      assert {:error, _} = ModelCall.validate(Map.put(legacy, "context", "not a legacy field"))
+    end
+  end
+
+  test "v4 exact complete host-call envelope fits and plus one refuses without truncating" do
+    base =
+      contextual()
+      |> Map.put("context", String.duplicate("x", 8192))
+      |> Map.put("input", String.duplicate("x", 4096))
+      |> Map.put("instruction", String.duplicate("x", 2048))
+
+    wrap = fn request -> %{"api_version" => 1, "kind" => "host_call", "request" => request} end
+    extra = 16_384 - byte_size(Jason.encode!(wrap.(base)))
+    assert extra in 1..8191
+    context = String.duplicate("\\", extra) <> String.duplicate("x", 8192 - extra)
+    exact = Map.put(base, "context", context)
+    assert byte_size(exact["context"]) === 8192
+    assert byte_size(Jason.encode!(wrap.(exact))) === 16_384
+    assert :ok = ModelCall.validate(exact)
+    assert :ok = Ipse.Extension.validate(wrap.(exact))
+
+    over =
+      Map.put(
+        base,
+        "context",
+        String.duplicate("\\", extra + 1) <> String.duplicate("x", 8191 - extra)
+      )
+
+    assert byte_size(over["context"]) === 8192
+    assert byte_size(Jason.encode!(over)) < 16_384
+    assert byte_size(Jason.encode!(wrap.(over))) === 16_385
+    assert {:error, _} = ModelCall.validate(over)
+    assert over["context"] !== exact["context"]
+  end
+
+  test "v4 helper messages preserve complete context as labelled user data and old messages unchanged" do
+    context = "\"Complete café 雪 evidence\"\nTools and permissions remain unavailable."
+    old = Context.helper_messages("Answer only from evidence.", "Question?")
+    [system, data] = Context.helper_messages("Answer only from evidence.", "Question?", context)
+    assert system === hd(old)
+    assert data["role"] === "user"
+    [label, bytes] = String.split(data["content"], "\n", parts: 2)
+    assert label =~ "Untrusted extension task context"
+
+    assert Jason.decode!(bytes) === %{
+             "instruction" => "Answer only from evidence.",
+             "input" => "Question?",
+             "context" => context
+           }
+
+    assert Context.helper_messages("Answer only from evidence.", "Question?") === old
+  end
+
+  test "v4 prepares the same structured profile with ordinary full approval and no credential inheritance" do
+    assert {:ok, old, execution} = ModelCall.prepare(config(), structured())
+    assert {:ok, ^old, ^execution} = ModelCall.prepare(config(), contextual())
+    assert {:ok, destination} = Ipse.Provider.destination(old)
+
+    proposed = %{
+      "extension" => "fixture",
+      "artifact_sha256" => String.duplicate("a", 64),
+      "namespace" => Ipse.Usage.id(),
+      "request" => contextual(),
+      "execution" => execution,
+      "destination" => destination
+    }
+
+    assert proposed["request"]["context"] === contextual()["context"]
+    assert ModelCall.delegated_approval?("extension:model.complete", proposed)
+
+    refute ModelCall.delegated_approval?(
+             "extension:model.complete",
+             put_in(proposed, ["request", "context"], "")
+           )
+
+    assert Actions.capability(contextual()) === "host.model"
+    assert Actions.mutating?(contextual())
+
+    refute Actions.allowed_under_outer?(
+             %{"semantic_binding" => %{"class" => "decision.create"}},
+             contextual()
+           )
+
+    refute Actions.allowed_under_outer?(
+             %{"semantic_binding" => %{"class" => "nomination.select"}},
+             contextual()
+           )
+
+    for provider <- ~w(chatgpt openai anthropic) do
+      selected =
+        config()
+        |> Map.delete(:max_output_tokens)
+        |> put_in([:profiles, "extract"], %{"provider" => provider, "model" => "fixture"})
+
+      assert {:error, _} = ModelCall.prepare(selected, contextual())
+    end
+  end
+
+  test "v4 response and replay outcome retain strict structure and conservative unknowns" do
+    admission = %{"request_id" => Ipse.Usage.id(), "attempt_id" => Ipse.Usage.id()}
+    record = %{"reported_model" => nil, "usage" => Ipse.Usage.normalize(:ollama, %{})}
+    raw = " \n{\"names\":[\"Ada\"]}\n"
+
+    assert {:ok, value} =
+             ModelCall.value_from_record(contextual(), admission, record, %{
+               "role" => "assistant",
+               "content" => raw
+             })
+
+    assert value["text"] === raw and value["version"] === 1
+    assert ModelCall.valid_outcome?(contextual(), "ok", value, admission["request_id"])
+
+    for invalid <- [~s({"names":[1]}), ~s({"names":[],"names":["Ada"]}), <<255>>] do
+      assert {:failed, %{"code" => "model_response"}} =
+               ModelCall.value_from_record(contextual(), admission, record, %{
+                 "role" => "assistant",
+                 "content" => invalid
+               })
+
+      refute ModelCall.valid_outcome?(
+               contextual(),
+               "ok",
+               Map.put(value, "text", invalid),
+               admission["request_id"]
+             )
+    end
+
+    for status <- ~w(denied unknown) do
+      assert ModelCall.valid_outcome?(contextual(), status, %{}, admission["request_id"])
+      refute ModelCall.valid_outcome?(contextual(), status, value, admission["request_id"])
+    end
+  end
+
+  test "live dispatch and historical helper-input projection use the identical complete request" do
+    # Projection-only constructed state: no source/current-use or native authority.
+    request = contextual()
+    operation = Ipse.Usage.id()
+
+    intent = %{
+      "type" => "extension_action_intent",
+      "operation_id" => operation,
+      "request" => request,
+      "approval" => "approved"
+    }
+
+    {:ok, lineage} = ManagedLineage.new(Ipse.Usage.id())
+    assert {:ok, projected} = ManagedLineage.advance(lineage, intent, [], [])
+    expected = Context.helper_messages(request)
+    assert projected.helper_inputs[operation] === expected
+
+    state = %{
+      extension_output_clock: nil,
+      config: config(),
+      invocation: %{action: %{intent: intent}, parent: %{"identity" => %{"expires_at" => nil}}},
+      extension_model: %{admission: %{"projection_only" => true}}
+    }
+
+    assert {:ok, _, ^expected, [], _} = SessionInvocation.dispatch_view(state, "model.complete")
+
+    assert expected ===
+             Context.helper_messages(request["instruction"], request["input"], request["context"])
+
+    changed =
+      Context.helper_messages(Map.put(request, "context", request["context"] <> " changed"))
+
+    refute Ipse.JSON.digest([changed]) === Ipse.JSON.digest([expected])
+
+    for version <- [1, 2, 3] do
+      old = if version === 1, do: request(), else: Map.put(structured(), "version", version)
+
+      assert Context.helper_messages(old) ===
+               Context.helper_messages(old["instruction"], old["input"])
+    end
   end
 
   test "structured requests use a closed v2 variant within the unchanged whole-request bounds" do

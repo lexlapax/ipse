@@ -638,7 +638,60 @@ defmodule Ipse.Extension.ManagedCollectionCallSessionTest do
       manifest |> Map.put("capabilities", service_caps) |> Map.put("requires", requires)
     )
 
-    %{artifact: root, document_artifact: document_root, service_artifact: service_root}
+    context_root =
+      if System.get_env("IPSE_TEST_MODEL_CONTEXT_V4") === "1" do
+        path = root <> "-context"
+        on_exit(fn -> File.rm_rf!(path) end)
+
+        context_exports =
+          Map.update!(
+            exports,
+            "services",
+            &(&1 ++
+                [
+                  %{
+                    "id" => "answer_context",
+                    "description" => "Synthetic explicit complete-context helper",
+                    "arguments_schema" => %{
+                      "type" => "object",
+                      "required" => ["request"],
+                      "additionalProperties" => false,
+                      "properties" => %{"request" => %{"type" => "object"}}
+                    },
+                    "result_schema" => %{"type" => "object"}
+                  }
+                ])
+          )
+
+        context_source =
+          source
+          |> String.replace("defmodule #{name} do", "defmodule #{name}Context do")
+          |> String.replace(
+            "\"exports\" => #{inspect(exports)}}",
+            "\"exports\" => #{inspect(context_exports)}}"
+          )
+          |> String.replace(
+            ~s[def handle("invoke.service", payload, state) do],
+            ~s[def handle("invoke.service", %{"id" => "answer_context", "arguments" => %{"request" => request}}, state), do: call(request, state |> Map.put("step", "done") |> Map.put("mode", "context_helper_service"))] <>
+              "\n  " <> ~s[def handle("invoke.service", payload, state) do]
+          )
+
+        build_variant(
+          path,
+          name <> "Context",
+          context_source,
+          manifest |> Map.put("exports", context_exports)
+        )
+
+        path
+      end
+
+    %{
+      artifact: root,
+      document_artifact: document_root,
+      service_artifact: service_root,
+      context_artifact: context_root
+    }
   end
 
   if @native_root_approval do
@@ -728,6 +781,7 @@ defmodule Ipse.Extension.ManagedCollectionCallSessionTest do
     {:ok, artifact} =
       Artifact.import(
         cond do
+          c[:managed_context_service] -> c.context_artifact
           c[:managed_host_service] -> c.service_artifact
           c[:nested_document] -> c.document_artifact
           true -> artifact_source
@@ -991,6 +1045,9 @@ defmodule Ipse.Extension.ManagedCollectionCallSessionTest do
                       "arguments" => %{
                         "mode" =>
                           cond do
+                            c[:managed_context_service] ->
+                              "legacy_get:" <> literal_seed["key"]
+
                             c[:assess_alt] ->
                               "pending_shadow:pending." <> String.duplicate("a", 64)
 
@@ -1198,6 +1255,19 @@ defmodule Ipse.Extension.ManagedCollectionCallSessionTest do
                 List.last(responses)
               ]
 
+            c[:managed_context_service] ->
+              if c[:native_context_boundary] in [:current, :interrupted],
+                do:
+                  responses ++
+                    [
+                      body.(%{
+                        "role" => "assistant",
+                        "content" =>
+                          Jason.encode!(%{"answer" => "Synthetic complete context answer."})
+                      })
+                    ],
+                else: responses
+
             c[:native_inference_boundary] == :deny ->
               responses
 
@@ -1240,6 +1310,14 @@ defmodule Ipse.Extension.ManagedCollectionCallSessionTest do
 
         {base, server} =
           cond do
+            c[:managed_context_service] ->
+              observed_provider(
+                responses,
+                if(c[:native_context_boundary] === :interrupted, do: :third_response),
+                10_000,
+                provider_requests
+              )
+
             c[:native_root_approval] ->
               observed_provider(responses, nil, 10_000, provider_requests)
 
@@ -3704,6 +3782,369 @@ defmodule Ipse.Extension.ManagedCollectionCallSessionTest do
         else: native_root_terminal("helper_#{unquote(kind)}", unquote(boundary))
     end
   end
+
+  for boundary <- [:current, :deny, :source_withdrawal, :interrupted] do
+    @tag managed_context_service: true,
+         literal_v4_ab: true,
+         registered_main: true,
+         managed_helper: true,
+         metadata_version: 3,
+         native_context_boundary: boundary,
+         timeout: 90_000
+    @tag native_root_approval:
+           "helper_context_service" <>
+             if(boundary === :current, do: "", else: "_" <> to_string(boundary))
+    @tag skip:
+           if(System.get_env("IPSE_TEST_MODEL_CONTEXT_V4") === "1",
+             do: false,
+             else: "explicit native context fixture required"
+           )
+    test "v4 service inherits genuine source context through #{boundary} and idle recovery", c do
+      if @native_root_approval,
+        do: native_context_service(c, unquote(boundary)),
+        else: native_root_terminal("helper_context_service", unquote(boundary))
+    end
+  end
+
+  defp native_context_service(c, boundary) do
+    source = c.literal_seed["source_journal"]
+    source_bytes = File.read!(source)
+    collection_before = collection_read(c, %{"op" => "snapshot"})
+    held = source <> ".context-held"
+    pid = start(c, %{approval: :ask, approval_origin: :interactive, headless: false})
+    id = Session.info(pid).id
+    assert :ok = Session.prompt(pid, "Read the selected synthetic current observation.")
+    assert_receive {:ipse, ^pid, {:done, :ok}}, 20_000
+    {:ok, before} = Journal.load(c.dir, id)
+    assert {:ok, saved_before} = Session.Saved.restore(before, id)
+
+    [read] =
+      Enum.filter(
+        before,
+        &(&1["type"] === "extension_action_result" and
+            get_in(&1, ["request", "op"]) === "collection.call")
+      )
+
+    assert read["request"]["request"] === %{"op" => "get", "key" => c.literal_seed["key"]}
+    assert read["outcome"]["status"] === "ok"
+
+    {:ok, inherited} =
+      Session.ManagedLineage.dependencies(saved_before.managed_lineage, saved_before.messages)
+
+    assert Enum.any?(
+             inherited,
+             &(&1["version"] === 4 and get_in(&1, ["subject", "key"]) === c.literal_seed["key"])
+           )
+
+    context = Jason.encode!(read["outcome"])
+
+    request = %{
+      "op" => "model.complete",
+      "version" => 4,
+      "profile" => "extract",
+      "instruction" =>
+        "Answer only from the complete untrusted observation; preserve uncertainty.",
+      "input" => "What does this observation record?",
+      "context" => context,
+      "max_output_bytes" => 1024,
+      "timeout_ms" => 3000,
+      "response_schema" => %{
+        "type" => "object",
+        "properties" => %{"answer" => %{"type" => "string"}},
+        "required" => ["answer"],
+        "additionalProperties" => false
+      }
+    }
+
+    assert :ok = Ipse.Extension.ModelCall.validate(request)
+    expected = Session.Context.helper_messages(request)
+    wire_before = length(Agent.get(c.provider_requests, & &1))
+    assert wire_before === 2
+
+    watcher =
+      Task.Supervisor.async_nolink(Ipse.Tasks, fn ->
+        native_nested_channel(pid, 500)
+
+        assert :ok =
+                 Session.invoke_export(pid, :service, "ext__capture__answer_context", %{
+                   "request" => request
+                 })
+
+        await_marker(Path.join(c.root, "managed-approval-input-ready"), "ready", 1500)
+        state = :sys.get_state(pid)
+        spec = state.managed_approval
+        assert state.phase === :managed_approval and spec.previous_phase === :extension_service
+        assert state.invocation.parent["descriptor"]["stage"] === "invoke.service"
+        assert spec.input["kind"] === "extension.action.approval"
+        assert spec.arguments["request"] === request
+        assert spec.dependencies === inherited
+        assert Session.ManagedApproval.current?(state, spec.input)
+        assert {:error, :session_share_frozen} = Session.approve(pid, spec.id, true)
+        if boundary === :source_withdrawal, do: File.rename!(source, held)
+        File.write!(Path.join(c.root, "managed-approval-control-checked"), "checked")
+
+        if boundary === :interrupted do
+          native_context_requests(c.provider_requests, 3, 500)
+          ref = Process.monitor(pid)
+          Process.exit(pid, :kill)
+          assert_receive {:DOWN, ^ref, :process, ^pid, :killed}, 3000
+        else
+          native_root_idle(pid, 1500)
+        end
+
+        File.write!(Path.join(c.root, "managed-approval-exit-ready"), "ready")
+
+        receive do
+          :terminal_returned -> :ok
+        after
+          60_000 -> flunk("terminal did not return after completed context watcher")
+        end
+
+        %{dependencies_sha256: JSON.digest(inherited), context_sha256: JSON.sha256(context)}
+      end)
+
+    try do
+      IO.puts("IPSE_MANAGED_APPROVAL_CLI_READY")
+      terminal = Ipse.CLI.Terminal.interact(pid, Process.monitor(pid), true, nil, c.cwd)
+      send(watcher.pid, :terminal_returned)
+
+      watched =
+        case Task.yield(watcher, 1000) do
+          {:ok, value} ->
+            {:ok, value}
+
+          {:exit, _} ->
+            :failed
+
+          nil ->
+            Task.shutdown(watcher, :brutal_kill)
+            :timeout
+        end
+
+      watcher_status = if match?({:ok, _}, watched), do: "completed", else: to_string(watched)
+      if File.exists?(held), do: File.rename!(held, source)
+
+      close_status =
+        try do
+          if Process.alive?(pid) do
+            case Session.close_confirmed(pid) do
+              :ok -> "confirmed"
+              _ -> "refused"
+            end
+          else
+            "already_down"
+          end
+        catch
+          _, _ -> "failed"
+        end
+
+      journal = Journal.load(c.dir, id)
+
+      events =
+        case journal do
+          {:ok, events} -> events
+          _ -> []
+        end
+
+      wires = Agent.get(c.provider_requests, & &1)
+      # Preserve closed observations before semantic assertions; never dump source bytes.
+      File.write!(
+        Path.join(c.root, "model-context-v4-observed.json"),
+        Jason.encode!(%{
+          "boundary" => to_string(boundary),
+          "terminal_status" => terminal,
+          "wire_count" => length(wires),
+          "context_bytes" => byte_size(context),
+          "context_sha256" => JSON.sha256(context),
+          "dependencies_sha256" => JSON.digest(inherited),
+          "watcher_status" => watcher_status,
+          "close_status" => close_status,
+          "journal_loaded" => match?({:ok, _}, journal),
+          "events_sha256" => JSON.digest(events),
+          "session_alive" => Process.alive?(pid)
+        }) <> "\n"
+      )
+
+      assert watcher_status === "completed"
+      assert close_status in ["confirmed", "already_down"]
+      assert {:ok, ^events} = journal
+      {:ok, watched} = watched
+      assert watched.dependencies_sha256 === JSON.digest(inherited)
+      assert {:ok, saved} = Session.Saved.restore(events, id)
+
+      [parent] =
+        Enum.filter(
+          events,
+          &(&1["type"] === "extension_invocation_intent" and
+              get_in(&1, ["descriptor", "id"]) === "answer_context")
+        )
+
+      assert parent["descriptor"]["stage"] === "invoke.service"
+      assert parent["payload"]["arguments"] === %{"request" => request}
+
+      [initial] =
+        Enum.filter(
+          events,
+          &(&1["type"] === "worker_input_intent" and
+              &1["invocation_id"] === parent["invocation_id"] and &1["stage"] === "invoke.service")
+        )
+
+      assert initial["dependencies_sha256"] === JSON.digest(inherited)
+
+      [intent] =
+        Enum.filter(
+          events,
+          &(&1["type"] === "extension_action_intent" and
+              &1["parent_invocation_id"] === parent["invocation_id"])
+        )
+
+      assert intent["request"] === request and intent["request_sha256"] === JSON.digest([request])
+
+      results =
+        Enum.filter(
+          events,
+          &(&1["type"] === "extension_action_result" and
+              &1["operation_id"] === intent["operation_id"])
+        )
+
+      case boundary do
+        :current ->
+          assert terminal === 0
+          assert [%{"approval" => "approved", "outcome" => %{"status" => "ok"}}] = results
+          [result] = results
+
+          assert Jason.decode!(result["outcome"]["value"]["text"]) ===
+                   %{"answer" => "Synthetic complete context answer."}
+
+          [publication] =
+            Enum.filter(
+              events,
+              &(&1["type"] === "extension_invocation_result" and
+                  &1["invocation_id"] === parent["invocation_id"])
+            )
+
+          assert publication["value"] === result["outcome"]
+          assert publication["actions_sha256"] === JSON.digest(results)
+          assert length(wires) === 3
+          helper = Enum.at(wires, 2)
+          assert JSON.digest([helper["messages"]]) === JSON.digest([expected])
+          assert helper["tools"] === [] and helper["format"] === request["response_schema"]
+
+          [preflight] =
+            Enum.filter(
+              events,
+              &(&1["type"] === "managed_preflight_intent" and &1["phase"] === "model.complete")
+            )
+
+          assert preflight["input_sha256"] === JSON.digest([expected])
+
+          assert saved.accounting.requests[intent["operation_id"]].completion["outcome"] ===
+                   "completed"
+
+          assert saved.worker_input_unknown === []
+
+          [release] =
+            Enum.filter(events, fn release ->
+              release["type"] === "managed_output_release_result" and
+                release["decision"] === "current" and
+                Enum.any?(events, fn event ->
+                  event["type"] === "managed_output_release_intent" and
+                    event["release_id"] === release["release_id"] and
+                    event["parent_invocation_id"] === parent["invocation_id"]
+                end)
+            end)
+
+          assert Enum.any?(
+                   events,
+                   &(&1["type"] === "managed_output_release_cleanup" and
+                       &1["release_id"] === release["release_id"] and &1["status"] === "confirmed")
+                 )
+
+        :deny ->
+          assert terminal === 0
+
+          assert [%{"approval" => "denied", "outcome" => %{"status" => "denied", "value" => %{}}}] =
+                   results
+
+          assert length(wires) === wire_before
+          assert saved.accounting.requests[intent["operation_id"]] === nil
+
+        :source_withdrawal ->
+          assert terminal === 0
+          assert [%{"approval" => "approved", "outcome" => %{"status" => "failed"}}] = results
+          assert length(wires) === wire_before
+          assert saved.managed_lineage.unavailable
+          assert saved.extension_state.unknown
+          assert is_map(saved.accounting.requests[intent["operation_id"]].completion)
+
+          [withheld] =
+            Enum.filter(
+              events,
+              &(&1["type"] === "worker_input_intent" and
+                  &1["invocation_id"] === parent["invocation_id"] and
+                  &1["stage"] === "host.actions")
+            )
+
+          assert saved.worker_input_unknown === [withheld["input_id"]]
+
+          refute Enum.any?(
+                   events,
+                   &(&1["type"] === "managed_output_release_intent" and
+                       &1["parent_invocation_id"] === parent["invocation_id"])
+                 )
+
+        :interrupted ->
+          assert terminal !== 0 and results === []
+          assert length(wires) === 3
+          assert JSON.digest([Enum.at(wires, 2)["messages"]]) === JSON.digest([expected])
+          assert saved.accounting.requests[intent["operation_id"]].completion === nil
+          assert saved.extension_state.action === intent
+          assert saved.extension_state.parent === parent
+      end
+
+      before_idle = File.read!(Path.join(c.dir, id <> ".jsonl"))
+      resumed = start(c, %{approval: :ask, approval_origin: :interactive, headless: false}, id)
+      assert Session.info(resumed).phase === :idle
+      assert_idle_resume_journal(Path.join(c.dir, id <> ".jsonl"), before_idle, id)
+      idle = File.read!(Path.join(c.dir, id <> ".jsonl"))
+      assert :ok = Session.close_confirmed(resumed)
+      closed = File.read!(Path.join(c.dir, id <> ".jsonl"))
+      assert String.starts_with?(closed, idle)
+      suffix = binary_part(closed, byte_size(idle), byte_size(closed) - byte_size(idle))
+      assert [line] = String.split(suffix, "\n", trim: true)
+      release = Jason.decode!(line)
+      assert suffix === line <> "\n"
+      assert Ipse.Session.ReleaseReceipt.valid_intent?(release)
+      assert {:ok, closed_events} = Journal.load(c.dir, id)
+      assert {:ok, ^release} = Ipse.Session.ReleaseReceipt.current_intent(closed_events, id)
+      assert {:ok, _} = Session.Saved.restore(closed_events, id)
+
+      assert {:ok, %{"release_claim" => "signed_release_claim"}} =
+               Session.Saved.inspect_saved(c.dir, id)
+
+      assert length(Agent.get(c.provider_requests, & &1)) === length(wires)
+      assert File.read!(source) === source_bytes
+      assert collection_read(c, %{"op" => "snapshot"}) === collection_before
+      assert :sys.get_state(Session.Input).entries === %{}
+    after
+      if File.exists?(held), do: File.rename!(held, source)
+      if Process.alive?(pid), do: Session.close_confirmed(pid)
+      Task.shutdown(watcher, :brutal_kill)
+      Task.shutdown(c.provider_server, :brutal_kill)
+    end
+  end
+
+  defp native_context_requests(agent, expected, remaining) when remaining > 0 do
+    if length(Agent.get(agent, & &1)) === expected,
+      do: :ok,
+      else:
+        (
+          Process.sleep(10)
+          native_context_requests(agent, expected, remaining - 1)
+        )
+  end
+
+  defp native_context_requests(_, _, 0), do: flunk("context request was not observed")
 
   @tag registered_main: true,
        managed_helper: true,
@@ -6952,7 +7393,7 @@ defmodule Ipse.Extension.ManagedCollectionCallSessionTest do
         boundary == :owner_loss ->
           "save_managed_approval_owner_loss"
 
-        kind in ~w(nested_mcp nested_native helper_model helper_decision helper_decision_experiment helper_embedding) and
+        kind in ~w(nested_mcp nested_native helper_model helper_context_service helper_decision helper_decision_experiment helper_embedding) and
             boundary in [:deny, :stale_token, :cancel] ->
           "save_managed_approval_" <> to_string(boundary)
 
@@ -6961,19 +7402,34 @@ defmodule Ipse.Extension.ManagedCollectionCallSessionTest do
       end
 
     root = Path.join(System.tmp_dir!(), "ipse-root-approval-" <> Ipse.Usage.id())
-    File.mkdir!(root)
-    File.chmod!(root, 0o700)
+
+    if kind === "helper_context_service" do
+      native_literal_seed(root)
+    else
+      File.mkdir!(root)
+      File.chmod!(root, 0o700)
+    end
+
     IO.puts("NATIVE_ROOT_APPROVAL_ROOT=" <> root)
     driver = Path.join(root, "pty")
 
-    assert {output, 0} =
-             System.cmd(
-               "rustc",
-               ["--edition=2021", "-D", "warnings", "test/support/operator_pty.rs", "-o", driver],
-               stderr_to_stdout: true
-             )
+    unless kind === "helper_context_service" do
+      assert {output, 0} =
+               System.cmd(
+                 "rustc",
+                 [
+                   "--edition=2021",
+                   "-D",
+                   "warnings",
+                   "test/support/operator_pty.rs",
+                   "-o",
+                   driver
+                 ],
+                 stderr_to_stdout: true
+               )
 
-    assert output == ""
+      assert output == ""
+    end
 
     paths =
       :code.get_path()
@@ -7796,7 +8252,8 @@ defmodule Ipse.Extension.ManagedCollectionCallSessionTest do
                 do: Agent.update(collector, &(&1 ++ [decoded])),
                 else: send(owner, {:observed_provider_request, self(), decoded})
 
-              if gate == :second_response and index == 1 do
+              if (gate == :second_response and index == 1) or
+                   (gate == :third_response and index == 2) do
                 send(owner, {:managed_body_sent, self()})
                 receive do: (:release_managed_body -> :ok)
               end

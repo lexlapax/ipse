@@ -648,8 +648,16 @@ For the optional measured comparison, use the explicit service context in the
 profile's ordinary `timeout_ms` for extension model calls only. The root request
 limit and the extension's requested deadline still narrow it. Without the new
 field, extension inference remains capped at 120000 milliseconds, even with a
-larger ordinary timeout. Versions one and two still accept at most 120000.
+larger ordinary timeout. Versions one, two and four still accept at most 120000.
 Selecting the profile for main work or a child does not apply this override.
+
+An extension using a version-four request supplies its complete evidence context
+separately from the question. It uses the same selected profile, ordinary egress
+approval, token budget and model context window; there is no new configuration
+grant. Review the full proposal. An oversized encoded request refuses instead of
+silently shortening its evidence. Changing the timeout or creating another home
+cannot resolve that size refusal. The [extension contract](../developer/extension-effects.md#request-bounded-text-inference)
+explains its UTF-8 and complete-envelope limits.
 
 An SDK-2 invocation still has its original two-minute aggregate deadline. A
 longer model allowance cannot extend that enclosing invocation. Use a worker

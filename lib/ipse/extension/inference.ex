@@ -38,7 +38,7 @@ defmodule Ipse.Extension.ModelCall do
       "type" => "object",
       "properties" => %{
         "op" => %{"type" => "string", "enum" => ["model.complete"]},
-        "version" => %{"type" => "integer", "enum" => [1, 2, 3]},
+        "version" => %{"type" => "integer", "enum" => [1, 2, 3, 4]},
         "profile" => %{"type" => "string", "minLength" => 1, "maxLength" => 64},
         "instruction" => %{"type" => "string", "maxLength" => 2048},
         "input" => %{"type" => "string", "minLength" => 1, "maxLength" => 4096},
@@ -54,7 +54,7 @@ defmodule Ipse.Extension.ModelCall do
     }
 
     schema =
-      if version in [2, 3] do
+      if version in [2, 3, 4] do
         schema
         |> put_in(["properties", "response_schema"], %{"type" => "object"})
         |> Map.update!("required", &(&1 ++ ["response_schema"]))
@@ -62,13 +62,26 @@ defmodule Ipse.Extension.ModelCall do
         schema
       end
 
+    schema =
+      if version === 4 do
+        schema
+        |> put_in(["properties", "context"], %{
+          "type" => "string",
+          "minLength" => 1,
+          "maxLength" => 8192
+        })
+        |> Map.update!("required", &(&1 ++ ["context"]))
+      else
+        schema
+      end
+
     with :ok <- Ipse.JSON.validate_arguments(schema, request),
-         true <- version in [1, 2, 3],
+         true <- version in [1, 2, 3, 4],
+         true <- valid_context?(request),
          :ok <- validate_response_schema(request),
          true <- Regex.match?(~r/\A[A-Za-z][A-Za-z0-9_-]{0,63}\z/, request["profile"]),
          true <- is_integer(request["timeout_ms"]) and is_integer(request["max_output_bytes"]),
-         true <-
-           byte_size(Jason.encode!(request)) <= if(version in [2, 3], do: 12_288, else: 8192),
+         true <- request_envelope?(request),
          :ok <- Ipse.Extension.validate(request) do
       :ok
     else
@@ -77,6 +90,21 @@ defmodule Ipse.Extension.ModelCall do
   rescue
     _ -> @error
   end
+
+  defp valid_context?(%{"version" => 4, "context" => context}),
+    do: is_binary(context) and String.valid?(context) and byte_size(context) in 1..8192
+
+  defp valid_context?(_), do: true
+
+  defp request_envelope?(%{"version" => 4} = request),
+    do:
+      Ipse.Extension.validate(%{"api_version" => 1, "kind" => "host_call", "request" => request}) ===
+        :ok
+
+  defp request_envelope?(request),
+    do:
+      byte_size(Jason.encode!(request)) <=
+        if(request["version"] in [2, 3], do: 12_288, else: 8192)
 
   def enabled?(config),
     do: Enum.any?(config[:extensions] || [], &("host.model" in &1.identity["capabilities"]))
@@ -180,7 +208,7 @@ defmodule Ipse.Extension.ModelCall do
         |> Map.merge(Ipse.Provider.Registry.profile_runtime(profile))
 
       runtime =
-        if request["version"] in [2, 3],
+        if request["version"] in [2, 3, 4],
           do: Map.put(runtime, :extension_response_schema, request["response_schema"]),
           else: runtime
 
@@ -415,7 +443,8 @@ defmodule Ipse.Extension.ModelCall do
   @doc "Run provider IO in a linked owned task; the Session alone admits and journals it."
   def execute(context, intent) do
     Ipse.Extension.Inference.execute(context, intent, :text, fn selected, request, emit ->
-      messages = Ipse.Session.Context.helper_messages(request["instruction"], request["input"])
+      messages = Ipse.Session.Context.helper_messages(request)
+
       Ipse.Provider.request_complete(selected, messages, [], emit)
     end)
   end
@@ -429,7 +458,7 @@ defmodule Ipse.Extension.ModelCall do
          "version" => version,
          "response_schema" => %{"type" => "object"} = schema
        })
-       when version in [2, 3],
+       when version in [2, 3, 4],
        do: Ipse.JSON.validate_schema(schema)
 
   defp validate_response_schema(_), do: @error
@@ -439,7 +468,7 @@ defmodule Ipse.Extension.ModelCall do
 
   defp matches_response?(%{"version" => 1}, _text), do: true
 
-  defp matches_response?(%{"version" => version} = request, text) when version in [2, 3] do
+  defp matches_response?(%{"version" => version} = request, text) when version in [2, 3, 4] do
     with {:ok, object} <- Ipse.JSON.decode_bounded(text, request["max_output_bytes"]),
          :ok <- Ipse.JSON.validate_object(object),
          :ok <- Ipse.JSON.validate_result(request["response_schema"], object) do

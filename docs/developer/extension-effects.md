@@ -303,8 +303,37 @@ approval additionally rejects an execution deadline above the request's limit.
 No version-three request changes the SDK-2 aggregate or read deadline. Longer
 SDK-1 answer calls use the existing inference owner, cancellation and accounting.
 
+Use version four when a complete evidence pack needs its own bounded context,
+while the question remains in `input`:
+
+```json
+{"op":"model.complete","version":4,"profile":"extract","instruction":"Answer only from the supplied evidence and preserve uncertainty.","input":"What precedes release?","context":"The release requires recorded checksums.","max_output_bytes":1024,"timeout_ms":5000,"response_schema":{"type":"object","properties":{"answer":{"type":"string"}},"required":["answer"],"additionalProperties":false}}
+```
+
+Version four retains version two's structured response and 120000 ms request
+ceiling. Its required `context` is 1..8192 UTF-8 bytes. Instruction, question,
+profile and output retain their existing limits. Both the complete request and
+its complete `api_version/kind/request` host-call wrapper must fit the unchanged
+16 KiB SDK object bound, including JSON escaping. Field maxima do not promise
+that every combination fits. Refuse an oversized pack; do not silently drop or
+shorten evidence to make a comparison appear complete. Version three remains the
+explicit longer-deadline contract; version four does not extend any timer.
+
 The fixed host system instruction and labelled user-role JSON carry the approved
-instruction/input. Extension instructions do not become system rules. Reading
+instruction/input and, for version four, the exact context string. Extension
+instructions and context do not become system rules or permissions. The host
+preserves the additional field in request digests, full ordinary approval,
+accounting and reconstruction. All bytes contribute to actual model usage.
+Managed input admission, provider execution and historical projection use the
+same `Context.helper_messages/1` request dispatcher. The old two-argument helper
+and version-one through version-three message bytes remain unchanged.
+
+Context data does not authenticate its own source. A service invoked in a
+conversation inherits its existing dependency union; source guards still apply
+to worker delivery, approval, egress and output. An explicit command has its own
+input contract and cannot acquire those dependencies by copying protected text.
+No request version permits model inference or context publication inside a
+`decision.create` outer operation. Reading
 history, prompts, answers, memory or tool views needs separate capabilities.
 Profile existence grants no egress. Full approval displays the request, instance,
 artifact, session, profile, provider/model/billing, destination digest, reasoning,
@@ -368,7 +397,7 @@ metered inference. Other closed failures are `model_limit`,
 refund or final charge from interruption.
 
 Restore checks the original profile/policy before tail repair, retained response,
-canonical completion, request source and invocation/session/turn. Versions two and three
+canonical completion, request source and invocation/session/turn. Versions two through four
 reapply the approved schema. Child usage readers validate the same sources.
 Idle resume performs no inference; interrupted work retains unknown/partial
 measurements and shared liabilities. See [usage accounting](accounting.md)
@@ -574,6 +603,7 @@ Choose a regression that proves the boundary, including its refusal path:
 | File/shell ownership | Deny a write, then stop an owner whose shell is still running; require no denied file and no promoted interrupted success | `test/ipse/extension/invocation_test.exs`, `test/ipse/extension/event_job_test.exs` |
 | MCP source/capacity | Select a 65536-byte record ceiling; require zero discovery/effects and an unsealed journal. Compare exact 262144-byte encoded source with one byte less | `test/ipse/extension/effect_result_test.exs`, `test/ipse/extension/mcp_call_session_test.exs`, `test/ipse/mcp/` |
 | Text wire/result | Keep a small answer with more than 64 KiB valid framing; refuse above 1 MiB wire. Reject oversized text while retaining completed usage | `test/ipse/extension/invocation_test.exs`, `test/ipse/extension/model_call_test.exs`, `test/ipse/extension/model_jobs_test.exs` |
+| Complete helper context | Compare the exact 16 KiB host-call envelope with one encoded byte more; retain UTF-8 context unchanged and reject an omitted or altered current-source delivery | `test/ipse/extension/model_call_test.exs`, `test/ipse/extension/managed_collection_call_session_test.exs` |
 | Embedding identity | Change only a successful selection hash and recompute the superficial outcome hash; standalone Actions and Session must still refuse | `test/ipse/extension/embedding_call_session_test.exs`, `test/ipse/config/profiles_test.exs` |
 | Document source admission | Preserve an actual live claim through four batches; hold approval beyond source expiry and require no request body; reject foreign Session binding and restored claim authority | `test/ipse/session/document_embedding_test.exs`, `test/ipse/extension/collection_document_source_use_test.exs`, `test/extensions/knowledge/shared_producer_guard_session_test.exs` |
 | Embedding capacity | Four 4096-coordinate vectors under a 65536-byte ceiling must dispatch zero requests; normal-ceiling and one-vector controls complete | `test/ipse/extension/embedding_result_test.exs`, `test/ipse/provider/embedding_test.exs` |

@@ -103,6 +103,14 @@ contention before a fit check, so this cohort does not establish budget-driven
 denial. The earlier fast refusal remains unidentified; current-main integrated
 regression and consumer quality remain open.
 
+A [bounded helper-context increment](archive/2026-10-26-p30-p31-implementation/model-context-v4-20261105.md)
+now carries complete evidence separately from the question under unchanged SDK
+and request limits. Seventeen ModelCall and 91 related host tests pass. Native
+current approval and denial pass in a failed four-case run; separate fresh
+source-withdrawal and interruption cases pass with retained accounting, source
+fences, signed close and idle no replay. The failed aggregate remains separate;
+real matched answer/citation quality, installed use and full P30 remain open.
+
 For each active lane, name the next end-to-end result, its owner, required inputs
 and observable pass/fail checks. Use focused tests during implementation; preserve
 failures and stop repeating a probe when it does not resolve the user journey.

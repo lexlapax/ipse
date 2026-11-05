@@ -8,6 +8,10 @@ allowed =
       do: kind <> "_" <> boundary
     )
 
+allowed =
+  allowed ++
+    ~w(helper_context_service helper_context_service_deny helper_context_service_source_withdrawal helper_context_service_interrupted)
+
 true = selection in allowed
 
 expected =
@@ -15,7 +19,7 @@ expected =
     String.ends_with?(selection, "_owner_loss") ->
       "save_managed_approval_owner_loss"
 
-    selection in ~w(nested_native_deny helper_embedding_deny helper_model_deny helper_decision_deny helper_decision_experiment_deny) ->
+    selection in ~w(nested_native_deny helper_embedding_deny helper_model_deny helper_context_service_deny helper_decision_deny helper_decision_experiment_deny) ->
       "save_managed_approval_deny"
 
     selection in ~w(nested_mcp_deny nested_mcp_stale_token nested_mcp_cancel) ->
@@ -26,6 +30,9 @@ expected =
   end
 
 true = scenario == expected
+
+if String.starts_with?(selection, "helper_context_service"),
+  do: System.put_env("IPSE_TEST_MODEL_CONTEXT_V4", "1")
 
 System.put_env("IPSE_TEST_NATIVE_ROOT_APPROVAL", "1")
 System.put_env("IPSE_TEST_NATIVE_ROOT_APPROVAL_ROOT", root)

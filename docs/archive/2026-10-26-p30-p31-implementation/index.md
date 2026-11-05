@@ -76,6 +76,7 @@ nor resource/offline qualification. No daemon configuration or existing model wa
 ## Protected decision experiments — 2026-11-05
 
 - [Protected selection and assessment](protected-selection-assessment-20261105.md) retains the full six-note greedy baseline versus a four-note advised pack, then assesses an actual main-tool proposal under the same finite grant: nine main/two decision requests, two known settled calls and Saved/idle no replay. The failed pipeline, exact historical result materialization and fresh assessment-only continuation remain distinct; real quality and installed/full combined qualification stay open.
+- [Separate bounded helper context](model-context-v4-20261105.md) preserves complete evidence in version-four model calls under unchanged SDK and request limits. Current approval and denial pass in the failed four-case run; separate fresh source-withdrawal/interruption cases pass with conservative accounting and idle no replay. Real matched quality and installed qualification remain open.
 
 ## Consent storage checkpoint — 2026-11-05
 

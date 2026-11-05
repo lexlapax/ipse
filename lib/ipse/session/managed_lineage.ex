@@ -1223,7 +1223,7 @@ defmodule Ipse.Session.ManagedLineage do
     if Ipse.Extension.Actions.inference?(request) do
       input =
         if request["op"] == "model.complete",
-          do: Ipse.Session.Context.helper_messages(request["instruction"], request["input"]),
+          do: Ipse.Session.Context.helper_messages(request),
           else: request
 
       {:ok,

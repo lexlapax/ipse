@@ -883,7 +883,7 @@ defmodule Ipse.Session.Invocation do
                   {:ok, intent["effect_binding"]["destination"]}) do
       input =
         if phase == "model.complete",
-          do: Ipse.Session.Context.helper_messages(request["instruction"], request["input"]),
+          do: Ipse.Session.Context.helper_messages(request),
           else: request
 
       {:ok, runtime, input, [], admission}

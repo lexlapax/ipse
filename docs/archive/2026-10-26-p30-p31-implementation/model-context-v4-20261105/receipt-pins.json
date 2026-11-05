@@ -1,0 +1,21 @@
+{
+  "version": 1,
+  "sdk_freeze_evidence_sha256": "72a58e629bdd457a102e975d365b75840d7a7e0e371203cd70344014cb1a50fd",
+  "sdk_source_sha256": "0c94873a3c35d52f5641a0c65174b731ca6a24206df942c44f641cd49e63439b",
+  "sdk_runtime_sha256": "c982d5dc5b979f8bc247d3782a5c1d9380e4b4630d4f8375a1da527d68499185",
+  "normal_helper_sha256": "ac424d10e2ce6809cedcb157acd70092b00ca68aa7a48201a6007ac5dccbf33b",
+  "frozen_test_sha256": "7b28bc401d6d54f46fd07a4c58d9a1f60b7f083f340c877ed41c0ccbc8a226e9",
+  "cohort04_test_sha256": "5d8988e1d81c7b8efe124063560b6dfe413e9165d3e9de5120a99b7870978c7f",
+  "cohort05_test_sha256": "d21f515a318a15eeefcf9a59aa129a9bee3dfb1211060804d7c9be2797b015c8",
+  "private_logs_sha256": {
+    "cohort04": "e3592bd605b94339415506334a34ca244cd54b87dd31c1ae3d27154e883abf67",
+    "cohort05": "14cd208bff6e25469863b9636253c26a58e41db227c7e1c6491459e9f2f45ded",
+    "related_host91": "3ba7780250589f1b56b87b0a20f609d683f2d86c63f7645a312cb7d2b3867417"
+  },
+  "cohort04_primary_status_sha256": "63bfda558106fe45882bce2091e74fdd2dcbfb103db8d3e00186a824b507ae34",
+  "cohort04_outer_status_sha256": "f61f771d8e37bc4bf576f5c2ba4dc7da23ccd466753cff275c7f0355784f7349",
+  "cohort05_primary_status_sha256": "eb7c0599e8ddc96552befb8283f6321181bcb2251c9fc21a942b3c59c09203a5",
+  "cohort05_outer_status_sha256": "74707f6904e8b0cace877d35701152f19191685d8e0be9f9f2e4700be86487fe",
+  "neutral_status_sha256": "e3a991623a52a70aae4f23c48601e594b1f4daa265214d2b732189f214200d85",
+  "private_transcripts_exported": false
+}

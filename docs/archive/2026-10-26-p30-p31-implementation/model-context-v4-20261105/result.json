@@ -1,0 +1,162 @@
+{
+  "version": 1,
+  "date": "2026-11-05",
+  "scope": "synthetic complete-context service boundaries",
+  "milestone_complete": false,
+  "qualification": "four boundaries passed in separate disposable runs; no green four-case aggregate",
+  "canonical_tests": {
+    "model_call_passed": 17,
+    "related_host_passed": 91
+  },
+  "pure_controls": {
+    "tests": 17,
+    "legacy_validate_prepare_pairs": 18,
+    "old_helper_messages_byte_identical": true
+  },
+  "build": {
+    "base_commit": "d2520b7c94da6dc04bc441a91dc67527b41c38dc",
+    "reviewed_dirty_paths": 9,
+    "source_files": 197,
+    "host_modules": 241,
+    "applications": 16,
+    "normal_bundles": 4,
+    "clean_release": false
+  },
+  "cases": [
+    {
+      "boundary": "current",
+      "close_status": "confirmed",
+      "context_bytes": 1572,
+      "context_sha256": "4f3a4748e9c3ecfb9cc7f2d9d7a3a213f51e6919ec45828b9ee5b142d9f445af",
+      "dependencies_sha256": "4636c5a902543d8a646587ac4c82eb12703db7258629c0e3ec24b480c8954cff",
+      "journal_loaded": true,
+      "session_alive": false,
+      "terminal_status": 0,
+      "watcher_status": "completed",
+      "wire_count": 3,
+      "cohort": "04",
+      "observed_events_before_idle_sha256": "1ab2c269a7872ea9bf883b93e966032244b421f41e5485813028fec75abc9a2b",
+      "boundary_test_passed": true,
+      "signed_close_idle_source_collection_input_checks_passed": true
+    },
+    {
+      "boundary": "deny",
+      "close_status": "confirmed",
+      "context_bytes": 1572,
+      "context_sha256": "294304ecddffeb0db08a6e94cbe868234cd008cfc5bccd5b377da6b8d4799207",
+      "dependencies_sha256": "e02b2a44a14440efc85e72780796f5cb8fdc77d0e13391693a76c5eb1358faf3",
+      "journal_loaded": true,
+      "session_alive": false,
+      "terminal_status": 0,
+      "watcher_status": "completed",
+      "wire_count": 2,
+      "cohort": "04",
+      "observed_events_before_idle_sha256": "f399958df449633f1141f761ec2649a069127cd919d641106cc6133caf59faef",
+      "boundary_test_passed": true,
+      "signed_close_idle_source_collection_input_checks_passed": true
+    },
+    {
+      "boundary": "source_withdrawal",
+      "close_status": "confirmed",
+      "context_bytes": 1572,
+      "context_sha256": "4281766c1f531a610df167c93f48c5abfe46c544a3db1da50145b59cc1d9ab34",
+      "dependencies_sha256": "4db6b7fdd638f93f8aa7b2c4b9fa0da24c97903c99018886e3d3083acfd0c43e",
+      "terminal_status": 0,
+      "wire_count": 2,
+      "cohort": "05",
+      "observed_events_before_idle_sha256": "54b1f851f911e5ff86faebca46554053ea22dacd121e19e68bf3ec6fc3c66ee7",
+      "boundary_test_passed": true,
+      "signed_close_idle_source_collection_input_checks_passed": true
+    },
+    {
+      "boundary": "interrupted",
+      "close_status": "already_down",
+      "context_bytes": 1572,
+      "context_sha256": "a4806e9f177928ed6d9f49ad2435bc6c4152296031753e30e2afe79d9c0dc214",
+      "dependencies_sha256": "7f14f19b3976b04da99fc43a0dfcedf6a968e55ded3a0ba45ef0c147f949087b",
+      "terminal_status": 1,
+      "wire_count": 3,
+      "cohort": "05",
+      "observed_events_before_idle_sha256": "0631c57e8eb748056090cb56a7671045675ca9218a4d3a4cd9cea94f3758acf8",
+      "boundary_test_passed": true,
+      "signed_close_idle_source_collection_input_checks_passed": true
+    }
+  ],
+  "preserved_cohorts": [
+    {
+      "id": "01",
+      "passed": 0,
+      "failed": 1,
+      "remaining_unrun": 3,
+      "exit": 2,
+      "cause": "terminal input disabled while awaiting operator channel"
+    },
+    {
+      "id": "02",
+      "passed": 0,
+      "failed": 1,
+      "remaining_unrun": 3,
+      "exit": 2,
+      "cause": "terminal consumed async watcher reply"
+    },
+    {
+      "id": "03",
+      "passed": 0,
+      "failed": 1,
+      "remaining_unrun": 3,
+      "exit": 2,
+      "cause": "idle-only assertion applied after signed close append"
+    },
+    {
+      "id": "04",
+      "passed": 2,
+      "failed": 2,
+      "remaining_unrun": 0,
+      "exit": 2,
+      "cause": "negative fixtures assumed wrong interactive exit and pending-action state"
+    },
+    {
+      "id": "05",
+      "passed": 2,
+      "failed": 0,
+      "excluded": 204,
+      "elapsed_seconds": 109,
+      "exit": 0
+    }
+  ],
+  "source_withdrawal": {
+    "helper_request_bodies_observed": 0,
+    "action_status": "failed",
+    "accounting_completion": "failed/partial retained",
+    "callback_input": "unknown",
+    "lineage": "unavailable",
+    "interactive_exit": 0
+  },
+  "interrupted": {
+    "helper_request_body_observed": true,
+    "action_result_present": false,
+    "accounting_completion": null,
+    "pending_action_and_parent_preserved": true
+  },
+  "limits": {
+    "context_utf8_bytes": 8192,
+    "host_call_encoded_bytes": 16384,
+    "request_timeout_ms": 120000,
+    "fixture_helper_timeout_ms": 3000,
+    "fixture_read_ms": 20000,
+    "fixture_pty_ms": 60000,
+    "fixture_case_ms": 90000,
+    "outer_seconds": 450,
+    "kill_grace_seconds": 10,
+    "product_deadlines_raised": false
+  },
+  "cleanup": {
+    "all_sdk_copy_posts": 0,
+    "independent_actual_host_clear": true,
+    "automatic_retry": false
+  },
+  "real_paid_calls": 0,
+  "original_retained_cohort_access": false,
+  "quality_verified": false,
+  "installed_verified": false
+}
