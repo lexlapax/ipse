@@ -1,11 +1,178 @@
 Code.require_file("../../../dev/evaluation/protected_answer.exs", __DIR__)
 
+for path <- ~w(profiles notes knowledge/contracts knowledge/records knowledge/decision_policy),
+    do:
+      Code.require_file(
+        Path.expand("../../../extensions/knowledge/src/" <> path <> ".ex", __DIR__)
+      )
+
+Path.expand("../../../extensions/knowledge/src/knowledge.ex", __DIR__)
+|> File.read!()
+|> String.replace(
+  "defmodule IpseKnowledge.Knowledge do",
+  "defmodule IpseKnowledge.PairedAnswerRenderingFixture do",
+  global: false
+)
+|> Code.compile_string()
+
 defmodule Ipse.Development.Evaluation.ProtectedAnswerTest do
   use ExUnit.Case, async: true
   alias Ipse.JSON
   alias Ipse.Extension.{Invocation, ResultDocument, ResultSource, Worker}
   alias Ipse.Session.{ManagedLineage, ManagedOutput, ManagedReference, WorkerInput}
   alias Ipse.Development.Evaluation.{ProtectedAnswer, Metrics, SelectionExperiment}
+
+  test "actual ordinary greedy publication preserves six complete notes and all eight eligible records" do
+    records = Enum.map(1..8, &record("#{&1} " <> String.duplicate("x", 690) <> " café 雪"))
+
+    operations =
+      Map.new(Enum.with_index(records), fn {r, n} ->
+        {r["key"], String.pad_leading(Integer.to_string(n), 32, "a")}
+      end)
+
+    notes = Enum.map(records, &{&1["outcome"]["value"]["record"], operations[&1["key"]]})
+
+    ctx = %{
+      notes: notes,
+      index: Enum.map(notes, &elem(&1, 0)),
+      total: 8,
+      coverage: "complete",
+      unavailable: 0,
+      next: nil
+    }
+
+    renderer = IpseKnowledge.PairedAnswerRenderingFixture
+    assert {:ok, greedy} = renderer.recall_baseline_projection(ctx, "knowledge", 8192)
+    assert greedy.included === 6
+
+    assert {:ok, bound} =
+             ProtectedAnswer.recall_rendering(
+               greedy.items,
+               records,
+               operations,
+               "knowledge",
+               8192
+             )
+
+    assert length(bound.records) === 6 and length(records) === 8
+    assert bound.items === greedy.items and bound.coverage === "partial"
+
+    assert {:ok, baseline_request} =
+             ProtectedAnswer.publication_request("Frozen question", greedy.items)
+
+    assert {:ok, actual_context} = JSON.decode_unique(baseline_request["context"])
+    assert actual_context === greedy.items
+    assert baseline_request["version"] === 4 and byte_size(baseline_request["context"]) <= 8192
+
+    new_operations =
+      Map.new(operations, fn {key, _} -> {key, JSON.sha256(key) |> binary_part(0, 32)} end)
+
+    new_ctx = %{
+      ctx
+      | notes: Enum.map(records, &{&1["outcome"]["value"]["record"], new_operations[&1["key"]]})
+    }
+
+    assert {:ok, selected_greedy} =
+             renderer.recall_baseline_projection(new_ctx, "knowledge", 8192)
+
+    assert {:ok, rebound} =
+             ProtectedAnswer.recall_rendering(
+               selected_greedy.items,
+               records,
+               new_operations,
+               "knowledge",
+               8192
+             )
+
+    assert rebound.signature === bound.signature
+    refute rebound.items === bound.items
+
+    assert {:ok, candidate} =
+             renderer.recall_projection(new_ctx, Enum.take(new_ctx.notes, 4), "knowledge", 8192)
+
+    assert {:ok, candidate_bound} =
+             ProtectedAnswer.recall_rendering(
+               candidate.items,
+               records,
+               new_operations,
+               "knowledge",
+               8192
+             )
+
+    assert length(candidate_bound.records) === 4
+    refute candidate_bound.signature === bound.signature
+
+    for {items, eligible, ops, instance, allocation} <- [
+          {greedy.items, Enum.take(records, 6), operations, "knowledge", 8192},
+          {greedy.items, records, new_operations, "knowledge", 8192},
+          {greedy.items, records, operations, "foreign", 8192},
+          {greedy.items, records, operations, "knowledge", 4096},
+          {Enum.reverse(greedy.items), records, operations, "knowledge", 8192}
+        ] do
+      assert {:error, _} =
+               ProtectedAnswer.recall_rendering(items, eligible, ops, instance, allocation)
+    end
+  end
+
+  test "complete published text cannot be shortened, duplicated or given a forged read span" do
+    records = Enum.map(1..8, &record("#{&1} " <> String.duplicate("é", 340)))
+
+    operations =
+      Map.new(Enum.with_index(records), fn {r, n} ->
+        {r["key"], String.pad_leading(Integer.to_string(n), 32, "a")}
+      end)
+
+    notes = Enum.map(records, &{&1["outcome"]["value"]["record"], operations[&1["key"]]})
+
+    ctx = %{
+      notes: notes,
+      index: Enum.map(notes, &elem(&1, 0)),
+      total: 8,
+      coverage: "complete",
+      unavailable: 0,
+      next: nil
+    }
+
+    assert {:ok, greedy} =
+             IpseKnowledge.PairedAnswerRenderingFixture.recall_baseline_projection(
+               ctx,
+               "knowledge",
+               8192
+             )
+
+    [first | rest] = greedy.items
+    {:ok, group} = JSON.decode_unique(first["text"])
+    [row | rows] = group["records"]
+
+    for tampered <- [
+          List.replace_at(row, 2, String.duplicate("f", 32)),
+          List.replace_at(row, 3, 1),
+          List.replace_at(row, 4, 1),
+          List.replace_at(row, 5, "short")
+        ] do
+      item = Map.put(first, "text", Jason.encode!(%{group | "records" => [tampered | rows]}))
+
+      assert {:error, _} =
+               ProtectedAnswer.recall_rendering(
+                 [item | rest],
+                 records,
+                 operations,
+                 "knowledge",
+                 8192
+               )
+    end
+
+    item = Map.put(first, "text", Jason.encode!(%{group | "records" => [row, row | rows]}))
+
+    assert {:error, _} =
+             ProtectedAnswer.recall_rendering(
+               [item | rest],
+               records,
+               operations,
+               "knowledge",
+               8192
+             )
+  end
 
   defp record(text \\ "Synthetic café observation") do
     key = "note." <> JSON.sha256(text)

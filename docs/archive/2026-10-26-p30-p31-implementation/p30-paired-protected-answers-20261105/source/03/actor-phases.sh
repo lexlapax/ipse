@@ -1,0 +1,16 @@
+#!/bin/bash
+set -euo pipefail
+base=/home/lexlapax/projects/lexlapax/ipse/_build/verification/p30-paired-protected-workflow-20261105-03
+sdk=/home/lexlapax/projects/lexlapax/ipse/_build/verification/retained-final-runtime-d548-20261105-02/source
+pty=/home/lexlapax/projects/lexlapax/ipse/_build/verification/retained-final-runtime-d548-20261105-02/clock-runtime/pty
+[ "$#" -eq 1 ]
+root=$1
+args=()
+for directory in "$sdk"/_build/test/lib/*/ebin; do args+=(-pa "$directory"); done
+args+=(-pa "$base/helper-ebin")
+for phase in setup read baseline selection candidate; do
+  printf 'phase=%s requested_utc=%s\n' "$phase" "$(date -u +%Y-%m-%dT%H:%M:%SZ)" >> "$base/evidence/phase-dispatch.txt"
+  if "$pty" --assertion /usr/bin/elixir "${args[@]}" "$base/entry.exs" "$root" "save_managed_approval_cross_session_paired_$phase" > "$base/evidence/$phase-private.log" 2>&1; then code=0; else code=$?; fi
+  printf '%s\n' "$code" > "$base/evidence/$phase.exit"
+  [ "$code" -eq 0 ] || exit "$code"
+done

@@ -114,9 +114,14 @@ real matched answer/citation quality, installed use and full P30 remain open.
 The [evaluation adapters](archive/2026-10-26-p30-p31-implementation/p30-evaluation-adapters-20261105.md)
 now supply frozen assessment declarations, an OFF Session materializer and
 protected baseline/candidate answer projection. Fifty-nine focused development
-checks pass. Complete baseline freezing, inherited provenance and citation byte
-integrity are checked; authentic paired execution, independent labels,
-whole-task time/cost, model quality and installed qualification remain open.
+checks pass. A later [synthetic paired protocol](archive/2026-10-26-p30-p31-implementation/p30-paired-protected-answers-20261105.md)
+qualifies eight eligible protected reads, the actual six-note ordinary baseline
+frozen before selection, and a four-note candidate across three main, two helper
+and one decision wire. Complete inherited unions, current release/cleanup,
+accounting, Saved/close/idle and no replay pass. The adopted version-2 source
+passes 61 focused tests and the working integration build. Independent labels,
+whole-task time/cost, model quality and standalone/installed CLI qualification
+remain open.
 
 For each active lane, name the next end-to-end result, its owner, required inputs
 and observable pass/fail checks. Use focused tests during implementation; preserve
@@ -1237,7 +1242,7 @@ passes never alter a historical aggregate.
 | P30B | In progress: operator-only profiles, bounded owned HTTP, `host.decision`, Session/replay bindings, v3 usage/prices and shared budgets implemented; [current-source synthetic controls](archive/2026-10-26-p30-p31-implementation/p30-current-decision-followup.md) cover zero-egress refusal, hosted/compatible wire, tampering, owner loss, inert resume and child approvals. A separately built decision artifact and the exact generic Linux package pass synthetic installed checks; the repaired 9f1707c full-source baseline passes, while later increments and live account access remain unverified. No qualified consumer is implied |
 | P30C | In progress: [pure Knowledge planners and zero-call controls](archive/2026-10-26-p30-p31-implementation/p30c-pure-policy.md) have an [independent pure-scope audit and reporting correction](archive/2026-10-26-p30-p31-implementation/p30c-pure-policy-audit.md). A later [coverage-gap repair](archive/2026-10-26-p30-p31-implementation/p30c-coverage-followup.md) has a [separate pure-scope review and adversarial grid](archive/2026-10-26-p30-p31-implementation/p30c-coverage-independent-audit.md). A [synthetic planner-to-Session fixture](archive/2026-10-26-p30-p31-implementation/p30-current-decision-followup.md#synthetic-planner-to-session-shadow-control) covers approval and advice mapping; protected helper integration and qualified consumer selection remain open after B and P31B |
 | P30D | Bounded implementation and synthetic protected journey qualified: explicit over-budget note selection retains the complete ordinary greedy baseline, followed by assessment of a real main-tool-created pending proposal under one finite two-call grant. Exact source/get/release, accounting, Saved/close/idle and no-replay checks pass with the failed pipelines separately preserved; broader frozen workloads and final combined/installed qualification remain open; after C and P31E |
-| P30E | In progress: frozen selection and assessment declarations/scoring, an OFF assessment Session owner and protected answer projection are implemented with 59 focused development checks. Complete baseline reprojection, inherited provenance, exact citation byte joins, pending-only versus observed-durable strata and null timing/cost are retained. Authentic paired execution and quality remain unverified. Complete matched real-input/independent-label comparisons against engine-free baselines and installed workflows; retain useful, rejected/no-benefit and unverified dispositions, unavailable-engine honesty and separate live/model access. Document/graph routing needs later independent qualification; after D |
+| P30E | In progress: frozen declarations/scoring, an OFF assessment owner and protected answer projection retain complete baseline reprojection, inherited provenance, citation byte joins, pending-only versus observed-durable strata and null timing/cost. A synthetic paired 8→6→4 protocol passes with three main, two helper and one decision wire; the adopted version-2 source passes 61 focused tests and the working integration build. Independent quality, matched real-input/label comparisons, whole-task time/cost and standalone/installed CLI workflows remain open. Retain useful, rejected/no-benefit and unverified dispositions, unavailable-engine honesty and separate live/model access. Document/graph routing needs later independent qualification; after D |
 
 Acceptance requires exact result count/type/range/distribution validation, valid
 per-question refusal handling, uncertainty and malformed-output distinctions,

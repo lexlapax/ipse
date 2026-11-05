@@ -396,11 +396,26 @@ When the study also compares answers, `dev/evaluation/protected_answer.exs`
 projects the protected service's saved output into those existing study rows;
 it is not another inference engine. Start with a complete, settled read prefix
 and its exact Actions/ManagedReads observations. Freeze the original question,
-source membership and helper execution before generating the baseline answer.
+eligible source membership and helper execution before generating the baseline
+answer.
 The helper execution includes the selected provider/model/endpoint and token
 settings, with profile `extract` and a 3000-ms request deadline in this adapter.
 Both arms must match that same execution; the separately declared decision-engine
 route is not the answer route.
+Match the prepared execution to `ModelCall.execution/2` from the actual saved
+Session header as well as to the selected configuration.
+
+Keep the eligible read set, ordinary baseline and candidate pack distinct.
+A version-1 source receipt uses its complete read set as the baseline. A
+version-2 receipt instead binds the actual ordinary recall job, its allocation,
+initial index, every protected read, verification index and final publication.
+The adapter checks their order, common generation, current output release and
+confirmed cleanup, and validates the actual ordinary rendering from those
+observations. For example, eight eligible reads can yield a six-note ordinary
+baseline and a four-note candidate. Eight, six and four describe different
+memberships; none can replace another in the receipt or dependency checks.
+The journey's read extractor must distinguish the initial empty context clear
+from the final nonempty publication rather than assuming a single publication.
 
 Prepare the complete engine-free answer with `ProtectedAnswer.baseline_request/3`,
 then let the ordinary owner perform its separately approved service call.
@@ -409,15 +424,20 @@ model action and exact response to the existing baseline-blob shape. Freeze that
 actual blob before collecting candidate predictions. `prepare/8` later
 reprojects the prior baseline and requires exact equality with the frozen blob;
 a supplied favorable prediction is insufficient. It exposes `baseline_records`
-separately from the selected pack. Request and citation validation support the
-complete baseline of up to sixteen records; chosen packs and candidate study
-rows remain limited to four. Both use the unchanged 8192-byte v4 context and
-complete SDK-envelope limits. A complete baseline that does not fit refuses;
-never trim it to make a comparison possible.
+separately from the selected pack. For version 2, `publication_request/2` keeps
+the complete final published items, including their grouped text, index and
+coverage envelopes, as untrusted v4 context. Measuring raw note-text lengths or
+replacing those items with the candidate pack does not reproduce that baseline.
+Request and citation validation support a baseline of up to sixteen records;
+chosen packs and candidate study rows remain limited to four. Both use the
+unchanged 8192-byte v4 context and complete SDK-envelope limits. A complete
+baseline that does not fit refuses; never trim it to make a comparison possible.
 
 For both answer arms, the materializer reconstructs the real pre-entry service
 lineage and requires every original read-record v4 dependency, including records
 outside the selected pack. It preserves additional root or selector dependencies.
+For the eight-read example, all eight original dependencies remain required
+even though ordinary recall publishes six notes and the candidate uses four.
 The candidate also retains the complete actual baseline entry union.
 The initial delivered WorkerInput and the model helper's admitted preflight must
 bind that complete union and the exact request through the existing host
