@@ -30,7 +30,8 @@ synthetic providers; no paid account is required. Mix needs loopback. Resolve
 
 Read [Architecture](architecture.md) to follow prompt, session permissions and completion, then
 [Persistence](persistence.md) for intent-before-effect and interrupted outcomes.
-Use [Testing](testing.md) to review the complete path and verify a changed artifact.
+Use [Testing](testing.md) to run the complete source baseline, then choose a
+fixture recipe by its actual Session, native or extension owner.
 
 ## Navigate the consolidated tree
 

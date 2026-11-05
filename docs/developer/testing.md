@@ -5,6 +5,19 @@ candidate at its source, process, platform, and installed boundaries. Evidence
 belongs to the revision/configuration/environment tested. Fixtures prove no real
 account behavior, algorithm quality, or unexecuted OS guarantee.
 
+Use the [complete source baseline](#run-the-complete-source-baseline) after a runtime
+change, then select the focused owner below. Documentation-only and packaging
+changes have their [own checks](#verify-documentation-and-packaging-at-their-own-boundaries).
+
+| Boundary to change | Focused verification path |
+| --- | --- |
+| Session evidence, capture or accounting | [Protected publication](#verify-session-evidence-and-protected-publication) |
+| Worker input, native approval or result release | [Managed delivery](#verify-managed-delivery-and-effect-admission) |
+| Pending/accepted notes, retention or clocked turnover | [Native note lifecycle](#verify-native-note-management-and-clocked-retention) |
+| Filesystem policy, native helpers or terminal ownership | [OS and protocols](#exercise-actual-os-policy-and-native-protocols) |
+| Document extraction, source acquisition or generations | [Document boundary](#verify-document-acquisition-and-generation) |
+| Source/installed SDK or a real account | [Independent artifact](#prove-an-independent-artifact-without-rebuilding-the-host), [live provider](#verify-a-real-provider-explicitly) |
+
 Keep source/build outputs fixed during a run. Concurrent compilation or native
 rebuilding can invalidate executable pins. Use separate checkouts/build roots for
 different toolchains. [Setup](index.md) supplies prerequisites; the
@@ -52,6 +65,74 @@ can still execute afterward. For a cleanup example, follow Worker failure throug
 `lib/ipse/extension/worker.ex`. Callback failure can have confirmed native cleanup;
 a dead worker without its receipt cannot. Read the consumer that commits the fact.
 
+## Run the complete source baseline
+
+```sh
+./dev/build.sh
+mix format --check-formatted
+mix compile --warnings-as-errors
+elixir dev/check-ci-policy.exs
+elixir dev/check-docs.exs
+mix test
+IPSE_CHECK_HOME=$(mktemp -d)
+IPSE_HOME="$IPSE_CHECK_HOME" ./bin/ipse demo
+```
+
+The build uses locked dependencies/Rust helpers. Tests use loopback HTTP, generated
+keys, temporary state, and real processes, without paid credentials. Require a
+completed ExUnit summary plus exit status. SIGTERM/partial output is not a finished
+suite; deliberate process/TLS failure logs alone are not failed tests. Retain failed
+runs when investigating.
+
+Mix locks and fixtures need loopback sockets. Use the environment's permission
+flow or a permitted terminal, without disabling TLS, skipping assertions, or
+changing transports. Test the supported toolchain floor when changing compilation
+or raw ERTS launch, using isolated build roots. Raw launch explicitly selects
+Unicode output; locale defaults must not corrupt protocols. Broaden/repeat tests
+when a new change/failure warrants it, rather than rerunning unrelated suites.
+
+### Isolate subprocess inputs and shared resources
+
+Run subprocess controls in isolation as well as in the full suite. Declare every
+module they load and use absolute source/code paths with a private working
+directory. A plain Elixir VM can otherwise resolve an application from the
+checkout's basename, and a previously loaded fixture can hide a missing dependency.
+
+The declaration-CLI fixture copies tracked and nonignored untracked repository
+files into a temporary synthetic repository. Run the full suite from a clean
+committed clone when the working checkout contains private or unrelated untracked
+files; do not let a verification fixture copy those files as test input.
+An isolated source copy also needs its own Git metadata and admitted source index
+for this fixture's `git ls-files` call. Record that setup before execution; a
+directory copied without `.git` cannot establish a passing declaration workflow.
+
+Before parallel groups, identify global OS owners and fixed paths. Separate VMs
+do not separate the per-user native terminal lock: keep operator/PTY/Rust terminal
+cohorts serial. Eligible groups need private real CWD/checkouts, Git/index,
+App/dependency build metadata and HOME/TMP, with an exact disjoint file-list union.
+Do not apply a second partition filter to explicit groups. Ordinary direct
+`Session.approve` fixtures are not automatically terminal users; inspect their
+actual helper closure. Bound aggregate CPU, memory and fixture storage before
+dispatch, retaining native product deadlines. Filesystem free space alone does
+not prove per-user quota headroom. Never remove retained evidence to make a run fit.
+
+A clean child environment must explicitly select an installed UTF-8 locale. A
+Latin-1 startup warning can corrupt JSON stdout and Unicode cleanup paths; fix
+the environment rather than suppressing warnings or retrying effects. Use the
+fixture's qualified storage mount and bounded own write/sync preflight; a setup
+refusal is not a product-path result.
+
+When transferring code paths with `-pa`, exclude the implicit current-directory
+entry and reverse the argument sequence so successive prepends retain the original
+search order.
+The verification fixture bootstrap locates the loaded `Ipse.Extension` BEAM and
+validates its SDK directory. It does not infer that directory from the checkout's
+application-like name. The shadow-directory regression exercises this distinction
+in a fresh VM.
+The [MCP-store contract control](../../test/extensions/knowledge/store_contract_test.exs)
+loads Profiles, Evidence and MCPCAS explicitly, runs in a temporary directory,
+and checks that those modules remain unloaded in the parent.
+
 ## Require positive controls and inspect uncertainty
 
 Do not infer refusal from absent display text. Observe the unchanged file/store,
@@ -81,27 +162,14 @@ Keep journal/native/cleanup assertions afterward. With after-turn jobs, wait for
 actual settlement rather than assuming that observation ends the turn.
 Observation watchdogs are not product latency guarantees.
 
-For a storage-profile change, isolate the new helper and compile-pinned Runner
-from earlier diagnostic graphs. Run the Rust selector/feature controls, actual
-positive protected publication and explicit unsupported-filesystem refusal,
-plus retained-stage sync/owner-loss/reinventory controls. Preserve first failures
-and rerun only repaired cases while iterating. An exact-kernel tmpfs pass cannot
-qualify Btrfs, native shell confinement or reboot durability. Match a full
-source/package candidate to its own freshly built helper before final acceptance.
+Unless explicitly labeled live or installed, the recipes below exercise
+synthetic fixtures. Actual native means the real stated kernel/helper boundary
+with automated input, not independent human attribution. Record the selected
+platform, inputs and exclusions; no fixture pass alone proves semantic quality,
+full capacity or annual endurance. Authoritative topic chapters own the detailed
+contracts; this chapter selects observations and verification commands.
 
-The exact-kernel storage fixture distinguishes its two mounts. Its positive
-publication uses the qualified temporary filesystem. Its Btrfs refusal runs only
-when the checkout is on Btrfs or you explicitly select an existing Btrfs root:
-
-```sh
-IPSE_TEST_BTRFS_ROOT=/absolute/path/on/btrfs mix test test/ipse/runner/storage_profile_test.exs
-```
-
-The fixture creates and removes a private test directory under that root. A
-tmpfs checkout without an explicit root skips only the Btrfs case; that skip
-proves no Btrfs behavior. An explicitly selected wrong filesystem fails the
-assertion instead of silently skipping. The exact kernel requirement still
-applies; this test setting changes no production storage admission.
+### Bind fixture messages and canonical dependencies
 
 CLI prompt display can precede turn completion: busy-to-idle keeps an already
 active reader rather than redrawing its prompt. A PTY fixture should require
@@ -124,6 +192,71 @@ content and safe tool tail separately; retain ordinary user messages and malform
 reference markers. This fixture selection grants no production authority and must
 not remove host context from the real provider request.
 
+Pure fixtures must also reproduce the host's canonical dependency union. Use
+`ManagedReference.union/1` before placing reads into an invocation, including
+negative variants. Session stores reads in digest order; two individually valid
+cached root observations in another order are not a valid invocation input.
+Keep the full set and change only the intended root, policy or cache condition
+when testing its refusal. A populated fixture cache is trusted consistency data,
+not evidence of a committed read or current publication authority; the registered
+Session cases below establish those boundaries separately.
+
+### Reopen the same mode and inspect permitted suffixes
+
+Capture the journal after `Session.close_confirmed/1` returns. On idle resume,
+require those bytes as an exact prefix. An ownership-only suffix assertion
+requires the **same effective approval and execution mode** at reopening,
+including approval origin, headless state and enclosing ceiling. Preserve the
+fixture's explicit ordinary approval policy; do not replace it with a default
+or revive an ended Session-only grant to make a byte assertion pass.
+
+For that same-mode case, the current release-receipt layout appends one complete
+ownership record validated by `ReleaseReceipt.valid_owner_marker?/2`; legacy
+journals with no receipt layout remain byte-for-byte unchanged. The shared
+[`assert_idle_resume_journal/3`](../../test/support/resume_assertions.exs) helper
+checks this contract. A legitimate mode change can additionally append
+`execution_mode_resumed`. A mode-transition fixture must assert that exact
+transition and strict Saved reconstruction, rather than accepting arbitrary extra
+records or applying the ownership-only helper to a different mode.
+
+Confirmed close then appends its release intent. Validate it against the same
+owner and native signed-release claim separately from the reopening assertion.
+Neither ownership, mode nor release records permit replaying effects or changing
+prior conversation records.
+Closing an active lifecycle epoch first records an unsigned closure with
+`cleanup_confirmed: false`; that record cannot predict the later native release.
+Require its digest in the current release intent and check the signed-release
+claim after confirmed close instead of expecting the closure itself to assert
+completed cleanup. The parallel-delegation demo exercises this sequence.
+When intentionally corrupting a journal, establish the
+original source binding first and assert the earliest actual refusal: a modified
+record or shifted byte offset can invalidate lifecycle sources before the
+domain-specific checkpoint validator runs. Keep a separate pure validator control
+when its narrower refusal is also part of the contract.
+
+### Separate setup, execution and reconstruction failures
+
+Distinguish timeout before command-handler startup from timeout during active work.
+The evaluation-session fixture observes its worker's readiness and active Session
+phase before asserting post-effect cancellation; a separate delayed-start case
+keeps the short policy and proves that no command handler ran. Concurrent HTTP fixtures
+must also reserve enough listener backlog for all clients started before accepts.
+
+Restore must validate committed records/source bindings before permissible torn-tail
+repair. Corrupt receipts must not pass because repair removed evidence. Check
+configuration drift, captured CAS, source identity, cached results, and each
+unstarted/unknown classification. Never replay an uncertain effect to reconstruct
+its display or event.
+
+## Verify Session evidence and protected publication
+
+Follow [Session sources](session-sources.md) for proof/current-use ownership and
+the [Collection SDK](collection-sdk.md) for publication and accounting. Pair an
+allowed current source with the intended refusal; do not let an earlier provider,
+shape or Worker-frame error stand in for the boundary under test.
+
+### Use registered transport for managed history
+
 For managed-history integration, use a registered native provider route even
 when responses are synthetic. A `provider_module` callback on the demo route
 does not supply actual send/completion ownership. Use the existing loopback HTTP
@@ -143,14 +276,7 @@ and finish the turn normally. Preserve that refusal's failed commit, empty
 effect accounting and unchanged store assertions; an unrelated unregistered-route
 error must not supply the negative control.
 
-Pure fixtures must also reproduce the host's canonical dependency union. Use
-`ManagedReference.union/1` before placing reads into an invocation, including
-negative variants. Session stores reads in digest order; two individually valid
-cached root observations in another order are not a valid invocation input.
-Keep the full set and change only the intended root, policy or cache condition
-when testing its refusal. A populated fixture cache is trusted consistency data,
-not evidence of a committed read or current publication authority; the registered
-Session cases below establish those boundaries separately.
+### Build a genuine capture before testing queue races
 
 Use the registered V3 capture cases as worked examples:
 
@@ -170,12 +296,12 @@ error cannot stand in for the capacity control.
 
 The sequence case saves 27 candidates through 54 actual adapter requests, checks
 the resulting records and distinct original Session proofs, and crosses a nonzero
-live-page split fence. Each Session must complete, settle and close; idle resume
-may append only its ownership record before confirmed close, with no Worker replay.
+live-page split fence. Each Session must complete, settle and close. Same-mode idle resume follows the
+[suffix contract above](#require-positive-controls-and-inspect-uncertainty), with no Worker replay.
 A separate legacy-reader case first creates a genuine managed record through the
 registered route, then requires a newly reviewed legacy reader to refuse its text.
 These two cases retain private synthetic roots printed as `REGISTERED_CAPTURE_ROOT`.
-They exercise repeated additions, not elapsed retention, annual turnover or quality.
+For the source and publication owners, follow [Session sources](session-sources.md) and the [Collection SDK](collection-sdk.md); repeated additions do not exercise elapsed retention.
 
 For the bundled headless CLI path, run:
 
@@ -192,8 +318,7 @@ Require zero CLI exit, a completed turn and denied write/shell targets. An empty
 store or an unknown capture must fail; checking only that no literal exists is
 vacuous. The process has no `--yes`, grant injection or historical BEAM overlay.
 Run the complete file after changing its launcher to preserve setup/refusal cases.
-Synthetic responses establish this source path, not live-model quality or an
-installed runtime.
+Use the topic's separate installed/live checks when those boundaries change.
 
 The concurrency case first saves a synthetic protected candidate, fills the pending
 population to 63, and coordinates two Sessions at the capture barrier. Five
@@ -206,6 +331,8 @@ settled accounting and no Worker replay. Its retained root prints as
 `COMPETING_CAPTURE_ROOT`. The service slot releases before either extension
 waits at the barrier. Excluded cases have not run. These are protocol and
 ownership controls, without real model inference or semantic-quality evidence.
+
+### Distinguish admission, source and mapping refusals
 
 Use the supported single-new-record V3 publication shape when a fixture is
 testing current capture rather than the deliberately closed legacy API. The
@@ -238,6 +365,8 @@ the same no-snapshot V3 request from a current Session: it must actually publish
 settle and complete through the registered route, then resume without replay.
 The worker's claimed generation is only a CAS input, never source authority.
 
+### Check accounting, owner loss and replay bindings
+
 Use `publication_accounting` and `publication_fault` in the same Session module
 for supported V3 accounting and owned-loss changes. The conflict control first
 publishes successfully, then submits an unobserved stale generation. A managed
@@ -266,6 +395,8 @@ Require replay rejection after recalculating the outcome digest, so a trivial
 stale digest is not the only barrier. The unchanged positive must also settle,
 preserve one visible attributed candidate and resume without replay.
 
+### Preserve selected evidence across callbacks
+
 For ordinary private text callbacks, keep Session open until the actual expected
 text reaches the fixture. A first-request start/end or a generic payload marker
 does not prove delivery of a later request's answer. Optional consumers do not
@@ -285,211 +416,6 @@ union, its candidate must contain B's exact SDK proof, and admission must refuse
 before a publication intent. Require real seed/winner saves, unchanged winner
 root, settled accounting, strict Saved and inert recovery. A seed route error or
 an earlier input-frame refusal cannot qualify that later publication boundary.
-
-Capture the journal after `Session.close_confirmed/1` returns. On idle resume,
-require those bytes as an exact prefix. With the current release-receipt layout,
-the only suffix before closing the resumed Session is one complete ownership
-record validated by `ReleaseReceipt.valid_owner_marker?/2`; legacy journals with
-no receipt layout remain byte-for-byte unchanged. Confirmed close then appends
-its release intent. Validate that intent against the same owner and the native
-signed-release claim separately from the resume assertion. Neither ownership nor
-release records permit replaying effects or changing prior conversation records.
-Closing an active lifecycle epoch first records an unsigned closure with
-`cleanup_confirmed: false`; that record cannot predict the later native release.
-Require its digest in the current release intent and check the signed-release
-claim after confirmed close instead of expecting the closure itself to assert
-completed cleanup. The parallel-delegation demo exercises this sequence.
-When intentionally corrupting a journal, establish the
-original source binding first and assert the earliest actual refusal: a modified
-record or shifted byte offset can invalidate lifecycle sources before the
-domain-specific checkpoint validator runs. Keep a separate pure validator control
-when its narrower refusal is also part of the contract.
-
-For literal-replacement lifecycle checks, reuse
-`test/support/managed_supersession_session.exs` for actual statement/relation
-reviews, physical publication and exact close/resume suffixes. The history-use
-and interrupted-compaction launchers select their distinct follow-up checks in
-that isolated child process. Extend those checks rather than copying the setup:
-a copied fixture can retain obsolete ownership assertions even while exercising
-the same production path. Run the related native cases serially:
-
-```sh
-mix test test/ipse/session/managed_supersession_session_test.exs test/ipse/session/managed_history_use_session_test.exs test/ipse/session/managed_compaction_diagnostic_test.exs --max-cases 1
-mix test test/ipse/session/managed_supersession_native_test.exs test/dev/knowledge/managed_v3_turnover_native_test.exs --max-cases 1
-```
-
-History use checks signed historical attribution, successor removal, unavailable
-originals and revocation. Interrupted compaction kills the original caller after
-staging and requires native controller exit, an unchanged root, unconfirmed
-journal/control status and no replay. Its printed directory retains synthetic
-diagnostic evidence. Neither check establishes annual turnover, complete capacity
-or model quality.
-
-`managed_supersession_native_test.exs` runs its six default modes through that
-genuine Session path. The split fixture pauses after the actual new assertion
-is committed but before its worker selects a root, then seeds explicitly
-synthetic page geometry around the authentic selected records. Publication must
-still authenticate the real old/new sources, use native review and commit all
-eight sidecars within the closed read and measured reservation bounds. Filler
-rows supply no source authority or capacity-quality result.
-
-The deadline control pauses at the actual root-switch boundary, waits past the
-exact signed target deadline and requires the native elapsed reply while its
-transaction remains live. Deterministic pause modules are installed in their
-isolated child host before initial permission review and retain stable inventoried
-BEAM paths. They change no native helper or production source. Distinguish these
-controlled-host faults from unmodified runtime qualification. The existing
-turnover records separate genuine native review time from an explicitly supplied
-future as-of expiry component. They do not exercise a native year-long lifecycle.
-
-Before building a process-clock lifecycle workload, verify that the selected VM
-and Rust standard library observe the same instrumented clock:
-
-```sh
-elixir -e 'ExUnit.start(max_cases: 1); Code.require_file("test/dev/knowledge/process_clock_test.exs")'
-```
-
-This standalone check starts no Ipse application and needs no built SDK or native
-terminal. It compiles `dev/fixtures/process_clock.rs` as a private Linux/glibc
-x86-64 preload library and uses fresh plain VMs/Rust children in private homes.
-It compares realtime clocks with raw kernel observations at zero, fractional-second
-and 30/90/365/400/466/500-day offsets, checks real monotonic timers, and requires malformed
-or missing offsets to refuse wall reads. Other platforms skip explicitly.
-The loader and syscall ABI reuse the [existing host dependency](dependencies.md#host-and-build-inventory).
-
-The offset is fixed before exec and applies only to that process tree. A lifecycle
-driver must finish or inspect all admitted work, confirm owner exit and release,
-then start new processes at the next simulated day; it must not advance clocks
-across a live native permit or unknown operation. Actual native review, signed
-deadlines, publication, accounting and recovery remain required. This fixture
-does not alter the machine clock, kernel file timestamps or the production helper,
-and its preload is never a production configuration option. Clock coherence alone
-qualifies no turnover, capacity, model quality or elapsed real year.
-
-After building the matching helper on a supported native allocation profile,
-exercise actual signed retention across fresh processes:
-
-```sh
-mix test test/dev/knowledge/managed_clock_lifecycle_test.exs --max-cases 1
-```
-
-The first journey reuses the genuine reviewed Session correction/supersession
-fixture and its confirmed close/idle-resume checks. New processes inspect the
-same store at days 30, 91 and 366. Require early-expiry refusals with unchanged roots, a
-native pin review whose signed time falls inside the actual day-30 operation,
-ordinary reclamation after its original 90-day deadline and temporal-history
-reclamation after its signed 365-day deadline. The pinned successor and original
-Session bytes must survive. Inspect settled operations twice without journal
-mutation and validate Saved reconstruction/release claims at each checkpoint.
-The second journey seeds a current statement at day 0 without a supersession.
-At day 100 a new Session obtains genuine statement and relation reviews and
-publishes its first successor. Days 366 and 464 must retain the signed history
-and refuse early reclamation without root changes. Day 466 reclaims that history
-after its original 365-days-after-review deadline, preserving the successor and
-original journal. Reads must never renew the deadline. This checks signed
-retention eligibility; later use still needs current source and permission checks.
-
-Late Session work also needs coherent clocks inside stdio. Production stdio
-deliberately removes ambient environment from its supervisor and child. Its
-unchanged native pipe handoff refuses a deadline more than five seconds away,
-so preloading only the outer VM cannot establish this test clock. The late
-journey therefore uses a private copied SDK whose Runner adapter adds only
-`LD_PRELOAD` and `IPSE_TEST_CLOCK_OFFSET_MS` to both stdio environments. Every
-phase checks the copied Runner hash, actual child-clock coherence and removal
-of an unrelated synthetic environment canary. This is a disclosed controlled
-host; production source, helper bytes, five-second handoff bound and permissions
-are unchanged. The first journey retains the stock host. Never add these test
-variables to production environment handling.
-
-The printed `NATIVE_CLOCK_LIFECYCLE_ROOT` retains synthetic logs, copied runtime
-identity and phase reports, including failures. All work closes before the next
-process date; no application, helper or machine clock changes globally. These
-few operations establish their clocked paths, not frozen daily intake,
-overlapping owners, offline imports, compaction, maximum payloads or annual
-turnover with the selected additional 10,000 mixed changes. Run that complete
-workload separately. No active Session is carried across these process dates.
-
-The [native population runner](knowledge-storage.md#populate-through-actual-native-statements)
-reuses the public `ManagedClockLifecycle.check_stdio_clock/1` fixture probe. Its
-own source and SDK/dependency bytes are copied and checked before each bounded
-segment. Run its two-day smoke separately from a full initial population. Check
-the complete 2,100-effect plan with `test/dev/knowledge/native_notes_seed_test.exs`;
-the existing process-clock/lifecycle tests must still pass after probe changes.
-After a plan closes, use its [complete population audit](knowledge-storage.md#audit-the-complete-retained-population)
-to check every signed note against the exact closed root and control state,
-retaining per-note metadata and unchanged original-source evidence. The audit
-uses the cohort's frozen SDK with a separately copied current caller. It starts
-no terminal review or publication, so an isolated completed smoke store can be
-audited without borrowing a live cohort's terminal or storage owners. The live
-cohort itself must still refuse audit while inflight or incomplete. Verify
-output-reuse refusal and preserve prior reports rather than overwriting them.
-Keep failed cohorts and their inflight markers. Refusal controls must show that
-pending effects, a completed plan and changed frozen source cannot start another
-segment; restoring a deliberately altered empty fixture never authorizes replay
-of a stopped publication. The runner and audit have no annual, maximum-record,
-human or installed qualification merely because the smoke passes.
-
-Distinguish timeout before command-handler startup from timeout during active work.
-The evaluation-session fixture observes its worker's readiness and active Session
-phase before asserting post-effect cancellation; a separate delayed-start case
-keeps the short policy and proves that no command handler ran. Concurrent HTTP fixtures
-must also reserve enough listener backlog for all clients started before accepts.
-
-Restore must validate committed records/source bindings before permissible torn-tail
-repair. Corrupt receipts must not pass because repair removed evidence. Check
-configuration drift, captured CAS, source identity, cached results, and each
-unstarted/unknown classification. Never replay an uncertain effect to reconstruct
-its display or event.
-
-## Run the complete source baseline
-
-```sh
-./dev/build.sh
-mix format --check-formatted
-mix compile --warnings-as-errors
-elixir dev/check-ci-policy.exs
-elixir dev/check-docs.exs
-mix test
-IPSE_CHECK_HOME=$(mktemp -d)
-IPSE_HOME="$IPSE_CHECK_HOME" ./bin/ipse demo
-```
-
-The build uses locked dependencies/Rust helpers. Tests use loopback HTTP, generated
-keys, temporary state, and real processes, without paid credentials. Require a
-completed ExUnit summary plus exit status. SIGTERM/partial output is not a finished
-suite; deliberate process/TLS failure logs alone are not failed tests. Retain failed
-runs when investigating.
-
-Mix locks and fixtures need loopback sockets. Use the environment's permission
-flow or a permitted terminal, without disabling TLS, skipping assertions, or
-changing transports. Test the supported toolchain floor when changing compilation
-or raw ERTS launch, using isolated build roots. Raw launch explicitly selects
-Unicode output; locale defaults must not corrupt protocols. Broaden/repeat tests
-when a new change/failure warrants it, rather than rerunning unrelated suites.
-
-Run subprocess controls in isolation as well as in the full suite. Declare every
-module they load and use absolute source/code paths with a private working
-directory. A plain Elixir VM can otherwise resolve an application from the
-checkout's basename, and a previously loaded fixture can hide a missing dependency.
-
-The declaration-CLI fixture copies tracked and nonignored untracked repository
-files into a temporary synthetic repository. Run the full suite from a clean
-committed clone when the working checkout contains private or unrelated untracked
-files; do not let a verification fixture copy those files as test input.
-An isolated source copy also needs its own Git metadata and admitted source index
-for this fixture's `git ls-files` call. Record that setup before execution; a
-directory copied without `.git` cannot establish a passing declaration workflow.
-
-When transferring code paths with `-pa`, exclude the implicit current-directory
-entry and reverse the argument sequence so successive prepends retain the original
-search order.
-The verification fixture bootstrap locates the loaded `Ipse.Extension` BEAM and
-validates its SDK directory. It does not infer that directory from the checkout's
-application-like name. The shadow-directory regression exercises this distinction
-in a fresh VM.
-The [MCP-store contract control](../../test/extensions/knowledge/store_contract_test.exs)
-loads Profiles, Evidence and MCPCAS explicitly, runs in a temporary directory,
-and checks that those modules remain unloaded in the parent.
 
 ## Verify a real provider explicitly
 
@@ -747,8 +673,9 @@ control copies the release and recompiles a test copy of the public identity
 module, changing a real inventoried host BEAM. An extension-free saved session must
 resume; one with selected extensions must refuse without journal mutation, and
 still resume with the previous release. The original archive/host stay unchanged.
-Successful idle resume preserves the exact prior journal bytes and adds only the
-validated ownership record and confirmed-close release intent. The verifier checks
+Successful same-mode idle resume preserves the exact prior journal bytes and adds
+only the validated ownership record and confirmed-close release intent. For a
+legitimate mode transition, apply the [exact suffix rules](#require-positive-controls-and-inspect-uncertainty) above. The verifier checks
 the current intent and native signed-release claim, while a denied resume permits
 no suffix.
 
@@ -814,6 +741,32 @@ rustc --edition=2021 --test native/ipse-macos-sandbox.rs -o "$IPSE_MAC_TESTS/pol
 ```
 
 Included tests fail when requirements are absent; exclusions/skips prove no policy.
+### Qualify the storage mount and helper
+
+For a storage-profile change, isolate the new helper and compile-pinned Runner
+from earlier diagnostic graphs. Run the Rust selector/feature controls, actual
+positive protected publication and explicit unsupported-filesystem refusal,
+plus retained-stage sync/owner-loss/reinventory controls. Preserve first failures
+and rerun only repaired cases while iterating. An exact-kernel tmpfs pass cannot
+qualify Btrfs, native shell confinement or reboot durability. Match a full
+source/package candidate to its own freshly built helper before final acceptance.
+
+The exact-kernel storage fixture distinguishes its two mounts. Its positive
+publication uses the qualified temporary filesystem. Its Btrfs refusal runs only
+when the checkout is on Btrfs or you explicitly select an existing Btrfs root:
+
+```sh
+IPSE_TEST_BTRFS_ROOT=/absolute/path/on/btrfs mix test test/ipse/runner/storage_profile_test.exs
+```
+
+The fixture creates and removes a private test directory under that root. A
+tmpfs checkout without an explicit root skips only the Btrfs case; that skip
+proves no Btrfs behavior. An explicitly selected wrong filesystem fails the
+assertion instead of silently skipping. The exact kernel requirement still
+applies; this test setting changes no production storage admission.
+
+### Observe bounded native pipe delivery
+
 For the private Linux stdin handoff, run the actual pipe/transaction component
 separately from Session qualification:
 
@@ -841,6 +794,73 @@ quality or untested platform. Native-exit observation retries transient procfs
 read errors within its original bound; success still requires an absent process
 or an observed exited state. Persistent read failure is not proof of exit.
 
+### Check filesystem and terminal ownership
+
+Filesystem cases need actual case/normalization behavior and inode checks. Native
+fixtures use private homes, not the operator cache. The [sandbox chapter](sandbox.md)
+teaches Linux prerequisites, signing, listener identity, and detached-work limits.
+For copy/authority changes, run their real Rust fixtures:
+
+```sh
+IPSE_NATIVE_TESTS=$(mktemp -d)
+rustc --edition=2021 --test -D warnings native/ipse-file-copy.rs -o "$IPSE_NATIVE_TESTS/copy"
+"$IPSE_NATIVE_TESTS/copy"
+rustc --edition=2021 --test -D warnings native/ipse-bound.rs -o "$IPSE_NATIVE_TESTS/bound"
+"$IPSE_NATIVE_TESTS/bound"
+rustc --edition=2021 --test -D warnings native/ipse-operator.rs -o "$IPSE_NATIVE_TESTS/operator"
+"$IPSE_NATIVE_TESTS/operator"
+mix test test/ipse/runner/operator_test.exs test/ipse/session/input_test.exs
+mix test test/ipse/runner/leased_terminal_deadline_test.exs
+```
+
+Retain size/inode/symlink/permission/nonblocking controls and bounded ignored FIFO
+probes. Linux tests authority/FIFO/descriptor transfer; macOS covers only portable
+protocol cases. Operator tests use actual synthetic PTYs and the bundled helper's
+compiled identity. They cover terminal matching, deadlines, parent loss, a stopped
+old helper's cleanup fence and opaque Session witnesses. Run the native, operator
+and PTY tests serially: their conservative per-user lock intentionally makes
+overlapping native test programs contend. PTY input remains automated, and ordinary CLI/card adoption
+and independent human journeys need separate verification. Keep atomic ordinals
+and fixed-clock collision tests for parallel fixtures. The leased-terminal
+deadline test covers arithmetic and rounding; it does not prove clock-rate or
+suspend equivalence or replace the PTY and actual Session controls.
+
+The private Linux Session/Host terminal bridge controls require a matched PTY;
+the cancellation control also needs its test-only pause hook. They are excluded
+from the default `mix test` run and must be run separately when qualifying that
+boundary. From the repository root, after building the native helper, run them
+serially:
+
+```sh
+IPSE_TTY_TESTS=$(mktemp -d)
+rustc --edition=2021 -D warnings -O test/support/operator_pty.rs -o "$IPSE_TTY_TESTS/pty"
+"$IPSE_TTY_TESTS/pty" "$(command -v mix)" test test/ipse/session/share_host_job_test.exs --only controlled_tty_bridge
+IPSE_SHARE_TTY_PAUSE=1 "$IPSE_TTY_TESTS/pty" "$(command -v mix)" test test/ipse/session/share_host_job_test.exs --only controlled_tty_loss
+```
+
+These use synthetic output and do not qualify protected terminal delivery.
+
+Probe macOS enforcement separately with a disposable workspace:
+
+```sh
+IPSE_MACOS_WORKSPACE=$(mktemp -d)
+elixir dev/verify-macos-sandbox.exs priv/ipse-runner "$IPSE_MACOS_WORKSPACE"
+```
+
+Default checks file/network refusal, allowed paths, inheritance, and signing.
+Optional process-boundary checks can expose documented detached-work gaps; nonzero/
+gaps are not passing containment. Owned bundle/files are removed; macOS may retain
+OS-managed app containers.
+
+## Verify managed delivery and effect admission
+
+Use [Session sources](session-sources.md#deliver-a-managed-export-input-under-its-original-owners)
+for the current owner chain, [effects](extension-effects.md) for separate effect
+permission, and [MCP](mcp.md) for transport ownership. Component transport receipts
+do not replace real source proofs or the Session's selected dependency union.
+
+### Settle actual Worker frames before cancellation
+
 For the actual managed export adapter, also run:
 
 ```sh
@@ -863,8 +883,9 @@ Require actual publisher, Worker and native-helper exit, no invented input or
 outer result, strict reconstruction and idle resume without callback replay.
 The paired mismatch case sends different Session/job/input identifiers and must
 still obtain the genuine delivered receipt. No hook changes authority or supplies
-a successful native response. These synthetic controls do not replace a complete
-source-suite run or installed/platform qualification.
+a successful native response. Run the complete baseline after the focused selection.
+
+### Approve signed-source effects through the native sink
 
 The genuine approval fixture additionally reads a committed note and its original
 inactive Session proof. Its shell cases use the same actual native review and
@@ -875,8 +896,8 @@ alters the original journal during the input wait and requires no effect admissi
 or target file after approval. Select these two cases with
 `--only managed_shell_approval:true`; the complete `managed_approval:true` cohort
 also preserves write approvals, denial, stale tokens, cancellation and owner loss.
-Both shell consumers close and resume idle with their exact saved messages and
-only the validated ownership suffix. Confirm the final signed release claim and
+Both shell consumers close and resume in the same effective mode with their exact
+saved messages and the validated ownership suffix. Confirm the final signed release claim and
 unchanged target after resume; recovery must start no command or model request.
 A disclosed one-use BEAM controller pause inspects the
 actual transaction's native descriptor set before its unchanged pipe write:
@@ -885,275 +906,46 @@ actual Worker stdin must belong to that same native process. The original lock
 must remain busy. The native supervisor and importing transaction are distinct
 processes; a Port PID alone cannot identify the importer.
 
-Keep root-only metadata distinct from a signed note's contents. The original
-write/shell/MCP positives and fault controls in
-`managed_collection_call_session_test.exs` use the `native_root_approval` tag.
-Their parent launches the same test and SDK fixture inside the existing PTY
-driver; the child retains the original policy, root observation, provider
-responses and proposed effect. Require the inspection tool followed by the
-approved effect, version-3 dependencies without a literal upgrade, three
-completed requests, confirmed effect cleanup/current result and strict Saved/idle
-recovery. An OTP Agent records actual HTTP requests because Terminal consumes its
-own mailbox; it supplies no response or completion witness. Observe the frozen
-Session with read-only system state, since ordinary `Session.info` can correctly
-refuse during ownership transfer.
+### Exercise metadata roots across tools and transports
 
-For each tool, inject root change, revocation, expiry or owner loss only after
-the actual terminal has displayed the full proposal and is waiting for input.
-The first three faults still receive the native answer but must admit no effect,
-release a withdrawn result and make no third provider request. Expiry waits for
-the original signed wall-clock deadline. Owner loss kills the original consumer
-and supplies no answer; require its actual lock to become acquirable before
-resuming that same Session. Do not delete or replace the lock. All faults retain
-the exact saved messages and version-3 dependencies across idle resume, with no
-target, MCP tool call or additional provider request. Use `--only native_root_fault`
-to select these twelve waiting controls; running-operation and HTTP boundaries
-need their own controls. The paired subscriber control still withholds arguments
-when no native channel can own their display. Native approval is not permission
-to bypass that refusal.
+These cases in `managed_collection_call_session_test.exs` select root-only
+metadata, not signed-note content. Their PTY children use the same SDK,
+policy, provider responses and proposed effects. Inspect frozen ownership
+with read-only system state: ordinary `Session.info/1` can correctly refuse
+during a share. An independent request recorder avoids Terminal consuming the
+fixture's own observation messages; it must supply no response or witness.
 
-Select `--only native_root_running` for the two shell execution boundaries.
-Both receive genuine approval before the original delayed command creates its
-`shell-started` marker. Revocation then preserves the command's completed file
-and private observed stdout, but requires withdrawn result delivery, no stdout
-result in the captured terminal and no third provider request. Owner loss instead
-kills the consuming Session before the final write. Follow the registered shell
-resource to its actual effect process and native Port, rather than assuming the
-turn task owns that Port. Observe its process-group anchor, shell and sleep child;
-require their exit and an absent final file after the original command duration.
-Both cases compare the complete retained reference union with the actual approval
-snapshot and preserve strict Saved state and inert idle recovery. Use the shared
-`native_root_loss_lineage/2` assertion for these and the MCP loss cases below:
-missing effect cleanup keeps lineage reconstruction unavailable across resume.
-These controls do not establish native sandbox confinement or detached-descendant
-behavior.
+| Selection | Observe at the actual boundary |
+| --- | --- |
+| `--only native_root_approval` | Inspection then approved write/shell/MCP effect; version-3 union, physical target, completed registered requests and current result |
+| `--only root_subscriber_refusal` | No-channel subscriber receives no private approval arguments |
+| `--only native_root_fault` | Root/revocation/actual signed expiry after complete display admits no effect or third request; owner loss stops the consumer and releases its original lock |
+| `--only native_root_running` | A genuinely approved shell has started; revocation preserves its effect but withdraws stdout, while owner loss stops the actual group/child before the delayed final write |
+| `--only native_root_mcp_boundary` | Discovery remains available before approval; after the real catalog request and one `mcp.start`, revocation prevents `mcp.send`, tool call and target |
+| `--only native_root_prestart` | HTTP revocation/expiry during input leaves complete traffic unchanged; the distinct stdio identity positive completes without entering its substitute helper |
+| `--only native_root_loss` | After actual HTTP initialization or a held effect, consumer loss closes the socket or recorded stdio PID and releases the original OS lock |
 
-Use `--only native_root_mcp_boundary` for root-metadata approval across stdio and
-HTTP. Pair each allowed start/send with revocation after its admitted start. Set
-the existing service gate only during the native approval input wait, so ordinary
-initial discovery remains possible. After the fresh answer, wait for the real
-service's next catalog request and require exactly one journaled `mcp.start`
-admission before revoking and releasing that request. The service must receive
-no tool call and create no target; the journal retains confirmed start cleanup
-and withdrawn delivery without `mcp.send` or a third provider request. Preserve
-the positive's exact file, one tool call and separately confirmed start/send.
-The `--only native_root_prestart` selection adds HTTP revocation/expiry during
-the native input wait and a stdio helper-identity positive. Capture all accepted
-HTTP connections before changing the policy, wait for the original signed expiry
-when selected, and require identical traffic after the answer with no admitted
-effect, target or tool call. For helper identity, set the existing substitute
-only after the genuine display and before the answer; the full allowed call must
-complete while its `--admitted-stdio` marker stays absent. Restore the prior
-environment selection in `after`, including on assertion failure.
+Pair every fault with its allowed path, exact full approval dependency snapshot,
+strict Saved reconstruction and inert idle recovery. Never delete or replace a
+lock to make it acquirable. A registered shell resource, its native Port and
+process-group anchor identify ownership; the turn task need not own that Port.
+Missing committed effect cleanup must retain `managed_lineage_unavailable`
+across resume; reuse `native_root_loss_lineage/2` rather than forging cleanup.
 
-Use the same strict Saved and idle recovery checks for both transports. For HTTP,
-take the complete accepted-connection log after confirmed close, including cleanup
-traffic, then require identical bytes after idle resume and its confirmed close.
-Do not filter out initialization or DELETE requests. HTTP uses an explicitly
-selected loopback fixture with the normal config loader; it supplies no TLS or
-remote-service qualification.
+HTTP observations include **all** accepted connections through confirmed close
+and idle close, including initialization and DELETE cleanup. Do not filter them
+to manufacture unchanged traffic. Restore test-only environment selections in
+`after`. Wait for an actual signed expiry and actual owner exit at the stated
+stage, not a generic callback marker or a BEAM `DOWN` that can precede native
+cleanup. Injecting around source acquisition can otherwise hit an earlier Worker
+input instead of the intended later effect.
 
-Select `--only native_root_loss` for lost HTTP initialization and held HTTP/stdio
-owner loss. Set the existing fault flag during native input, then require the
-actual initialization-received marker or physical tool effect before observing
-automatic termination or killing the consumer. Held loss must stop the registered
-transport and close the real HTTP socket or stop the recorded stdio server PID.
-Wait for the original OS lock to release before strict Saved and idle recovery.
-Compare the complete retained reference dependencies with those displayed for
-approval. In these fixtures, derive reconstruction availability from committed
-effect cleanup: a missing record requires `managed_lineage_unavailable`, which
-must survive resume; confirmed cleanup lets the reconstruction API return the
-retained union. Current use still requires fresh admission. Do not forge a cleanup
-record or delay the original fault to obtain an available lineage. Require the appropriate
-absent/preserved target, unchanged tool/model counts and, for HTTP, identical full
-traffic after settled cleanup and resume.
+Follow [the source-owner walkthrough](session-sources.md#retain-sources-through-a-protected-display-or-review)
+for retained descriptors and [MCP](mcp.md) for transport ownership. These
+metadata controls do not substitute for original-note/current-use controls.
+Run terminal/Rust cohorts serially under their shared per-user lock.
 
-Inject a fault at its actual purpose: a hook around shared source acquisition
-may now intercept an earlier Worker input, before a later publication watcher
-exists. Keep independent allowed-path and denial assertions, and preserve the
-first failed evidence when repairing fixture timing. These synthetic local-route
-controls establish neither human attribution, live-model quality, installed
-delivery nor accepted-decision support by those cases. Run Rust native tests and Mix terminal
-cohorts serially because they share the conservative per-user terminal lock.
-
-For accepted-decision approval, run the distinct native journey and Writer
-snapshot controls serially:
-
-```sh
-IPSE_TEST_GENUINE_PENDING_ACCEPTED_APPROVAL=1 mix test test/extensions/knowledge/knowledge_session_test.exs --only genuine_pending_accepted_approval --max-cases 1
-mix test test/ipse/session/share_barrier_test.exs --only approval_journal_snapshot --max-cases 1
-```
-
-The journey first captures through the registered adapter and accepts a real
-pending card through the public native review. Unmodified consumer cases approve
-one exact workspace write and deny another, preserving both original journals.
-Observed child hosts install a disclosed pre-display pause before their normal
-entry/policy admission. The unchanged native send then receives the actual
-source, policy, consuming Session and acceptance-journal lock descriptors plus
-Session/Host controls. The observer checks the exact sealed/frozen Writer
-snapshot and current journal token/link/operation. Its separate loss case kills
-that actual exported journal helper before display, requiring no approval payload,
-no tool/effect start, CLI failure and consumer death, followed by strict Saved and
-idle recovery without replay. Private JSON fixture data supplies no native permit
-or completion witness. The small Writer tests establish private inode admission
-and the combined 128-entry bound; they do not establish 128-note recall capacity.
-
-For history expiry, create the successor through the current native Session
-correction flow, retaining its actual statement source, separate relation review,
-settled publication and confirmed close. Keep the original signed retention
-deadline and wait for it before public reclamation. A standalone review receipt
-cannot replace the Session/source-owner fence of a current correction. The
-`save_history_expire` case in `operator_assertion_integration_test.exs` checks
-the complete path, including disabled capture, retained successor, zero inference
-and an unchanged original journal.
-
-For pending rejection, first run the synthetic-source/native management grid:
-
-```sh
-mix test test/ipse/cli/management_reject_public_test.exs test/ipse/session/pending_rejection_test.exs --include native_sandbox --max-cases 1
-IPSE_TEST_GENUINE_PENDING_REJECTION=1 mix test test/extensions/knowledge/knowledge_session_test.exs --only genuine_pending_rejection --max-cases 1
-```
-
-The same pending-rejection fixture checks read-only `knowledge defer KEY --json`
-twice before native review, including revoked permission, expired targets and
-shared-source retention changes. Require the exact signed deadline/revision/hash,
-visible expired status and unchanged Collection, control ledger and existing
-journal bytes. Deferral creates no acceptance capability or renewed expiry. The
-genuine pending-correction journey also defers an actual Session-produced candidate
-while its original journal is unavailable, then performs later fresh review.
-
-The grid covers live and expired candidates after capture revocation, stale/cancelled
-input, concurrent management/Collection changes, forged permits and a shared
-literal's native pin/forget choices. The opt-in journey starts with actual
-Session capture using synthetic main-model behavior and a freshly built artifact.
-It requires cancellation without effects, native disable, rejection with the
-original source temporarily unavailable, unchanged original journals/peer/anchor,
-settled zero-service accounting, read-only inspection and old-backup import refusal.
-Its retained synthetic root prints as `PENDING_REJECTION_ROOT`. Select both
-existing `--management-review` and `--knowledge` PTY answer modes when combining
-disable and rejection in one child. Follow the fresh-runtime recipe linked below
-with the rejection variable/tag; trusted source members and synthetic model
-behavior remain distinct from human or live-model evidence.
-
-Pending-text correction has its own preparation, capacity and native journeys:
-
-```sh
-mix test test/ipse/session/pending_correction_test.exs test/ipse/cli/management_correction_public_test.exs test/ipse/extension/pending_capacity_test.exs test/ipse/extension/collection_review_gate_test.exs
-IPSE_TEST_GENUINE_PENDING_CORRECTION=1 mix test test/extensions/knowledge/knowledge_session_test.exs --only genuine_pending_correction --max-cases 1
-IPSE_TEST_GENUINE_PENDING_CORRECTION_DEADLINE=1 mix test test/extensions/knowledge/knowledge_session_test.exs --only genuine_pending_correction_deadline --max-cases 1
-```
-
-Run each opt-in case with its own fresh-bundle runtime. Preparation/capacity
-fixtures grant no source or native authority. The main journey requires exact
-source/time/category preservation, unchanged peers, stale/cancelled refusal,
-source withdrawal and revocation during input, old-key refusal and separate fresh
-acceptance of the edited pending key. The deadline case uses an explicitly
-short trusted fixture policy in actual protected state, stages before its real
-expiry and waits past it. Require the old root, unknown liability with the full
-reservation, an unconfirmed journal and identical repeated inspection. No clock,
-review acknowledgment or native completion is fabricated. Its telemetry pause
-is disclosed controlled-host instrumentation; it is not human, installed or
-annual-workload evidence. Both roots print as `PENDING_CORRECTION_ROOT`.
-
-For selected batches, run the pure boundary/membership and CLI denial checks,
-then each actual-Session native case in its own fresh SDK/bundle runtime:
-
-```sh
-mix test test/ipse/session/pending_batch_test.exs test/ipse/cli/management_batch_public_test.exs
-IPSE_TEST_GENUINE_PENDING_BATCH=1 mix test test/extensions/knowledge/knowledge_session_test.exs --only genuine_pending_batch --max-cases 1
-IPSE_TEST_GENUINE_PENDING_BATCH_PARTIAL=1 mix test test/extensions/knowledge/knowledge_session_test.exs --only genuine_pending_batch_partial --max-cases 1
-IPSE_TEST_GENUINE_PENDING_BATCH_EIGHT=1 mix test test/extensions/knowledge/knowledge_session_test.exs --only genuine_pending_batch_eight --max-cases 1
-```
-
-The pure 8-KiB boundary vectors are shapes, not native/source attestation. Actual
-journeys must produce their proposals through Session capture, retain the original
-journals, and obtain different native acceptance events/codes for each item under
-one manifest hash. Cancellation, stale input and original-source withdrawal must
-stop before promotion. Cancelling the second item must retain the first acceptance
-and the remaining exact pending record, with separate known accounting and inert
-inspection. The eight-item case uses eight actual captures and an explicit
-16-operation fixture allowance; no product quota changes. Each accepted event
-must validate its full manifest and exact original source proof, and each operation
-inspection must report the same hash and correct item index/count. No real-model,
-human, installed or annual-workload qualification follows from synthetic main
-responses or same-user PTY input. Roots print as `PENDING_BATCH_ROOT`.
-
-The separate opt-in `genuine_pending_accepted_recall` journey in
-`test/extensions/knowledge/knowledge_session_test.exs` uses freshly built isolated
-Knowledge artifacts, two ordinary captures and actual public native acceptance.
-Its registered capture and recall endpoints use distinct explicit service IDs;
-reusing a protected ID for a different origin is a real refusal. Wire fixtures
-must select actual returned source handles rather than infer task order from
-user-role messages after native reference framing. The accepted-input observer
-adds the original management journals to its actual importer descriptor checks.
-Run the single- and multiple-decision cases with strict Saved, original-source
-and altered-event controls. After the multiple-decision recall, the same journey
-also cancels a native forget without changing the target, disables capture, then
-forgets one accepted decision while its original Session journal is temporarily
-unavailable. It authenticates the retained exact-target suppression, refuses
-reacceptance planning from that retired anchor, preserves the immutable link and
-other decision, and verifies settled zero-service accounting and unchanged
-original journals. Its synthetic root prints as `ACCEPTED_RECALL_ROOT`.
-The same journey then forgets the remaining accepted decision with the native
-transaction owner killed after its durable root switch and before cleanup.
-`accepted_decision_forget_loss.exs` installs a test-only child-host pause at that
-exact boundary; the native helper and production source files are unchanged.
-Require a failed CLI result, an absent target, authenticated exact-target
-suppression, the unchanged immutable link, and stopped native owner/Port.
-The management journal must be unconfirmed and its reservation remain publishing.
-Inspect twice and require identical journal/control bytes and no replay. This
-controlled-host fault is separate from the unmodified successful forget.
-
-```sh
-IPSE_TEST_GENUINE_PENDING_ACCEPTED_RECALL=1 mix test test/extensions/knowledge/knowledge_session_test.exs --only genuine_pending_accepted_recall --max-cases 1
-```
-
-The pure target/type grid is `test/ipse/session/accepted_decision_lifecycle_test.exs`;
-those shaped fixtures grant no native authority or current-use permission.
-To verify accepted-decision reclamation, run the separate actual-deadline journey:
-
-```sh
-IPSE_TEST_GENUINE_PENDING_ACCEPTED_EXPIRY=1 mix test test/extensions/knowledge/knowledge_session_test.exs --only genuine_pending_accepted_expiry --max-cases 1
-```
-
-It captures through a registered synthetic provider and accepts through the real
-native CLI. The trusted fixture shortens the saved policy before acceptance;
-the resulting native publication stores that actual finite deadline. Require
-refusal before expiry with unchanged target/control, wait for the real deadline,
-then reclaim after disabling capture and temporarily withholding the original
-Session source. The target/live row must disappear while the authenticated anchor
-clocks, immutable link, peer and original journals stay unchanged. Check exact
-settled expiry intent/accounting and subsequent duplicate acceptance refusal.
-No native clock, review time or storage receipt is manufactured. This short
-actual wait does not establish 30/90-day or annual endurance, human attribution,
-installed behavior or model quality. Run the ordinary literal/history expiry
-controls after changing their shared normalizer or management accounting.
-
-The accepted-retention journey checks the complete choice/read/lifecycle path:
-
-```sh
-IPSE_TEST_GENUINE_PENDING_ACCEPTED_RETENTION=1 mix test test/extensions/knowledge/knowledge_session_test.exs --only genuine_pending_accepted_retention --max-cases 1
-```
-
-For ordinary, preference and current decisions it requires public native pin,
-actual typed recall through the registered provider, cancellation without effect,
-automatic retention and a public one-day duration. A separate native host call
-selects a two-second duration through the same owned management entry, then waits
-for real expiry, requires a new pin to refuse without changing control state,
-and reclaims after disablement with the source unavailable.
-The public record/link remain byte-identical through all retention choices;
-only signed metadata changes, with one generation per committed operation.
-The expanded trusted fixture selects a finite 16-operation allowance for its
-five additional lifecycle effects and later refusal controls. Product limits
-remain unchanged. Check the compact retention witness in the read receipt and
-preserve the legacy deadline-mismatch refusal without that witness. The pure
-page/receipt fixtures prove syntax and consistency, never native Review authority.
-A shared lease must also work at the ordinary
-resource ceiling, reject foreign/forged/spent handles, and preserve the combined
-original-owner budget. Follow the
-[fresh-runtime recipe](../archive/2026-10-26-p30-p31-implementation/pending-review-boundary-20261031.md#local-evidence-and-limits)
-with the corresponding opt-in variable and tag. These are synthetic source
-journeys, not independent human, live-model or installed evidence.
+### Preserve nested effects and helper continuations
 
 Pair native approval with actual effect and input observations in
 `managed_collection_call_session_test.exs`:
@@ -1207,16 +999,22 @@ containing only the withdrawal notice; its original result remains unchanged.
 These distinct timings prevent an earlier input refusal from masquerading as a
 successful later-main continuation.
 
+### Observe signed-note helper dispatch and ordinary final use
+
 For the same preflight boundary with eight actual signed notes, use separate
 fresh roots for the allowed and withdrawn-source cases. First build the matching
-helper with `./dev/build.sh`, then build the test graph and run:
+helper with `./dev/build.sh`. On the supported Linux notes profile, select a
+qualified fixture filesystem; the example uses tmpfs at `/dev/shm`, not an
+assumption that `/tmp` supports protected storage. The two seed roots must be
+absent. Build the test graph and run:
 
 ```sh
 MIX_ENV=test mix compile --warnings-as-errors
-elixir --erl '+S 2:2' test/support/managed_literal_pair_runner.exs /tmp/ipse-decision-pack-ok _build/test/lib split
-IPSE_LITERAL_AB_ROOT=/tmp/ipse-decision-pack-ok IPSE_TEST_MANAGED_PACK=1 mix test test/ipse/extension/managed_collection_call_session_test.exs --only managed_pack_actual_overflow --max-cases 1
-elixir --erl '+S 2:2' test/support/managed_literal_pair_runner.exs /tmp/ipse-decision-pack-stale _build/test/lib split
-IPSE_LITERAL_AB_ROOT=/tmp/ipse-decision-pack-stale IPSE_TEST_MANAGED_PACK=1 mix test test/ipse/extension/managed_collection_call_session_test.exs --only managed_pack_actual_overflow_stale --max-cases 1
+IPSE_NOTE_TEST_ROOT=$(mktemp -d /dev/shm/ipse-decision-pack.XXXXXXXX)
+TMPDIR="$IPSE_NOTE_TEST_ROOT" elixir --erl '+S 2:2' test/support/managed_literal_pair_runner.exs "$IPSE_NOTE_TEST_ROOT/allowed" _build/test/lib split
+TMPDIR="$IPSE_NOTE_TEST_ROOT" IPSE_LITERAL_AB_ROOT="$IPSE_NOTE_TEST_ROOT/allowed" IPSE_TEST_MANAGED_PACK=1 mix test test/ipse/extension/managed_collection_call_session_test.exs --only managed_pack_actual_overflow --max-cases 1
+TMPDIR="$IPSE_NOTE_TEST_ROOT" elixir --erl '+S 2:2' test/support/managed_literal_pair_runner.exs "$IPSE_NOTE_TEST_ROOT/stale" _build/test/lib split
+TMPDIR="$IPSE_NOTE_TEST_ROOT" IPSE_LITERAL_AB_ROOT="$IPSE_NOTE_TEST_ROOT/stale" IPSE_TEST_MANAGED_PACK=1 mix test test/ipse/extension/managed_collection_call_session_test.exs --only managed_pack_actual_overflow_stale --max-cases 1
 ```
 
 The allowed path must deliver the shadow result without publishing notes. For
@@ -1227,6 +1025,15 @@ require strict saved reconstruction and idle resume with no replay. Fixture
 cleanup also restores a held source after an interrupted assertion. The
 loopback service and terminal input are synthetic, not live-engine or human
 quality qualification.
+
+`split` creates eight notes across two originals. Use `split8` when requiring
+eight distinct original Sessions, and assert the seed manifest's actual source
+count. The allowed case also compares Worker and ordinary final-use observations:
+both independent passes must batch, while root-only dependencies retain fresh
+root reads. Preserve its context/recipe/dependency/source/expiry/revocation
+refusals, genuine view-capacity fallback, strict Saved and same-mode idle checks.
+
+### Retain inherited input and result capacity
 
 Run `--only worker_inherited_union` in the same suite for actual A/B input
 boundaries. Each case builds its own matched PTY driver and creates a fresh
@@ -1245,9 +1052,8 @@ admitted five-page result must complete from its own token, materialize, release
 only its unused capacity and survive strict Saved/idle checks. The hook changes
 no limits, deadlines or source permits. A separate 65536-byte journal case must
 refuse before source begin without sealing or leaking reservations. Retained
-contention roots print as `WORKER_CAPACITY_ROOT`. These small metadata controls
-do not establish maximum managed-output performance; keep the ordinary 4-MiB
-result regression and later managed capacity qualification separate.
+contention roots print as `WORKER_CAPACITY_ROOT`. Keep the ordinary 4-MiB result regression and populated capacity checks separate
+from this journal-reservation control.
 
 Use `--only managed_presentation_input` and `--only managed_sink_input` for the
 unsupported private Worker purposes. Preserve actual ordinary formatter/text/
@@ -1262,49 +1068,293 @@ owner, while initializing no consumer or feed. These controls use synthetic
 root metadata and real callback artifacts; they establish no record-content,
 installed, human or quality qualification.
 
-Filesystem cases need actual case/normalization behavior and inode checks. Native
-fixtures use private homes, not the operator cache. The [sandbox chapter](sandbox.md)
-teaches Linux prerequisites, signing, listener identity, and detached-work limits.
-For copy/authority changes, run their real Rust fixtures:
+## Verify native note management and clocked retention
+
+The [operator procedure](../operator/knowledge-permissions.md) defines the fresh
+review commands. [Knowledge extensions](knowledge-extensions.md#confirm-a-pending-decision)
+and the [Collection SDK](collection-sdk.md#manage-a-retained-note-through-native-review)
+own candidate facts, native permits, publication and deferred settlement. These
+recipes test those distinct boundaries; a structural fixture supplies no permit.
+
+### Retain accepted-decision journals through approval
+
+For accepted-decision approval, run the distinct native journey and Writer
+snapshot controls serially:
 
 ```sh
-IPSE_NATIVE_TESTS=$(mktemp -d)
-rustc --edition=2021 --test -D warnings native/ipse-file-copy.rs -o "$IPSE_NATIVE_TESTS/copy"
-"$IPSE_NATIVE_TESTS/copy"
-rustc --edition=2021 --test -D warnings native/ipse-bound.rs -o "$IPSE_NATIVE_TESTS/bound"
-"$IPSE_NATIVE_TESTS/bound"
-rustc --edition=2021 --test -D warnings native/ipse-operator.rs -o "$IPSE_NATIVE_TESTS/operator"
-"$IPSE_NATIVE_TESTS/operator"
-mix test test/ipse/runner/operator_test.exs test/ipse/session/input_test.exs
-mix test test/ipse/runner/leased_terminal_deadline_test.exs
+IPSE_TEST_GENUINE_PENDING_ACCEPTED_APPROVAL=1 mix test test/extensions/knowledge/knowledge_session_test.exs --only genuine_pending_accepted_approval --max-cases 1
+mix test test/ipse/session/share_barrier_test.exs --only approval_journal_snapshot --max-cases 1
 ```
 
-Retain size/inode/symlink/permission/nonblocking controls and bounded ignored FIFO
-probes. Linux tests authority/FIFO/descriptor transfer; macOS covers only portable
-protocol cases. Operator tests use actual synthetic PTYs and the bundled helper's
-compiled identity. They cover terminal matching, deadlines, parent loss, a stopped
-old helper's cleanup fence and opaque Session witnesses. Run the native, operator
-and PTY tests serially: their conservative per-user lock intentionally makes
-overlapping native test programs contend. PTY input remains automated, and ordinary CLI/card adoption
-and independent human journeys need separate verification. Keep atomic ordinals
-and fixed-clock collision tests for parallel fixtures. The leased-terminal
-deadline test covers arithmetic and rounding; it does not prove clock-rate or
-suspend equivalence or replace the PTY and actual Session controls.
+The journey first captures through the registered adapter and accepts a real
+pending card through the public native review. Unmodified consumer cases approve
+one exact workspace write and deny another, preserving both original journals.
+Observed child hosts install a disclosed pre-display pause before their normal
+entry/policy admission. The unchanged native send then receives the actual
+source, policy, consuming Session and acceptance-journal lock descriptors plus
+Session/Host controls. The observer checks the exact sealed/frozen Writer
+snapshot and current journal token/link/operation. Its separate loss case kills
+that actual exported journal helper before display, requiring no approval payload,
+no tool/effect start, CLI failure and consumer death, followed by strict Saved and
+idle recovery without replay. Private JSON fixture data supplies no native permit
+or completion witness. The small Writer tests establish private inode admission
+and the combined 128-entry bound; they do not establish 128-note recall capacity.
 
-The private Linux Session/Host terminal bridge controls require a matched PTY;
-the cancellation control also needs its test-only pause hook. They are excluded
-from the default `mix test` run and must be run separately when qualifying that
-boundary. From the repository root, after building the native helper, run them
-serially:
+For history expiry, create the successor through the current native Session
+correction flow, retaining its actual statement source, separate relation review,
+settled publication and confirmed close. Keep the original signed retention
+deadline and wait for it before public reclamation. A standalone review receipt
+cannot replace the Session/source-owner fence of a current correction. The
+`save_history_expire` case in `operator_assertion_integration_test.exs` checks
+the complete path, including disabled capture, retained successor, zero inference
+and an unchanged original journal.
+
+### Reject, correct or accept pending candidates
+
+For pending rejection, first run the synthetic-source/native management grid:
 
 ```sh
-IPSE_TTY_TESTS=$(mktemp -d)
-rustc --edition=2021 -D warnings -O test/support/operator_pty.rs -o "$IPSE_TTY_TESTS/pty"
-"$IPSE_TTY_TESTS/pty" "$(command -v mix)" test test/ipse/session/share_host_job_test.exs --only controlled_tty_bridge
-IPSE_SHARE_TTY_PAUSE=1 "$IPSE_TTY_TESTS/pty" "$(command -v mix)" test test/ipse/session/share_host_job_test.exs --only controlled_tty_loss
+mix test test/ipse/cli/management_reject_public_test.exs test/ipse/session/pending_rejection_test.exs --include native_sandbox --max-cases 1
+IPSE_TEST_GENUINE_PENDING_REJECTION=1 mix test test/extensions/knowledge/knowledge_session_test.exs --only genuine_pending_rejection --max-cases 1
 ```
 
-These use synthetic output and do not qualify protected terminal delivery.
+Pair read-only `knowledge defer` inspection with live/expired and revoked
+targets; require exact deadline/revision/hash and unchanged Collection,
+accounting and journals. Then exercise stale/cancelled review and concurrent
+management/root changes. The opt-in Session journey must create a genuine
+proposal, cancel without effect, disable capture and reject with the original
+source unavailable. Require exact candidate suppression, preserved shared
+source/peer/anchor, settled zero-service accounting and old-backup refusal.
+Its failure root prints as `PENDING_REJECTION_ROOT`.
+
+Combine the existing `--knowledge` and `--management-review` PTY modes when
+exercising disablement and rejection. Follow [proposal management](knowledge-extensions.md#confirm-a-pending-decision)
+for facts and authority; deferral renews neither expiry nor acceptance permission.
+
+Pending-text correction has its own preparation, capacity and native journeys:
+
+```sh
+mix test test/ipse/session/pending_correction_test.exs test/ipse/cli/management_correction_public_test.exs test/ipse/extension/pending_capacity_test.exs test/ipse/extension/collection_review_gate_test.exs
+IPSE_TEST_GENUINE_PENDING_CORRECTION=1 mix test test/extensions/knowledge/knowledge_session_test.exs --only genuine_pending_correction --max-cases 1
+IPSE_TEST_GENUINE_PENDING_CORRECTION_DEADLINE=1 mix test test/extensions/knowledge/knowledge_session_test.exs --only genuine_pending_correction_deadline --max-cases 1
+```
+
+Run opt-in cases with separate fresh-bundle runtimes. Preserve source/time/
+category and peers, stale/cancelled refusals, source withdrawal/revocation during
+input, retired-key refusal and a separate fresh acceptance of the edited key.
+The actual-deadline case stages before its short trusted expiry and waits past
+that deadline: require the old root, full unknown liability, an unconfirmed
+journal and identical repeated inspection. Its owner-side telemetry pause
+supplies fault timing, never a permit, fabricated clock or native receipt.
+Failure roots print as `PENDING_CORRECTION_ROOT`.
+
+For selected batches, run the pure boundary/membership and CLI denial checks,
+then each actual-Session native case in its own fresh SDK/bundle runtime:
+
+```sh
+mix test test/ipse/session/pending_batch_test.exs test/ipse/cli/management_batch_public_test.exs
+IPSE_TEST_GENUINE_PENDING_BATCH=1 mix test test/extensions/knowledge/knowledge_session_test.exs --only genuine_pending_batch --max-cases 1
+IPSE_TEST_GENUINE_PENDING_BATCH_PARTIAL=1 mix test test/extensions/knowledge/knowledge_session_test.exs --only genuine_pending_batch_partial --max-cases 1
+IPSE_TEST_GENUINE_PENDING_BATCH_EIGHT=1 mix test test/extensions/knowledge/knowledge_session_test.exs --only genuine_pending_batch_eight --max-cases 1
+```
+
+Pure 8-KiB vectors prove shape only. Actual batches must capture each proposal,
+retain its original journal and obtain a different fresh native event/code per
+item under one manifest. Cancellation, stale input and source withdrawal stop
+before promotion. Cancelling item two must preserve the known first acceptance
+and exact remaining pending record, with separate accounting and inert inspection.
+The eight-item case uses a disclosed 16-operation fixture allowance, not a quota
+increase. Check each manifest/proof/item index/count and retain `PENDING_BATCH_ROOT`.
+
+### Recall, retain and retire accepted decisions
+
+The `genuine_pending_accepted_recall` journey in
+`test/extensions/knowledge/knowledge_session_test.exs` builds fresh artifacts,
+captures two proposals and accepts through the actual public native review.
+Capture and recall endpoints require distinct explicit service IDs; rebinding
+an existing ID to another origin is a real refusal. Select actual returned
+source handles, not presumed user-message order. The importer must retain the
+original management journals alongside the Session sources.
+
+Require single/multiple-decision wire recall, strict Saved and altered-event
+refusal. A cancelled forget changes nothing. After disablement, successful
+forgetting with the original Session source unavailable must preserve the link,
+peer and journals, authenticate exact-target suppression, and refuse reacceptance.
+Its retained root prints as `ACCEPTED_RECALL_ROOT`.
+
+The separate post-switch owner-loss step uses
+`accepted_decision_forget_loss.exs` to pause the child at that exact boundary.
+Require CLI failure, an absent target, authenticated suppression, unchanged link
+and stopped native owner/Port. The journal remains unconfirmed and reservation
+publishing. Repeat inspection, not the mutation, with identical control/journal
+bytes. This controlled fault is distinct from unmodified successful forgetting.
+
+```sh
+IPSE_TEST_GENUINE_PENDING_ACCEPTED_RECALL=1 mix test test/extensions/knowledge/knowledge_session_test.exs --only genuine_pending_accepted_recall --max-cases 1
+```
+
+The pure target/type grid is `test/ipse/session/accepted_decision_lifecycle_test.exs`;
+those shaped fixtures grant no native authority or current-use permission.
+To verify accepted-decision reclamation, run the separate actual-deadline journey:
+
+```sh
+IPSE_TEST_GENUINE_PENDING_ACCEPTED_EXPIRY=1 mix test test/extensions/knowledge/knowledge_session_test.exs --only genuine_pending_accepted_expiry --max-cases 1
+```
+
+This actual-deadline fixture accepts through the registered provider/native CLI
+under a short trusted saved policy. First require unchanged target/control
+before expiry; then wait past the actual signed deadline and reclaim after
+disabling capture and withholding the original source. Target/live rows disappear
+while anchor clocks, link, peer and original journals remain. Check settled
+zero-service expiry accounting and duplicate-acceptance refusal. Keep the shared
+literal/history normalizer controls when changing this path; a short real wait
+is not annual endurance.
+
+The accepted-retention journey checks the complete choice/read/lifecycle path:
+
+```sh
+IPSE_TEST_GENUINE_PENDING_ACCEPTED_RETENTION=1 mix test test/extensions/knowledge/knowledge_session_test.exs --only genuine_pending_accepted_retention --max-cases 1
+```
+
+Require native pin, actual registered-wire recall, cancelled review, automatic
+retention and public finite duration for ordinary/preference/current decisions.
+The short-duration component waits for real expiry, refuses another pin without
+control changes, then reclaims after disablement with the source unavailable.
+Record/link bytes stay exact; only signed metadata changes, one generation per
+committed operation. Its disclosed 16-operation allowance is fixture setup.
+
+Validate the compact retention witness and legacy deadline-mismatch refusal
+without it. Pure pages prove consistency, not native Review authority. Shared
+leases must work at the ordinary resource ceiling, reject foreign/forged/spent
+handles and preserve the combined original-owner bound. Use the
+[fresh-runtime recipe](../archive/2026-10-26-p30-p31-implementation/pending-review-boundary-20261031.md#local-evidence-and-limits)
+with the matching opt-in variable/tag; [the management owner](collection-sdk.md#manage-a-retained-note-through-native-review)
+explains publication and settlement.
+
+### Follow literal relations and process-clock retention
+
+For literal-replacement lifecycle checks, reuse
+`test/support/managed_supersession_session.exs` for actual statement/relation
+reviews, physical publication and exact close/resume suffixes. The history-use
+and interrupted-compaction launchers select their distinct follow-up checks in
+that isolated child process. Extend those checks rather than copying the setup:
+a copied fixture can retain obsolete ownership assertions even while exercising
+the same production path. Run the related native cases serially:
+
+```sh
+mix test test/ipse/session/managed_supersession_session_test.exs test/ipse/session/managed_history_use_session_test.exs test/ipse/session/managed_compaction_diagnostic_test.exs --max-cases 1
+mix test test/ipse/session/managed_supersession_native_test.exs test/dev/knowledge/managed_v3_turnover_native_test.exs --max-cases 1
+```
+
+History use checks signed historical attribution, successor removal, unavailable
+originals and revocation. Interrupted compaction kills the original caller after
+staging and requires native controller exit, an unchanged root, unconfirmed
+journal/control status and no replay. Its printed directory retains synthetic
+diagnostic evidence. Neither check establishes annual turnover, complete capacity
+or model quality.
+
+`managed_supersession_native_test.exs` runs its six default modes through that
+genuine Session path. The split fixture pauses after the actual new assertion
+is committed but before its worker selects a root, then seeds explicitly
+synthetic page geometry around the authentic selected records. Publication must
+still authenticate the real old/new sources, use native review and commit all
+eight sidecars within the closed read and measured reservation bounds. Filler
+rows supply no source authority or capacity-quality result.
+
+The deadline control pauses at the actual root-switch boundary, waits past the
+exact signed target deadline and requires the native elapsed reply while its
+transaction remains live. Deterministic pause modules are installed in their
+isolated child host before initial permission review and retain stable inventoried
+BEAM paths. They change no native helper or production source. Distinguish these
+controlled-host faults from unmodified runtime qualification. The existing
+turnover records separate genuine native review time from an explicitly supplied
+future as-of expiry component. They do not exercise a native year-long lifecycle.
+
+Before building a process-clock lifecycle workload, verify that the selected VM
+and Rust standard library observe the same instrumented clock:
+
+```sh
+elixir -e 'ExUnit.start(max_cases: 1); Code.require_file("test/dev/knowledge/process_clock_test.exs")'
+```
+
+This standalone check starts no Ipse application and needs no built SDK or native
+terminal. It compiles `dev/fixtures/process_clock.rs` as a private Linux/glibc
+x86-64 preload library and uses fresh plain VMs/Rust children in private homes.
+It compares realtime clocks with raw kernel observations at zero, fractional-second
+and 30/90/365/400/466/500-day offsets, checks real monotonic timers, and requires malformed
+or missing offsets to refuse wall reads. Other platforms skip explicitly.
+The loader and syscall ABI reuse the [existing host dependency](dependencies.md#host-and-build-inventory).
+
+The offset is fixed before exec and applies only to that process tree. A lifecycle
+driver must finish or inspect all admitted work, confirm owner exit and release,
+then start new processes at the next simulated day; it must not advance clocks
+across a live native permit or unknown operation. Actual native review, signed
+deadlines, publication, accounting and recovery remain required. This fixture
+does not alter the machine clock, kernel file timestamps or the production helper,
+and its preload is never a production configuration option. Clock coherence alone
+qualifies no turnover, capacity, model quality or elapsed real year.
+
+After building the matching helper on a supported native allocation profile,
+exercise actual signed retention across fresh processes:
+
+```sh
+mix test test/dev/knowledge/managed_clock_lifecycle_test.exs --max-cases 1
+```
+
+Require actual statement/relation reviews, settled publication, confirmed close
+and the original signed deadlines. The first journey checks pinning at day 30
+and ordinary/history reclamation at days 91/366. The second creates its first
+successor at day 100, refuses early history reclamation at days 366/464 and
+reclaims at day 466. Original Session bytes and the retained successor must
+survive. Repeated operation inspection and idle recovery change neither the
+journal nor the recorded deadline.
+
+These are finite signed-retention controls, not a real elapsed year or a
+completed annual workload. The [storage lifecycle guide](knowledge-storage.md)
+owns the native runner/audit contract; [Session sources](session-sources.md)
+owns current-source checks at later use. A standalone review receipt cannot
+replace the actual correction's Session/source-owner chain.
+
+Late Session work also needs coherent clocks inside stdio. Production stdio
+deliberately removes ambient environment from its supervisor and child. Its
+unchanged native pipe handoff refuses a deadline more than five seconds away,
+so preloading only the outer VM cannot establish this test clock. The late
+journey therefore uses a private copied SDK whose Runner adapter adds only
+`LD_PRELOAD` and `IPSE_TEST_CLOCK_OFFSET_MS` to both stdio environments. Every
+phase checks the copied Runner hash, actual child-clock coherence and removal
+of an unrelated synthetic environment canary. This is a disclosed controlled
+host; production source, helper bytes, five-second handoff bound and permissions
+are unchanged. The first journey retains the stock host. Never add these test
+variables to production environment handling.
+
+The printed `NATIVE_CLOCK_LIFECYCLE_ROOT` retains synthetic logs, copied runtime
+identity and phase reports, including failures. All work closes before the next
+process date; no application, helper or machine clock changes globally. These
+few operations establish their clocked paths, not frozen daily intake,
+overlapping owners, offline imports, compaction, maximum payloads or annual
+turnover with the selected additional 10,000 mixed changes. Run that complete
+workload separately. No active Session is carried across these process dates.
+
+The [native population runner](knowledge-storage.md#populate-through-actual-native-statements)
+reuses `ManagedClockLifecycle.check_stdio_clock/1` and checks copied source/SDK/
+dependency bytes before every bounded segment. Run its two-day smoke separately
+from the full 2,100-effect initial plan in
+`test/dev/knowledge/native_notes_seed_test.exs`. Then use the
+[complete population audit](knowledge-storage.md#audit-the-complete-retained-population)
+against the exact closed root/control and every signed note.
+
+Audit the cohort's frozen SDK with a separately copied current caller; it starts
+no terminal review or publication. Inflight/incomplete stores and reused output
+paths must refuse. Preserve failed cohorts and their claims: restoring a
+deliberately changed empty fixture grants no replay permission. Clock, smoke
+and read-only audit passes do not establish annual capacity or quality.
+
+## Verify document acquisition and generation
+
+Follow [document ingestion](knowledge-extensions.md#follow-acquired-document-bytes-into-cited-storage)
+and [Collection storage](collection-sdk.md#stage-ordinary-documents-under-their-own-grant)
+for source and publication authority. Keep parser/extraction, workspace source
+ownership, native staged storage and installed fidelity as separate assertions.
 
 For document Collection split-append changes, run the native staged-publication,
 root-race and empty-facts controls with:
@@ -1355,18 +1405,6 @@ built from current source. A PNG thumbnail's inert padding exercises original
 byte geometry and retains its explicit unexamined-part warning; it does not
 qualify rendered-Word fidelity. Installed-package and independent
 document-quality checks remain separate.
-
-Probe macOS enforcement separately with a disposable workspace:
-
-```sh
-IPSE_MACOS_WORKSPACE=$(mktemp -d)
-elixir dev/verify-macos-sandbox.exs priv/ipse-runner "$IPSE_MACOS_WORKSPACE"
-```
-
-Default checks file/network refusal, allowed paths, inheritance, and signing.
-Optional process-boundary checks can expose documented detached-work gaps; nonzero/
-gaps are not passing containment. Owned bundle/files are removed; macOS may retain
-OS-managed app containers.
 
 ## Diagnose with synthetic data
 
