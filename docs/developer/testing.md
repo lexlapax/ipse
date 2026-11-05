@@ -106,6 +106,27 @@ An isolated source copy also needs its own Git metadata and admitted source inde
 for this fixture's `git ls-files` call. Record that setup before execution; a
 directory copied without `.git` cannot establish a passing declaration workflow.
 
+Separate fixture source from executable runtime origins. An explicit frozen SDK
+code path does not install an uncommitted development-script overlay. Trace
+cwd-relative lookups, adjacent `Code.require_file` calls and sources copied into
+child checkpoints, then pin the actual files each process will load. A separate
+source CWD can use immutable absolute SDK paths without copying the runtime;
+record its exact source overlay and keep the host's original manifest unchanged.
+That source-only arrangement does not satisfy a fixture that explicitly needs
+Git/index or Mix build metadata. Validate the closure required by the chosen
+scenario, rather than treating one staging recipe as universal.
+
+Before starting a side-effecting driver, compile every actual staged module owner
+in a definition-only check. Select only its module AST; top-level requires,
+environment installers and `main(System.argv())` footers can start real work.
+Parse and compare entry/footer syntax separately without executing it. Record
+diagnostics and unchanged source/runtime inputs, and check that no App, native
+helper, Session or socket started. This catches a missing helper or stale cwd
+before execution; it proves neither that setup ran nor that a workload succeeded.
+Inspect compile-time attributes and macros first: compiling a module executes
+them, so selecting its AST is not confinement for untrusted code.
+Normal-host and private clock-adapter code paths remain distinct qualifications.
+
 Before parallel groups, identify global OS owners and fixed paths. Separate VMs
 do not separate the per-user native terminal lock: keep operator/PTY/Rust terminal
 cohorts serial. Eligible groups need private real CWD/checkouts, Git/index,

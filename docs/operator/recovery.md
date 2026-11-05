@@ -315,6 +315,14 @@ resume/export; [upgrading](install.md#upgrade-without-losing-recovery-options)
 explains switching and rollback. Extension-free sessions still require matching
 configuration.
 
+A newer host can also upgrade the shared protected knowledge control file during
+an authorized write. Restoring an older executable does not undo that upgrade or
+restore its ability to read the file. Keep the matching newer installation for
+protected-state inspection and preserve the original control history; do not
+roll it back to make an older Session open. Follow the
+[knowledge upgrade guidance](knowledge-permissions.md#review-the-project-and-exact-permission)
+alongside the Session's separate runtime-compatibility checks.
+
 Idle resume repeats no inference, callbacks, children, or tools. Interactive
 resume without an initial task may first check an eligible pending decision
 and offer a fresh native review, as described in

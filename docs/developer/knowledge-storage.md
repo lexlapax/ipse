@@ -177,8 +177,8 @@ elixir --erl '+S 2:2' \
 Expect two JSON rows. At the initial annual intake floor, including the declared
 day-90 doubled workload and 100 initial native pin reviews, 10,000 mixed
 operations require at least 23,080 IDs; 10,000 complete update/correct/forget
-cycles require at least 43,080. The current Collection limit is 32,768 retained
-IDs. The complete-cycle lower bound therefore
+cycles require at least 43,080. The Collection's retained operation-ID ceiling is
+32,768. The complete-cycle lower bound therefore
 already exceeds it, before expiry, imports, compaction or recovery operations.
 The developer [selected 10,000 mixed changes total](../archive/2026-10-26-p30-p31-implementation/workload-change-count-20261102.md),
 additional to the normal annual workload. Use `:mixed_operations` when freezing
@@ -251,6 +251,30 @@ process-tree peaks and complete-day latency to measure. Count the 10,000 mixed
 changes once: they already occur in the calendar's 28,952 scheduled effects.
 Do not extrapolate the first day's 57 effects to every annual date.
 
+Plan filesystem inspection separately from record, ID and encoded-byte limits.
+`Runner.storage_allocation/1` has a five-second observation bound and visits at
+most 40,000 entries per declared root, including the root directory at depth zero,
+all child directories and retained files. Depth may not exceed four. Paths must
+be canonical and private to their owner; regular files must be singly linked.
+A successful measurement establishes allocation, not publication or source
+authority. In the complete resource inventory, count original journals,
+release sidecars, management records,
+locks, inputs, reports, logs and closure receipts as well as selected values.
+Two disjoint directory owners have separate entry ceilings; adding their counts
+does not turn that sum into one walk, while inspecting their common parent may
+exceed its bound. Never move an original journal or replace its lock merely to
+make a measurement fit.
+
+Choose the layout for new fixture evidence before creating it, then bind and
+audit the actual owner paths. Every individual approval, operation, receipt and
+historical record must survive any execution grouping. Sequential samples of
+disjoint owners are observations at different times, not an exact simultaneous
+disk peak. Keep observation spans, missing components, parent metadata and
+fixed runtime/artifact costs explicit. A guarded byte inventory alone does not
+measure physical allocation or sharing; an unavailable dimension remains null.
+Measure one complete actual day under the selected layout before using it to
+assess longer horizons; a calendar or codec preflight supplies no such result.
+
 Before building a continuation, inspect the bounded segment geometry:
 
 ```sh
@@ -309,11 +333,13 @@ conditional payload bound, not an actual native maximum-record result.
 
 The lower bound does not qualify any workload or freeze intake. An earlier
 calendar incorrectly renewed corrected replacements; the [correction record](../archive/2026-10-26-p30-p31-implementation/native-calendar-correction-deadline-20261102.md)
-preserves that error and its effects on the storage assessment. Offline/concurrent owners, imports,
-compaction, consent renewal, proposal bursts, maximum-payload production,
-resource peaks and independent quality remain unplanned. Use the calendar's
-explicit actions when implementing the native driver, then extend those missing
-journeys and authenticate every actual target/source/deadline at execution.
+preserves that error and its effects on the storage assessment. This calendar
+does not model offline/concurrent owners, imports, compaction, consent renewal,
+proposal bursts, maximum-payload production, resource peaks or independent
+quality. Use its explicit actions for lifecycle scheduling and verify those
+other boundaries through their separate journeys. Authenticate every actual
+target, source and deadline at execution; a pass in one journey does not fill
+another journey's missing observations.
 
 Plan a fresh native permission review before the saved grant expires. The seed
 starts before the 365 annual dates, so a one-year grant from seed creation does
@@ -427,8 +453,9 @@ segment needs both its verified report and a parent-observed exit-zero closure;
 further execution. A changed frozen file refuses before another marker/effect.
 All reports keep `annual_workload_qualification: false`: this tool does not run
 daily intake, corrections/forgetting/supersession, reclamation, concurrency,
-offline imports, compaction or the additional 10,000 mixed changes. Full maximum
-record, mixed-lifecycle and final persistent-metadata qualification remain open.
+offline imports, compaction or the additional 10,000 mixed changes. Keep
+maximum-shape, mixed-lifecycle and persistent-metadata results separate from this
+population report; it supplies no qualification for those boundaries.
 
 A [small turnover pilot](../archive/2026-10-26-p30-p31-implementation/native-turnover-pilot-20261102.md)
 continues a separately audited smoke seed through seven real lifecycle effects,
