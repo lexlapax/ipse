@@ -1192,6 +1192,54 @@ defmodule Ipse.Development.VerificationTest do
     end)
   end
 
+  @tag :embedding_idle_resume
+  test "embedding idle resume preserves the original prefix and only its exact release-owner marker" do
+    Runtime.with_runtime(Scenarios.fetch!("embedding"), options(), fn runtime ->
+      expression = ~S"""
+      (fn ->
+        id = String.duplicate("a", 32)
+        other = String.duplicate("b", 32)
+        {:ok, marker} = Ipse.Session.ReleaseReceipt.owner_started(id)
+        line = Jason.encode!(marker) <> "\n"
+        header = %{"type" => "session", "metadata" => %{}}
+        legacy = Jason.encode!(header) <> "\n"
+        current = header
+          |> put_in(["metadata", "release_receipt_layout"], Ipse.Session.ReleaseReceipt.layout())
+          |> Jason.encode!()
+          |> Kernel.<>("\n")
+        validate = &IpseEmbeddingExample.Proof.validate_idle_resume!/3
+        :ok = validate.(legacy, legacy, id)
+        :ok = validate.(current, current <> line, id)
+        invalid = [
+          {legacy, legacy <> line, id},
+          {current, current, id},
+          {current, current <> line, other},
+          {current, current <> line <> line, id},
+          {current, current <> line <> "\n", id},
+          {current, current <> String.trim_trailing(line, "\n"), id},
+          {current, current <> Jason.encode!(Map.put(marker, "extra", true)) <> "\n", id},
+          {current, current <> "{\"type\":\"session_release_owner_started\"}\n", id},
+          {current, current <> String.replace(line, "{", "{\"version\":1,", global: false), id},
+          {current, current <> "{\"type\":\"turn_started\"}\n", id},
+          {current, String.replace(current, "session", "changed", global: false) <> line, id}
+        ]
+        for {before, resumed, session} <- invalid do
+          refused = try do
+            validate.(before, resumed, session)
+            false
+          rescue
+            _ -> true
+          end
+          true = refused
+        end
+        %{"valid" => 2, "refused" => length(invalid)}
+      end).()
+      """
+
+      assert %{"valid" => 2, "refused" => 11} = Runtime.eval!(runtime, expression)
+    end)
+  end
+
   @tag :memory_failure_diagnostic
   test "memory failure diagnostics retain only bounded current-invocation machine fields" do
     Runtime.with_runtime(Scenarios.fetch!("memory"), options(), fn runtime ->

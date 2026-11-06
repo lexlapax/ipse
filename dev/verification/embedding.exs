@@ -226,7 +226,8 @@ defmodule IpseEmbeddingExample.Proof do
       transport_before = requests(fixture)
       resumed = start(config, cwd, dir, id)
       :idle = Session.info(resumed).phase
-      true = File.read!(Path.join(dir, id <> ".jsonl")) == journal_before
+      :ok = validate_idle_resume!(journal_before, File.read!(Path.join(dir, id <> ".jsonl")), id)
+      {:ok, _} = Session.Saved.restore(events(dir, resumed), id)
       true = budget_bytes(:sys.get_state(resumed).config.budget_root) == budget_before
       true = requests(fixture) == transport_before
       :ok = Session.close_confirmed(resumed)
@@ -265,6 +266,30 @@ defmodule IpseEmbeddingExample.Proof do
 
       File.rm_rf!(root)
     end
+  end
+
+  @doc false
+  def validate_idle_resume!(before, after_resume, id) do
+    true = String.starts_with?(after_resume, before)
+    [header | _] = String.split(before, "\n", trim: true)
+    {:ok, header} = Ipse.JSON.decode_unique(header)
+
+    suffix =
+      binary_part(after_resume, byte_size(before), byte_size(after_resume) - byte_size(before))
+
+    case get_in(header, ["metadata", "release_receipt_layout"]) do
+      nil ->
+        true = suffix == ""
+
+      layout ->
+        true = layout == Ipse.Session.ReleaseReceipt.layout()
+        [line] = String.split(suffix, "\n", trim: true)
+        true = suffix == line <> "\n"
+        {:ok, marker} = Ipse.JSON.decode_unique(line)
+        true = Ipse.Session.ReleaseReceipt.valid_owner_marker?(marker, id)
+    end
+
+    :ok
   end
 
   defp arguments(profile, count),
