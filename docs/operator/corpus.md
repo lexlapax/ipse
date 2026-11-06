@@ -294,17 +294,20 @@ paragraph or table-cell locator alongside the exact text offsets. Inspect
 `status`, `coverage.complete` and `gaps`: unsupported relationships or document
 features can leave the result partial.
 
-For a direct BM25 snapshot query, a matching Word table cell can bring back a
-different cell in the same source, part, table and row. The extra citation is
-marked `method: "table_context"` with score zero: it supplies nearby source text,
+For a BM25 snapshot or indexed Collection namespace query, a matching Word table
+cell can bring back a different cell in the same source, part, table and row.
+The extra citation is marked `method: "table_context"` with score zero: it supplies
+nearby source text,
 not a scored keyword match or a finding that the cell answers the question. Before
 an optional rerank, positive BM25 hits take the available `top_k` positions first.
 `coverage.table_context` reports how many context chunks were returned and whether
 eligible chunks exceeded the remaining positions. It also identifies the
 single-block cell-chunk scope: a chunk crossing original blocks is not expanded;
 a chunk from a packed group can qualify if its locator resolves to one block.
-With no matching cell there is no row expansion. A long cell can
-still have a bounded excerpt, and even an untruncated expansion does not prove
+Indexed queries expand only sources already hydrated for positive hits; they do
+not read other sources to find neighbors. With no matching cell there is no row
+expansion. A long cell can still have a bounded excerpt, and even an untruncated
+expansion does not prove
 that the row contains an answer. Inspect the cited source in context.
 
 Before returning acquired-file evidence or

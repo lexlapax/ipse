@@ -561,7 +561,11 @@ defmodule IpseKnowledge.Evidence do
   @doc "Add bounded, source-attributed table-row context to lexical evidence."
   def rank_lexical_with_table_context(sources, query, top_k, now) do
     with {:ok, rank} <- rank_lexical(sources, query, top_k, now),
-         hits = rank["evidence"],
+         do: add_table_context(rank, sources, query, top_k, now)
+  end
+
+  defp add_table_context(rank, sources, query, top_k, now) do
+    with hits = rank["evidence"],
          anchors = table_context_anchors(hits),
          {:ok, docs} <- table_context_documents(sources, now, anchors) do
       seen = MapSet.new(hits, & &1["citation"]["chunk_id"])
@@ -674,7 +678,7 @@ defmodule IpseKnowledge.Evidence do
                   (tf + 1.2 * (0.25 + 0.75 * row.length / avg))
             end)
 
-          if finite?(score) and score == row.score,
+          if finite?(score) and score > 0 and score == row.score,
             do: {:cont, {:ok, candidates ++ [candidate(source, chunk, score, "bm25", query)]}},
             else: {:halt, {:error, :invalid_index_selection}}
         else
@@ -683,14 +687,16 @@ defmodule IpseKnowledge.Evidence do
       end)
       |> case do
         {:ok, candidates} ->
-          {:ok,
-           result(order(candidates), [], [], %{
-             "as_of_ms" => now,
-             "chunks" => n,
-             "sources" => length(sources),
-             "method" => "bm25",
-             "complete" => true
-           })}
+          rank =
+            result(order(candidates), [], [], %{
+              "as_of_ms" => now,
+              "chunks" => n,
+              "sources" => length(sources),
+              "method" => "bm25",
+              "complete" => true
+            })
+
+          add_table_context(rank, sources, query, top_k, now)
 
         error ->
           error

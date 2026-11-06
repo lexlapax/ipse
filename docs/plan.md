@@ -391,13 +391,20 @@ following limits until the end-to-end paths are qualified:
    eight-test native migration file pass. This closes the bounded same-project
    increment, not changed-target recovery, installed migration, larger segmented
    sets, cleanup or full populated capacity. Those remain the document critical
-   path; the next capacity gap is public supplied-fact input without duplicated
-   per-source projection storage, followed by a refreshed exact recipe ledger.
+   path. Public supplied-fact publication, binding, append and eight-source
+   assembly now pass their bounded Session journeys, and the refreshed public
+   controller model is executing its fixed full initial target. Replacement,
+   history, full native journals, physical peaks, cleanup and migration remain.
    Its [authoritative Job input-binding component](archive/2026-10-26-p30-p31-implementation/document-job-input-binding-20261106.md)
    now has closed opt-in formats, actual owner/source/revision guards and a
    native staged bind/append/abort check. Caller-editable continuation hashes
-   alone do not freeze a chosen input. Public supplied-result creation and
-   append integration remain the next task; the component is not that journey.
+   alone do not freeze a chosen input. The
+   [public supplied-result journey](archive/2026-10-26-p30-p31-implementation/document-fact-result-public-20261106.md)
+   and [eight-source assembly](archive/2026-10-26-p30-p31-implementation/document-fact-assembly-public-20261106.md)
+   qualify those bounded callers without establishing full capacity. Separately,
+   [indexed Word row context](archive/2026-10-26-p30-p31-implementation/indexed-word-row-context-20261106.md)
+   passes pure and one actual Collection Session control; installed and
+   no-token-overlap quality remain open.
 4. **Planning and prompt assistance — P31I.** Finish and qualify the existing
    planning and draft operator paths, including crash/resource boundaries and
    cancelled-draft carryover. Implement deferred accepted plan decisions and an

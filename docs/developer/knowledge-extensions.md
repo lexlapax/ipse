@@ -735,9 +735,11 @@ time-excluded-fact diagnostics remain explicit exclusions.
 Unpublished source work or failed required components stay coverage gaps: an empty
 ranking with a draft is partial, not complete abstention.
 
-Direct Corpus BM25 snapshot queries use
-`Evidence.rank_lexical_with_table_context/4` after source hydration. It keeps the
-positive `rank_lexical/4` hits first, then fills remaining `top_k` slots with
+Corpus BM25 snapshot queries use `Evidence.rank_lexical_with_table_context/4`
+after source hydration. Indexed Collection namespace queries use the same bounded
+expansion after `Evidence.rank_indexed/6` verifies the hydrated hits and their
+scores. Both paths keep the positive BM25 hits first, then fill remaining `top_k`
+slots with
 deterministically ordered chunks from different cells in a matched cell's row.
 The source key, generation and content hash must all match, as must the Word part,
 table, row and any region or annotation identity. A returned companion uses the
@@ -750,10 +752,11 @@ the chunk has a single-block locator. `truncated: false` does not prove row
 completeness. No match means no expansion, and long chunks still use
 the bounded excerpt selector. A later explicit reranker can change result order.
 
-This path serves State/MCP BM25 snapshots and Collection's explicit-source BM25
-query. The indexed Collection namespace query, hybrid/graph component ranking
-and independent Research keep their existing lexical ranking. In particular, an
-indexed query has not hydrated arbitrary neighboring cells. None of these paths
+This path serves State/MCP BM25 snapshots and Collection's explicit-source and
+indexed namespace BM25 queries. The indexed path considers only already hydrated
+positive-hit sources and adds no storage reads; it cannot expand an unselected
+source or a query without a lexical hit. Hybrid/graph component ranking and
+independent Research keep their existing lexical ranking. None of these paths
 changes stored chunks, source bytes or ingestion. Test the row-context candidate,
 both document Session profiles and the indexed and packed-group limits separately.
 

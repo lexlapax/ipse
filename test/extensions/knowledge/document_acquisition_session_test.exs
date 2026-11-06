@@ -621,10 +621,39 @@ defmodule Ipse.KnowledgeDocumentAcquisitionSessionTest do
       assert Map.take(context["citation"]["document"]["locator"], ~w(table row cell)) ==
                %{"table" => 1, "row" => 1, "cell" => 2}
 
+      if c.row_context_preset == "collection-documents" do
+        indexing =
+          invoke(run, "lexical_index", %{
+            "store" => "notes",
+            "action" => "begin",
+            "continuation" => nil
+          })
+
+        indexed =
+          Enum.reduce_while(1..80, indexing, fn _, current ->
+            if current["status"] == "draft",
+              do: {:cont, continue(run, current["continuation"])},
+              else: {:halt, current}
+          end)
+
+        assert indexed["status"] == "ok", inspect(indexed)
+        namespace = invoke(run, "query", Map.put(common, "rerank", nil))
+        assert namespace["status"] in ["ok", "partial"], inspect(namespace)
+        assert namespace["coverage"]["namespace_complete"]
+        assert namespace["coverage"]["table_context"] == result["coverage"]["table_context"]
+        assert namespace["evidence"] == result["evidence"]
+      end
+
       File.write!(path, document("changed"))
       refused = run_query.()
       assert refused["status"] == "refused"
       assert refused["evidence"] == []
+
+      if c.row_context_preset == "collection-documents" do
+        namespace_refused = invoke(run, "query", Map.put(common, "rerank", nil))
+        assert namespace_refused["status"] == "refused"
+        assert namespace_refused["evidence"] == []
+      end
     end
   end
 
