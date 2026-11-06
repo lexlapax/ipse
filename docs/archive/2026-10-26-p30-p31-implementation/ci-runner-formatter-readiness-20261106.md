@@ -89,6 +89,26 @@ Private formatter evidence is retained under `minimum-formatter-118-20261106-01`
 | Independent check 02 status, including separate documentation failure | `7d8562472e5ac15662c8cf422c01008068442379b0d855937463b0dae97fc63e` |
 | Clean second formatter log | `e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855` |
 
+## Subsequent hosted build boundary
+
+[Run 42168797121](https://github.com/lexlapax/ipse/actions/runs/42168797121)
+at `6fe6b51f97dd9ab9e21d0e38bfea2d409c3fe2ca` reached the Linux default
+tests after passing the floor-toolchain build, PDF protocol, formatter, strict
+compilation, native protocol, policy and documentation steps. Its test outcome
+was still pending at this observation; no aggregate pass follows from those
+earlier steps.
+
+The replacement macOS runner allocated successfully and completed toolchain
+setup. Its build then failed with Rust E0433 at `native/ipse-runner.rs:152`:
+the review-notice-v4 command referenced the Linux-only `ipse_owner_control`
+module without the target guard used by the neighboring modes. A focused repair
+adds that same Linux target guard. Local strict Linux helper compilation and
+the existing bound-environment unit control pass (one passed, 83 filtered),
+with unchanged native-source postchecks. They establish no macOS build or
+runtime pass; the hosted failure and skipped later steps remain failed/unrun.
+The retained job-log digest is
+`db4ec784f5b5068581dc0a0872cbf4643b4f3ae537a09fef829c12b9558302b2`.
+
 ## Exact earlier formatter scope
 
 The following paths are the complete list reported by the Linux formatting step

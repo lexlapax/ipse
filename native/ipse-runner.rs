@@ -149,6 +149,7 @@ fn run() -> Result<(), String> {
     if args.get(1).is_some_and(|arg| arg == "--owner-control-send-v2") { return ipse_owner_control::send(&args); }
     #[cfg(target_os = "linux")]
     if args.get(1).is_some_and(|arg| arg == "--owner-control-send-review-v3") { return ipse_owner_control::send(&args); }
+    #[cfg(target_os = "linux")]
     if args.get(1).is_some_and(|arg| arg == "--owner-control-send-review-notice-v4") { return ipse_owner_control::send(&args); }
     #[cfg(target_os = "linux")]
     if args.get(1).is_some_and(|arg| arg == "--owner-control-observe-v1") { return ipse_owner_control::observe(&args); }
