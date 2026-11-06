@@ -13,7 +13,8 @@ Code.require_file("spec.exs", __DIR__)
       state_binding: :string,
       mcp_bindings: :string,
       inference_config: :string,
-      collection_source_use: :string
+      collection_source_use: :string,
+      collection_input_validation: :string
     ]
   )
 
@@ -44,7 +45,8 @@ config =
     opts[:state_binding],
     bindings,
     inference,
-    opts[:collection_source_use]
+    opts[:collection_source_use],
+    opts[:collection_input_validation]
   )
 
 output = Path.expand(Keyword.fetch!(opts, :output))

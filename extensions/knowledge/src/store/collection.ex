@@ -11,6 +11,7 @@ defmodule IpseKnowledge.Store.Collection do
   population, lifecycle collection and populated capacity remain separate work.
   """
   alias IpseKnowledge.Evidence, as: E
+  alias Ipse.Extension.ResultDocument
   @sources 1000
   @catalog_rows 16
   @block_bytes 48 * 1024
@@ -145,6 +146,9 @@ defmodule IpseKnowledge.Store.Collection do
              :value_commit,
              :stage_inspect,
              :value_stat,
+             :value_layout,
+             :value_read_chunk,
+             :backup_metadata,
              :page_read,
              :selected_keys,
              :lexical_keys,
@@ -239,6 +243,76 @@ defmodule IpseKnowledge.Store.Collection do
 
   def start(profile, :generation_selected, args),
     do: IpseKnowledge.Store.Collection.Selected.start(profile, args)
+
+  @doc false
+  def start(profile, :backup_page, args), do: backup_start(profile, :page, args)
+
+  @doc false
+  def start(profile, :backup_plan, args) do
+    if profile?(profile) and exact?(args, ~w(generation data_inputs)) and
+         E.safe_uint?(args["generation"]) and is_list(args["data_inputs"]) and
+         length(args["data_inputs"]) in 1..4 and
+         Enum.all?(args["data_inputs"], &backup_result_ref?/1) and
+         length(Enum.uniq(args["data_inputs"])) === length(args["data_inputs"]) do
+      state = %{
+        profile: profile,
+        generation: args["generation"],
+        inputs: args["data_inputs"],
+        pages: [],
+        descriptor: nil,
+        rows: [],
+        operations: [],
+        lineage: [],
+        section: "records",
+        reads: 0
+      }
+
+      backup_plan_metadata(state, 0)
+    else
+      error(:invalid_collection_backup_plan)
+    end
+  end
+
+  @doc false
+  def start(profile, :selected_backup_result, args) do
+    if profile?(profile) and exact?(args, ~w(result_input plan_input)) and
+         backup_result_ref?(args["result_input"]) and
+         (is_nil(args["plan_input"]) or backup_result_ref?(args["plan_input"])) do
+      state = %{
+        profile: profile,
+        result_input: args["result_input"],
+        plan_input: args["plan_input"],
+        bytes: "",
+        origin: :unset,
+        reads: 0
+      }
+
+      backup_read_input(state)
+    else
+      error(:invalid_collection_result_input)
+    end
+  end
+
+  @doc false
+  def start(profile, :validate_backup_page, args) do
+    if profile?(profile) and exact?(args, ~w(result_input plan_input)) and
+         backup_result_ref?(args["result_input"]) and backup_result_ref?(args["plan_input"]) do
+      state = %{
+        profile: profile,
+        selected: args["result_input"],
+        plan_ref: args["plan_input"],
+        plan: nil,
+        inputs: [],
+        pages: [],
+        phase: :plan,
+        reads: 0
+      }
+
+      backup_validation_read(state, state.plan_ref, nil)
+    else
+      error(:invalid_collection_result_input)
+    end
+  end
 
   def start(profile, :generation_job, args),
     do: IpseKnowledge.Store.Collection.Job.start(profile, args)
@@ -600,6 +674,182 @@ defmodule IpseKnowledge.Store.Collection do
   end
 
   @doc false
+  def start(profile, :value_layout, %{"key" => key, "generation" => generation} = args) do
+    if profile?(profile) and exact?(args, ~w(key generation)) and value_key?(key) and
+         E.safe_uint?(generation) do
+      call(
+        %{
+          operation: :value_layout,
+          profile: profile,
+          key: key,
+          generation: generation,
+          reads: 0,
+          effects: 0,
+          request: nil
+        },
+        %{"op" => "value.layout", "key" => key, "generation" => generation},
+        :value_layout
+      )
+    else
+      error(:invalid_collection_value)
+    end
+  end
+
+  @doc false
+  def start(
+        profile,
+        :value_read_chunk,
+        %{"key" => key, "generation" => generation, "offset" => offset} = args
+      ) do
+    if profile?(profile) and exact?(args, ~w(key generation offset)) and value_key?(key) and
+         E.safe_uint?(generation) and E.safe_uint?(offset) do
+      call(
+        %{
+          operation: :value_read_chunk,
+          profile: profile,
+          key: key,
+          generation: generation,
+          offset: offset,
+          reads: 0,
+          effects: 0,
+          request: nil
+        },
+        %{"op" => "value.read", "key" => key, "generation" => generation, "offset" => offset},
+        :value_read_chunk
+      )
+    else
+      error(:invalid_collection_value)
+    end
+  end
+
+  @doc false
+  def start(profile, :backup_metadata, args) do
+    if profile?(profile) and exact?(args, ~w(generation section offset limit)) and
+         E.safe_uint?(args["generation"]) and args["section"] in ~w(records operations lineage) and
+         E.safe_uint?(args["offset"]) and args["offset"] <= 32_768 and
+         is_integer(args["limit"]) and args["limit"] in 1..8 do
+      call(
+        %{
+          operation: :backup_metadata,
+          profile: profile,
+          generation: args["generation"],
+          section: args["section"],
+          offset: args["offset"],
+          reads: 0,
+          effects: 0,
+          request: nil
+        },
+        Map.put(args, "op", "backup.metadata"),
+        :backup_metadata
+      )
+    else
+      error(:invalid_collection_backup_metadata)
+    end
+  end
+
+  @doc false
+  def start(profile, :result_input_read, args) do
+    with true <- profile?(profile) and exact?(args, ~w(result_input plan_input offset)),
+         ref = args["result_input"],
+         true <- backup_result_ref?(ref),
+         true <- is_nil(args["plan_input"]) or backup_result_ref?(args["plan_input"]),
+         true <- E.safe_uint?(args["offset"]) and args["offset"] < ref["delivery"]["byte_count"],
+         request = %{
+           "op" => "collection.store",
+           "scope" => "project",
+           "request" => %{"op" => "restore.input.read", "offset" => args["offset"]},
+           "result_input" => ref
+         },
+         request =
+           if(is_nil(args["plan_input"]),
+             do: request,
+             else: Map.put(request, "plan_input", args["plan_input"])
+           ),
+         true <- host_frame_fits?(request) do
+      {:call, request,
+       %{
+         operation: :result_input_read,
+         request: request,
+         ref: ref,
+         offset: args["offset"],
+         reads: 1,
+         effects: 0
+       }}
+    else
+      _ -> error(:invalid_collection_result_input)
+    end
+  end
+
+  @doc false
+  def start(profile, :restore_mutation, args) do
+    with true <- profile?(profile) and exact?(args, ~w(request result_input plan_input)),
+         inner when is_map(inner) <- args["request"],
+         true <- backup_restore_request?(inner, args["result_input"], args["plan_input"]),
+         request = %{"op" => "collection.store", "scope" => "project", "request" => inner},
+         request =
+           if(is_nil(args["result_input"]),
+             do: request,
+             else: Map.put(request, "result_input", args["result_input"])
+           ),
+         request =
+           if(is_nil(args["plan_input"]),
+             do: request,
+             else: Map.put(request, "plan_input", args["plan_input"])
+           ),
+         true <- host_frame_fits?(request) do
+      {:call, request,
+       %{
+         operation: :restore_mutation,
+         request: request,
+         inner_request: inner,
+         reads: 0,
+         effects: 1
+       }}
+    else
+      _ -> error(:invalid_collection_restore)
+    end
+  end
+
+  @doc false
+  def start(profile, :restore_action, args) do
+    with true <- profile?(profile) and exact?(args, ~w(action args result_input plan_input)),
+         action when action in ~w(open page commit abort rollback checkpoint_drop) <-
+           args["action"],
+         params when is_map(params) <- args["args"],
+         true <-
+           backup_restore_action_args?(action, params, args["result_input"], args["plan_input"]),
+         {:ok, empty_union} <- Ipse.Extension.canonical_digest([[]]),
+         plan_ref = if(action === "open", do: args["result_input"], else: args["plan_input"]),
+         {:ok, binding} <- backup_restore_binding(plan_ref, params),
+         state = %{
+           profile: profile,
+           action: action,
+           args: params,
+           result_input: args["result_input"],
+           plan_input: args["plan_input"],
+           plan_binding: binding,
+           empty_union: empty_union,
+           reads: 0,
+           effects: 0,
+           phase: :input
+         } do
+      if action in ~w(open page) do
+        backup_restore_action_advance(
+          start(profile, :selected_backup_result, %{
+            "result_input" => args["result_input"],
+            "plan_input" => if(action === "page", do: args["plan_input"], else: nil)
+          }),
+          state
+        )
+      else
+        backup_restore_issue(state, nil)
+      end
+    else
+      _ -> error(:invalid_collection_restore)
+    end
+  end
+
+  @doc false
   def start(profile, :page_read, args) do
     ref = args["ref"]
 
@@ -816,9 +1066,23 @@ defmodule IpseKnowledge.Store.Collection do
   @doc false
   def read_request?(%{"op" => "collection.store", "request" => %{"op" => op}}),
     do:
-      op in ~w(snapshot value.stat value.read stage.list stage.inspect stage.available progress.inspect)
+      op in ~w(snapshot value.stat value.layout value.read backup.metadata restore.input.read stage.list stage.inspect stage.available progress.inspect)
 
   def read_request?(_), do: false
+
+  def resume(%{backup_state: _} = state, outcome), do: backup_resume(state, outcome)
+
+  def resume(%{backup_plan_state: state, inner: inner}, outcome),
+    do: backup_plan_advance(resume(inner, outcome), state)
+
+  def resume(%{backup_validation_state: state, inner: inner}, outcome),
+    do: backup_validation_advance(resume(inner, outcome), state)
+
+  def resume(%{backup_restore_state: state, inner: inner}, outcome),
+    do: backup_restore_action_advance(resume(inner, outcome), state)
+
+  def resume(%{backup_input_state: state, inner: inner}, outcome),
+    do: backup_input_advance(resume(inner, outcome), state)
 
   def resume(%{generation_job: _} = state, outcome),
     do: IpseKnowledge.Store.Collection.Job.resume(state, outcome)
@@ -851,6 +1115,86 @@ defmodule IpseKnowledge.Store.Collection do
       do: error(:document_store_deadline_unavailable)
 
   def resume(_, %{"status" => status}) when status != "ok", do: error(:collection_refused)
+
+  def resume(%{operation: :backup_metadata} = state, %{"status" => "ok", "value" => wrapped}) do
+    with true <- exact?(wrapped, ~w(version owner operation_id request_sha256 result)),
+         true <- wrapped["version"] === 3 and backup_input_owner?(wrapped["owner"]),
+         true <- native_id?(wrapped["operation_id"]),
+         {:ok, request_hash} <- Ipse.Extension.canonical_digest([state.request]),
+         true <- wrapped["request_sha256"] === request_hash,
+         result when is_map(result) <- wrapped["result"] do
+      next(state, result)
+    else
+      _ -> error(:collection_response)
+    end
+  rescue
+    _ -> error(:collection_response)
+  end
+
+  def resume(%{operation: :restore_mutation} = state, %{"status" => "ok", "value" => wrapped}) do
+    with true <- exact?(wrapped, ~w(version owner operation_id request_sha256 result)),
+         true <- wrapped["version"] === 3 and backup_input_owner?(wrapped["owner"]),
+         true <- native_id?(wrapped["operation_id"]),
+         {:ok, request_hash} <- Ipse.Extension.canonical_digest([state.request]),
+         true <- wrapped["request_sha256"] === request_hash,
+         owner = Map.take(wrapped["owner"], ~w(project_id session_id identity_sha256)),
+         {:ok, native_hash} <- Ipse.Extension.canonical_digest([state.inner_request, owner]),
+         result when is_map(result) <- wrapped["result"],
+         true <-
+           backup_restore_receipt?(
+             state.inner_request,
+             result,
+             native_hash,
+             wrapped["operation_id"]
+           ) do
+      {:done,
+       {:ok,
+        %{
+          "operation_id" => wrapped["operation_id"],
+          "receipt" => result,
+          "coverage" => coverage(state, false)
+        }}}
+    else
+      _ -> {:stop, :unknown_effect}
+    end
+  rescue
+    _ -> {:stop, :unknown_effect}
+  end
+
+  def resume(%{operation: :result_input_read} = state, %{"status" => "ok", "value" => wrapped}) do
+    with true <- exact?(wrapped, ~w(version owner operation_id request_sha256 result)),
+         true <- wrapped["version"] === 3 and backup_input_owner?(wrapped["owner"]),
+         true <- native_id?(wrapped["operation_id"]),
+         {:ok, request_hash} <- Ipse.Extension.canonical_digest([state.request]),
+         true <- wrapped["request_sha256"] === request_hash,
+         result when is_map(result) <- wrapped["result"],
+         true <- exact?(result, ~w(delivery offset next data_base64 sha256 origin)),
+         true <-
+           result["delivery"] === state.ref["delivery"] and result["offset"] === state.offset,
+         true <- is_nil(result["origin"]) or backup_origin?(result["origin"], state.ref),
+         encoded when is_binary(encoded) <- result["data_base64"],
+         {:ok, bytes} <- Base.decode64(encoded),
+         true <- byte_size(bytes) in 1..6144 and Base.encode64(bytes) === encoded,
+         true <- E.sha256(bytes) === result["sha256"],
+         next = state.offset + byte_size(bytes),
+         total = state.ref["delivery"]["byte_count"],
+         true <- next <= total and result["next"] === if(next < total, do: next, else: nil) do
+      {:done,
+       {:ok,
+        %{
+          "delivery" => result["delivery"],
+          "offset" => state.offset,
+          "next" => result["next"],
+          "origin" => result["origin"],
+          "data" => bytes,
+          "coverage" => coverage(state, false)
+        }}}
+    else
+      _ -> error(:collection_result_input_corrupt)
+    end
+  rescue
+    _ -> error(:collection_result_input_corrupt)
+  end
 
   def resume(state, %{"status" => "ok", "value" => wrapped}) do
     tagged = is_map(state.request["request"]["progress"])
@@ -1212,6 +1556,31 @@ defmodule IpseKnowledge.Store.Collection do
   defp next(%{phase: :value_statted} = s, result),
     do:
       if(result["generation"] == s.generation and result["key"] == s.key,
+        do: {:done, {:ok, Map.put(result, "coverage", coverage(s, false))}},
+        else: error(:collection_response)
+      )
+
+  defp next(%{phase: :value_layout} = s, result),
+    do:
+      if(result["generation"] === s.generation and result["key"] === s.key,
+        do: {:done, {:ok, Map.put(result, "coverage", coverage(s, false))}},
+        else: error(:collection_response)
+      )
+
+  defp next(%{phase: :value_read_chunk} = s, result),
+    do:
+      if(
+        result["generation"] === s.generation and result["key"] === s.key and
+          result["offset"] === s.offset,
+        do: {:done, {:ok, Map.put(result, "coverage", coverage(s, false))}},
+        else: error(:collection_response)
+      )
+
+  defp next(%{phase: :backup_metadata} = s, result),
+    do:
+      if(
+        result["generation"] === s.generation and result["section"] === s.section and
+          result["offset"] === s.offset,
         do: {:done, {:ok, Map.put(result, "coverage", coverage(s, false))}},
         else: error(:collection_response)
       )
@@ -2434,7 +2803,7 @@ defmodule IpseKnowledge.Store.Collection do
 
   defp call(s, inner, phase) do
     read =
-      inner["op"] in ~w(snapshot value.stat value.read stage.inspect stage.list stage.available progress.inspect)
+      inner["op"] in ~w(snapshot value.stat value.layout value.read backup.metadata stage.inspect stage.list stage.available progress.inspect)
 
     reads = s.reads + if(read, do: 1, else: 0)
     effects = s.effects + if(read, do: 0, else: 1)
@@ -2809,4 +3178,1143 @@ defmodule IpseKnowledge.Store.Collection do
   defp json(value), do: IO.iodata_to_binary(JSON.encode!(value))
   defp exact?(m, keys), do: is_map(m) and Enum.sort(Map.keys(m)) == Enum.sort(keys)
   defp error(code), do: {:done, {:error, code, %{}}}
+
+  @doc false
+  def backup_start(
+        profile,
+        :page,
+        %{"generation" => generation, "offset" => offset, "limit" => limit} = args
+      ) do
+    if backup_exact?(args, ~w(generation offset limit)) and E.safe_uint?(generation) and
+         E.safe_uint?(offset) and offset <= 8192 and is_integer(limit) and limit in 1..8 do
+      state = %{
+        profile: profile,
+        generation: generation,
+        offset: offset,
+        limit: limit,
+        reads: 0,
+        phase: :records,
+        descriptor: nil,
+        lineage: [],
+        rows: [],
+        assembled: [],
+        body: "",
+        layout: nil
+      }
+
+      backup_metadata(state, "records", offset, limit)
+    else
+      backup_error(:invalid_collection_backup_page)
+    end
+  end
+
+  def backup_start(_, _, _), do: backup_error(:invalid_collection_backup_page)
+
+  @doc false
+  def backup_resume(%{backup_state: state, inner: inner}, outcome),
+    do: backup_advance(__MODULE__.resume(inner, outcome), state)
+
+  defp backup_metadata(state, section, offset, limit),
+    do:
+      backup_io(state, :backup_metadata, %{
+        "generation" => state.generation,
+        "section" => section,
+        "offset" => offset,
+        "limit" => limit
+      })
+
+  defp backup_io(state, operation, args),
+    do: backup_advance(__MODULE__.start(state.profile, operation, args), state)
+
+  defp backup_advance({:call, request, inner}, state) do
+    if __MODULE__.read_request?(request) and state.reads < @reads,
+      do: {:call, request, %{backup_state: %{state | reads: state.reads + 1}, inner: inner}},
+      else: backup_error(:collection_backup_read_budget)
+  end
+
+  defp backup_advance({:done, {:ok, value}}, state), do: backup_next(state, value)
+  defp backup_advance({:stop, :unknown_effect}, _), do: {:stop, :unknown_effect}
+  defp backup_advance({:done, {:error, code, _}}, _), do: backup_error(code)
+  defp backup_advance(_, _), do: backup_error(:collection_backup_corrupt)
+
+  defp backup_next(%{phase: :records} = state, result) do
+    descriptor = result["descriptor"]
+    rows = result["rows"]
+
+    with true <- backup_metadata?(result, state, "records", state.offset),
+         true <-
+           backup_compact_descriptor?(descriptor) and
+             descriptor["generation"] === state.generation,
+         true <- is_integer(descriptor["records"]) and descriptor["records"] in 1..8192,
+         true <-
+           state.offset < descriptor["records"] and is_list(rows) and
+             length(rows) === min(state.limit, descriptor["records"] - state.offset),
+         true <-
+           result["next"] ===
+             if(state.offset + length(rows) < descriptor["records"],
+               do: state.offset + length(rows),
+               else: nil
+             ),
+         true <- Enum.all?(rows, &backup_record_row?/1),
+         keys = Enum.map(rows, &hd/1),
+         true <- keys === Enum.sort(Enum.uniq(keys)),
+         true <-
+           E.safe_uint?(descriptor["floor_lineage_count"]) and
+             descriptor["floor_lineage_count"] <= 128 do
+      state = %{state | phase: :lineage, descriptor: descriptor, rows: rows}
+      backup_metadata(state, "lineage", 0, 8)
+    else
+      _ -> backup_error(:collection_backup_corrupt)
+    end
+  end
+
+  defp backup_next(%{phase: :lineage} = state, result) do
+    offset = length(state.lineage)
+
+    with true <- backup_metadata?(result, state, "lineage", offset),
+         true <- result["descriptor"] === state.descriptor,
+         true <-
+           length(result["rows"]) === min(8, state.descriptor["floor_lineage_count"] - offset),
+         true <-
+           result["next"] ===
+             if(offset + length(result["rows"]) < state.descriptor["floor_lineage_count"],
+               do: offset + length(result["rows"]),
+               else: nil
+             ),
+         lineage = state.lineage ++ result["rows"],
+         true <-
+           length(lineage) <= state.descriptor["floor_lineage_count"] and
+             Enum.all?(lineage, &backup_id?/1) and length(Enum.uniq(lineage)) === length(lineage) do
+      if is_integer(result["next"]) do
+        backup_metadata(%{state | lineage: lineage}, "lineage", result["next"], 8)
+      else
+        with true <- length(lineage) === state.descriptor["floor_lineage_count"],
+             {:ok, digest} <- Ipse.Extension.canonical_digest([lineage]),
+             true <- digest === state.descriptor["floor_lineage_sha256"] do
+          descriptor =
+            state.descriptor
+            |> Map.delete("floor_lineage_count")
+            |> Map.put("floor_lineage", lineage)
+
+          backup_read_layout(%{state | descriptor: descriptor, lineage: lineage, phase: :layout})
+        else
+          _ -> backup_error(:collection_backup_corrupt)
+        end
+      end
+    else
+      _ -> backup_error(:collection_backup_corrupt)
+    end
+  end
+
+  defp backup_next(%{phase: :layout, rows: [[key, revision, _, hash, bytes] | _]} = state, result) do
+    layout = result["layout"]
+
+    if is_map(layout) and layout["revision"] === revision and
+         layout["record_sha256"] === hash and layout["record_bytes"] === bytes do
+      backup_read_chunk(%{state | phase: :chunk, layout: layout, body: ""}, key, 0)
+    else
+      backup_error(:collection_backup_corrupt)
+    end
+  end
+
+  defp backup_next(
+         %{phase: :chunk, rows: [[key, revision, _, _, _] = row | rest]} = state,
+         result
+       ) do
+    layout = state.layout
+    data = result["data"]
+
+    with true <- result["key"] === key and result["revision"] === revision,
+         true <-
+           result["sha256"] === layout["sha256"] and
+             result["byte_count"] === layout["byte_count"],
+         true <-
+           result["offset"] === byte_size(state.body) and is_binary(data) and
+             byte_size(data) in 1..6144,
+         body = state.body <> data,
+         true <- byte_size(body) <= layout["byte_count"] do
+      if is_nil(result["next"]) do
+        with true <- byte_size(body) === layout["byte_count"],
+             {:ok, record} <- backup_reconstruct(row, layout, body) do
+          state = %{
+            state
+            | rows: rest,
+              assembled: [record | state.assembled],
+              body: "",
+              layout: nil
+          }
+
+          if rest === [] do
+            records = Enum.reverse(state.assembled)
+
+            next =
+              if state.offset + length(records) < state.descriptor["records"],
+                do: List.last(records)["key"]
+
+            {:done,
+             {:ok, %{"descriptor" => state.descriptor, "records" => records, "next" => next}}}
+          else
+            backup_read_layout(%{state | phase: :layout})
+          end
+        else
+          _ -> backup_error(:collection_backup_corrupt)
+        end
+      else
+        if result["next"] === byte_size(body),
+          do: backup_read_chunk(%{state | body: body}, key, result["next"]),
+          else: backup_error(:collection_backup_corrupt)
+      end
+    else
+      _ -> backup_error(:collection_backup_corrupt)
+    end
+  end
+
+  defp backup_next(_, _), do: backup_error(:collection_backup_corrupt)
+
+  defp backup_read_layout(%{rows: [[key | _] | _]} = state),
+    do: backup_io(state, :value_layout, %{"key" => key, "generation" => state.generation})
+
+  defp backup_read_layout(_), do: backup_error(:collection_backup_corrupt)
+
+  defp backup_read_chunk(state, key, offset),
+    do:
+      backup_io(state, :value_read_chunk, %{
+        "key" => key,
+        "generation" => state.generation,
+        "offset" => offset
+      })
+
+  defp backup_metadata?(result, state, section, offset) do
+    result["generation"] === state.generation and result["section"] === section and
+      result["offset"] === offset and is_list(result["rows"]) and
+      (is_nil(result["next"]) or
+         (is_integer(result["next"]) and result["next"] === offset + length(result["rows"]) and
+            result["next"] > offset))
+  end
+
+  defp backup_record_row?([key, revision, operation_id, sha256, bytes]),
+    do:
+      is_binary(key) and byte_size(key) in 1..96 and
+        Regex.match?(~r/\A[a-zA-Z0-9][a-zA-Z0-9_.-]*\z/, key) and
+        not String.starts_with?(key, "host.") and E.safe_positive?(revision) and
+        backup_id?(operation_id) and E.sha256?(sha256) and is_integer(bytes) and
+        bytes in 2..65_536
+
+  defp backup_record_row?(_), do: false
+  defp backup_id?(id), do: is_binary(id) and Regex.match?(~r/\A[a-f0-9]{32}\z/, id)
+
+  defp backup_result_ref?(ref) when is_map(ref) do
+    delivery = ref["delivery"]
+
+    backup_exact?(ref, ~w(version session_id delivery)) and ref["version"] === 1 and
+      backup_id?(ref["session_id"]) and
+      backup_exact?(delivery, ~w(version kind output_id byte_count sha256 historical_receipt)) and
+      delivery["version"] === 1 and delivery["kind"] === "saved.result" and
+      E.sha256?(delivery["output_id"]) and E.sha256?(delivery["sha256"]) and
+      is_integer(delivery["byte_count"]) and delivery["byte_count"] in 1..(4 * 1024 * 1024) and
+      delivery["historical_receipt"] === true
+  end
+
+  defp backup_result_ref?(_), do: false
+
+  defp backup_restore_request?(request, result_input, plan_input) do
+    operation = request["op"]
+
+    fields =
+      case operation do
+        "restore.open" ->
+          ~w(op expected_generation expected_epoch input_sha256 plan_binding_sha256 dependency_union_sha256)
+
+        "restore.page" ->
+          ~w(op expected_generation expected_epoch migration_id ordinal input_sha256 data_binding_sha256 plan_binding_sha256 dependency_union_sha256)
+
+        op when op in ~w(restore.commit restore.abort) ->
+          ~w(op expected_generation expected_epoch migration_id plan_binding_sha256 dependency_union_sha256)
+
+        op when op in ~w(restore.rollback restore.checkpoint_drop) ->
+          ~w(op expected_generation expected_epoch checkpoint_id plan_binding_sha256 dependency_union_sha256)
+
+        _ ->
+          []
+      end
+
+    expected_refs =
+      case operation do
+        "restore.open" -> {true, false}
+        "restore.page" -> {true, true}
+        op when op in ~w(restore.commit restore.rollback) -> {false, true}
+        op when op in ~w(restore.abort restore.checkpoint_drop) -> {false, false}
+        _ -> :invalid
+      end
+
+    with true <- fields != [] and backup_exact?(request, fields),
+         true <- {not is_nil(result_input), not is_nil(plan_input)} === expected_refs,
+         true <- is_nil(result_input) or backup_result_ref?(result_input),
+         true <- is_nil(plan_input) or backup_result_ref?(plan_input),
+         true <-
+           E.safe_uint?(request["expected_generation"]) and
+             request["expected_generation"] < E.safe_integer_max() and
+             E.safe_uint?(request["expected_epoch"]),
+         true <-
+           E.sha256?(request["plan_binding_sha256"]) and
+             E.sha256?(request["dependency_union_sha256"]),
+         {:ok, empty_union} <- Ipse.Extension.canonical_digest([[]]),
+         true <- request["dependency_union_sha256"] === empty_union,
+         true <- not Map.has_key?(request, "input_sha256") or E.sha256?(request["input_sha256"]),
+         true <- not Map.has_key?(request, "migration_id") or backup_id?(request["migration_id"]),
+         true <-
+           not Map.has_key?(request, "checkpoint_id") or backup_id?(request["checkpoint_id"]),
+         true <- operation !== "restore.page" or E.safe_uint?(request["ordinal"]),
+         plan_ref = if(operation === "restore.open", do: result_input, else: plan_input),
+         true <- is_nil(plan_ref) or backup_ref_digest?(plan_ref, request["plan_binding_sha256"]),
+         true <-
+           operation !== "restore.page" or
+             backup_ref_digest?(result_input, request["data_binding_sha256"]) do
+      true
+    else
+      _ -> false
+    end
+  rescue
+    _ -> false
+  end
+
+  defp backup_ref_digest?(ref, expected),
+    do: match?({:ok, ^expected}, Ipse.Extension.canonical_digest([ref]))
+
+  defp backup_restore_receipt?(request, receipt, native_hash, operation_id) do
+    expected = ~w(generation floor request_sha256)
+
+    fields =
+      case request["op"] do
+        op when op in ~w(restore.open restore.page) -> expected ++ ["migration_id"]
+        "restore.commit" -> expected ++ ["checkpoint_id"]
+        _ -> expected
+      end
+
+    backup_exact?(receipt, fields) and
+      receipt["generation"] === request["expected_generation"] + 1 and
+      E.safe_uint?(receipt["floor"]) and receipt["request_sha256"] === native_hash and
+      case request["op"] do
+        "restore.open" ->
+          receipt["migration_id"] === operation_id
+
+        "restore.page" ->
+          receipt["migration_id"] === request["migration_id"]
+
+        "restore.commit" ->
+          is_nil(receipt["checkpoint_id"]) or receipt["checkpoint_id"] === operation_id
+
+        _ ->
+          true
+      end
+  end
+
+  defp backup_read_input(state) do
+    request = %{
+      "result_input" => state.result_input,
+      "plan_input" => state.plan_input,
+      "offset" => byte_size(state.bytes)
+    }
+
+    backup_input_advance(start(state.profile, :result_input_read, request), state)
+  end
+
+  defp backup_input_advance({:call, request, inner}, state) do
+    if read_request?(request) and state.reads < @reads,
+      do:
+        {:call, request, %{backup_input_state: %{state | reads: state.reads + 1}, inner: inner}},
+      else: backup_error(:collection_backup_read_budget)
+  end
+
+  defp backup_input_advance({:done, {:ok, result}}, state) do
+    bytes = state.bytes <> result["data"]
+    delivery = state.result_input["delivery"]
+    origin = result["origin"]
+
+    cond do
+      state.origin !== :unset and state.origin !== origin ->
+        backup_error(:collection_result_input_corrupt)
+
+      byte_size(bytes) > delivery["byte_count"] ->
+        backup_error(:collection_result_input_corrupt)
+
+      is_integer(result["next"]) and result["next"] === byte_size(bytes) ->
+        backup_read_input(%{state | bytes: bytes, origin: origin})
+
+      is_nil(result["next"]) and byte_size(bytes) === delivery["byte_count"] and
+          E.sha256(bytes) === delivery["sha256"] ->
+        case ResultDocument.decode(bytes, %{"type" => "object"}) do
+          {:ok, value} ->
+            {:done,
+             {:ok,
+              %{
+                "result_input" => state.result_input,
+                "value" => value,
+                "raw_sha256" => delivery["sha256"],
+                "byte_count" => byte_size(bytes),
+                "origin" => origin
+              }}}
+
+          _ ->
+            backup_error(:collection_result_input_corrupt)
+        end
+
+      true ->
+        backup_error(:collection_result_input_corrupt)
+    end
+  rescue
+    _ -> backup_error(:collection_result_input_corrupt)
+  end
+
+  defp backup_input_advance({:stop, :unknown_effect}, _), do: {:stop, :unknown_effect}
+  defp backup_input_advance({:done, {:error, code, _}}, _), do: backup_error(code)
+  defp backup_input_advance(_, _), do: backup_error(:collection_result_input_corrupt)
+
+  defp backup_input_owner?(owner),
+    do:
+      backup_exact?(owner, ~w(project_id session_id identity_sha256 invocation_id)) and
+        E.sha256?(owner["project_id"]) and E.sha256?(owner["identity_sha256"]) and
+        backup_id?(owner["session_id"]) and backup_id?(owner["invocation_id"])
+
+  defp backup_origin?(origin, ref) do
+    backup_exact?(
+      origin,
+      ~w(version artifact_sha256 invocation_id command_id action owner descriptor metadata_sha256)
+    ) and
+      origin["version"] === 1 and E.sha256?(origin["artifact_sha256"]) and
+      E.sha256?(origin["metadata_sha256"]) and backup_id?(origin["invocation_id"]) and
+      origin["command_id"] === "source" and origin["action"] in ~w(backup_page backup_plan) and
+      backup_input_owner?(origin["owner"]) and
+      origin["owner"]["session_id"] === ref["session_id"] and
+      origin["owner"]["invocation_id"] === origin["invocation_id"] and
+      backup_compact_descriptor?(origin["descriptor"])
+  rescue
+    _ -> false
+  end
+
+  defp backup_origin_matches?(selected, action, descriptor) do
+    origin = selected["origin"]
+    ref = selected["result_input"]
+
+    compact =
+      descriptor
+      |> Map.delete("floor_lineage")
+      |> Map.put("floor_lineage_count", length(descriptor["floor_lineage"]))
+
+    backup_origin?(origin, ref) and origin["action"] === action and
+      origin["descriptor"] === compact
+  rescue
+    _ -> false
+  end
+
+  defp backup_error(code), do: {:done, {:error, code, %{}}}
+
+  defp backup_restore_action_args?(action, args, result_input, plan_input) do
+    common = ~w(expected_generation expected_epoch)
+
+    extra =
+      case action do
+        "open" -> []
+        "page" -> ~w(migration_id ordinal)
+        "commit" -> ~w(migration_id)
+        "abort" -> ~w(migration_id plan_binding_sha256)
+        "rollback" -> ~w(checkpoint_id)
+        "checkpoint_drop" -> ~w(checkpoint_id plan_binding_sha256)
+      end
+
+    expected_refs =
+      case action do
+        "open" -> {true, false}
+        "page" -> {true, true}
+        op when op in ~w(commit rollback) -> {false, true}
+        _ -> {false, false}
+      end
+
+    backup_exact?(args, common ++ extra) and
+      {not is_nil(result_input), not is_nil(plan_input)} === expected_refs and
+      (is_nil(result_input) or backup_result_ref?(result_input)) and
+      (is_nil(plan_input) or backup_result_ref?(plan_input)) and
+      E.safe_uint?(args["expected_generation"]) and
+      args["expected_generation"] < E.safe_integer_max() and
+      E.safe_uint?(args["expected_epoch"]) and
+      (action not in ~w(open rollback) or args["expected_epoch"] < E.safe_integer_max()) and
+      (not Map.has_key?(args, "migration_id") or backup_id?(args["migration_id"])) and
+      (not Map.has_key?(args, "checkpoint_id") or backup_id?(args["checkpoint_id"])) and
+      (not Map.has_key?(args, "ordinal") or E.safe_uint?(args["ordinal"])) and
+      (not Map.has_key?(args, "plan_binding_sha256") or E.sha256?(args["plan_binding_sha256"]))
+  end
+
+  defp backup_restore_binding(nil, args), do: {:ok, args["plan_binding_sha256"]}
+  defp backup_restore_binding(ref, _), do: Ipse.Extension.canonical_digest([ref])
+
+  defp backup_restore_action_advance({:call, request, inner}, state) do
+    read = read_request?(request)
+    reads = state.reads + if(read, do: 1, else: 0)
+    effects = state.effects + if(read, do: 0, else: 1)
+
+    if reads <= @reads and effects <= @effects,
+      do:
+        {:call, request,
+         %{backup_restore_state: %{state | reads: reads, effects: effects}, inner: inner}},
+      else: backup_error(:collection_budget)
+  end
+
+  defp backup_restore_action_advance({:done, {:ok, result}}, %{phase: :input} = state) do
+    with true <- result["result_input"] === state.result_input,
+         true <-
+           state.action !== "open" or
+             (backup_descriptor?(result["value"]["descriptor"]) and
+                backup_origin_matches?(result, "backup_plan", result["value"]["descriptor"]) and
+                result["value"]["descriptor"]["maintenance_epoch"] < E.safe_integer_max()),
+         {:ok, input_sha} <- Ipse.Extension.canonical_object_digest(result["value"]) do
+      source_epoch =
+        if state.action === "open",
+          do: result["value"]["descriptor"]["maintenance_epoch"],
+          else: 0
+
+      backup_restore_issue(Map.put(state, :source_epoch, source_epoch), input_sha)
+    else
+      _ -> backup_error(:collection_result_input_corrupt)
+    end
+  end
+
+  defp backup_restore_action_advance({:done, {:ok, result}}, %{phase: :mutation} = state) do
+    epoch =
+      case state.action do
+        "open" -> max(state.args["expected_epoch"], state.source_epoch) + 1
+        "rollback" -> state.args["expected_epoch"] + 1
+        _ -> state.args["expected_epoch"]
+      end
+
+    {:done,
+     {:ok,
+      Map.merge(result, %{
+        "action" => state.action,
+        "maintenance_epoch" => epoch,
+        "plan_binding_sha256" => state.plan_binding,
+        "coverage" => %{"reads_used" => state.reads, "effects_used" => state.effects}
+      })}}
+  end
+
+  defp backup_restore_action_advance({:stop, :unknown_effect}, _), do: {:stop, :unknown_effect}
+  defp backup_restore_action_advance({:done, {:error, code, _}}, _), do: backup_error(code)
+  defp backup_restore_action_advance(_, _), do: backup_error(:collection_backup_corrupt)
+
+  defp backup_restore_issue(state, input_sha) do
+    inner = %{
+      "op" => "restore." <> state.action,
+      "expected_generation" => state.args["expected_generation"],
+      "expected_epoch" => state.args["expected_epoch"],
+      "plan_binding_sha256" => state.plan_binding,
+      "dependency_union_sha256" => state.empty_union
+    }
+
+    inner = Map.merge(inner, Map.take(state.args, ~w(migration_id checkpoint_id ordinal)))
+
+    inner =
+      if state.action in ~w(open page), do: Map.put(inner, "input_sha256", input_sha), else: inner
+
+    with {:ok, inner} <- backup_restore_data_binding(inner, state) do
+      backup_restore_action_advance(
+        start(state.profile, :restore_mutation, %{
+          "request" => inner,
+          "result_input" => state.result_input,
+          "plan_input" => state.plan_input
+        }),
+        %{state | phase: :mutation}
+      )
+    else
+      _ -> backup_error(:invalid_collection_restore)
+    end
+  end
+
+  defp backup_restore_data_binding(inner, %{action: "page", result_input: ref}) do
+    with {:ok, hash} <- Ipse.Extension.canonical_digest([ref]),
+         do: {:ok, Map.put(inner, "data_binding_sha256", hash)}
+  end
+
+  defp backup_restore_data_binding(inner, _), do: {:ok, inner}
+
+  defp backup_validation_read(state, result_input, plan_input),
+    do:
+      backup_validation_advance(
+        start(state.profile, :selected_backup_result, %{
+          "result_input" => result_input,
+          "plan_input" => plan_input
+        }),
+        state
+      )
+
+  defp backup_validation_advance({:call, request, inner}, state) do
+    if read_request?(request) and state.reads < @reads,
+      do:
+        {:call, request,
+         %{backup_validation_state: %{state | reads: state.reads + 1}, inner: inner}},
+      else: backup_error(:collection_backup_read_budget)
+  end
+
+  defp backup_validation_advance({:done, {:ok, selected}}, %{phase: :plan} = state) do
+    plan = selected["value"]
+    inputs = get_in(plan, ["plan", "data_inputs"])
+
+    with true <- selected["result_input"] === state.plan_ref,
+         true <- backup_origin_matches?(selected, "backup_plan", plan["descriptor"]),
+         true <- is_list(inputs) and length(inputs) in 1..4,
+         true <-
+           Enum.all?(inputs, &backup_result_ref?/1) and
+             length(Enum.uniq(inputs)) === length(inputs),
+         true <- state.selected in inputs do
+      [next | _] = inputs
+
+      backup_validation_read(
+        %{state | phase: :inputs, plan: plan, inputs: inputs},
+        next,
+        state.plan_ref
+      )
+    else
+      _ -> backup_error(:collection_backup_plan_invalid)
+    end
+  end
+
+  defp backup_validation_advance({:done, {:ok, selected}}, %{phase: :inputs} = state) do
+    [expected | rest] = state.inputs
+
+    if selected["result_input"] === expected do
+      state = %{state | inputs: rest, pages: [selected | state.pages]}
+
+      if rest === [] do
+        pages = Enum.reverse(state.pages)
+        records = Enum.flat_map(pages, &get_in(&1, ["value", "records"]))
+        page = Enum.find(pages, &(&1["result_input"] === state.selected))
+
+        with :ok <- backup_verify_plan(state.plan, pages),
+             true <-
+               Enum.all?(
+                 pages,
+                 &backup_origin_matches?(&1, "backup_page", state.plan["descriptor"])
+               ),
+             true <-
+               IpseKnowledge.Store.Collection.Projection.completed_backup?(
+                 state.profile,
+                 records,
+                 state.plan["descriptor"]["maintenance_epoch"]
+               ),
+             true <- is_map(page) do
+          {:done, {:ok, page["value"]}}
+        else
+          _ -> backup_error(:collection_backup_incomplete_domain)
+        end
+      else
+        backup_validation_read(state, hd(rest), state.plan_ref)
+      end
+    else
+      backup_error(:collection_backup_plan_invalid)
+    end
+  rescue
+    _ -> backup_error(:collection_backup_plan_invalid)
+  end
+
+  defp backup_validation_advance({:stop, :unknown_effect}, _), do: {:stop, :unknown_effect}
+  defp backup_validation_advance({:done, {:error, code, _}}, _), do: backup_error(code)
+  defp backup_validation_advance(_, _), do: backup_error(:collection_backup_plan_invalid)
+
+  defp backup_plan_metadata(state, offset),
+    do:
+      backup_plan_advance(
+        start(state.profile, :backup_metadata, %{
+          "generation" => state.generation,
+          "section" => state.section,
+          "offset" => offset,
+          "limit" => 8
+        }),
+        state
+      )
+
+  defp backup_plan_advance({:call, request, inner}, state) do
+    if read_request?(request) and state.reads < @reads,
+      do: {:call, request, %{backup_plan_state: %{state | reads: state.reads + 1}, inner: inner}},
+      else: backup_error(:collection_backup_read_budget)
+  end
+
+  defp backup_plan_advance({:done, {:ok, value}}, %{section: "inputs"} = state) do
+    [expected | rest] = state.inputs
+
+    if value["result_input"] === expected do
+      state = %{state | inputs: rest, pages: [value | state.pages]}
+
+      if rest === [] do
+        case backup_plan(
+               state.descriptor,
+               state.rows,
+               state.operations,
+               Enum.reverse(state.pages)
+             ) do
+          {:ok, plan} -> {:done, {:ok, plan}}
+          {:error, code} -> backup_error(code)
+        end
+      else
+        backup_plan_input(state)
+      end
+    else
+      backup_error(:collection_backup_plan_invalid)
+    end
+  end
+
+  defp backup_plan_advance({:done, {:ok, result}}, state) do
+    current =
+      case state.section do
+        "records" -> state.rows
+        "operations" -> state.operations
+        "lineage" -> state.lineage
+      end
+
+    descriptor = result["descriptor"]
+    count_key = if state.section === "lineage", do: "floor_lineage_count", else: state.section
+    maximum = if state.section === "records", do: 32, else: 128
+
+    with true <-
+           backup_compact_descriptor?(descriptor) and
+             descriptor["generation"] === state.generation,
+         true <- is_nil(state.descriptor) or descriptor === state.descriptor,
+         total when is_integer(total) and total in 0..maximum//1 <- descriptor[count_key],
+         true <- state.section !== "records" or total > 0,
+         offset = length(current),
+         true <- backup_metadata?(result, state, state.section, offset),
+         true <- length(result["rows"]) === min(8, total - offset),
+         true <-
+           result["next"] ===
+             if(offset + length(result["rows"]) < total,
+               do: offset + length(result["rows"]),
+               else: nil
+             ) do
+      state = Map.put(state, :descriptor, descriptor)
+      current = current ++ result["rows"]
+
+      state =
+        case state.section do
+          "records" -> %{state | rows: current}
+          "operations" -> %{state | operations: current}
+          "lineage" -> %{state | lineage: current}
+        end
+
+      if is_integer(result["next"]) do
+        backup_plan_metadata(state, result["next"])
+      else
+        case state.section do
+          "records" ->
+            backup_plan_metadata(%{state | section: "operations"}, 0)
+
+          "operations" ->
+            backup_plan_metadata(%{state | section: "lineage"}, 0)
+
+          "lineage" ->
+            descriptor =
+              descriptor
+              |> Map.delete("floor_lineage_count")
+              |> Map.put("floor_lineage", state.lineage)
+
+            backup_plan_input(%{state | section: "inputs", descriptor: descriptor})
+        end
+      end
+    else
+      _ -> backup_error(:collection_backup_plan_invalid)
+    end
+  rescue
+    _ -> backup_error(:collection_backup_plan_invalid)
+  end
+
+  defp backup_plan_advance({:stop, :unknown_effect}, _), do: {:stop, :unknown_effect}
+  defp backup_plan_advance({:done, {:error, code, _}}, _), do: backup_error(code)
+  defp backup_plan_advance(_, _), do: backup_error(:collection_backup_plan_invalid)
+
+  defp backup_plan_input(%{inputs: [ref | _]} = state),
+    do:
+      backup_plan_advance(
+        start(state.profile, :selected_backup_result, %{
+          "result_input" => ref,
+          "plan_input" => nil
+        }),
+        state
+      )
+
+  @doc false
+  def backup_plan(descriptor, rows, operations, pages)
+      when is_map(descriptor) and is_list(rows) and is_list(operations) and is_list(pages) do
+    with true <- backup_descriptor?(descriptor),
+         true <- length(rows) in 1..32 and length(rows) === descriptor["records"],
+         true <- Enum.all?(rows, &backup_record_row?/1),
+         true <- Enum.map(rows, &hd/1) === Enum.sort(Enum.uniq(Enum.map(rows, &hd/1))),
+         true <- Enum.sum(Enum.map(rows, &Enum.at(&1, 4))) === descriptor["data_bytes"],
+         {:ok, envelope_sha} <- Ipse.Extension.canonical_digest([rows]),
+         true <- envelope_sha === descriptor["envelopes_sha256"],
+         entries = Enum.map(rows, fn [key, _, _, hash, bytes] -> [key, hash, bytes] end),
+         {:ok, records_sha} <- Ipse.Extension.canonical_digest([entries]),
+         true <- records_sha === descriptor["records_sha256"],
+         true <- length(operations) <= 128 and length(operations) === descriptor["operations"],
+         {:ok, packed, operation_sha, operation_map} <- backup_pack_operations(operations),
+         true <- operation_sha === descriptor["operations_sha256"],
+         true <-
+           Enum.all?(rows, fn [_, revision, id, _, _] ->
+             revision <= descriptor["generation"] and
+               get_in(operation_map, [id, "generation"]) === revision
+           end),
+         {:ok, inputs, bindings, counts} <- backup_plan_pages(pages, descriptor, rows),
+         {:ok, empty_union} <- Ipse.Extension.canonical_digest([[]]) do
+      {:ok,
+       %{
+         "descriptor" => descriptor,
+         "plan" => %{
+           "version" => 2,
+           "records" => rows,
+           "operations" => packed,
+           "page_counts" => counts,
+           "data_inputs" => inputs,
+           "data_bindings" => bindings,
+           "dependency_union_sha256" => empty_union
+         }
+       }}
+    else
+      _ -> {:error, :collection_backup_plan_invalid}
+    end
+  rescue
+    _ -> {:error, :collection_backup_plan_invalid}
+  end
+
+  def backup_plan(_, _, _, _), do: {:error, :collection_backup_plan_invalid}
+
+  @doc false
+  def backup_verify_plan(plan, pages) when is_map(plan) and is_list(pages) do
+    with true <- backup_exact?(plan, ~w(descriptor plan)),
+         data when is_map(data) <- plan["plan"],
+         true <-
+           backup_exact?(
+             data,
+             ~w(version records operations page_counts data_inputs data_bindings dependency_union_sha256)
+           ) and data["version"] === 2,
+         {:ok, operations} <- backup_unpack_operations(data["operations"]),
+         {:ok, rebuilt} <- backup_plan(plan["descriptor"], data["records"], operations, pages),
+         true <- rebuilt === plan do
+      :ok
+    else
+      _ -> {:error, :collection_backup_plan_invalid}
+    end
+  rescue
+    _ -> {:error, :collection_backup_plan_invalid}
+  end
+
+  def backup_verify_plan(_, _), do: {:error, :collection_backup_plan_invalid}
+
+  defp backup_descriptor?(d) do
+    fields =
+      ~w(version profile project generation maintenance_epoch floor floor_anchor floor_lineage floor_lineage_sha256 records data_bytes records_sha256 operations operations_sha256 envelopes_sha256)
+
+    with true <- backup_exact?(d, fields) and d["version"] === 4,
+         true <- d["profile"] === "document_graph_v1" and E.sha256?(d["project"]),
+         true <-
+           E.safe_uint?(d["generation"]) and E.safe_uint?(d["maintenance_epoch"]) and
+             E.safe_uint?(d["floor"]),
+         lineage when is_list(lineage) and length(lineage) <= 128 <- d["floor_lineage"],
+         true <-
+           Enum.all?(lineage, &backup_id?/1) and length(Enum.uniq(lineage)) === length(lineage),
+         true <-
+           if(d["floor"] === 0,
+             do: lineage === [] and is_nil(d["floor_anchor"]),
+             else: lineage != [] and List.last(lineage) === d["floor_anchor"]
+           ),
+         {:ok, lineage_sha} <- Ipse.Extension.canonical_digest([lineage]),
+         true <- lineage_sha === d["floor_lineage_sha256"],
+         true <-
+           E.safe_uint?(d["records"]) and E.safe_uint?(d["operations"]) and
+             E.safe_uint?(d["data_bytes"]),
+         true <-
+           Enum.all?(~w(records_sha256 operations_sha256 envelopes_sha256), &E.sha256?(d[&1])) do
+      true
+    else
+      _ -> false
+    end
+  end
+
+  defp backup_compact_descriptor?(d) do
+    fields =
+      ~w(version profile project generation maintenance_epoch floor floor_anchor floor_lineage_count floor_lineage_sha256 records data_bytes records_sha256 operations operations_sha256 envelopes_sha256)
+
+    backup_exact?(d, fields) and d["version"] === 4 and d["profile"] === "document_graph_v1" and
+      E.sha256?(d["project"]) and
+      Enum.all?(
+        ~w(generation maintenance_epoch floor floor_lineage_count records data_bytes operations),
+        &E.safe_uint?(d[&1])
+      ) and d["floor_lineage_count"] <= 128 and
+      if(d["floor"] === 0,
+        do: d["floor_anchor"] === nil and d["floor_lineage_count"] === 0,
+        else: backup_id?(d["floor_anchor"]) and d["floor_lineage_count"] > 0
+      ) and
+      Enum.all?(
+        ~w(floor_lineage_sha256 records_sha256 operations_sha256 envelopes_sha256),
+        &E.sha256?(d[&1])
+      )
+  rescue
+    _ -> false
+  end
+
+  defp backup_pack_operations(rows) do
+    ids = Enum.map(rows, fn [id, _] -> id end)
+
+    with true <- ids === Enum.sort(Enum.uniq(ids)),
+         {:ok, empty} <- Ipse.Extension.canonical_digest(["collection-operations", 1]) do
+      Enum.reduce_while(rows, {:ok, [], empty, %{}}, fn [id, receipt],
+                                                        {:ok, packed, digest, map} ->
+        with true <- backup_id?(id) and backup_receipt?(receipt),
+             {:ok, next} <- Ipse.Extension.canonical_digest([digest, id, receipt]) do
+          extra = Map.take(receipt, ~w(migration_id checkpoint_id))
+
+          row = [
+            backup_pack_hex(id),
+            receipt["generation"],
+            backup_pack_hex(receipt["request_sha256"]),
+            receipt["floor"]
+          ]
+
+          row = if map_size(extra) === 0, do: row, else: row ++ [extra]
+          {:cont, {:ok, [row | packed], next, Map.put(map, id, receipt)}}
+        else
+          _ -> {:halt, {:error, :invalid_operations}}
+        end
+      end)
+      |> case do
+        {:ok, packed, digest, map} -> {:ok, Enum.reverse(packed), digest, map}
+        error -> error
+      end
+    else
+      _ -> {:error, :invalid_operations}
+    end
+  rescue
+    _ -> {:error, :invalid_operations}
+  end
+
+  defp backup_receipt?(r) when is_map(r) do
+    optional = Map.take(r, ~w(migration_id checkpoint_id))
+
+    backup_exact?(
+      Map.drop(r, ~w(migration_id checkpoint_id)),
+      ~w(generation floor request_sha256)
+    ) and
+      E.safe_positive?(r["generation"]) and E.safe_uint?(r["floor"]) and
+      E.sha256?(r["request_sha256"]) and
+      (not Map.has_key?(optional, "migration_id") or backup_id?(optional["migration_id"])) and
+      (not Map.has_key?(optional, "checkpoint_id") or is_nil(optional["checkpoint_id"]) or
+         backup_id?(optional["checkpoint_id"]))
+  end
+
+  defp backup_receipt?(_), do: false
+
+  defp backup_unpack_operations(rows) when is_list(rows) and length(rows) <= 128 do
+    Enum.reduce_while(rows, {:ok, []}, fn row, {:ok, unpacked} ->
+      case row do
+        [packed_id, generation, packed_hash, floor | extras] ->
+          with {:ok, id} <- backup_unpack_hex(packed_id, 16),
+               {:ok, hash} <- backup_unpack_hex(packed_hash, 32),
+               {:ok, extra} <- backup_receipt_extra(extras),
+               receipt =
+                 Map.merge(extra, %{
+                   "generation" => generation,
+                   "floor" => floor,
+                   "request_sha256" => hash
+                 }),
+               true <- backup_receipt?(receipt) do
+            {:cont, {:ok, [[id, receipt] | unpacked]}}
+          else
+            _ -> {:halt, {:error, :invalid_operations}}
+          end
+
+        _ ->
+          {:halt, {:error, :invalid_operations}}
+      end
+    end)
+    |> case do
+      {:ok, unpacked} -> {:ok, Enum.reverse(unpacked)}
+      error -> error
+    end
+  end
+
+  defp backup_unpack_operations(_), do: {:error, :invalid_operations}
+  defp backup_receipt_extra([]), do: {:ok, %{}}
+
+  defp backup_receipt_extra([extra]) when is_map(extra) and map_size(extra) in 1..2,
+    do:
+      if(Map.keys(extra) -- ~w(migration_id checkpoint_id) === [],
+        do: {:ok, extra},
+        else: {:error, :invalid_operations}
+      )
+
+  defp backup_receipt_extra(_), do: {:error, :invalid_operations}
+
+  defp backup_unpack_hex(value, size) when is_binary(value) do
+    with {:ok, bytes} <- Base.url_decode64(value, padding: false),
+         true <- byte_size(bytes) === size and Base.url_encode64(bytes, padding: false) === value do
+      {:ok, Base.encode16(bytes, case: :lower)}
+    else
+      _ -> {:error, :invalid_operations}
+    end
+  end
+
+  defp backup_unpack_hex(_, _), do: {:error, :invalid_operations}
+
+  defp backup_pack_hex(hex),
+    do: hex |> Base.decode16!(case: :lower) |> Base.url_encode64(padding: false)
+
+  defp backup_plan_pages(pages, descriptor, rows) when length(pages) in 1..4 do
+    with true <- Enum.all?(pages, &backup_plan_page?(&1, descriptor)),
+         inputs = Enum.map(pages, & &1["result_input"]),
+         true <- length(Enum.uniq(inputs)) === length(inputs),
+         flattened = Enum.flat_map(pages, & &1["value"]["records"]),
+         true <- Enum.map(flattened, &backup_page_row/1) === rows,
+         true <-
+           pages
+           |> Enum.with_index()
+           |> Enum.all?(fn {page, i} ->
+             last = List.last(page["value"]["records"])["key"]
+             page["value"]["next"] === if(i + 1 < length(pages), do: last, else: nil)
+           end),
+         {:ok, bindings} <- backup_bind_inputs(inputs) do
+      {:ok, inputs, bindings, Enum.map(pages, &length(&1["value"]["records"]))}
+    else
+      _ -> {:error, :invalid_pages}
+    end
+  end
+
+  defp backup_plan_pages(_, _, _), do: {:error, :invalid_pages}
+
+  defp backup_plan_page?(page, descriptor) do
+    value = page["value"]
+    ref = page["result_input"]
+
+    backup_exact?(page, ~w(result_input value raw_sha256 byte_count origin)) and
+      backup_result_ref?(ref) and
+      page["raw_sha256"] === ref["delivery"]["sha256"] and
+      page["byte_count"] === ref["delivery"]["byte_count"] and
+      backup_exact?(value, ~w(descriptor records next)) and value["descriptor"] === descriptor and
+      (is_nil(page["origin"]) or backup_origin_matches?(page, "backup_page", descriptor)) and
+      is_list(value["records"]) and length(value["records"]) in 1..8 and
+      Enum.all?(value["records"], &backup_page_record?/1)
+  end
+
+  defp backup_page_record?(record) when is_map(record) do
+    packed = record["value"]
+    row = backup_page_row(record)
+
+    with true <- backup_exact?(record, ~w(key revision operation_id sha256 bytes value)),
+         true <-
+           backup_record_row?(row) and
+             backup_exact?(packed, ~w(version kind sha256 byte_count parts)),
+         true <- packed["version"] === 1 and packed["kind"] === "document_value",
+         parts when is_list(parts) and length(parts) in 1..10 <- packed["parts"],
+         true <-
+           Enum.all?(parts, &(is_binary(&1) and String.valid?(&1) and byte_size(&1) in 1..6144)),
+         body = IO.iodata_to_binary(parts),
+         true <- byte_size(body) === packed["byte_count"] and E.sha256(body) === packed["sha256"],
+         {:ok, _} <- ResultDocument.decode(body, %{"type" => "object"}),
+         {:ok, physical} <- ResultDocument.encode(packed, %{"type" => "object"}),
+         true <-
+           byte_size(physical) === record["bytes"] and E.sha256(physical) === record["sha256"] do
+      true
+    else
+      _ -> false
+    end
+  rescue
+    _ -> false
+  end
+
+  defp backup_page_record?(_), do: false
+
+  defp backup_page_row(record),
+    do: Enum.map(~w(key revision operation_id sha256 bytes), &record[&1])
+
+  defp backup_bind_inputs(inputs) do
+    Enum.reduce_while(inputs, {:ok, []}, fn input, {:ok, hashes} ->
+      case Ipse.Extension.canonical_digest([input]) do
+        {:ok, hash} -> {:cont, {:ok, [hash | hashes]}}
+        _ -> {:halt, {:error, :invalid_input}}
+      end
+    end)
+    |> case do
+      {:ok, hashes} -> {:ok, Enum.reverse(hashes)}
+      error -> error
+    end
+  end
+
+  # Rebuild the physical wrapper from the native layout and the exact logical
+  # bytes returned by bounded reads. The source's boundaries are data: do not
+  # rechunk them or hash a re-encoded logical document.
+  def backup_reconstruct([key, revision, operation_id, record_sha256, record_bytes], layout, body)
+      when is_binary(key) and is_integer(revision) and is_binary(operation_id) and
+             is_binary(record_sha256) and is_integer(record_bytes) and is_map(layout) and
+             is_binary(body) do
+    with true <-
+           backup_exact?(
+             layout,
+             ~w(version recipe revision record_sha256 record_bytes sha256 byte_count parts)
+           ),
+         true <-
+           byte_size(key) in 1..96 and
+             Regex.match?(~r/\A[a-zA-Z0-9][a-zA-Z0-9_.-]*\z/, key) and
+             not String.starts_with?(key, "host.") and E.safe_positive?(revision) and
+             Regex.match?(~r/\A[a-f0-9]{32}\z/, operation_id) and
+             record_bytes in 2..65_536,
+         true <- layout["version"] === 1 and layout["recipe"] === "document_packed_layout_v1",
+         true <- layout["revision"] === revision and layout["record_sha256"] === record_sha256,
+         true <- layout["record_bytes"] === record_bytes and E.sha256?(record_sha256),
+         true <- is_integer(layout["byte_count"]) and layout["byte_count"] in 2..61_440,
+         true <- byte_size(body) === layout["byte_count"] and E.sha256(body) === layout["sha256"],
+         {:ok, parts} <- backup_parts(body, layout["parts"]),
+         {:ok, _} <- ResultDocument.decode(body, %{"type" => "object"}),
+         packed = %{
+           "version" => 1,
+           "kind" => "document_value",
+           "sha256" => layout["sha256"],
+           "byte_count" => layout["byte_count"],
+           "parts" => parts
+         },
+         {:ok, physical} <- ResultDocument.encode(packed, %{"type" => "object"}),
+         true <- byte_size(physical) === record_bytes and E.sha256(physical) === record_sha256 do
+      {:ok,
+       %{
+         "key" => key,
+         "revision" => revision,
+         "operation_id" => operation_id,
+         "sha256" => record_sha256,
+         "bytes" => record_bytes,
+         "value" => packed
+       }}
+    else
+      _ -> {:error, :collection_backup_corrupt}
+    end
+  rescue
+    _ -> {:error, :collection_backup_corrupt}
+  end
+
+  def backup_reconstruct(_, _, _), do: {:error, :collection_backup_corrupt}
+
+  defp backup_parts(body, parts) when is_list(parts) and length(parts) in 1..10 do
+    result =
+      Enum.reduce_while(parts, {:ok, 0, []}, fn part, {:ok, offset, values} ->
+        with true <- backup_exact?(part, ~w(offset byte_count sha256)),
+             true <- part["offset"] === offset,
+             count when is_integer(count) and count in 1..6144 <- part["byte_count"],
+             true <- offset + count <= byte_size(body),
+             value = binary_part(body, offset, count),
+             true <- String.valid?(value) and E.sha256(value) === part["sha256"] do
+          {:cont, {:ok, offset + count, [value | values]}}
+        else
+          _ -> {:halt, {:error, :collection_backup_corrupt}}
+        end
+      end)
+
+    case result do
+      {:ok, size, values} when size === byte_size(body) -> {:ok, Enum.reverse(values)}
+      _ -> {:error, :collection_backup_corrupt}
+    end
+  end
+
+  defp backup_parts(_, _), do: {:error, :collection_backup_corrupt}
+  defp backup_exact?(map, keys), do: is_map(map) and Enum.sort(Map.keys(map)) === Enum.sort(keys)
 end

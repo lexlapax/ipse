@@ -889,7 +889,9 @@ revised or forged page refuses; a compact header alone is not readable evidence.
 Selected Source version 2 holds the privately hydrated document plus compact
 origin; Source version 1 remains readable. State/MCP replies carry bounded
 individual records, preserving SDK strings/depth and result limits. Single-envelope
-import refuses Source version 2 until paged migration is implemented.
+State/MCP single-envelope import still refuses Source version 2. The bounded
+whole-Collection migration path instead retains its original packed records;
+it is a separate operation and does not give historical data current-use authority.
 
 Larger workspace text or metadata opens the existing source draft.
 `continue_document` reacquires the hash-pinned original and exact typed extraction;
@@ -1142,8 +1144,8 @@ its installation does not activate PDF acquisition. The
 [parser contract](../../native/ipse-pdf/README.md) describes its lifetime and
 limits. The Corpus paths above provide bounded ingestion and cited retrieval.
 Extraction alone supplies neither current-source authorization nor retrieval
-quality qualification. Larger originals, full document capacity and paged-source
-migration require separate storage work.
+quality qualification. Larger originals, full document capacity and migration
+beyond the bounded completed-Collection path require separate storage work.
 
 Exercise synthetic DOCX relationships, bounded XML and Unicode extraction from
 the repository root:
@@ -1611,7 +1613,15 @@ not weights or retrieval quality.
 Store/Adapters use private done/call/stop continuations. Entrypoints turn only exact
 host calls into SDK proposals and resume the same owner. Initialize every private
 map key before update. Unknown effects terminate, without empty success or retry.
-Each finish passes the whole public object to `ResultPublication.prepare/1`.
+Most finishes pass the whole public object to `ResultPublication.prepare/1`.
+Collection backup pages, plans and validated pages use `prepare_paged/1` even
+when small, so a later Session can select the committed `saved.result` rather
+than trusting a copied inline value. The [migration exercise](knowledge-storage.md#restore-completed-document-collection-data)
+traces the bounded 32-record/four-page set, native metadata origin, exact source
+epoch and current artifact validator through restore. It preserves the packed
+values while native destination revisions and operation IDs are rebased. A
+completed source's old backup can refuse after the destination floor advances;
+do not edit the descriptor or replay an unknown action to cross that fence.
 Invalid aggregates become explicit `result_too_large`; quotes/bases are not dropped
 to align with 4096-byte transport fragments.
 

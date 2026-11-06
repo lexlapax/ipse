@@ -658,7 +658,7 @@ not establish that supplied facts are true or that vectors came from a model.
 Both finalization paths have focused native Session selection and recovery
 controls using small supplied generations. Complete acquisition,
 shared-generation build, full capacity/rebuild peaks, GC, job reclamation and
-migration remain unqualified. Ordinary document staging
+full-capacity migration remain unqualified. Ordinary document staging
 support does not qualify those journeys or turn a fixture-supplied generation
 into a complete ingestion workflow. The document namespace retains its fixed
 8,192-key/32,768-operation ceilings and 192 MiB native allocation limit; preparing
@@ -1053,8 +1053,9 @@ your `/result` reads do not disclose the document to the model.
 ## Inspect, replace and forget a source
 
 These lifecycle commands apply to State and MCP stores. The experimental
-Collection source command supports ingestion and its returned continuations;
-source inspection, forgetting and export still return
+Collection source command supports ingestion, its returned continuations, and the
+bounded whole-collection backup procedure below. Per-source inspection,
+forgetting and source-envelope export still return
 `collection_lifecycle_unavailable`. Its lexical and shared-job inspection
 commands inspect those builds, not a source lifecycle draft.
 
@@ -1495,11 +1496,148 @@ This route does not scan the partition directory or certify its total root count
 It does not replace the server's capacity or access policy. Keep the same
 88-record guarantee for all writers even when selected queries read fewer records.
 
+## Back up a small document Collection
+
+This experimental procedure retains a complete, recognized Collection record set
+for the **same admitted project**. It accepts 1–32 records in at most four pages,
+with at most eight records per page and at most 128 operation and lineage entries.
+It refuses live jobs, unfinished stages, unrecognized domain formats and inherited
+dependencies. The existing 512-read, 16-effect, saved-result and frame limits also
+apply; a smaller collection can still refuse. This is not a full-capacity backup,
+cross-project migration, or a new grant to use acquired files.
+
+Use the Collection artifact and options from [the Collection setup](#query-a-document-collection).
+Close any old chats, then generate a fresh disabled operator selection with explicit
+input validation. Use a fresh output path:
+
+```sh
+elixir extensions/knowledge/config.exs \
+  --artifact "$IPSE_CORPUS_ARTIFACTS/corpus-collection" \
+  --package corpus --preset collection-documents --instance corpus \
+  --options "$IPSE_CORPUS_ARTIFACTS/collection-options.json" \
+  --collection-input-validation document_completed_v1 \
+  --output "$IPSE_CORPUS_ARTIFACTS/operator-collection-backup.json"
+```
+
+Review the artifact digest and the v3 Collection binding before enabling it.
+This selects the current artifact's `source` validation commands; it adds no
+workspace, model, or cross-project authority. Using the admitted home and
+workspace variables from the earlier setup, inspect and start that selection:
+
+```sh
+IPSE_HOME="$IPSE_CORPUS_COLLECTION_HOME" ./bin/ipse extension import "$IPSE_CORPUS_ARTIFACTS/corpus-collection"
+IPSE_HOME="$IPSE_CORPUS_COLLECTION_HOME" ./bin/ipse config \
+  --config "$IPSE_CORPUS_ARTIFACTS/operator-collection-backup.json" --no-project-config \
+  --extension corpus
+IPSE_HOME="$IPSE_CORPUS_COLLECTION_HOME" ./bin/ipse chat --provider demo \
+  --config "$IPSE_CORPUS_ARTIFACTS/operator-collection-backup.json" --no-project-config \
+  --extension corpus --cwd "$IPSE_CORPUS_COLLECTION_WORKSPACE"
+```
+
+Run the following commands through the same admitted home and project, selected
+artifact and ordinary approvals. When a producing chat closes, use that same
+`chat` command to start the next Session.
+
+1. Start a fresh chat and inspect the actual native generation and maintenance
+   epoch. Proceed only while `maintenance_status` is `idle`:
+
+   ```text
+   /ext ext__corpus__source {"store":"notes","action":"backup_status","args":{"backup":{}}}
+   ```
+
+2. Use the returned generation for `backup_page`. The example generation is
+   illustrative; replace it with the observed number. Start at offset zero:
+
+   ```text
+   /ext ext__corpus__source {"store":"notes","action":"backup_page","args":{"backup":{"generation":12,"offset":0,"limit":8}}}
+   ```
+
+   Each page is a `saved.result`, including small pages. Materialize it using
+   [the saved-result procedure](extensions.md#invoke-a-command-and-inspect-its-complete-result)
+   and retain the producing Session ID and **complete** delivery descriptor.
+   If the page's `next` is non-null, add the number of returned `records` to the
+   numeric offset and export the next page at the same generation. Close each
+   producing chat before another Session selects its saved result. Do not use
+   `next` itself as the numeric offset.
+3. For each saved result, form a selected reference with exactly `version: 1`,
+   its producing `session_id`, and its complete `delivery` object. Preserve its
+   original Session journal. In a fresh chat, call `backup_plan` with the same
+   generation and all page references in order in top-level `data_inputs`.
+   Materialize and retain this provisional plan's saved-result reference, then
+   close that chat.
+4. In a fresh chat for each raw page, call `restore_validate_page` with empty
+   `args.backup`, that raw page reference in top-level `result_input`, and the
+   provisional plan reference in top-level `plan_input`. Materialize and retain
+   each resulting validated-page reference; close each producer chat. The
+   validator checks the original native metadata and the complete record set.
+   Re-run `backup_plan` in a fresh chat using the validated references in order.
+   Its saved-result reference is the final plan. Keep every original page, plan,
+   validation result and producing journal available through restoration.
+
+For example, these are the command shapes; replace each marked value with the
+complete reference object captured above, not merely an output ID:
+
+```text
+/ext ext__corpus__source {"store":"notes","action":"backup_plan","args":{"backup":{"generation":12}},"data_inputs":[PAGE_REFERENCE]}
+/ext ext__corpus__source {"store":"notes","action":"restore_validate_page","args":{"backup":{}},"result_input":PAGE_REFERENCE,"plan_input":PROVISIONAL_PLAN_REFERENCE}
+```
+
+`PAGE_REFERENCE` and `PROVISIONAL_PLAN_REFERENCE` are placeholders for JSON
+objects and must be replaced before submitting these templates. The reference
+object has the form `{"version":1,"session_id":"ACTUAL_SESSION_ID","delivery":ACTUAL_DELIVERY_OBJECT}`;
+copy the entire actual delivery rather than editing its fields.
+
+To restore, first inspect `backup_status` again. The source plan's floor must be
+at least the current floor and extend its lineage. An intervening update can raise
+the floor and make an older backup refuse; the command does not bypass or lower
+that fence. The source and target project must match. Review the complete proposed
+operations before approving them.
+
+In one fresh restore Session, call `restore_open` with `args.backup` containing
+the observed `expected_generation` and `expected_epoch`, and top-level
+`result_input` set to the final plan reference. Keep the returned `migration_id`
+and plan-binding hash. Inspect `backup_status` for the actual active epoch. Send
+each validated page in order with `restore_page`, the current expected generation
+and epoch, `migration_id`, zero-based `ordinal`, top-level `result_input` for that
+page, and top-level `plan_input` for the final plan. Use each successful receipt's
+generation for the next operation. Finally, use `restore_commit` with the current
+generation and epoch, `migration_id`, and the same top-level `plan_input`.
+An open uses an epoch greater than both the target and source epochs.
+
+For one validated page, the command shapes are:
+
+```text
+/ext ext__corpus__source {"store":"notes","action":"restore_open","args":{"backup":{"expected_generation":18,"expected_epoch":0}},"result_input":FINAL_PLAN_REFERENCE}
+/ext ext__corpus__source {"store":"notes","action":"restore_page","args":{"backup":{"expected_generation":19,"expected_epoch":1,"migration_id":"ACTUAL_MIGRATION_ID","ordinal":0}},"result_input":VALIDATED_PAGE_REFERENCE,"plan_input":FINAL_PLAN_REFERENCE}
+/ext ext__corpus__source {"store":"notes","action":"restore_commit","args":{"backup":{"expected_generation":20,"expected_epoch":1,"migration_id":"ACTUAL_MIGRATION_ID"}},"plan_input":FINAL_PLAN_REFERENCE}
+```
+
+Replace every example generation and epoch with the observed values, and replace
+the marked IDs and references with their complete actual values. For several
+pages, repeat `restore_page` with each next ordinal and successful generation.
+
+A known open draft can instead be reduced by `restore_abort` with its exact
+`migration_id`, current generation and epoch, and `plan_binding_sha256`. A same-floor
+commit can return a checkpoint ID; in the same owner Session, `restore_rollback`
+uses that ID and the final `plan_input`, while `restore_checkpoint_drop` uses the
+ID and plan-binding hash. Inspect current status before either. A later floor
+advance can make rollback refuse. Denied, interrupted or unknown effects must be
+inspected; never automatically repeat them or infer that no write occurred.
+
+```text
+/ext ext__corpus__source {"store":"notes","action":"restore_abort","args":{"backup":{"expected_generation":20,"expected_epoch":1,"migration_id":"ACTUAL_MIGRATION_ID","plan_binding_sha256":"ACTUAL_PLAN_BINDING_SHA256"}}}
+/ext ext__corpus__source {"store":"notes","action":"restore_rollback","args":{"backup":{"expected_generation":21,"expected_epoch":1,"checkpoint_id":"ACTUAL_CHECKPOINT_ID"}},"plan_input":FINAL_PLAN_REFERENCE}
+/ext ext__corpus__source {"store":"notes","action":"restore_checkpoint_drop","args":{"backup":{"expected_generation":21,"expected_epoch":1,"checkpoint_id":"ACTUAL_CHECKPOINT_ID","plan_binding_sha256":"ACTUAL_PLAN_BINDING_SHA256"}}}
+```
+
+These are alternatives for the actual current state, not a sequence. Substitute
+the observed generation, epoch, IDs and complete plan reference before use.
+
 ## Export sources before migration
 
-This source-envelope procedure applies to State and MCP stores. Complete
-document Collection export/import and faithful packed-record migration remain
-unavailable; a descriptor inventory or part layout is not a restorable backup.
+This source-envelope procedure applies to State and MCP stores. It is distinct
+from the bounded whole-Collection procedure above; a descriptor inventory or
+part layout alone is not a restorable backup.
 
 To export the earlier source, run:
 

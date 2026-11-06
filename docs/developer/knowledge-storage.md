@@ -517,8 +517,10 @@ remain false.
 
 The fixed document profile has an internal metadata-maintenance fence in
 `Collection.DocumentMaintenance`. It is separate from the State and MCP source
-operations below. No public SDK operation, Corpus command, garbage collector or
-adoption procedure exposes it. A trusted host caller must establish ordinary
+operations below. No general maintenance-open/close SDK operation, garbage
+collector or adoption procedure exposes this entry point. The separate
+[document import contract](#restore-completed-document-collection-data) uses a
+purpose-bound maintenance owner. A trusted host caller must establish ordinary
 approval and project authority before using the internal entry point; an epoch
 or a shaped owner map supplies neither.
 
@@ -755,6 +757,154 @@ a trusted writer that omits them. Valid format-one stores within bounds require
 no automatic data rewrite.
 
 ## Export complete bytes and migrate explicitly
+
+Choose the store contract before implementing export. State/MCP source export
+below transfers source text and provenance for explicit rebuilding. The
+experimental document Collection path transfers a complete recognized set of
+packed values through operator-selected saved results. Neither route turns
+historical data into current evidence or resumes old work.
+
+### Restore completed document Collection data
+
+Read the native
+[`DocumentMigration`](../../lib/ipse/extension/collection/document_migration.ex),
+the host
+[`CollectionStore.Restore`](../../lib/ipse/extension/collection_store/restore.ex)
+and the Knowledge `Store.Collection` backup state machines together. Native
+code owns snapshot identity, operation receipts, allocation and atomic
+publication. The host owns explicit selection, original-result leases and the
+current validator identity. Knowledge owns the meaning and completeness of the
+stored document set. Do not move that domain classifier into Core.
+
+The client is experimental and admits at most **32 native records in four
+selected pages**, with up to eight records per page. This is a bounded completed
+set, not a full-capacity backup facility. The optional
+`document_completed_v1` input-validation selection is available only for the
+Corpus `collection-documents` and `collection-dense` presets with an actual
+Collection store. It creates an explicit version-three document binding whose
+closed `input_validation` is:
+
+```json
+{"command_id":"source","action":"restore_validate_page","export_action":"backup_page","plan_action":"backup_plan"}
+```
+
+The binding retains `source_use` separately; it does not add a capability,
+change ordinary approvals, admit protected note writes or enable a worker.
+Follow the [Corpus operator procedure](../operator/corpus.md) for selection and
+full command arguments. A descriptor or JSON input file alone grants no restore
+authority. The [bounded public Session journey](../archive/2026-10-26-p30-p31-implementation/document-result-restore-public-20261106.md)
+qualifies same-target import, rollback, abort and checkpoint removal with eleven
+records across three pages. It includes denial, stale-floor refusal and strict
+Saved/idle checks. Changed-target restore, installed execution and full capacity
+remain unqualified; this same-target control does not establish recovery across
+a changed destructive floor.
+
+Follow one input through the actual owners:
+
+| Step | Binding that must survive |
+| --- | --- |
+| `backup_status`, then `backup_page` | One actual native generation, fixed project namespace, complete packed-value layouts and exact chunk hashes |
+| `backup_plan` | The operator's exact selected page references, ordered native record/operation metadata, full descriptor and complete page membership |
+| `restore_validate_page` | The actual selected plan and all its pages, reconstructed bytes, native origins and complete domain joins |
+| `restore_open`, ordered `restore_page`, `restore_commit` | Original selected plan/page digests, one import owner, expected native generation/epoch and ordinary approval for each effect |
+
+The host captures references from the real `invoke.command` arguments; a worker
+cannot substitute an arbitrary result later. `StoredSources.with_result/3`
+retains each inactive original Session's OS lock/file/origin and actual project
+binding. Source and consumer must use the same canonical cwd and admitted
+project. Same-Session input, active/copy/hardlink/legacy sources, incomplete work
+and changed input refuse. The helper returns complete managed dependencies;
+Restore requires a known empty union rather than interpreting protected JSON
+as unmanaged data. See the
+[leased-result flow](extensions.md#consume-an-explicitly-selected-historical-result)
+for lock ordering and the pre-CAS/postcheck contract.
+
+The exporter supplies the data, but cannot authenticate its native epoch by
+writing `maintenance_epoch` into that data. The host derives `origin` from the
+strict-Saved-validated producing invocation's successful `backup.metadata` or
+`backup.describe` action results. Every matching native descriptor must agree
+with the exported descriptor: project/profile, generation, maintenance epoch,
+floor/lineage and record, operation and envelope digests. The compact descriptor
+replaces the full lineage with its count while preserving its digest. The
+origin also binds producer command/action, artifact, actual owner and a digest
+of those native action records.
+
+`restore.input.read` returns at most 6,144 raw bytes per call with exact delivery,
+offset, hash and the same origin on every chunk. Its complete SDK wrapper must
+still fit 16 KiB. The current validator's actual artifact SHA, command and
+`restore_validate_page` action must match the selected policy. Its recorded read
+trace must reconstruct exactly the original selected bytes and carry the
+configured `backup_page` origin. The historical exporting artifact is data
+provenance and may differ from the current validator. The plan separately needs
+its native descriptor and configured `backup_plan` origin. Missing provenance,
+a copied neighboring invocation's receipt or a self-claimed future epoch cannot
+substitute for these joins.
+
+The domain predicate `Projection.completed_backup?/3` independently checks each
+packed envelope and every reference within the complete selected set. It
+rejoins Source blocks/heads/catalogs, lexical roots and completed Jobs, vector
+and fact projections, shared generations and ready Producer records using their
+existing codecs. Unknown schemas, live work, missing referenced pages and orphan
+stages refuse the whole set. Known authority-bearing stored Job/Index epochs
+must not exceed the actual source descriptor's epoch; arbitrary Source JSON is
+not recursively scanned for fields named `epoch`. Selected completed data is
+queryable data, not a resumable native Job or controller claim.
+
+Distinguish three identities during import. The backup retains the original
+native record envelope (`key`, revision, operation ID, physical SHA and size).
+Its packed value retains the original UTF-8 part boundaries, logical bytes and
+hash; decoding the domain object is validation, not a rewrite. The target
+native envelope is deliberately rebased to the actual target page publication's
+revision and operation ID. Never rewrite an embedded schema or invent native
+generations to make its old continuation run. Historical operation receipts
+remain recognized for duplicate/refusal behavior.
+
+Opening requires idle, quiescent target state without another import or retained
+checkpoint. It captures the original target epoch and enters
+`max(source_epoch, target_epoch) + 1`, retaining the exact project, Session,
+artifact and invocation owner. This prevents imported old work from aliasing a
+fresh target counter. Each ordered page and the final CAS recheck that owner,
+epoch, input bindings and actual generation. No imported continuation is adopted.
+
+The destructive floor remains independent. The source floor cannot be below the
+target's, and its lineage must extend the target's actual lineage with matching
+operation receipts. A same-floor commit may retain one checkpoint of the prior
+target records; advancing the floor returns no rollback checkpoint. Rollback
+requires the exact checkpoint, owner, plan/dependency binding and unchanged
+floor, and advances the maintenance epoch again. Dropping the checkpoint retains
+the epoch. Ordinary document rewrites/deletions advance the floor and invalidate
+that checkpoint. An older backup cannot undo subsequent updates or resurrect
+data below the current forgetting floor. This is not general changed-store
+recovery.
+
+Abort is an explicit reducing operation under the captured owner; it releases
+import staging without erasing observed historical operation identities.
+Retained physical objects and receipts still consume allocation. Neither abort
+nor checkpoint removal is general garbage collection. Unknown effects stop
+without replay; a lost original-input or project postcheck after native commit
+must not be reported as a known no-effect failure.
+
+Verify the layers separately when changing this public Session protocol:
+
+```sh
+mix test test/ipse/session/stored_result_lease_test.exs
+mix test test/ipse/extension/collection_restore_test.exs
+mix test test/ipse/extension/collection_document_migration_test.exs
+mix test test/ipse/extension/collection_document_migration_native_test.exs --max-cases 1
+mix test test/extensions/knowledge/collection_backup_test.exs test/extensions/knowledge/collection_completed_backup_test.exs
+```
+
+The isolated domain controls preserve raw parts, reject unsupported or incomplete
+sets and bind stored epochs to native source provenance. Host controls test
+explicit selection, actual origin joins, forged future epochs, changed chunks,
+current-validator identity and complete frame bounds. Native controls exercise
+allocation, owner/epoch CAS and floor/checkpoint behavior on disposable stores.
+Keep those component results separate from actual public command routing and
+complete Session close/idle evidence. Neither the component controls nor the
+bounded same-target journey qualifies changed-target recovery, installed runtime
+or maximum capacity.
+
+### Export State or MCP source text
 
 Export captures one generation and returns contiguous UTF-8 prefixes, bounded by
 limit×4096, 8192, and remaining bytes; limit is 1..4. It shrinks a prefix until the

@@ -3,14 +3,25 @@ defmodule Ipse.Extension.CollectionStore do
   alias Ipse.{JSON, Extension}
   alias Ipse.Extension.{ProjectIdentity, Registry}
   alias Ipse.Extension.Collection.{DocumentDraft, DocumentSourceUse, DocumentStage, Profile}
+  alias Ipse.Extension.CollectionStore.Restore
   @error {:error, :document_store_refused}
   @project_fields ~w(version project_id worktree_id scope root primary_root common_directory binding_sha256)
   @binding_fields ~w(kind version namespace profile operator_binding project session_id identity_sha256 request_sha256)
 
   def operation?(r), do: is_map(r) and r["op"] == "collection.store"
-  def mutating?(r), do: operation?(r) and DocumentStage.mutating?(r["request"])
+
+  def mutating?(r),
+    do:
+      if(Restore.operation?(r),
+        do: Restore.mutating?(r),
+        else: operation?(r) and DocumentStage.mutating?(r["request"])
+      )
 
   def validate(r) do
+    if Restore.operation?(r), do: Restore.validate(r), else: validate_ordinary(r)
+  end
+
+  defp validate_ordinary(r) do
     shape =
       exact?(r, ~w(op scope request)) or
         Ipse.Extension.Collection.WorkspaceDocumentGuard.guarded_request?(r) or
@@ -47,10 +58,17 @@ defmodule Ipse.Extension.CollectionStore do
           "scope" => "project",
           "profile" => Profile.documents(),
           "source_use" => "shared_producer_v1"
-        }
+        } or
+        (exact?(b, ~w(version id scope profile source_use input_validation)) and
+           b["version"] === 3 and b["id"] === "documents" and b["scope"] === "project" and
+           b["profile"] === Profile.documents() and
+           b["source_use"] in [nil, "shared_producer_v1"] and
+           Restore.policy?(b["input_validation"]))
 
   def embedding_source_required?(identity),
-    do: selected?(identity) and identity["collection_binding"]["version"] === 2
+    do:
+      selected?(identity) and
+        identity["collection_binding"]["source_use"] === "shared_producer_v1"
 
   def trust_bindings?(bindings) when is_list(bindings) do
     length(bindings) <= 8 and
@@ -58,7 +76,11 @@ defmodule Ipse.Extension.CollectionStore do
         exact?(
           b,
           ~w(version instance id scope profile) ++
-            if(b["version"] === 2, do: ["source_use"], else: [])
+            case b["version"] do
+              2 -> ["source_use"]
+              3 -> ~w(source_use input_validation)
+              _ -> []
+            end
         ) and
           is_binary(b["instance"]) and Regex.match?(~r/\A[a-z][a-z0-9_-]{0,63}\z/, b["instance"]) and
           operator_binding?(Map.delete(b, "instance"))
@@ -95,6 +117,7 @@ defmodule Ipse.Extension.CollectionStore do
 
   def valid_binding?(b, request, identity) do
     validate(request) == :ok and selected?(identity) and exact?(b, @binding_fields) and
+      (not Restore.operation?(request) or b["operator_binding"]["version"] === 3) and
       (not Map.has_key?(request, "source_guard") or embedding_source_required?(identity)) and
       b["kind"] == "document_store" and b["version"] === 1 and
       b["profile"] == Profile.documents() and
@@ -136,7 +159,8 @@ defmodule Ipse.Extension.CollectionStore do
   def valid_source_binding?(b, request, identity \\ nil) do
     exact?(b, @binding_fields) and b["kind"] == "document_embedding_source" and
       b["version"] === 1 and b["profile"] == Profile.documents() and
-      operator_binding?(b["operator_binding"]) and b["operator_binding"]["version"] === 2 and
+      operator_binding?(b["operator_binding"]) and
+      b["operator_binding"]["source_use"] === "shared_producer_v1" and
       project?(b["project"]) and b["namespace"] == namespace(b["project"]["project_id"]) and
       id?(b["session_id"]) and JSON.sha256?(b["identity_sha256"]) and
       b["request_sha256"] == JSON.digest([request]) and Extension.validate(b) == :ok and
@@ -149,6 +173,12 @@ defmodule Ipse.Extension.CollectionStore do
   end
 
   def execute(context, intent) do
+    if Restore.operation?(intent["request"]),
+      do: Restore.execute(context, intent),
+      else: execute_ordinary(context, intent)
+  end
+
+  defp execute_ordinary(context, intent) do
     b = intent["effect_binding"]
 
     with true <- valid_binding?(b, intent["request"], context.identity),
@@ -489,6 +519,12 @@ defmodule Ipse.Extension.CollectionStore do
   end
 
   def valid_outcome?(request, status, value, operation_id) do
+    if Restore.operation?(request),
+      do: Restore.valid_outcome?(request, status, value, operation_id),
+      else: valid_ordinary_outcome?(request, status, value, operation_id)
+  end
+
+  defp valid_ordinary_outcome?(request, status, value, operation_id) do
     with :ok <- validate(request),
          true <- is_map(value) and Extension.validate(value) == :ok do
       cond do
@@ -526,6 +562,12 @@ defmodule Ipse.Extension.CollectionStore do
   end
 
   def bound_outcome?(event) do
+    if Restore.operation?(event["request"]),
+      do: Restore.bound_outcome?(event),
+      else: bound_ordinary_outcome?(event)
+  end
+
+  defp bound_ordinary_outcome?(event) do
     if get_in(event, ["outcome", "status"]) == "ok" and
          not mutating?(event["request"]),
        do:

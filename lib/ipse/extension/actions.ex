@@ -234,6 +234,9 @@ defmodule Ipse.Extension.Actions do
              event["effect_binding"]["outer_sha256"] == Ipse.JSON.digest([parent["descriptor"]]),
          true <- allowed_under_outer?(parent, request) or event["approval"] == "denied",
          true <- effect_binding?(event, parent["identity"]),
+         true <-
+           Ipse.Extension.CollectionStore.Restore.allowed?(request, parent) or
+             event["approval"] === "denied",
          {:ok, namespace} <-
            action_namespace(
              parent["identity"],

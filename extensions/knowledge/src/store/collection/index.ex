@@ -7,6 +7,92 @@ defmodule IpseKnowledge.Store.Collection.Index do
   @object_bytes 48 * 1024
   @reads 512
   @effects 16
+
+  @doc false
+  def completed_job?(job, root, profile) when is_map(job) and is_map(profile) do
+    state = %{profile: profile}
+
+    job?(job, state) and
+      case job["status"] do
+        "aborted" ->
+          true
+
+        "building" ->
+          catalog = job["catalog"]
+
+          job["cursor"] === catalog["sources"] and job["unit"] === 0 and root?(root, state) and
+            root === %{
+              "version" => 1,
+              "kind" => "lexical_index",
+              "recipe" => E.lexical_recipe(),
+              "job_id" => job["id"],
+              "generation" => job["index_generation"],
+              "catalog_sha256" => job["catalog_sha256"],
+              "catalog_generation" => catalog["generation"],
+              "floor" => catalog["floor"],
+              "sources" => catalog["sources"],
+              "chunks" => catalog["chunks"],
+              "groups" => job["groups"]
+            }
+
+        _ ->
+          false
+      end
+  rescue
+    _ -> false
+  end
+
+  def completed_job?(_, _, _), do: false
+
+  @doc false
+  def validated_epoch(job, profile) do
+    if job?(job, %{profile: profile}),
+      do: {:ok, job_epoch(job)},
+      else: {:error, :invalid_lexical_job}
+  rescue
+    _ -> {:error, :invalid_lexical_job}
+  end
+
+  @doc false
+  def completed_backup?(profile, root, groups, bundles, values) do
+    state = %{profile: profile}
+
+    with true <- root?(root, state) and length(groups) === length(root["groups"]),
+         true <- Enum.map(groups, &elem(&1, 0)) === root["groups"],
+         true <- length(bundles) === root["sources"],
+         true <-
+           Enum.all?(bundles, &(&1["head"]["version"] === 2 and is_map(&1["head"]["lexical"]))),
+         true <-
+           Enum.sum(Enum.map(bundles, fn b -> length(elem(E.chunks(b["source"]), 1)) end)) ===
+             root["chunks"] do
+      Enum.with_index(groups)
+      |> Enum.all?(fn {{ref, header}, n} ->
+        selected = Enum.slice(bundles, n * @group, @group)
+        sources = Enum.map(selected, & &1["source"])
+
+        entries =
+          Enum.map(selected, fn b ->
+            {:ok, run} = E.lexical_run(b["source"])
+
+            %{
+              "run" => run,
+              "source_bundle_sha256" => E.sha256(json(b["source"])),
+              "source_revision" => b["head"]["revision"]
+            }
+          end)
+
+        {:ok, expected} = storage_plan(profile, sources, entries, n * @group)
+
+        header === Map.fetch!(values, ref["key"]) and ref === expected.header and
+          Enum.all?(expected.values, fn unit -> Map.fetch!(values, unit.key) === unit.value end)
+      end)
+    else
+      _ -> false
+    end
+  rescue
+    _ -> false
+  end
+
   def start(profile, operation, args) when operation in [:lexical_build, :lexical_query] do
     with true <-
            is_map(profile) and profile["kind"] == "collection" and profile["scope"] == "project",
@@ -183,7 +269,10 @@ defmodule IpseKnowledge.Store.Collection.Index do
                  row != nil and t["job_id"] == s.job["id"] and
                    t["job_revision"] == row["revision"],
                true <- job_epoch(s.job) === token_epoch(t),
-               true <- s.job["status"] == "building" do
+               true <- s.job["status"] == "building",
+               selected = s.root_row && s.root_row["value"],
+               true <- not completed_job?(s.job, selected, s.profile),
+               true <- is_nil(selected) or selected["job_id"] !== s.job["id"] do
             s = %{s | work: t["work"], stages: t["stages"]}
 
             if action == "abort" do

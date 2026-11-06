@@ -13,6 +13,16 @@ defmodule IpseKnowledge.Corpus do
     "continue_collection_document" => :append,
     "continue_collection_source" => :put,
     "abort_collection_draft" => :progress_abort,
+    "backup_status" => :backup_status,
+    "backup_page" => :backup_page,
+    "backup_plan" => :backup_plan,
+    "restore_validate_page" => :validate_backup_page,
+    "restore_open" => :restore_action,
+    "restore_page" => :restore_action,
+    "restore_commit" => :restore_action,
+    "restore_abort" => :restore_action,
+    "restore_rollback" => :restore_action,
+    "restore_checkpoint_drop" => :restore_action,
     "open" => :open,
     "append" => :append,
     "publish" => :publish,
@@ -33,12 +43,11 @@ defmodule IpseKnowledge.Corpus do
         "services" => [],
         "commands" =>
           [
-            entry("source", "Explicit source lifecycle", source_schema()),
-            entry("query", "Current cited evidence", query_schema()),
-            entry("index", "Explicit embedding projection", index_schema())
+            entry("source", "Source lifecycle", source_schema()),
+            entry("query", "Cited evidence", query_schema()),
+            entry("index", "Embedding projection", index_schema())
           ] ++ collection_entries(),
-        "tools" =>
-          [entry("query", "Current cited evidence", query_schema())] ++ collection_entries()
+        "tools" => [entry("query", "Cited evidence", query_schema())] ++ collection_entries()
       }
     }
   end
@@ -55,6 +64,9 @@ defmodule IpseKnowledge.Corpus do
 
   def handle("invoke.command", payload, state),
     do: invoke(payload, Map.delete(state, :document_budget))
+
+  def handle("invoke.tool", %{"id" => "source"}, state),
+    do: finish(state, refused(:invalid_invocation))
 
   def handle("invoke.tool", payload, state),
     do: invoke(payload, Map.delete(state, :document_budget))
@@ -117,7 +129,7 @@ defmodule IpseKnowledge.Corpus do
   defp invoke(_, state), do: finish(state, refused(:invalid_invocation))
 
   defp source(%{"store" => store, "action" => action, "args" => source_args} = outer, state) do
-    with true <- exact?(outer, ~w(store action args)),
+    with true <- source_outer?(outer, action),
          {:ok, profile} <- Profiles.lookup(state.resolved, "stores", store),
          {:ok, operation} <- Map.fetch(@source_actions, action),
          true <- valid_source_args?(action, source_args),
@@ -126,6 +138,9 @@ defmodule IpseKnowledge.Corpus do
              profile["kind"] == "collection",
          true <- profile["kind"] != "collection" or action != "continue_document" do
       cond do
+        action in ~w(backup_status backup_page backup_plan restore_validate_page restore_open restore_page restore_commit restore_abort restore_rollback restore_checkpoint_drop) ->
+          collection_backup_source(state, profile, action, source_args["backup"], outer)
+
         action == "abort_collection_draft" ->
           advance(
             CollectionStore.start(profile, :progress_abort, source_args),
@@ -176,6 +191,53 @@ defmodule IpseKnowledge.Corpus do
   end
 
   defp source(_, state), do: finish(state, refused(:invalid_source_command))
+
+  defp source_outer?(outer, action) do
+    extra =
+      case action do
+        "backup_plan" -> ["data_inputs"]
+        op when op in ~w(restore_validate_page restore_page) -> ~w(result_input plan_input)
+        "restore_open" -> ["result_input"]
+        op when op in ~w(restore_commit restore_rollback) -> ["plan_input"]
+        _ -> []
+      end
+
+    exact?(outer, ~w(store action args) ++ extra)
+  end
+
+  defp collection_backup_source(state, profile, action, args, outer) do
+    if profile["kind"] === "collection" do
+      {operation, input, phase} =
+        case action do
+          "backup_status" ->
+            {:snapshot, %{}, :collection_backup_status}
+
+          "backup_page" ->
+            {:backup_page, args, :collection_backup_page}
+
+          "backup_plan" ->
+            {:backup_plan, Map.put(args, "data_inputs", outer["data_inputs"]),
+             :collection_backup_plan}
+
+          "restore_validate_page" ->
+            {:validate_backup_page, Map.take(outer, ~w(result_input plan_input)),
+             :collection_backup_validate}
+
+          "restore_" <> mutation ->
+            {:restore_action,
+             %{
+               "action" => mutation,
+               "args" => args,
+               "result_input" => outer["result_input"],
+               "plan_input" => outer["plan_input"]
+             }, :collection_restore}
+        end
+
+      advance(CollectionStore.start(profile, operation, input), %{state | phase: phase, ctx: %{}})
+    else
+      finish(state, refused(:collection_lifecycle_unavailable))
+    end
+  end
 
   defp document_args(action, args), do: document_args(action, args, 1)
 
@@ -1114,6 +1176,11 @@ defmodule IpseKnowledge.Corpus do
       if state.phase in [
            :collection_source,
            :collection_draft_abort,
+           :collection_backup_status,
+           :collection_backup_page,
+           :collection_backup_plan,
+           :collection_backup_validate,
+           :collection_restore,
            :collection_query,
            :collection_projection,
            :collection_semantic_snapshot,
@@ -1160,6 +1227,44 @@ defmodule IpseKnowledge.Corpus do
 
   defp advance({:stop, :unknown_effect}, state), do: finish(state, refused(:unknown_effect))
   defp advance({:done, {:error, code, _}}, state), do: finish(state, refused(code))
+
+  defp advance({:done, {:ok, snapshot}}, %{phase: :collection_backup_status} = state) do
+    with generation when is_integer(generation) and generation >= 0 <- snapshot["generation"],
+         {:ok, epoch, status} <- CollectionStore.snapshot_epoch(snapshot) do
+      finish(
+        state,
+        output(
+          "ok",
+          [],
+          [],
+          [],
+          %{
+            "generation" => generation,
+            "maintenance_epoch" => epoch,
+            "maintenance_status" => status
+          },
+          nil
+        )
+      )
+    else
+      _ -> finish(state, refused(:document_epoch_changed))
+    end
+  end
+
+  defp advance({:done, {:ok, value}}, %{phase: phase} = state)
+       when phase in [
+              :collection_backup_page,
+              :collection_backup_plan,
+              :collection_backup_validate
+            ] do
+    case Ipse.Extension.ResultPublication.prepare_paged(value) do
+      {:ok, reply} -> {:ok, reply, %{state | phase: :idle, ctx: nil, cont: nil, pending: nil}}
+      _ -> finish(state, refused(:result_too_large))
+    end
+  end
+
+  defp advance({:done, {:ok, value}}, %{phase: :collection_restore} = state),
+    do: finish(state, output("ok", [], [], [], value, nil))
 
   defp advance(
          {:done, {:ok, %{"native_generation" => generation}}},
@@ -2280,6 +2385,10 @@ defmodule IpseKnowledge.Corpus do
         "abort_collection_draft" ->
           ~w(head_id kind)
 
+        op
+        when op in ~w(backup_status backup_page backup_plan restore_validate_page restore_open restore_page restore_commit restore_abort restore_rollback restore_checkpoint_drop) ->
+          ~w(backup)
+
         "open" ->
           ~w(source_id generation expected_revision title uri observed_at_ms event_at_ms expires_at_ms byte_count content_sha256)
 
@@ -2311,9 +2420,43 @@ defmodule IpseKnowledge.Corpus do
           []
       end
 
-    exact?(args, keys) or (action == "open" and exact?(args, keys ++ ["historical_import"])) or
+    (exact?(args, keys) and
+       (keys != ["backup"] or backup_args?(action, args["backup"]))) or
+      (action == "open" and exact?(args, keys ++ ["historical_import"])) or
       (action == "continue_document" and exact?(args, keys ++ ["metadata_offset"]))
   end
+
+  defp backup_args?("backup_status", args), do: args === %{}
+
+  defp backup_args?("backup_page", args),
+    do:
+      exact?(args, ~w(generation offset limit)) and Evidence.safe_uint?(args["generation"]) and
+        Evidence.safe_uint?(args["offset"]) and args["offset"] <= 8192 and
+        is_integer(args["limit"]) and args["limit"] in 1..8
+
+  defp backup_args?("backup_plan", args),
+    do: exact?(args, ~w(generation)) and Evidence.safe_uint?(args["generation"])
+
+  defp backup_args?("restore_validate_page", args), do: args === %{}
+
+  defp backup_args?("restore_" <> action, args) do
+    extra =
+      case action do
+        "open" -> []
+        "page" -> ~w(migration_id ordinal)
+        "commit" -> ~w(migration_id)
+        "abort" -> ~w(migration_id plan_binding_sha256)
+        "rollback" -> ~w(checkpoint_id)
+        "checkpoint_drop" -> ~w(checkpoint_id plan_binding_sha256)
+        _ -> :invalid
+      end
+
+    is_list(extra) and exact?(args, ~w(expected_generation expected_epoch) ++ extra) and
+      Evidence.safe_uint?(args["expected_generation"]) and
+      Evidence.safe_uint?(args["expected_epoch"])
+  end
+
+  defp backup_args?(_, _), do: false
 
   defp source_schema do
     %{
@@ -2323,6 +2466,14 @@ defmodule IpseKnowledge.Corpus do
       "properties" => %{
         "store" => string(64),
         "action" => %{"type" => "string", "enum" => Map.keys(@source_actions)},
+        "result_input" => %{"type" => "object"},
+        "plan_input" => %{"type" => "object"},
+        "data_inputs" => %{
+          "type" => "array",
+          "minItems" => 1,
+          "maxItems" => 4,
+          "items" => %{"type" => "object"}
+        },
         "args" => %{
           "type" => "object",
           "additionalProperties" => false,
@@ -2369,7 +2520,8 @@ defmodule IpseKnowledge.Corpus do
       "collection_state" => %{"type" => "object"},
       "opening_acquisition" => %{"type" => "object"},
       "input_action" => %{"type" => "string", "enum" => ~w(put put_document)},
-      "input_args" => %{"type" => "object"}
+      "input_args" => %{"type" => "object"},
+      "backup" => %{"type" => "object"}
     }
   end
 
@@ -2422,10 +2574,10 @@ defmodule IpseKnowledge.Corpus do
         end
 
       [
-        entry("query_selected", "Cited evidence from explicit source IDs", schema),
+        entry("query_selected", "Selected evidence", schema),
         entry(
           "generation_job",
-          "Supplied shared projection builds",
+          "Projection jobs",
           %{
             "type" => "object",
             "additionalProperties" => false,
@@ -2446,7 +2598,7 @@ defmodule IpseKnowledge.Corpus do
         ),
         entry(
           "projection_selected",
-          "Current supplied shared projections with exact citations",
+          "Cited projections",
           %{
             "type" => "object",
             "additionalProperties" => false,
@@ -2468,7 +2620,7 @@ defmodule IpseKnowledge.Corpus do
         ),
         entry(
           "lexical_index",
-          "Catalog-bound namespace lexical index",
+          "Lexical index",
           %{
             "type" => "object",
             "additionalProperties" => false,
@@ -2538,7 +2690,7 @@ defmodule IpseKnowledge.Corpus do
       [
         entry(
           "generation_produce",
-          "Explicit facts, guarded vector pages, producer progress",
+          "Facts, guarded vectors",
           schema
         )
       ]

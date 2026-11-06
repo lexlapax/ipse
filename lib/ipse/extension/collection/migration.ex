@@ -373,7 +373,10 @@ defmodule Ipse.Extension.Collection.Migration do
 
   def valid?(s, record_validator) do
     not (is_map(s["migration"]) and is_map(s["checkpoint"])) and
-      migration?(s["migration"], s, record_validator) and
+      if(Ipse.Extension.Collection.DocumentMigration.active?(s),
+        do: Ipse.Extension.Collection.DocumentMigration.valid?(s, record_validator),
+        else: migration?(s["migration"], s, record_validator)
+      ) and
       checkpoint?(s["checkpoint"], s, record_validator)
   end
 
@@ -406,6 +409,9 @@ defmodule Ipse.Extension.Collection.Migration do
   end
 
   defp checkpoint?(nil, _, _), do: true
+
+  defp checkpoint?(%{"document_owner" => _} = c, s, valid_records),
+    do: Ipse.Extension.Collection.DocumentMigration.checkpoint?(c, s, valid_records)
 
   defp checkpoint?(c, s, valid_records) do
     keys?(c, ~w(id generation floor floor_anchor floor_lineage_sha256 records)) and
@@ -455,7 +461,13 @@ defmodule Ipse.Extension.Collection.Migration do
       )
   end
 
+  def reserved_operation_slots(%{"migration" => nil, "checkpoint" => %{"document_owner" => _}}),
+    do: 1
+
   def reserved_operation_slots(%{"migration" => nil}), do: 0
+
+  def reserved_operation_slots(%{"migration" => %{"version" => 1}} = s),
+    do: Ipse.Extension.Collection.DocumentMigration.reserved_slots(s)
 
   def reserved_operation_slots(%{"migration" => m}) do
     records = m["descriptor"]["records"] - map_size(m["records"])

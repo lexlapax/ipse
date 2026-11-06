@@ -28,6 +28,7 @@ defmodule Ipse.Extension.Collection do
     Blocks,
     Directory,
     DocumentDraft,
+    DocumentMigration,
     DocumentMaintenance,
     Encoding,
     Migration,
@@ -53,6 +54,7 @@ defmodule Ipse.Extension.Collection do
   @acceptance_attempt_key {__MODULE__, :acceptance_effect_attempted}
   @document_epoch_key {__MODULE__, :document_epoch}
   @document_progress_key {__MODULE__, :document_progress}
+  @document_migration_key {__MODULE__, :document_migration}
   @error {:error, :collection_unavailable}
 
   def limits do
@@ -187,6 +189,143 @@ defmodule Ipse.Extension.Collection do
       end)
     else
       _ -> {:error, :collection_lock_order}
+    end
+  rescue
+    _ -> @error
+  end
+
+  @doc """
+  Trusted document backup/restore entry; supplies no approval or result-data grant.
+
+  For open/page, with_input retains the selected source lease while invoking its
+  accept/1 callback exactly once with the complete decoded map. input_sha256 is
+  the digest of Migration.encode(map); raw result delivery digests remain the
+  Host's independent responsibility. Every mutation requires publication_guard/0
+  and rechecks it immediately before the native root switch. The actual owner is
+  supplied by the Host, never read from the page. No input/source path is accepted.
+  """
+  def document_migration(root, namespace, request, operation_id, owner, opts \\ []) do
+    inherited = Process.get(@switch_deadline_key)
+
+    with false <- Process.get(@lock_key, false) != false,
+         true <- is_nil(Process.get(@document_migration_key)),
+         true <- is_nil(inherited) or (JSON.safe_uint?(inherited) and inherited > 0),
+         true <- DocumentMigration.request?(request) and id?(operation_id),
+         true <- Ipse.Extension.Collection.DocumentStage.owner?(owner),
+         true <- namespace === Ipse.Extension.CollectionStore.namespace(owner["project_id"]),
+         true <-
+           Keyword.keyword?(opts) and
+             Keyword.keys(opts) === Enum.uniq(Keyword.keys(opts)) and
+             Enum.all?(
+               Keyword.keys(opts),
+               &(&1 in [
+                   :with_input,
+                   :publication_guard,
+                   :publish_before_ms,
+                   :input_binding_sha256,
+                   :plan_binding_sha256,
+                   :dependency_union_sha256
+                 ])
+             ),
+         deadline = opts[:publish_before_ms],
+         true <- is_nil(deadline) or (JSON.safe_uint?(deadline) and deadline > 0),
+         true <- DocumentMigration.read?(request) or is_function(opts[:publication_guard], 0),
+         true <-
+           DocumentMigration.read?(request) or
+             (opts[:plan_binding_sha256] === request["plan_binding_sha256"] and
+                opts[:dependency_union_sha256] === request["dependency_union_sha256"]),
+         true <-
+           not DocumentMigration.input?(request) or
+             opts[:input_binding_sha256] ===
+               request[
+                 if(request["op"] === "restore.open",
+                   do: "plan_binding_sha256",
+                   else: "data_binding_sha256"
+                 )
+               ],
+         true <- not DocumentMigration.input?(request) or is_function(opts[:with_input], 1) do
+      Ipse.Session.Resources.file_effect(fn ->
+        with_switch_deadline(inherited, fn ->
+          with_switch_deadline(deadline, fn ->
+            Profile.run(Profile.documents(), fn ->
+              slot = {__MODULE__, make_ref()}
+              Process.put(slot, :ready)
+
+              accept = fn input ->
+                if Process.get(slot) === :ready do
+                  Process.put(slot, :used)
+                  previous = Process.get(@document_migration_key)
+
+                  Process.put(@document_migration_key, %{
+                    guard: opts[:publication_guard],
+                    owner: owner
+                  })
+
+                  try do
+                    result =
+                      if not DocumentMigration.input?(request) or
+                           (is_map(input) and
+                              JSON.sha256(Migration.encode(input)) === request["input_sha256"]) do
+                        locked(
+                          root,
+                          namespace,
+                          request,
+                          operation_id,
+                          {:document_migration, owner, input}
+                        )
+                      else
+                        {:error, :invalid_document_migration_input}
+                      end
+
+                    Process.put(slot, {:complete, result})
+                    result
+                  after
+                    if is_nil(previous),
+                      do: Process.delete(@document_migration_key),
+                      else: Process.put(@document_migration_key, previous)
+                  end
+                else
+                  {:error, :document_migration_input_reused}
+                end
+              end
+
+              try do
+                result =
+                  if DocumentMigration.input?(request),
+                    do: opts[:with_input].(accept),
+                    else: accept.(nil)
+
+                case Process.get(slot) do
+                  {:complete, ^result} ->
+                    result
+
+                  :ready ->
+                    if match?({:error, _}, result),
+                      do: result,
+                      else: {:error, :document_migration_input_not_consumed}
+
+                  _ ->
+                    {:unknown, :collection_publication_unconfirmed}
+                end
+              rescue
+                _ ->
+                  if Process.get(slot) === :ready,
+                    do: @error,
+                    else: {:unknown, :collection_publication_unconfirmed}
+              catch
+                _, _ ->
+                  if Process.get(slot) === :ready,
+                    do: @error,
+                    else: {:unknown, :collection_publication_unconfirmed}
+              after
+                Process.delete(slot)
+              end
+            end)
+          end)
+        end)
+      end)
+    else
+      _ -> {:error, :invalid_document_migration_request}
     end
   rescue
     _ -> @error
@@ -981,6 +1120,18 @@ defmodule Ipse.Extension.Collection do
                   owner
                 )
 
+              {:document_migration, owner, input} ->
+                apply_document_migration(
+                  path,
+                  uid,
+                  state,
+                  manifest,
+                  request,
+                  operation_id,
+                  owner,
+                  input
+                )
+
               :visible_scan ->
                 scan(path, uid, state, request, true)
 
@@ -1403,6 +1554,107 @@ defmodule Ipse.Extension.Collection do
       {:failed, Map.put(summary(s), "code", "collection_operation_identity")}
     else
       apply_mutation(path, uid, s, manifest, request, id, %{})
+    end
+  end
+
+  defp apply_document_migration(path, uid, s, manifest, r, id, owner, input) do
+    if DocumentMigration.read?(r) do
+      cond do
+        r["generation"] !== s["generation"] ->
+          {:conflict, summary(s)}
+
+        DocumentMaintenance.metadata(s)["status"] !== "idle" or not is_nil(s["migration"]) or
+            not DocumentMigration.quiescent?(s) ->
+          {:failed, Map.put(summary(s), "code", "collection_writer_fenced")}
+
+        r["op"] === "backup.describe" ->
+          {:ok, %{"descriptor" => DocumentMigration.compact_descriptor(s)}}
+
+        r["op"] === "backup.metadata" ->
+          {:ok, DocumentMigration.metadata(s, r)}
+
+        r["op"] === "backup.plan" ->
+          {:ok, DocumentMigration.export_plan(s)}
+
+        true ->
+          keys =
+            s["records"]
+            |> Map.keys()
+            |> Enum.sort()
+            |> Enum.filter(&(is_nil(r["after"]) or &1 > r["after"]))
+
+          selected = Enum.take(keys, r["limit"])
+
+          with {:ok, rows} <- read_records(path, uid, s, selected),
+               true <- Enum.all?(rows, &DocumentMigration.packed?(&1["value"])) do
+            {:ok,
+             %{
+               "descriptor" => DocumentMigration.descriptor(s),
+               "records" => rows,
+               "next" => if(length(keys) > length(selected), do: List.last(selected))
+             }}
+          else
+            _ -> {:error, :invalid_document_backup_value}
+          end
+      end
+    else
+      request_hash = JSON.digest([r, DocumentDraft.owner(owner)])
+      known = Migration.known_operations(s)[id]
+      m = DocumentMaintenance.metadata(s)
+
+      cond do
+        is_map(known) and known["request_sha256"] !== request_hash ->
+          {:failed, Map.put(summary(s), "code", "collection_operation_identity")}
+
+        is_map(known) ->
+          {:existing, Map.put(summary(s), "operation", known)}
+
+        r["expected_generation"] !== s["generation"] ->
+          {:conflict, summary(s)}
+
+        r["expected_epoch"] !== m["epoch"] ->
+          {:failed, Map.put(summary(s), "code", "collection_document_epoch")}
+
+        not uint?(s["generation"] + 1) ->
+          capacity(s)
+
+        true ->
+          case DocumentMigration.prepare(s, r, id, owner, input) do
+            {:ok, next, values, extra} ->
+              receipt =
+                Map.merge(
+                  %{
+                    "generation" => s["generation"] + 1,
+                    "floor" => next["floor"],
+                    "request_sha256" => request_hash
+                  },
+                  extra
+                )
+
+              next = %{
+                next
+                | "generation" => receipt["generation"],
+                  "operations" => Map.put(s["operations"], id, receipt)
+              }
+
+              with :ok <- document_migration_guard() do
+                publish(path, uid, s, next, manifest, values, receipt, r)
+              else
+                _ -> {:error, :document_migration_admission_refused}
+              end
+
+            {:failed, code} ->
+              {:failed, Map.put(summary(s), "code", code)}
+          end
+      end
+    end
+  end
+
+  defp document_migration_guard do
+    case Process.get(@document_migration_key) do
+      nil -> :ok
+      %{guard: guard} when is_function(guard, 0) -> guard.()
+      _ -> {:error, :document_migration_admission_refused}
     end
   end
 
@@ -2639,6 +2891,10 @@ defmodule Ipse.Extension.Collection do
   end
 
   defp switch_pointer(temporary) do
+    with :ok <- document_migration_guard(), do: switch_pointer_admitted(temporary)
+  end
+
+  defp switch_pointer_admitted(temporary) do
     case Process.get(@switch_deadline_key) do
       nil ->
         Transaction.switch(publication_cap(), temporary, "root.json")
@@ -3111,7 +3367,35 @@ defmodule Ipse.Extension.Collection do
     |> Enum.reduce(0, fn {_, record}, total -> total + record["bytes"] end)
   end
 
+  defp terminal_reserve(
+         %{"migration" => nil, "checkpoint" => %{"document_owner" => _}} = s,
+         staged_blocks
+       ) do
+    {:ok, manifest, _} = Blocks.encode(s)
+    {:ok, _cleanup, additional} = DocumentDraft.cleanup_reserve(s, manifest, staged_blocks, 1)
+    additional
+  end
+
   defp terminal_reserve(%{"migration" => nil}, _), do: []
+
+  defp terminal_reserve(%{"migration" => %{"version" => 1}} = s, staged_blocks) do
+    m = s["migration"]
+    owner = Map.put(m["owner"], "invocation_id", String.duplicate("0", 32))
+
+    requests =
+      Enum.map(~w(restore.abort restore.commit), fn op ->
+        %{
+          "op" => op,
+          "migration_id" => m["id"],
+          "expected_generation" => s["generation"],
+          "expected_epoch" => m["epoch"],
+          "plan_binding_sha256" => m["plan_binding_sha256"],
+          "dependency_union_sha256" => m["dependency_union_sha256"]
+        }
+      end)
+
+    document_terminal_vectors(s, staged_blocks, requests, owner)
+  end
 
   defp terminal_reserve(s, staged_blocks) do
     # A valid nonterminal import reserves an additional complete abort publication.
@@ -3151,15 +3435,72 @@ defmodule Ipse.Extension.Collection do
     [byte_size(bytes), 1024 | Enum.map(new_blocks, fn {_, bytes} -> byte_size(bytes) end)]
   end
 
+  defp document_terminal_vectors(s, staged_blocks, requests, owner) do
+    known = Migration.known_operations(s)
+
+    id =
+      Enum.find_value(0..Profile.limit(:operations), fn n ->
+        candidate = Integer.to_string(n, 16) |> String.downcase() |> String.pad_leading(32, "0")
+        if not Map.has_key?(known, candidate), do: candidate
+      end)
+
+    Enum.flat_map(requests, fn request ->
+      case DocumentMigration.prepare(s, request, id, owner, nil) do
+        {:ok, next, _, extra} ->
+          receipt =
+            Map.merge(
+              %{
+                "generation" => s["generation"] + 1,
+                "floor" => next["floor"],
+                "request_sha256" => JSON.digest([request, DocumentDraft.owner(owner)])
+              },
+              extra
+            )
+
+          next = %{
+            next
+            | "generation" => receipt["generation"],
+              "operations" => Map.put(s["operations"], id, receipt)
+          }
+
+          {:ok, bytes, blocks} = Blocks.encode(next)
+
+          [
+            byte_size(bytes),
+            1024
+            | Enum.map(Map.drop(blocks, Map.keys(staged_blocks)), fn {_, value} ->
+                byte_size(value)
+              end)
+          ] ++
+            terminal_reserve(next, blocks)
+
+        {:failed, _} ->
+          []
+      end
+    end)
+  end
+
   defp full_import_plan(path, uid, old, next, %{
          "op" => "import.open",
          "plan" => supplied,
          "descriptor" => descriptor
        }) do
-    with {:ok, plan} <- Planning.validate(old, descriptor, supplied),
-         future = planned_generation(next, plan.records),
-         true <- envelope_bytes(future) <= Profile.limit(:data_bytes),
-         {:ok, sizes} <- planned_object_sizes(path, uid, plan.records),
+    with {:ok, plan} <- Planning.validate(old, descriptor, supplied) do
+      reserve_import_plan(path, uid, next, planned_generation(next, plan.records))
+    end
+  end
+
+  defp full_import_plan(path, uid, _old, next, %{"op" => "restore.open"}) do
+    reserve_import_plan(path, uid, next, DocumentMigration.forecast(next))
+  rescue
+    _ -> {:error, :transaction_capacity}
+  end
+
+  defp full_import_plan(_, _, _, _, _), do: {:ok, []}
+
+  defp reserve_import_plan(path, uid, next, future) do
+    with true <- envelope_bytes(future) <= Profile.limit(:data_bytes),
+         {:ok, sizes} <- planned_object_sizes(path, uid, future["migration"]["records"]),
          {:ok, future_bytes, future_blocks} <- Blocks.encode(future),
          {:ok, new_blocks} <- prepare_files(path, uid, future_blocks, "manifests", 64 * 1024),
          block_sizes = Enum.map(new_blocks, fn {_, _, bytes} -> byte_size(bytes) end),
@@ -3195,8 +3536,6 @@ defmodule Ipse.Extension.Collection do
       other -> other
     end
   end
-
-  defp full_import_plan(_, _, _, _, _), do: {:ok, []}
 
   defp report_import_plan(sizes) do
     :telemetry.execute(

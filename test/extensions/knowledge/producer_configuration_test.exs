@@ -158,6 +158,68 @@ defmodule Ipse.ProducerConfigurationTest do
     assert hd(guarded["extensions"])["enabled"] === false
     assert Ipse.Config.Semantics.validate_services(guarded["inference_services"]) == :ok
 
+    validator = %{
+      "command_id" => "source",
+      "action" => "restore_validate_page",
+      "export_action" => "backup_page",
+      "plan_action" => "backup_plan"
+    }
+
+    configure_validation = fn source_use, validation ->
+      BuildSpec.operator(
+        manifest,
+        "corpus",
+        "collection-dense",
+        "producer",
+        options,
+        nil,
+        %{},
+        Map.put(inference, "inference_services", services),
+        source_use,
+        validation
+      )
+    end
+
+    [validated_trust] = configure_validation.(nil, "document_completed_v1")["extension_trust"]
+
+    assert validated_trust["collection_bindings"] === [
+             old_binding
+             |> Map.put("version", 3)
+             |> Map.put("source_use", nil)
+             |> Map.put("input_validation", validator)
+           ]
+
+    [validated_guarded] =
+      configure_validation.("shared_producer_v1", "document_completed_v1")["extension_trust"]
+
+    assert validated_guarded["collection_bindings"] === [
+             old_binding
+             |> Map.put("version", 3)
+             |> Map.put("source_use", "shared_producer_v1")
+             |> Map.put("input_validation", validator)
+           ]
+
+    assert configure_validation.("shared_producer_v1", nil) === guarded
+
+    for validation <- ["automatic", "", true] do
+      assert_raise ArgumentError, fn -> configure_validation.(nil, validation) end
+    end
+
+    assert_raise ArgumentError, fn ->
+      BuildSpec.operator(
+        manifest,
+        "corpus",
+        "state-dense",
+        "producer",
+        options,
+        nil,
+        %{},
+        inference,
+        nil,
+        "document_completed_v1"
+      )
+    end
+
     for source_use <- ["automatic", "", true] do
       assert_raise ArgumentError, fn -> configure.(inference, source_use) end
     end

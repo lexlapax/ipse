@@ -93,13 +93,26 @@ defmodule Ipse.Extension.Collection.DocumentDraft do
   @doc "A conservative complete file vector for all currently owed cleanups."
   def cleanup_reserve(state, manifest_bytes, blocks)
       when is_binary(manifest_bytes) and is_map(blocks) do
-    if map_size(heads(state)) == 0 do
-      {:ok, []}
+    with {:ok, cleanup, []} <- cleanup_reserve(state, manifest_bytes, blocks, 0),
+         do: {:ok, cleanup}
+  end
+
+  @doc false
+  # A checkpoint disposition remains owed while heads/stages must be retired
+  # first. Account for that extra publication without admitting it or discarding
+  # any current metadata from the conservative cleanup bound.
+  def cleanup_reserve(state, manifest_bytes, blocks, additional_terminal_steps)
+      when is_binary(manifest_bytes) and is_map(blocks) and additional_terminal_steps in 0..1 do
+    cleanup_refs = if map_size(heads(state)) == 0, do: [], else: cleanup_refs(state)
+    additional_refs = List.duplicate(nil, additional_terminal_steps)
+    refs = cleanup_refs ++ additional_refs
+
+    if refs == [] do
+      {:ok, [], []}
     else
       with {:ok, wire} <- JSON.decode_unique(manifest_bytes),
            true <-
              is_map(wire) and is_list(wire["operations"]) and is_list(wire["floor_lineage"]),
-           refs = cleanup_refs(state),
            true <- length(refs) in 1..25,
            bound = cleanup_manifest_bound(wire),
            true <- bound in 1..@manifest_bytes,
@@ -115,13 +128,14 @@ defmodule Ipse.Extension.Collection.DocumentDraft do
              Enum.sum(Enum.map(blocks, fn {_, bytes} -> byte_size(bytes) end)) +
                future_blocks * @block_bytes <= 9 * 1024 * 1024,
            true <- wire_reference_count(wire) + 2 <= 1024 do
-        sizes =
-          Enum.flat_map(refs, fn ref ->
+        sizes = fn selected ->
+          Enum.flat_map(selected, fn ref ->
             count = if is_nil(ref), do: 0, else: stage_record_count(state, ref)
             List.duplicate(@block_bytes, count + 2) ++ [bound, pointer_bound(state)]
           end)
+        end
 
-        {:ok, sizes}
+        {:ok, sizes.(cleanup_refs), sizes.(additional_refs)}
       else
         _ -> {:error, :document_draft_capacity}
       end

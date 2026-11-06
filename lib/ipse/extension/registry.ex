@@ -119,12 +119,22 @@ defmodule Ipse.Extension.Config do
             "additionalProperties" => false,
             "required" => ~w(version instance id scope profile),
             "properties" => %{
-              "version" => %{"type" => "integer", "enum" => [1, 2]},
+              "version" => %{"type" => "integer", "enum" => [1, 2, 3]},
               "instance" => @identifier,
               "id" => %{"type" => "string", "enum" => ["documents"]},
               "scope" => %{"type" => "string", "enum" => ["project"]},
               "profile" => %{"type" => "string", "enum" => ["document_graph_v1"]},
-              "source_use" => %{"type" => "string", "enum" => ["shared_producer_v1"]}
+              "source_use" => %{
+                "type" => ["string", "null"],
+                "enum" => [nil, "shared_producer_v1"]
+              },
+              "input_validation" => %{
+                "type" => "object",
+                "additionalProperties" => false,
+                "required" => ~w(command_id action export_action plan_action),
+                "properties" =>
+                  Map.new(~w(command_id action export_action plan_action), &{&1, @identifier})
+              }
             }
           }
         },

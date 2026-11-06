@@ -109,7 +109,8 @@ defmodule Ipse.Extension.Collection.Blocks do
         wire["imported_operations"] ++
         wire["floor_lineage"] ++
         wire["migration"]["imported_operations"] ++
-        wire["migration"]["descriptor"]["floor_lineage"]
+        wire["migration"]["descriptor"]["floor_lineage"] ++
+        (wire["migration"]["plan_records"] || [])
 
     refs |> Enum.map(& &1["sha256"]) |> MapSet.new()
   end
@@ -223,12 +224,19 @@ defmodule Ipse.Extension.Collection.Blocks do
     {imported, b} = partition(m["imported_operations"], "aliases", 256)
     {lineage, c} = lineage(m["descriptor"]["floor_lineage"])
 
+    {planned, d} =
+      if Map.has_key?(m, "plan_records"),
+        do: partition(m["plan_records"], "records", 128),
+        else: {nil, %{}}
+
+    m = if is_nil(planned), do: m, else: Map.put(m, "plan_records", planned)
+
     {%{
        m
        | "records" => records,
          "imported_operations" => imported,
          "descriptor" => %{m["descriptor"] | "floor_lineage" => lineage}
-     }, merge([a, b, c])}
+     }, merge([a, b, c, d])}
   end
 
   defp pack_checkpoint(nil), do: {nil, %{}}
@@ -253,8 +261,13 @@ defmodule Ipse.Extension.Collection.Blocks do
 
     staged =
       case wire["migration"] do
-        nil -> []
-        m -> m["records"] ++ m["imported_operations"] ++ m["descriptor"]["floor_lineage"]
+        nil ->
+          []
+
+        m ->
+          m["records"] ++
+            m["imported_operations"] ++
+            m["descriptor"]["floor_lineage"] ++ (m["plan_records"] || [])
       end
 
     checkpoint =
@@ -275,6 +288,7 @@ defmodule Ipse.Extension.Collection.Blocks do
     do: [
       wire["records"],
       if(wire["migration"], do: wire["migration"]["records"], else: []),
+      if(wire["migration"], do: wire["migration"]["plan_records"] || [], else: []),
       if(wire["checkpoint"], do: wire["checkpoint"]["records"], else: [])
     ]
 
@@ -304,7 +318,7 @@ defmodule Ipse.Extension.Collection.Blocks do
           nil
 
         m ->
-          %{
+          unpacked = %{
             m
             | "records" => record_map(m["records"], blocks),
               "imported_operations" => receipt_map(m["imported_operations"], "aliases", blocks),
@@ -313,6 +327,10 @@ defmodule Ipse.Extension.Collection.Blocks do
                 | "floor_lineage" => lineage_rows(m["descriptor"]["floor_lineage"], blocks)
               }
           }
+
+          if Map.has_key?(m, "plan_records"),
+            do: Map.put(unpacked, "plan_records", record_map(m["plan_records"], blocks)),
+            else: unpacked
       end
 
     checkpoint =

@@ -423,6 +423,7 @@ defmodule Ipse.Session.Invocation do
 
   def bind_document(s, ref, request, binding) do
     with %{job: ^ref} <- s.invocation.document_context,
+         true <- Ipse.Extension.CollectionStore.Restore.allowed?(request, s.invocation.parent),
          true <- output_timely?(s) and not s.invocation.interrupted,
          true <-
            Ipse.Extension.CollectionStore.valid_binding?(
@@ -449,6 +450,11 @@ defmodule Ipse.Session.Invocation do
   def document_current(s, intent) do
     reply =
       with %{intent: ^intent} <- s.invocation.action,
+           true <-
+             Ipse.Extension.CollectionStore.Restore.allowed?(
+               intent["request"],
+               s.invocation.parent
+             ),
            true <- output_timely?(s) and not s.invocation.interrupted,
            true <- Ipse.Extension.Registry.live?(s.invocation.parent["identity"]),
            true <-
@@ -1628,7 +1634,8 @@ defmodule Ipse.Session.Invocation do
             session_id: s.id,
             parent: s.invocation.parent,
             owner: self(),
-            job_ref: s.job_ref
+            job_ref: s.job_ref,
+            history_dir: s.dir
           }),
         else: context
 

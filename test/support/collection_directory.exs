@@ -262,7 +262,9 @@ assert {:done, {:error, :document_store_deadline_unavailable, _}} =
            "value" => %{"code" => "document_store_deadline_unavailable"}
          })
 
-assert {:done, {:error, :generation_job_changed, _}} =
+# The changed generation now fails the request-bound native read before the Job
+# owner can consume it; no mutation request is returned by this walk.
+assert {:done, {:error, :collection_response, _}} =
          walk.(walk, C.start(profile, :generation_job, begin_args), 0, 3)
 
 assert {:done, {:error, :invalid_generation_job_request, _}} =

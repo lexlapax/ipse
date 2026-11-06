@@ -34,10 +34,29 @@ defmodule Ipse.Extension.Collection.DocumentMaintenance do
     do: Map.get(state, @key, %{"version" => 1, "epoch" => 0, "status" => "idle"})
 
   def present?(state), do: Map.has_key?(state, @key)
-  def reserved_slots(state), do: if(metadata(state)["status"] === "active", do: 1, else: 0)
+
+  def reserved_slots(state),
+    do:
+      if(
+        metadata(state)["status"] === "active" and
+          metadata(state)["purpose"] !== "document_import",
+        do: 1,
+        else: 0
+      )
 
   def valid?(state) do
     m = metadata(state)
+
+    if m["version"] === 2 do
+      Ipse.Extension.Collection.DocumentMigration.maintenance_valid?(state)
+    else
+      inspection_valid?(state, m)
+    end
+  rescue
+    _ -> false
+  end
+
+  defp inspection_valid?(state, m) do
     base = is_map(m) and m["version"] === 1 and JSON.safe_uint?(m["epoch"])
 
     base and
@@ -100,6 +119,9 @@ defmodule Ipse.Extension.Collection.DocumentMaintenance do
     cond do
       m["status"] !== "idle" or state["migration"] !== nil ->
         {:failed, "collection_writer_fenced"}
+
+      match?(%{"document_owner" => _}, state["checkpoint"]) ->
+        {:failed, "collection_checkpoint_retained"}
 
       r["expected_epoch"] !== m["epoch"] ->
         {:failed, "collection_document_epoch"}

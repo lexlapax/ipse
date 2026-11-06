@@ -58,7 +58,8 @@ defmodule IpseKnowledge.BuildSpec do
         state_id,
         bindings,
         inference \\ %{},
-        collection_source_use \\ nil
+        collection_source_use \\ nil,
+        collection_input_validation \\ nil
       ) do
     module = selection!(package, preset)
     manifest = JSON.decode!(manifest_bytes)
@@ -74,6 +75,18 @@ defmodule IpseKnowledge.BuildSpec do
              raise(
                ArgumentError,
                "Collection source use requires explicit shared_producer_v1 on corpus collection-dense."
+             )
+
+    unless collection_input_validation == nil or
+             (collection_input_validation == "document_completed_v1" and package == "corpus" and
+                preset in ~w(collection-documents collection-dense) and
+                Enum.any?(options["stores"] || %{}, fn {_, store} ->
+                  store["kind"] == "collection"
+                end)),
+           do:
+             raise(
+               ArgumentError,
+               "Collection input validation requires explicit document_completed_v1 on a Corpus Collection preset."
              )
 
     unless manifest["sdk"] === 2 and manifest["id"] == "ipse-knowledge/" <> package and
@@ -196,12 +209,26 @@ defmodule IpseKnowledge.BuildSpec do
               "profile" => "document_graph_v1"
             }
             |> then(fn binding ->
-              if collection_source_use == nil,
-                do: binding,
-                else:
+              cond do
+                collection_input_validation != nil ->
+                  binding
+                  |> Map.put("version", 3)
+                  |> Map.put("source_use", collection_source_use)
+                  |> Map.put("input_validation", %{
+                    "command_id" => "source",
+                    "action" => "restore_validate_page",
+                    "export_action" => "backup_page",
+                    "plan_action" => "backup_plan"
+                  })
+
+                collection_source_use != nil ->
                   binding
                   |> Map.put("version", 2)
                   |> Map.put("source_use", collection_source_use)
+
+                true ->
+                  binding
+              end
             end)
           ]),
         else: trust

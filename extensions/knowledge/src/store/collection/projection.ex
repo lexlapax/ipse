@@ -20,6 +20,810 @@ defmodule IpseKnowledge.Store.Collection.Projection do
   @fact_input_page_bytes 7_000
   @fact_input_pages 8
 
+  @doc """
+  Validate a complete bounded historical document set without changing its bytes.
+
+  Native provenance and operator-selected input leases belong to the Host. This
+  predicate independently checks the packed envelopes, then resolves every
+  supported semantic reference inside this set. Missing, unknown or unfinished
+  data refuses the entire set; it is never silently omitted or adopted as work.
+  """
+  def completed_backup?(profile, records), do: completed_backup?(profile, records, 0)
+
+  def completed_backup?(profile, records, source_epoch) do
+    with true <- E.safe_uint?(source_epoch),
+         true <-
+           exact?(profile, ~w(kind scope partition)) and
+             profile["kind"] === "collection" and profile["scope"] === "project" and
+             is_binary(profile["partition"]) and
+             Regex.match?(~r/\A[a-z][a-z0-9_-]{0,15}\z/, profile["partition"]),
+         true <- is_list(records) and length(records) <= 32,
+         rows <- Enum.map(records, &backup_row!/1),
+         true <- length(Enum.uniq_by(rows, & &1["key"])) === length(rows),
+         by_key = Map.new(rows, &{&1["key"], &1}),
+         true <- Enum.all?(rows, &(not String.starts_with?(&1["key"], "host."))),
+         true <- backup_epochs?(profile, by_key, source_epoch) do
+      if rows === [] do
+        true
+      else
+        values = Map.new(rows, &{&1["key"], &1["value"]})
+        {catalog, current, bundles, used} = backup_sources!(profile, by_key)
+        used = backup_lexical!(profile, by_key, values, catalog, current, bundles, used)
+        used = backup_projections!(profile, by_key, bundles, catalog, used)
+        used = backup_shared!(profile, by_key, values, catalog, current, bundles, used)
+        used = backup_producers!(profile, by_key, catalog, current, used)
+        MapSet.new(Map.keys(by_key)) === used
+      end
+    else
+      _ -> false
+    end
+  rescue
+    _ -> false
+  catch
+    _, _ -> false
+  end
+
+  defp backup_epochs?(profile, rows, source_epoch) do
+    alias IpseKnowledge.Store.Collection.{Index, Job}
+
+    Enum.all?(rows, fn {_, row} ->
+      value = row["value"]
+
+      epoch =
+        case value["kind"] do
+          "shared_generation_job" ->
+            Job.validated_epoch(value, profile)
+
+          "lexical_job" ->
+            Index.validated_epoch(value, profile)
+
+          "shared_projection_producer" ->
+            case rows["genjob." <> profile["partition"]] do
+              %{"value" => job} -> Job.validated_epoch(job, profile)
+              _ -> :missing_job
+            end
+
+          _ ->
+            {:ok, 0}
+        end
+
+      case epoch do
+        {:ok, bound} -> bound <= source_epoch
+        _ -> false
+      end
+    end)
+  end
+
+  defp backup_row!(row) do
+    true = exact?(row, ~w(key revision operation_id sha256 bytes value))
+
+    true =
+      is_binary(row["key"]) and Regex.match?(~r/\A[a-zA-Z0-9][a-zA-Z0-9_.-]{0,95}\z/, row["key"])
+
+    true =
+      E.safe_positive?(row["revision"]) and is_binary(row["operation_id"]) and
+        Regex.match?(~r/\A[0-9a-f]{32}\z/, row["operation_id"])
+
+    packed = row["value"]
+
+    true =
+      exact?(packed, ~w(version kind sha256 byte_count parts)) and
+        packed["version"] === 1 and packed["kind"] === "document_value"
+
+    true =
+      is_list(packed["parts"]) and length(packed["parts"]) in 1..10 and
+        Enum.all?(
+          packed["parts"],
+          &(is_binary(&1) and String.valid?(&1) and byte_size(&1) in 1..6144)
+        )
+
+    body = IO.iodata_to_binary(packed["parts"])
+
+    true =
+      byte_size(body) in 2..61_440 and byte_size(body) === packed["byte_count"] and
+        E.sha256(body) === packed["sha256"]
+
+    {:ok, physical} = Ipse.Extension.ResultDocument.encode(packed, %{"type" => "object"})
+    true = byte_size(physical) === row["bytes"] and E.sha256(physical) === row["sha256"]
+    {:ok, value} = Ipse.JSON.decode_unique(body)
+    true = is_map(value) and json(value) === body
+
+    %{
+      "key" => row["key"],
+      "revision" => row["revision"],
+      "sha256" => packed["sha256"],
+      "byte_count" => byte_size(body),
+      "value" => value
+    }
+  end
+
+  defp backup_ref!(by_key, ref) do
+    true = exact?(ref, ~w(key sha256)) or exact?(ref, ~w(key sha256 byte_count))
+    row = Map.fetch!(by_key, ref["key"])
+
+    true =
+      row["sha256"] === ref["sha256"] and
+        (not Map.has_key?(ref, "byte_count") or row["byte_count"] === ref["byte_count"])
+
+    row
+  end
+
+  defp backup_immutable!(profile, row, prefix) do
+    true = row["key"] === prefix <> "." <> profile["partition"] <> "." <> row["sha256"]
+    row["value"]
+  end
+
+  defp backup_pieces!(values) do
+    Enum.map_join(values, fn value ->
+      parts = value["pieces"]
+
+      true =
+        is_list(parts) and length(parts) in 1..12 and
+          Enum.all?(parts, &(is_binary(&1) and String.valid?(&1) and byte_size(&1) <= 4096))
+
+      Enum.join(parts)
+    end)
+  end
+
+  defp backup_head!(profile, by_key, head) do
+    true = C.valid_source_head?(head, head["source_key"])
+    blocks = Enum.map(head["blocks"], &backup_ref!(by_key, &1))
+
+    Enum.with_index(blocks)
+    |> Enum.each(fn {row, n} ->
+      value = backup_immutable!(profile, row, "data")
+
+      true =
+        (exact?(value, ~w(version kind pieces)) and value["version"] === 1) or
+          (exact?(value, ~w(version kind pieces bundle_sha256 ordinal)) and value["version"] === 2 and
+             value["bundle_sha256"] === head["bundle_sha256"] and value["ordinal"] === n)
+
+      true = value["kind"] === "source_data"
+    end)
+
+    bytes = backup_pieces!(Enum.map(blocks, & &1["value"]))
+    true = byte_size(bytes) === head["byte_count"] and E.sha256(bytes) === head["bundle_sha256"]
+    {:ok, source} = Ipse.JSON.decode_unique(bytes)
+
+    true =
+      E.valid_source?(source) and source["partition"] === profile["partition"] and
+        source["source_key"] === head["source_key"] and
+        source["generation"] === head["generation"] and
+        byte_size(source["text"]) === head["text_bytes"]
+
+    {:ok, chunks} = E.chunks(source)
+    true = length(chunks) === head["chunks"]
+    {source, used} = {source, Enum.map(blocks, & &1["key"])}
+
+    if head["version"] === 2 do
+      manifest = head["lexical"]
+      lexical = Enum.map(manifest["blocks"], &backup_ref!(by_key, &1))
+
+      Enum.with_index(lexical)
+      |> Enum.each(fn {row, n} ->
+        value = backup_immutable!(profile, row, "data")
+
+        true =
+          exact?(value, ~w(version kind pieces bundle_sha256 ordinal source_bundle_sha256)) and
+            value["version"] === 1 and value["kind"] === "source_lexical" and
+            value["source_bundle_sha256"] === head["bundle_sha256"] and
+            value["bundle_sha256"] === manifest["bundle_sha256"] and value["ordinal"] === n
+      end)
+
+      bytes = backup_pieces!(Enum.map(lexical, & &1["value"]))
+      {:ok, expected} = E.lexical_run(source)
+
+      true =
+        bytes === json(expected) and byte_size(bytes) === manifest["byte_count"] and
+          E.sha256(bytes) === manifest["bundle_sha256"] and
+          manifest["content_sha256"] === source["content_sha256"]
+
+      {%{"source" => source, "head" => head}, used ++ Enum.map(lexical, & &1["key"])}
+    else
+      {%{"source" => source, "head" => head}, used}
+    end
+  end
+
+  defp backup_sources!(profile, rows) do
+    catalog_key = "catalog." <> profile["partition"]
+    catalog = Map.fetch!(rows, catalog_key)
+    true = C.valid_catalog?(catalog["value"], profile)
+
+    pages =
+      Enum.with_index(catalog["value"]["pages"])
+      |> Enum.map(fn {ref, n} ->
+        row = backup_ref!(rows, ref)
+        true = C.valid_catalog_page?(row, ref, n, profile)
+        {row, n}
+      end)
+
+    entries =
+      Enum.flat_map(pages, fn {page, n} ->
+        Enum.map(page["value"]["rows"], &{&1, n})
+      end)
+
+    true =
+      length(entries) === catalog["value"]["sources"] and
+        length(Enum.uniq_by(entries, fn {entry, _} -> entry["source_key"] end)) ===
+          length(entries)
+
+    {current, used} =
+      Enum.map_reduce(
+        entries,
+        [catalog_key | Enum.map(pages, fn {r, _} -> r["key"] end)],
+        fn {entry, page}, used ->
+          key = "source." <> profile["partition"] <> "." <> entry["source_key"]
+          row = Map.fetch!(rows, key)
+
+          true =
+            row["sha256"] === entry["head_sha256"] and div(row["value"]["ordinal"], 16) === page
+
+          {bundle, refs} = backup_head!(profile, rows, row["value"])
+          {bundle, [key | refs ++ used]}
+        end
+      )
+
+    true =
+      Enum.sort(Enum.map(current, & &1["head"]["ordinal"])) ===
+        if(current === [], do: [], else: Enum.to_list(0..(length(current) - 1)))
+
+    true =
+      Enum.sum(Enum.map(current, &byte_size(&1["source"]["text"]))) ===
+        catalog["value"]["extracted_bytes"] and
+        Enum.sum(Enum.map(current, & &1["head"]["chunks"])) === catalog["value"]["chunks"]
+
+    bundles = Map.new(current, &{E.sha256(json(&1["source"])), &1})
+    {bundles, used} = backup_historical_sources!(profile, rows, bundles, MapSet.new(used))
+    {catalog, current, bundles, used}
+  end
+
+  defp backup_historical_sources!(profile, rows, bundles, used) do
+    groups =
+      rows
+      |> Map.values()
+      |> Enum.filter(&(&1["value"]["kind"] === "source_data" and &1["value"]["version"] === 2))
+      |> Enum.group_by(& &1["value"]["bundle_sha256"])
+
+    {bundles, used} =
+      Enum.reduce(groups, {bundles, used}, fn {hash, group}, {bundles, used} ->
+        true = E.sha256?(hash)
+        group = Enum.sort_by(group, & &1["value"]["ordinal"])
+
+        Enum.with_index(group)
+        |> Enum.each(fn {row, n} ->
+          value = backup_immutable!(profile, row, "data")
+
+          true =
+            exact?(value, ~w(version kind pieces bundle_sha256 ordinal)) and
+              value["ordinal"] === n
+        end)
+
+        bytes = backup_pieces!(Enum.map(group, & &1["value"]))
+        {:ok, source} = Ipse.JSON.decode_unique(bytes)
+
+        true =
+          E.sha256(bytes) === hash and E.valid_source?(source) and
+            source["partition"] === profile["partition"] and bytes === json(source)
+
+        {Map.put_new(bundles, hash, %{"source" => source, "head" => nil}),
+         Enum.reduce(group, used, &MapSet.put(&2, &1["key"]))}
+      end)
+
+    groups =
+      rows
+      |> Map.values()
+      |> Enum.filter(&(&1["value"]["kind"] === "source_lexical"))
+      |> Enum.group_by(& &1["value"]["bundle_sha256"])
+
+    used =
+      Enum.reduce(groups, used, fn {hash, group}, used ->
+        group = Enum.sort_by(group, & &1["value"]["ordinal"])
+        [first | _] = group
+        source_hash = first["value"]["source_bundle_sha256"]
+        source = Map.fetch!(bundles, source_hash)["source"]
+
+        Enum.with_index(group)
+        |> Enum.each(fn {row, n} ->
+          value = backup_immutable!(profile, row, "data")
+
+          true =
+            exact?(value, ~w(version kind pieces bundle_sha256 ordinal source_bundle_sha256)) and
+              value["version"] === 1 and value["ordinal"] === n and
+              value["source_bundle_sha256"] === source_hash
+        end)
+
+        bytes = backup_pieces!(Enum.map(group, & &1["value"]))
+        {:ok, expected} = E.lexical_run(source)
+        true = bytes === json(expected) and E.sha256(bytes) === hash
+        Enum.reduce(group, used, &MapSet.put(&2, &1["key"]))
+      end)
+
+    {bundles, used}
+  end
+
+  defp backup_lexical!(profile, rows, values, catalog, current, bundles, used) do
+    alias IpseKnowledge.Store.Collection.Index
+
+    used =
+      rows
+      |> Map.values()
+      |> Enum.filter(&(&1["value"]["kind"] === "lexical_run_index"))
+      |> Enum.reduce(used, fn row, used ->
+        header = backup_immutable!(profile, row, "lexr")
+
+        sources =
+          Enum.map(header["sources"], fn summary ->
+            Map.fetch!(bundles, Enum.at(summary, 4))["source"]
+          end)
+
+        entries =
+          Enum.zip(sources, header["sources"])
+          |> Enum.map(fn {source, summary} ->
+            {:ok, run} = E.lexical_run(source)
+
+            %{
+              "run" => run,
+              "source_bundle_sha256" => E.sha256(json(source)),
+              "source_revision" => Enum.at(summary, 5)
+            }
+          end)
+
+        {:ok, plan} = Index.storage_plan(profile, sources, entries, header["cursor"])
+
+        true =
+          plan.header["key"] === row["key"] and
+            Enum.all?(plan.values, fn unit -> Map.fetch!(values, unit.key) === unit.value end)
+
+        Enum.reduce(plan.values, used, &MapSet.put(&2, &1.key))
+      end)
+
+    key = "lexical." <> profile["partition"]
+    job_key = "lexjob." <> profile["partition"]
+    root_row = rows[key]
+    root = root_row && root_row["value"]
+
+    used =
+      if root do
+        true =
+          root["catalog_sha256"] === catalog["sha256"] and
+            root["catalog_generation"] === catalog["value"]["generation"] and
+            root["floor"] === catalog["value"]["floor"]
+
+        ordered = Enum.sort_by(current, & &1["head"]["ordinal"])
+        groups = Enum.map(root["groups"], fn ref -> {ref, backup_ref!(rows, ref)["value"]} end)
+        true = Index.completed_backup?(profile, root, groups, ordered, values)
+
+        keys =
+          Enum.flat_map(groups, fn {ref, header} ->
+            [
+              ref["key"]
+              | Enum.map(header["packs"], fn [hash, _, _] ->
+                  "lexp." <> profile["partition"] <> "." <> hash
+                end)
+            ]
+          end)
+
+        Enum.reduce([key | keys], used, &MapSet.put(&2, &1))
+      else
+        used
+      end
+
+    if job = rows[job_key] do
+      true = Index.completed_job?(job["value"], root, profile)
+
+      Enum.each(job["value"]["groups"], fn ref ->
+        true = backup_ref!(rows, ref)["value"]["kind"] === "lexical_run_index"
+      end)
+
+      MapSet.put(used, job_key)
+    else
+      used
+    end
+  end
+
+  defp backup_projections!(profile, rows, bundles, catalog, used) do
+    rows
+    |> Map.values()
+    |> Enum.filter(&(&1["value"]["kind"] in ~w(vector_projection fact_projection)))
+    |> Enum.reduce(used, fn row, used ->
+      root = row["value"]
+      bundle = Map.fetch!(bundles, root["source_bundle_sha256"])
+      source = bundle["source"]
+      kind = if root["kind"] === "fact_projection", do: :facts, else: :vectors
+      state = %{item_kind: kind, profile: profile, source: source}
+      prefix = if kind === :facts, do: "facts.", else: "vector."
+      true = row["key"] === prefix <> profile["partition"] <> "." <> source["source_key"]
+
+      true =
+        root?(root, state) and root["source_generation"] === source["generation"] and
+          Map.fetch!(rows, "source." <> profile["partition"] <> "." <> root["source_key"])[
+            "value"
+          ]["bundle_sha256"] === root["source_bundle_sha256"] and
+          root["content_sha256"] === source["content_sha256"] and
+          root["catalog_sha256"] === catalog["sha256"] and
+          root["catalog_generation"] === catalog["value"]["generation"] and
+          root["floor"] === catalog["value"]["floor"]
+
+      pages =
+        Enum.map(root["pages"], fn ref ->
+          page = backup_ref!(rows, ref)
+          backup_immutable!(profile, page, if(kind === :facts, do: "factp", else: "vecp"))
+        end)
+
+      {:ok, items} =
+        if kind === :facts,
+          do: selected_facts(source, pages, root["selection"], root),
+          else: unpack(source, pages, root["selection"])
+
+      true = length(items) === root[item_field(state)]
+      Enum.reduce([row["key"] | Enum.map(root["pages"], & &1["key"])], used, &MapSet.put(&2, &1))
+    end)
+  end
+
+  defp backup_shared!(profile, rows, values, catalog, current, bundles, used) do
+    alias IpseKnowledge.Store.Collection.{Directory, Finalization, Generation, Job}
+
+    headers =
+      rows |> Map.values() |> Enum.filter(&(&1["value"]["kind"] === "shared_projection_group"))
+
+    {summaries, used} =
+      Enum.map_reduce(headers, used, fn row, used ->
+        header = backup_immutable!(profile, row, "gengrp")
+        refs = header["source_pages"] ++ header["vector_pages"] ++ header["fact_pages"]
+        Enum.each(refs, &backup_ref!(rows, &1))
+
+        source_rows =
+          Enum.flat_map(header["source_pages"], &Map.fetch!(values, &1["key"])["rows"])
+
+        captured =
+          Enum.map(source_rows, fn source_row ->
+            head = source_row["head"]
+            {bundle, _} = backup_head!(profile, rows, head)
+            true = Map.has_key?(bundles, head["bundle_sha256"])
+            bundle
+          end)
+
+        {:ok, data} =
+          Generation.unpack_group(
+            profile["partition"],
+            header,
+            values,
+            captured,
+            Map.take(header, ~w(cursor vector_selection fact_selection))
+          )
+
+        {:ok, plan} =
+          Generation.pack_group(
+            profile["partition"],
+            header["cursor"],
+            captured,
+            data,
+            header["vector_selection"],
+            header["fact_selection"]
+          )
+
+        {:ok, summary} =
+          Directory.capture(
+            profile["partition"],
+            plan,
+            captured,
+            Map.take(header, ~w(cursor vector_selection fact_selection))
+          )
+
+        true = summary["ref"]["key"] === row["key"]
+
+        {summary,
+         Enum.reduce([row["key"] | Enum.map(refs, & &1["key"])], used, &MapSet.put(&2, &1))}
+      end)
+
+    root_key = "generation." <> profile["partition"]
+    root_row = rows[root_key]
+
+    used =
+      if root_row do
+        root = root_row["value"]
+
+        expected =
+          Map.take(
+            root,
+            ~w(generation catalog_sha256 catalog_generation floor vector_selection fact_selection)
+          )
+          |> Map.put("root_sha256", root_row["sha256"])
+
+        true =
+          Directory.valid_root?(root, expected) and root["catalog_sha256"] === catalog["sha256"] and
+            root["catalog_generation"] === catalog["value"]["generation"] and
+            root["floor"] === catalog["value"]["floor"]
+
+        ordered = Enum.sort_by(current, & &1["head"]["ordinal"])
+
+        groups =
+          Enum.chunk_every(ordered, 8)
+          |> Enum.flat_map(fn bs ->
+            {:ok, result} =
+              Directory.lookup(root, values, Enum.map(bs, & &1["source"]["source_key"]), expected)
+
+            true = result["missing_source_keys"] === []
+            result["groups"]
+          end)
+          |> Enum.uniq_by(& &1["header"]["key"])
+
+        selected =
+          Enum.map(groups, fn group -> Enum.find(summaries, &(&1["ref"] === group["header"])) end)
+
+        true = length(selected) === root["groups"] and Enum.all?(selected, &is_map/1)
+
+        true =
+          Enum.flat_map(selected, & &1["sources"])
+          |> Enum.map(&Map.take(&1, ~w(source_key head_sha256))) ===
+            Enum.map(ordered, fn b ->
+              %{
+                "source_key" => b["source"]["source_key"],
+                "head_sha256" => E.sha256(json(b["head"]))
+              }
+            end)
+
+        true =
+          root["sources"] === catalog["value"]["sources"] and
+            root["extracted_bytes"] === catalog["value"]["extracted_bytes"] and
+            root["chunks"] === catalog["value"]["chunks"] and root["vectors"] === root["chunks"] and
+            root["facts"] === Enum.sum(Enum.map(selected, & &1["header"]["facts"]))
+
+        entity_rows =
+          selected
+          |> Enum.with_index()
+          |> Enum.flat_map(fn {summary, n} ->
+            Enum.map(summary["entities"], fn [id, label] -> [id, label, n] end)
+          end)
+          |> Enum.group_by(&hd/1)
+          |> Enum.map(fn {id, entries} ->
+            [label] = Enum.map(entries, &Enum.at(&1, 1)) |> Enum.uniq()
+            [id, label, Enum.map(entries, &List.last/1) |> Enum.uniq() |> Enum.sort()]
+          end)
+          |> Enum.sort_by(&hd/1)
+
+        {:ok, actual_entities} = Directory.entity_rows(root, values, expected)
+        true = actual_entities === entity_rows and root["entities"] === length(entity_rows)
+        used = backup_reductions!(profile, rows, catalog["value"], selected, used)
+
+        Enum.reduce(
+          [root_key | Enum.map(root["manifests"] ++ root["entity_pages"], & &1["key"])],
+          used,
+          &MapSet.put(&2, &1)
+        )
+      else
+        used
+      end
+
+    job_key = "genjob." <> profile["partition"]
+
+    if job_row = rows[job_key] do
+      job = job_row["value"]
+      true = Job.valid?(job, profile) and job["status"] in ~w(aborted selected)
+
+      Enum.each(job["summaries"], fn ref ->
+        true =
+          backup_ref!(rows, ref)["value"]["kind"] === "shared_projection_group" and
+            Enum.any?(summaries, &(&1["ref"] === ref))
+      end)
+
+      if job["status"] === "selected" do
+        true =
+          is_map(root_row) and job["catalog"] === catalog["value"] and
+            root_row["value"]["generation"] === job["generation"] and
+            root_row["value"]["vector_selection"] === job["vector_selection"] and
+            root_row["value"]["fact_selection"] === job["fact_selection"]
+
+        if job["version"] in [1, 4] do
+          true =
+            root_row["value"]["version"] === 1 and
+              job["cursor"] === job["catalog"]["sources"] and
+              job["facts"] === root_row["value"]["facts"] and
+              job["summaries"] ===
+                root_row["value"]["manifests"]
+                |> Enum.flat_map(fn ref ->
+                  Map.fetch!(values, ref["key"])["rows"] |> Enum.map(& &1["header"])
+                end)
+        else
+          {:ok, expected} = Finalization.selected_root(job)
+          true = root_row["value"] === expected
+        end
+      end
+
+      MapSet.put(used, job_key)
+    else
+      used
+    end
+  end
+
+  defp backup_reductions!(profile, rows, catalog, summaries, used) do
+    alias IpseKnowledge.Store.Collection.{Directory, Paged, Reduction}
+
+    pages =
+      catalog["pages"]
+      |> Enum.with_index()
+      |> Map.new(fn {ref, n} ->
+        {n, backup_ref!(rows, ref)["value"]}
+      end)
+
+    [first | _] = summaries
+    vector = first["header"]["vector_selection"]
+    fact = first["header"]["fact_selection"]
+
+    Enum.reduce([Reduction, Paged], used, fn codec, used ->
+      batches =
+        summaries
+        |> Enum.chunk_every(16)
+        |> Enum.with_index()
+        |> Enum.map(fn {batch, n} ->
+          {:ok, plan} = codec.batch(profile, catalog, batch, pages, n, vector, fact)
+          plan
+        end)
+
+      units = Enum.flat_map(batches, & &1.values)
+      values = Map.new(units, &{&1.key, &1.value})
+      runs = Enum.map(batches, &Directory.reference(&1.run))
+
+      merged =
+        backup_merge_units!(
+          codec,
+          profile["partition"],
+          runs,
+          List.duplicate(0, length(runs)),
+          values,
+          0,
+          length(summaries)
+        )
+
+      Enum.reduce(units ++ merged, used, fn unit, used ->
+        if row = rows[unit.key] do
+          true = row["value"] === unit.value
+          MapSet.put(used, unit.key)
+        else
+          used
+        end
+      end)
+    end)
+  end
+
+  defp backup_merge_units!(codec, partition, runs, positions, values, n, groups) do
+    true = n <= 157
+
+    {:ok, result} =
+      if codec === Paged,
+        do: Paged.merge(partition, runs, positions, values, n, groups),
+        else:
+          IpseKnowledge.Store.Collection.Reduction.merge(partition, runs, positions, values, n)
+
+    units = if is_nil(result.unit), do: [], else: [result.unit]
+
+    if result.complete,
+      do: units,
+      else:
+        units ++
+          backup_merge_units!(codec, partition, runs, result.positions, values, n + 1, groups)
+  end
+
+  defp backup_producers!(profile, rows, catalog, current, used) do
+    alias IpseKnowledge.Store.Collection.{Generation, Job, Producer}
+    ordered = Enum.sort_by(current, & &1["head"]["ordinal"])
+
+    rows
+    |> Map.values()
+    |> Enum.filter(&(&1["value"]["kind"] === "shared_projection_producer"))
+    |> Enum.reduce(used, fn row, used ->
+      record = row["value"]
+      job_row = Map.fetch!(rows, "genjob." <> profile["partition"])
+      job = job_row["value"]
+
+      true =
+        Job.valid?(job, profile) and job["status"] in ~w(aborted selected) and
+          record["status"] === "ready" and record["partition"] === profile["partition"] and
+          record["job_id"] === job["id"] and record["job_revision"] <= job_row["revision"] and
+          record["catalog_sha256"] === catalog["sha256"] and
+          record["catalog_floor"] === catalog["value"]["floor"] and
+          record["vector_selection"] === job["vector_selection"] and
+          record["fact_selection"] === job["fact_selection"]
+
+      captured = Enum.slice(ordered, record["cursor"], 8)
+      true = captured !== [] and rem(record["cursor"], 8) === 0
+      identities = Enum.map(captured, &[&1["source"]["source_key"], E.sha256(json(&1["source"]))])
+      true = record["source_set_sha256"] === E.sha256(json(%{"sources" => identities}))
+
+      inputs =
+        captured
+        |> Enum.with_index()
+        |> Enum.flat_map(fn {b, si} ->
+          {:ok, chunks} = E.chunks(b["source"])
+
+          Enum.with_index(chunks)
+          |> Enum.map(fn {chunk, ci} ->
+            {:ok, canonical} = Ipse.Extension.canonical_digest([chunk["text"]])
+
+            [
+              si,
+              ci,
+              chunk["chunk_id"],
+              canonical,
+              E.sha256(chunk["text"]),
+              chunk["start_byte"],
+              chunk["end_byte"]
+            ]
+          end)
+        end)
+
+      offset = if record["version"] === 4, do: record["vector_cursor"], else: 0
+      selected = Enum.slice(inputs, offset, 8)
+
+      if record["version"] === 4 do
+        true =
+          Producer.Progress.ready?(record, row["key"]) and
+            record["vector_count"] === length(inputs) and
+            record["input_count"] === length(selected) and
+            record["input_refs_sha256"] === E.sha256(json(selected))
+
+        if previous = record["previous_ready"] do
+          previous_row = Map.fetch!(rows, previous["key"])
+
+          true =
+            Map.take(previous_row, ~w(key revision sha256 byte_count)) === previous and
+              Map.take(previous_row["value"], ~w(job_id cursor source_set_sha256)) ===
+                Map.take(record, ~w(job_id cursor source_set_sha256))
+        end
+      else
+        true =
+          row["key"] === "genproducer." <> profile["partition"] and Producer.valid_record?(record)
+
+        bindings =
+          Enum.map(captured, fn b ->
+            source = b["source"]
+
+            head =
+              Map.fetch!(rows, "source." <> profile["partition"] <> "." <> source["source_key"])
+
+            %{
+              "source_key" => source["source_key"],
+              "head_revision" => head["revision"],
+              "head_sha256" => head["sha256"],
+              "bundle_sha256" => b["head"]["bundle_sha256"],
+              "observed_at_ms" => source["observed_at_ms"],
+              "expires_at_ms" => source["expires_at_ms"],
+              "historical" => source["origin"]["historical"],
+              "chunking_sha256" => E.sha256(json(Map.take(source, ~w(version chunking))))
+            }
+          end)
+
+        true =
+          record["source_bindings"] === bindings and
+            record["inputs"] ===
+              if(record["version"] === 2,
+                do: Enum.map(selected, &Enum.take(&1, 5)),
+                else: selected
+              )
+      end
+
+      true =
+        Enum.flat_map(record["receipts"], & &1["input_sha256"]) ===
+          Enum.map(selected, &Enum.at(&1, 3)) and
+          Enum.flat_map(record["receipts"], & &1["raw_input_sha256"]) ===
+            Enum.map(selected, &Enum.at(&1, 4))
+
+      page = backup_ref!(rows, record["page"])
+
+      {:ok, _} =
+        Generation.unpack_vector_page(
+          profile["partition"],
+          record["cursor"],
+          captured,
+          page["value"],
+          record["vector_selection"],
+          offset
+        )
+
+      used |> MapSet.put(row["key"]) |> MapSet.put(page["key"])
+    end)
+  end
+
   @doc false
   def valid_selection?(selection), do: selection?(selection)
   @doc false

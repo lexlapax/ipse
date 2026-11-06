@@ -5,7 +5,7 @@ defmodule Ipse.KnowledgeCollectionJobProgressIsolationTest do
     root = Path.expand("../../..", __DIR__)
 
     files =
-      ~w(evidence documents documents/zip documents/docx documents/parser_stage documents/pdf store/collection store/collection/index store/collection/projection store/collection/generation store/collection/directory store/collection/selected store/collection/job store/collection/reduction store/collection/finalization store/collection/paged)
+      ~w(evidence adapters profiles documents documents/zip documents/docx documents/parser_stage documents/pdf store/collection store/collection/index store/collection/projection store/collection/generation store/collection/directory store/collection/selected store/collection/job store/collection/reduction store/collection/finalization store/collection/paged store/collection/producer store/collection/producer_progress)
       |> Enum.map(&Path.join(root, "extensions/knowledge/src/#{&1}.ex"))
 
     script =

@@ -108,7 +108,7 @@ defmodule Ipse.KnowledgeCollectionDirectoryTest do
       |> Enum.flat_map(&["-pa", List.to_string(&1)])
 
     files =
-      ~w(evidence documents documents/zip documents/docx documents/parser_stage documents/pdf store/collection store/collection/index store/collection/projection store/collection/generation store/collection/directory store/collection/selected store/collection/job store/collection/reduction store/collection/finalization store/collection/paged)
+      ~w(evidence adapters profiles documents documents/zip documents/docx documents/parser_stage documents/pdf store/collection store/collection/index store/collection/projection store/collection/generation store/collection/directory store/collection/selected store/collection/job store/collection/reduction store/collection/finalization store/collection/paged store/collection/producer store/collection/producer_progress)
       |> Enum.map(&Path.expand("extensions/knowledge/src/#{&1}.ex"))
 
     compiler =
