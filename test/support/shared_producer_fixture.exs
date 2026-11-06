@@ -1,4 +1,4 @@
-ExUnit.start()
+ExUnit.start(autorun: false)
 
 Code.require_file("dev/knowledge/collection_recipe_model.ex")
 

@@ -21,7 +21,10 @@ defmodule Ipse.Extension.CollectionDocumentSourceUseIsolationTest do
       )
 
     assert status == 0, output
-    assert output =~ "Result: 15 passed"
+
+    assert Enum.count(String.split(output, "\n"), &(&1 == "DOCUMENT_SOURCE_USE_CONTROL_PASS 15")) ==
+             1
+
     assert [measurement] = Regex.run(~r/SELECTION_SOURCE_MODEL \{[^\n]+\}/, output)
     IO.puts(measurement)
     assert :code.is_loaded(IpseKnowledge.Evidence) == before

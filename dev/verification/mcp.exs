@@ -51,7 +51,8 @@ defmodule IpseMCPExample.Proof do
       transport_before = Fixture.records(http.root)
       resumed = start(http, ask, id)
       :idle = Session.info(resumed).phase
-      true = File.read!(path) == original and Fixture.records(http.root) == transport_before
+      :ok = validate_idle_resume!(original, File.read!(path), id)
+      true = Fixture.records(http.root) == transport_before
       :ok = Session.close_confirmed(resumed)
 
       local = start(stdio, stdio_cfg)
@@ -82,13 +83,27 @@ defmodule IpseMCPExample.Proof do
       drift = start(http, ask)
       :ok = invoke(drift)
       drift_approval = approval(drift)
+      drift_discoveries = Fixture.discoveries(http.root)
       File.write!(Path.join(http.root, "change-descriptor"), "changed")
       :ok = Session.approve(drift, drift_approval.ref, true)
-      done(drift, :ok)
+      done(drift, :error)
       true = Fixture.calls(http.root) == calls
-      [refused] = events(http, drift) |> Enum.filter(&(&1["type"] == "extension_action_result"))
-      %{"status" => "failed", "value" => %{"code" => "mcp_refused"}} = refused["outcome"]
+      true = Fixture.discoveries(http.root) == drift_discoveries + 1
+      drift_events = events(http, drift)
+      [refused] = Enum.filter(drift_events, &(&1["type"] == "extension_action_result"))
+      %{"status" => "unknown", "value" => value} = refused["outcome"]
+      true = value == %{}
+      false = Enum.any?(drift_events, &(&1["type"] == "extension_effect_result"))
+      drift_id = Session.info(drift).id
       :ok = Session.close_confirmed(drift)
+      drift_path = Path.join(http.dir, drift_id <> ".jsonl")
+      drift_before = File.read!(drift_path)
+      drift_transport = Fixture.records(http.root)
+      drift_idle = start(http, ask, drift_id)
+      :idle = Session.info(drift_idle).phase
+      :ok = validate_idle_resume!(drift_before, File.read!(drift_path), drift_id)
+      true = Fixture.records(http.root) == drift_transport
+      :ok = Session.close_confirmed(drift_idle)
       File.rm!(Path.join(http.root, "change-descriptor"))
 
       source = Enum.find(ev, &(&1["type"] == "extension_effect_result"))
@@ -272,6 +287,30 @@ defmodule IpseMCPExample.Proof do
     {:ok, events} = Journal.load(context.dir, Session.info(pid).id)
     {:ok, _} = Session.restore_context(events)
     events
+  end
+
+  @doc false
+  def validate_idle_resume!(before, after_resume, id) do
+    true = String.starts_with?(after_resume, before)
+    [header | _] = String.split(before, "\n", trim: true)
+    {:ok, header} = Ipse.JSON.decode_unique(header)
+
+    suffix =
+      binary_part(after_resume, byte_size(before), byte_size(after_resume) - byte_size(before))
+
+    case get_in(header, ["metadata", "release_receipt_layout"]) do
+      nil ->
+        true = suffix == ""
+
+      layout ->
+        true = layout == Ipse.Session.ReleaseReceipt.layout()
+        [line] = String.split(suffix, "\n", trim: true)
+        true = suffix == line <> "\n"
+        {:ok, marker} = Ipse.JSON.decode_unique(line)
+        true = Ipse.Session.ReleaseReceipt.valid_owner_marker?(marker, id)
+    end
+
+    :ok
   end
 
   defp validate_windows(events) do

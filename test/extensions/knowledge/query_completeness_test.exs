@@ -643,7 +643,10 @@ else
         "ExUnit.start(autorun: false); " <>
           "{:ok, _} = Application.ensure_all_started(:ipse); " <>
           "Code.require_file(#{inspect(Path.expand(__ENV__.file))}); " <>
-          "result = ExUnit.run(); if result.failures != 0, do: System.halt(1)"
+          "result = ExUnit.run(); " <>
+          "if Map.take(result, [:total, :failures, :excluded, :skipped]) != " <>
+          "%{total: 3, failures: 0, excluded: 0, skipped: 0}, do: System.halt(1); " <>
+          "IO.puts(\"QUERY_COMPLETENESS_CONTROL_PASS 3\")"
 
       {output, status} =
         System.cmd(
@@ -657,7 +660,10 @@ else
         )
 
       assert status == 0, output
-      assert output =~ "Result: 3 passed"
+
+      assert Enum.count(String.split(output, "\n"), &(&1 == "QUERY_COMPLETENESS_CONTROL_PASS 3")) ==
+               1
+
       IO.write(output)
     end
   end

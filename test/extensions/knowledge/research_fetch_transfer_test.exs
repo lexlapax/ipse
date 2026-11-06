@@ -69,7 +69,19 @@ defmodule Ipse.KnowledgeResearchFetchTransferTest do
     |> Enum.flat_map(&["-pa", &1])
   end
 
+  @tag :exunit_output_contract
   test "fetched transfer validates real adapter envelopes and shared body suppression", c do
+    script = """
+    ExUnit.start(autorun: false)
+    ExUnit.after_suite(fn result ->
+      if Map.take(result, [:total, :failures, :skipped, :excluded]) !=
+           %{total: 23, failures: 0, skipped: 0, excluded: 0},
+        do: raise("unexpected fetched-transfer counters: " <> inspect(result))
+      IO.puts("RESEARCH_FETCH_TRANSFER_CONTROL_PASS")
+    end)
+    Code.require_file(#{inspect(Path.join(@root, "test/support/research_fetch_transfer_pure.exs"))})
+    """
+
     {output, code} =
       System.cmd(
         System.find_executable("elixir"),
@@ -77,14 +89,20 @@ defmodule Ipse.KnowledgeResearchFetchTransferTest do
           [
             "-pa",
             Path.join(c.artifact, "ebin"),
-            Path.join(@root, "test/support/research_fetch_transfer_pure.exs")
+            "-e",
+            script
           ],
         stderr_to_stdout: true,
         env: [{"ERL_FLAGS", "+S 1:1 +A 1"}]
       )
 
     assert code == 0, output
-    assert output =~ "23 passed"
+
+    assert Enum.count(
+             String.split(output, ~r/\r?\n/),
+             &(&1 === "RESEARCH_FETCH_TRANSFER_CONTROL_PASS")
+           ) === 1
+
     refute Code.ensure_loaded?(IpseKnowledge.Research)
   end
 

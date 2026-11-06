@@ -2124,14 +2124,18 @@ else
 
     @tag timeout: 1_800_000
     test "evaluation runner controls use a clean host VM" do
-      run_child("ExUnit.start(autorun: false, exclude: [:source_evaluation, :answer_contract])")
+      run_child(
+        "ExUnit.start(autorun: false, exclude: [:source_evaluation, :answer_contract])",
+        2
+      )
     end
 
     @tag :source_evaluation
     @tag timeout: 1_800_000
     test "source evaluation controls use a clean host VM" do
       run_child(
-        "ExUnit.start(autorun: false, exclude: [:test], include: [source_evaluation: true])"
+        "ExUnit.start(autorun: false, exclude: [:test], include: [source_evaluation: true])",
+        26
       )
     end
 
@@ -2139,11 +2143,12 @@ else
     @tag timeout: 1_800_000
     test "answer contract controls use a clean host VM" do
       run_child(
-        "ExUnit.start(autorun: false, exclude: [:test], include: [answer_contract: true])"
+        "ExUnit.start(autorun: false, exclude: [:test], include: [answer_contract: true])",
+        26
       )
     end
 
-    defp run_child(start) do
+    defp run_child(start, excluded) do
       lib = Path.dirname(Application.app_dir(:ipse))
       paths = Path.wildcard(Path.join(lib, "*/ebin")) |> Enum.flat_map(&["-pa", &1])
 
@@ -2151,7 +2156,10 @@ else
         start <>
           "; {:ok, _} = Application.ensure_all_started(:ipse); " <>
           "Code.require_file(#{inspect(Path.expand(__ENV__.file))}); " <>
-          "result = ExUnit.run(); if result.failures != 0 or result.total == 0, do: System.halt(1)"
+          "result = ExUnit.run(); " <>
+          "if Map.take(result, [:total, :failures, :skipped, :excluded]) != " <>
+          "%{total: 27, failures: 0, skipped: 0, excluded: #{excluded}}, do: System.halt(1); " <>
+          "IO.puts(\"EVALUATION_RUNNER_CONTROL_PASS #{excluded}\")"
 
       {output, status} =
         System.cmd(
@@ -2162,7 +2170,12 @@ else
         )
 
       assert status == 0, output
-      assert output =~ ~r/Result: [1-9][0-9]* passed/
+
+      assert Enum.count(
+               String.split(output, ~r/\r?\n/),
+               &(&1 === "EVALUATION_RUNNER_CONTROL_PASS #{excluded}")
+             ) === 1
+
       IO.write(output)
     end
   end

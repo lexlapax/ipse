@@ -830,9 +830,12 @@ defmodule IpseKnowledge.KnowledgeRecallTest do
     end
   end
   result = ExUnit.run()
-  if result.failures > 0, do: System.halt(1)
+  if Map.take(result, [:total, :failures, :skipped, :excluded]) !=
+       %{total: 28, failures: 0, skipped: 0, excluded: 0}, do: System.halt(1)
+  IO.puts("KNOWLEDGE_RECALL_CONTROL_PASS")
   """
 
+  @tag :exunit_output_contract
   test "bounded turn-local recall runs in an independent worker VM" do
     sdk = Application.app_dir(:ipse, "ebin")
     paths = Path.wildcard(Path.join(Path.dirname(Path.dirname(sdk)), "*/ebin"))
@@ -861,7 +864,10 @@ defmodule IpseKnowledge.KnowledgeRecallTest do
       )
 
     assert status == 0, output
-    assert output =~ "28 passed"
+
+    assert Enum.count(String.split(output, ~r/\r?\n/), &(&1 === "KNOWLEDGE_RECALL_CONTROL_PASS")) ===
+             1
+
     refute :code.is_loaded(IpseKnowledge.Knowledge)
   end
 end

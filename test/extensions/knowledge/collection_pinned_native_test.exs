@@ -22,16 +22,28 @@ defmodule Ipse.CollectionPinnedNativeTest do
         |> Enum.reverse()
         |> Enum.flat_map(&["-pa", &1])
 
+      script = """
+      ExUnit.start(autorun: false)
+      Code.require_file("test/support/pinned_native_entry.exs")
+      result = ExUnit.run()
+      if Map.take(result, [:total, :failures, :skipped, :excluded]) !=
+           %{total: 1, failures: 0, skipped: 0, excluded: 0}, do: System.halt(1)
+      IO.puts("PINNED_NATIVE_CONTROL_PASS")
+      """
+
       {output, status} =
         System.cmd(
           System.find_executable("elixir"),
-          ["--erl", "+S 2:2"] ++ paths ++ ["test/support/pinned_native_entry.exs"],
+          ["--erl", "+S 2:2"] ++ paths ++ ["-e", script],
           env: [{"IPSE_PINNED_NATIVE_CHILD", "1"}],
           stderr_to_stdout: true
         )
 
       assert status == 0, output
-      assert output =~ "1 passed"
+
+      assert Enum.count(String.split(output, ~r/\r?\n/), &(&1 === "PINNED_NATIVE_CONTROL_PASS")) ===
+               1
+
       assert :code.is_loaded(IpseKnowledge.Store.Collection) == loaded_before
     end
   end

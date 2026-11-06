@@ -92,6 +92,8 @@ nor resource/offline qualification. No daemon configuration or existing model wa
 
 ## Regression closure and fixture qualification — 2026-11-06
 
+- [Version-independent child-result counters](ci-child-result-counters-20261106.md) replaces prose parsing with exact ExUnit counters, zero child exit and one control marker. Separate representative checks cover both assigned source groups; unsupported or unrun native/terminal scopes remain explicit.
+- [MCP resume-verifier correction](ci-mcp-resume-verifier-20261106.md) permits only the exact release-owner marker on idle reopen and preserves conservative descriptor-drift uncertainty. All twelve source-proof checks pass; a fresh installed proof remains open.
 - [Bounded public document Collection restore](document-result-restore-public-20261106.md) records 72 confirmed commands across 24 closed/idle Sessions, eleven records in three pages, same-floor import/rollback/abort/checkpoint removal and separate eight-test native coverage. Changed-target recovery, larger sets and installed migration remain open.
 - [Conservative budget reservation fixtures](budget-reservation-fixtures-20261106.md) correct stale no-booking assumptions while retaining fixed one/two-request policies and unstarted liabilities. Both nine-test files pass separately; the frozen full regression remains a distinct outcome.
 - [Inactive original result lease](stored-result-lease-20261106.md) records eight actual synthetic controls for same-project committed input, original native ownership, complete dependency unions and checked release. Caller approval, document restore and full-capacity acceptance remain separate.

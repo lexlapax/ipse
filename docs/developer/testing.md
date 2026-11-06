@@ -156,6 +156,24 @@ host-domain isolation guard. Keep the original cases in a child-only fixture,
 require their exact completed count, and check that the parent domain modules
 remain unloaded; do not purge modules or weaken the runner's guard.
 
+Check child completion through `ExUnit.run/0`, rather than parsing its rendered
+summary. Supported Elixir versions can print the same result differently. Start
+the child with `autorun: false`, then require the exact `total`, `failures`,
+`excluded` and `skipped` counters before emitting a fixed control-specific marker.
+For example, a producer-progress child selecting one of its 23 controls requires
+23 total, zero failures, 22 excluded and zero skipped. The parent requires both
+exit status zero and exactly one complete marker line; an unrelated pass message
+cannot establish that the selected control ran. Keep those expected counts beside
+the selection so adding or skipping a case requires an explicit review.
+
+When an entry loads `test_helper.exs`, disable automatic running before that load
+and finish with one explicit `ExUnit.run/0`. A second exit-time run would make the
+observed scope ambiguous. Report outer wrapper and nested control counts
+separately; one wrapper plus its selected child is not two independent checks of
+the behavior. The [producer-progress wrapper](../../test/extensions/knowledge/producer_progress_test.exs)
+and [document-source entry](../../test/support/collection_document_source_use_entry.exs)
+show these two forms without changing the controls or their exclusions.
+
 A temporary directory alone does not isolate workspace instructions. Discovery
 can reach a caller's ancestor `AGENTS.md` and linked resources. Conformance
 creates a fresh repository boundary using a private `.git/HEAD` marker, without

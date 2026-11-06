@@ -1147,6 +1147,51 @@ defmodule Ipse.Development.VerificationTest do
     end
   end
 
+  test "MCP idle resume permits only the exact release-owner marker after the original prefix" do
+    Runtime.with_runtime(Scenarios.fetch!("mcp"), options(), fn runtime ->
+      expression = ~S"""
+      (fn ->
+        id = String.duplicate("a", 32)
+        other = String.duplicate("b", 32)
+        {:ok, marker} = Ipse.Session.ReleaseReceipt.owner_started(id)
+        line = Jason.encode!(marker) <> "\n"
+        header = %{"type" => "session", "metadata" => %{}}
+        legacy = Jason.encode!(header) <> "\n"
+        current = header
+          |> put_in(["metadata", "release_receipt_layout"], Ipse.Session.ReleaseReceipt.layout())
+          |> Jason.encode!()
+          |> Kernel.<>("\n")
+        validate = &IpseMCPExample.Proof.validate_idle_resume!/3
+        :ok = validate.(legacy, legacy, id)
+        :ok = validate.(current, current <> line, id)
+        invalid = [
+          {legacy, legacy <> line, id},
+          {current, current, id},
+          {current, current <> line, other},
+          {current, current <> line <> line, id},
+          {current, current <> line <> "\n", id},
+          {current, current <> Jason.encode!(Map.put(marker, "extra", true)) <> "\n", id},
+          {current, current <> "{\"type\":\"session_release_owner_started\"}\n", id},
+          {current, current <> String.replace(line, "{", "{\"version\":1,", global: false), id},
+          {current, String.replace(current, "session", "changed", global: false) <> line, id}
+        ]
+        for {before, resumed, session} <- invalid do
+          refused = try do
+            validate.(before, resumed, session)
+            false
+          rescue
+            _ -> true
+          end
+          true = refused
+        end
+        %{"valid" => 2, "refused" => length(invalid)}
+      end).()
+      """
+
+      assert %{"valid" => 2, "refused" => 9} = Runtime.eval!(runtime, expression)
+    end)
+  end
+
   test "knowledge storage and web subprocesses use compiled fixtures without source fallback" do
     root = input_root()
     source = Path.join(root, "knowledge.exs")

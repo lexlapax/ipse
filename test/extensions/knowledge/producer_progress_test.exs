@@ -1738,7 +1738,10 @@ else
           "ExUnit.start(autorun: false, exclude: [:test], include: [{#{inspect(tag)}, true}]); " <>
             "{:ok, _} = Application.ensure_all_started(:ipse); " <>
             "Code.require_file(#{inspect(Path.expand(__ENV__.file))}); " <>
-            "result = ExUnit.run(); if result.failures != 0, do: System.halt(1)"
+            "result = ExUnit.run(); " <>
+            "if Map.take(result, [:total, :failures, :excluded, :skipped]) != " <>
+            "%{total: 23, failures: 0, excluded: 22, skipped: 0}, do: System.halt(1); " <>
+            "IO.puts(\"PRODUCER_PROGRESS_CONTROL_PASS #{tag}\")"
 
         {output, status} =
           System.cmd(
@@ -1752,7 +1755,12 @@ else
           )
 
         assert status == 0, output
-        assert output =~ "Result: 1 passed"
+
+        assert Enum.count(
+                 String.split(output, "\n"),
+                 &(&1 == "PRODUCER_PROGRESS_CONTROL_PASS #{tag}")
+               ) == 1
+
         IO.write(output)
       end
     end

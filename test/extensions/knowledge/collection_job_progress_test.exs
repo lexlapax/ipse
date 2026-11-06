@@ -1,6 +1,7 @@
 defmodule Ipse.KnowledgeCollectionJobProgressIsolationTest do
   use ExUnit.Case, async: false
 
+  @tag :exunit_output_contract
   test "compact generation progress runs against independently loaded knowledge modules" do
     root = Path.expand("../../..", __DIR__)
 
@@ -17,7 +18,10 @@ defmodule Ipse.KnowledgeCollectionJobProgressIsolationTest do
         "{:ok, _, %{compile_warnings: [], runtime_warnings: []}} -> :ok; " <>
         "other -> raise inspect(other) end; " <>
         "Code.require_file(\"test/support/collection_job_progress.exs\"); " <>
-        "result = ExUnit.run(); System.halt(if(result.failures == 0, do: 0, else: 1))"
+        "result = ExUnit.run(); " <>
+        "if Map.take(result, [:total, :failures, :skipped, :excluded]) != " <>
+        "%{total: 3, failures: 0, skipped: 0, excluded: 0}, do: System.halt(1); " <>
+        "IO.puts(\"COLLECTION_JOB_PROGRESS_CONTROL_PASS\")"
 
     paths =
       :code.get_path()
@@ -31,6 +35,10 @@ defmodule Ipse.KnowledgeCollectionJobProgressIsolationTest do
       )
 
     assert status == 0, output
-    assert output =~ "3 tests, 0 failures" or output =~ "3 passed"
+
+    assert Enum.count(
+             String.split(output, ~r/\r?\n/),
+             &(&1 === "COLLECTION_JOB_PROGRESS_CONTROL_PASS")
+           ) === 1
   end
 end

@@ -2752,7 +2752,8 @@ defmodule Ipse.Extension.CollectionNormalizerV3IntegrationTest do
             [
               "-pa",
               Path.join(runtime, "_build/test/lib/ipse/ebin"),
-              "test/support/bound_host_entry.exs"
+              "-e",
+              bound_host_program()
             ]
 
         for expire <- ["0", "1"] do
@@ -2770,7 +2771,9 @@ defmodule Ipse.Extension.CollectionNormalizerV3IntegrationTest do
             )
 
           assert status == 0, output
-          assert output =~ "1 passed"
+
+          assert Enum.count(String.split(output, ~r/\r?\n/), &(&1 === "BOUND_HOST_CONTROL_PASS")) ===
+                   1
 
           if expire == "0" do
             assert output =~ "SYNTHETIC_ACCEPTED_LEASE_DISPLAY"
@@ -4049,7 +4052,8 @@ defmodule Ipse.Extension.CollectionNormalizerV3IntegrationTest do
             [
               "-pa",
               Path.join(runtime, "_build/test/lib/ipse/ebin"),
-              "test/support/bound_host_entry.exs"
+              "-e",
+              bound_host_program()
             ]
 
         for {expire, lose_source, lose_journal} <-
@@ -4081,7 +4085,9 @@ defmodule Ipse.Extension.CollectionNormalizerV3IntegrationTest do
             )
 
           assert status == 0, output
-          assert output =~ "1 passed"
+
+          assert Enum.count(String.split(output, ~r/\r?\n/), &(&1 === "BOUND_HOST_CONTROL_PASS")) ===
+                   1
 
           if expire == "0" and lose_source == "0" and lose_journal == "0" do
             assert output =~ "SYNTHETIC_ACCEPTED_LEASE_DISPLAY"
@@ -7170,6 +7176,17 @@ defmodule Ipse.Extension.CollectionNormalizerV3IntegrationTest do
         _ -> nil
       end
     end)
+  end
+
+  defp bound_host_program do
+    """
+    ExUnit.start(autorun: false)
+    Code.require_file("test/support/bound_host_entry.exs")
+    result = ExUnit.run()
+    if result.failures != 0 or result.skipped != 0 or result.total - result.excluded != 1,
+      do: System.halt(1)
+    IO.puts("BOUND_HOST_CONTROL_PASS")
+    """
   end
 
   defp packed(hash), do: Base.url_encode64(Base.decode16!(hash, case: :lower), padding: false)

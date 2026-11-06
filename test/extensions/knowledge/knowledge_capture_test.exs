@@ -635,9 +635,12 @@ defmodule IpseKnowledge.KnowledgeCaptureTest do
 
   end
   result = ExUnit.run()
-  if result.failures > 0, do: System.halt(1)
+  if Map.take(result, [:total, :failures, :skipped, :excluded]) !=
+       %{total: 27, failures: 0, skipped: 0, excluded: 0}, do: System.halt(1)
+  IO.puts("KNOWLEDGE_CAPTURE_CONTROL_PASS")
   """
 
+  @tag :exunit_output_contract
   test "bounded capture continuations run in an independent VM" do
     modules = [IpseKnowledge.Profiles, IpseKnowledge.Knowledge]
     before = Enum.map(modules, &:code.is_loaded/1)
@@ -646,7 +649,10 @@ defmodule IpseKnowledge.KnowledgeCaptureTest do
     args = ["--erl", "+S 2:2"] ++ Enum.flat_map(paths, &["-pa", &1]) ++ ["-e", @suite]
     {output, status} = System.cmd(System.find_executable("elixir"), args, stderr_to_stdout: true)
     assert status == 0, output
-    assert output =~ "27 passed"
+
+    assert Enum.count(String.split(output, ~r/\r?\n/), &(&1 === "KNOWLEDGE_CAPTURE_CONTROL_PASS")) ===
+             1
+
     assert Enum.map(modules, &:code.is_loaded/1) == before
   end
 end

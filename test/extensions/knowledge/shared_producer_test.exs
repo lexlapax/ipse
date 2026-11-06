@@ -18,28 +18,40 @@ defmodule Ipse.SharedProducerFixtureTest do
     guard_only = System.get_env("IPSE_PRODUCER_GUARD_ONLY")
     public_only = System.get_env("IPSE_PRODUCER_PUBLIC_ONLY") == "1"
 
+    expected =
+      cond do
+        public_only -> 1
+        guard_only == "adapter" -> 2
+        guard_only == "flow" -> 1
+        host_relation_seeds_only -> 2
+        host_seed_only -> 1
+        ranges_only -> 3
+        selection_only -> 4
+        true -> 22
+      end
+
     prefix =
       cond do
         public_only ->
-          "ExUnit.start(exclude: [:test], include: [public_entry: true]); "
+          "ExUnit.start(autorun: false, exclude: [:test], include: [public_entry: true]); "
 
         guard_only == "adapter" ->
-          "ExUnit.start(exclude: [:test], include: [guard_adapter: true]); "
+          "ExUnit.start(autorun: false, exclude: [:test], include: [guard_adapter: true]); "
 
         guard_only == "flow" ->
-          "ExUnit.start(exclude: [:test], include: [guard_flow: true]); "
+          "ExUnit.start(autorun: false, exclude: [:test], include: [guard_flow: true]); "
 
         host_relation_seeds_only ->
-          "ExUnit.start(exclude: [:test], include: [host_relation_seeds: true]); "
+          "ExUnit.start(autorun: false, exclude: [:test], include: [host_relation_seeds: true]); "
 
         host_seed_only ->
-          "ExUnit.start(exclude: [:test], include: [host_seed: true]); "
+          "ExUnit.start(autorun: false, exclude: [:test], include: [host_seed: true]); "
 
         ranges_only ->
-          "ExUnit.start(exclude: [:test], include: [range_claim: true]); "
+          "ExUnit.start(autorun: false, exclude: [:test], include: [range_claim: true]); "
 
         selection_only ->
-          "ExUnit.start(exclude: [:test], include: [selection_api: true]); "
+          "ExUnit.start(autorun: false, exclude: [:test], include: [selection_api: true]); "
 
         true ->
           ""
@@ -49,7 +61,11 @@ defmodule Ipse.SharedProducerFixtureTest do
       prefix <>
         "case Kernel.ParallelCompiler.compile(" <>
         inspect(files) <>
-        ",return_diagnostics: true) do {:ok,_,[]} -> :ok; {:ok,_,%{compile_warnings: [],runtime_warnings: []}} -> :ok; other -> raise inspect(other) end; Code.require_file(\"test/support/shared_producer_fixture.exs\")"
+        ",return_diagnostics: true) do {:ok,_,[]} -> :ok; {:ok,_,%{compile_warnings: [],runtime_warnings: []}} -> :ok; other -> raise inspect(other) end; Code.require_file(\"test/support/shared_producer_fixture.exs\"); " <>
+        "result = ExUnit.run(); " <>
+        "if Map.take(result, [:total, :failures, :excluded, :skipped]) != " <>
+        "%{total: 22, failures: 0, excluded: #{22 - expected}, skipped: 0}, do: System.halt(1); " <>
+        "IO.puts(\"SHARED_PRODUCER_CONTROL_PASS #{expected}\")"
 
     {output, status} =
       System.cmd(System.find_executable("elixir"), ["--erl", "+S 2:2"] ++ paths ++ ["-e", script],
@@ -58,19 +74,11 @@ defmodule Ipse.SharedProducerFixtureTest do
 
     assert status == 0, output
 
-    expected =
-      cond do
-        public_only -> "Result: 1 passed"
-        guard_only == "adapter" -> "Result: 2 passed"
-        guard_only == "flow" -> "Result: 1 passed"
-        host_relation_seeds_only -> "Result: 2 passed"
-        host_seed_only -> "Result: 1 passed"
-        ranges_only -> "Result: 3 passed"
-        selection_only -> "Result: 4 passed"
-        true -> "Result: 22 passed"
-      end
+    assert Enum.count(
+             String.split(output, "\n"),
+             &(&1 == "SHARED_PRODUCER_CONTROL_PASS #{expected}")
+           ) == 1
 
-    assert output =~ expected
     IO.puts(output)
   end
 end

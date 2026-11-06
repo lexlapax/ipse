@@ -820,7 +820,10 @@ defmodule Ipse.KnowledgeEvaluationContractTest do
         "ExUnit.start(autorun: false, exclude: [:test], include: [isolated_research: true]); " <>
           "{:ok, _} = Application.ensure_all_started(:ipse); " <>
           "Code.require_file(#{inspect(Path.expand(__ENV__.file))}); " <>
-          "result = ExUnit.run(); if result.failures != 0, do: System.halt(1)"
+          "result = ExUnit.run(); " <>
+          "if Map.take(result, [:total, :failures, :excluded, :skipped]) != " <>
+          "%{total: 11, failures: 0, excluded: 10, skipped: 0}, do: System.halt(1); " <>
+          "IO.puts(\"EVALUATION_PLAN_RESEARCH_CONTROL_PASS 1\")"
 
       {output, status} =
         System.cmd(
@@ -831,7 +834,12 @@ defmodule Ipse.KnowledgeEvaluationContractTest do
         )
 
       assert status == 0, output
-      assert output =~ "Result: 1 passed"
+
+      assert Enum.count(
+               String.split(output, "\n"),
+               &(&1 == "EVALUATION_PLAN_RESEARCH_CONTROL_PASS 1")
+             ) == 1
+
       IO.write(output)
     end
   end

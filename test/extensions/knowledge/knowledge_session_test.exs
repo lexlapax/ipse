@@ -378,7 +378,13 @@ defmodule IpseKnowledge.KnowledgeSessionTest do
             "--ipse-native-capture-attack-child"
           ] do
         program =
-          "ExUnit.start(exclude: [:capture_parent_case]); {:ok, _} = Application.ensure_all_started(:ipse); System.argv([#{inspect(flag)}]); Code.require_file(#{inspect(Path.expand(__ENV__.file))})"
+          "ExUnit.start(autorun: false, exclude: [:capture_parent_case]); " <>
+            "{:ok, _} = Application.ensure_all_started(:ipse); System.argv([#{inspect(flag)}]); " <>
+            "Code.require_file(#{inspect(Path.expand(__ENV__.file))}); " <>
+            "result = ExUnit.run(); " <>
+            "if Map.take(result, [:total, :failures, :skipped, :excluded]) != " <>
+            "%{total: 20, failures: 0, skipped: 0, excluded: 19}, do: System.halt(1); " <>
+            "IO.puts(\"KNOWLEDGE_NATIVE_CAPTURE_CONTROL_PASS\")"
 
         {output, status} =
           System.cmd(
@@ -388,7 +394,11 @@ defmodule IpseKnowledge.KnowledgeSessionTest do
           )
 
         assert status == 0, output
-        assert output =~ "1 passed"
+
+        assert Enum.count(
+                 String.split(output, ~r/\r?\n/),
+                 &(&1 === "KNOWLEDGE_NATIVE_CAPTURE_CONTROL_PASS")
+               ) === 1
       end
     end
 
@@ -423,7 +433,13 @@ defmodule IpseKnowledge.KnowledgeSessionTest do
 
       for flag <- ["--ipse-native-answer-capture-child", "--ipse-native-answer-attack-child"] do
         program =
-          "ExUnit.start(exclude: [:capture_parent_case]); {:ok, _} = Application.ensure_all_started(:ipse); System.argv([#{inspect(flag)}]); Code.require_file(#{inspect(Path.expand(__ENV__.file))})"
+          "ExUnit.start(autorun: false, exclude: [:capture_parent_case]); " <>
+            "{:ok, _} = Application.ensure_all_started(:ipse); System.argv([#{inspect(flag)}]); " <>
+            "Code.require_file(#{inspect(Path.expand(__ENV__.file))}); " <>
+            "result = ExUnit.run(); " <>
+            "if Map.take(result, [:total, :failures, :skipped, :excluded]) != " <>
+            "%{total: 20, failures: 0, skipped: 0, excluded: 19}, do: System.halt(1); " <>
+            "IO.puts(\"KNOWLEDGE_NATIVE_ANSWER_CONTROL_PASS\")"
 
         {output, status} =
           System.cmd(
@@ -434,7 +450,11 @@ defmodule IpseKnowledge.KnowledgeSessionTest do
           )
 
         assert status == 0, output
-        assert output =~ "1 passed"
+
+        assert Enum.count(
+                 String.split(output, ~r/\r?\n/),
+                 &(&1 === "KNOWLEDGE_NATIVE_ANSWER_CONTROL_PASS")
+               ) === 1
       end
     end
   end
