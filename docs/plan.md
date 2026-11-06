@@ -1451,6 +1451,14 @@ Both misses were the same no-token-overlap query under the two profiles. Indexed
 namespace parity, multi-block expansion, explicit returned revision fields and
 broader Word/model quality remain open; the failed run is not retroactively passed.
 
+A separate [supplied-Word comparison](archive/2026-10-26-p30-p31-implementation/word-semantic-supplied-comparison-20261106.md)
+now completes 152 within-document State results and twelve close/idle journeys
+under a fresh pinned local runtime. Independently frozen scoring finds matching
+support and citation bytes/locators in 61/62 lexical and 62/62 dense support slots.
+Its 148 embedding requests are accounted. This does not qualify installed
+acquisition, current-file use, precision, answers or general Word coverage; all
+results retain their partial-coverage warning.
+
 The [operator-authored planning-decision increment](archive/2026-10-26-p30-p31-implementation/operator-planning-20261103/index.md)
 adds a separate native acceptance and explicit post-exit save with linked original
 provenance. Its synthetic verification passed 11 native journeys and 95 focused

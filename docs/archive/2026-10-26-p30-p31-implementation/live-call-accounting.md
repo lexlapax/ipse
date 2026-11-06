@@ -155,3 +155,12 @@ intent, so no embedding wire request is established; retain one conservative
 charge nonetheless. Local liability is **5 of 1,000**, leaving **995** under the
 existing allowance. Metadata requests are counted separately. ChatGPT remains
 **238 of 300 conservatively charged**. No failed attempt was replayed or refunded.
+
+## Supplied-Word comparison, 2026-11-06
+
+The separately qualified [supplied-Word comparison](word-semantic-supplied-comparison-20261106.md)
+completed 148 local embedding requests on the selected Qwen route, with no
+automatic retry. Charge all 148 in addition to the five prior conservative
+charges: **153 of 1,000 local calls**, leaving **847**. The separate metadata
+HTTP ceiling was 1,788; it is not an inference-call count or an assertion that
+all metadata calls occurred. ChatGPT remains **238 of 300 conservatively charged**.

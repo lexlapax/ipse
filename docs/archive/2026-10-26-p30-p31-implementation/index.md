@@ -57,8 +57,10 @@ direct chat witness remained false. Later [pinned registered Session jobs](local
 used two further calls, both completed/final, with reported 8,192 context tokens,
 settled service reservations and valid idle resume. A later
 [stopped Word comparison](word-semantic-03-failure-20261106.md) adds one
-conservatively charged admitted attempt, bringing local usage to 5 of 1,000,
-995 remaining. Download success establishes neither quality
+conservatively charged admitted attempt, bringing that checkpoint to 5 of 1,000.
+The later [supplied-Word comparison](word-semantic-supplied-comparison-20261106.md)
+completed 148 additional embedding requests, bringing local usage to 153 of 1,000,
+847 remaining. Download success establishes neither quality
 nor resource/offline qualification. No daemon configuration or existing model was changed.
 
 ## P31I planning and acceptance
@@ -90,6 +92,7 @@ nor resource/offline qualification. No daemon configuration or existing model wa
 
 ## Regression closure and fixture qualification — 2026-11-06
 
+- [Supplied-Word retrieval comparison](word-semantic-supplied-comparison-20261106.md) records all 152 results, 148 completed local embedding requests, twelve closed/idle Sessions and independently frozen scoring: 61/62 lexical versus 62/62 dense expected support slots with byte/locator fidelity. Installed acquisition, precision, answers and current-file qualification remain separate.
 - [Bounded terminal input buffering](operator-buffered-input-20261106.md) retains 1-MiB limits and deadlines while reducing per-byte polling; 22 native and nine existing host/input controls pass on Linux. Hosted macOS remains unqualified.
 - [Complete source CI partitions](ci-source-partitions-20261106.md) replaces the timed-out single hosted suite with four complete file partitions per OS while preserving platform/installed gates and release dependencies. Fifteen focused release controls pass; hosted execution remains unqualified.
 - [Stopped local Word comparison](word-semantic-03-failure-20261106.md) preserves the known failed embedding attempt, all 152 undispatched result slots and failed idle check. Separate filesystem probes support a tmpfs requirement; no retrieval or quality pass is claimed.

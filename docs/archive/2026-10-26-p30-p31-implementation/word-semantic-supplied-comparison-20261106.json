@@ -1,0 +1,23 @@
+{
+  "version": 1,
+  "scope": "within-document returned-support coverage and byte/locator fidelity",
+  "prediction_manifest_sha256": "32c082d0e9617b31e0447f32803effe9a1b00d4611c0b673a97c1044fd9f24bf",
+  "result_slots": 152,
+  "document_sources": 12,
+  "embedding_requests": 148,
+  "metadata_http_ceiling": 1788,
+  "methods": {
+    "similar": {
+      "confirmed_results": 62,
+      "empty_evidence": 0,
+      "returned_support_spans": 62,
+      "support_slots": 62
+    },
+    "words": {
+      "confirmed_results": 62,
+      "empty_evidence": 1,
+      "returned_support_spans": 61,
+      "support_slots": 62
+    }
+  }
+}
