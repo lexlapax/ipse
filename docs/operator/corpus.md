@@ -517,10 +517,11 @@ An explicit `query_selected` takes `store`, `retrieval`,
 `query`, `top_k`, `as_of_ms` and one to eight exact `source_ids`; it omits `rerank`.
 Inspect citations, `status`, `coverage.complete`, `namespace_complete` and gaps.
 A changed catalog or stale index refuses instead of answering from a mixed snapshot.
-The lexical preset accepts BM25. A selected-source BM25 query can add the
-[table-cell context](#acquire-a-small-word-document-from-the-workspace) described
-above. The indexed namespace `query` does not add that context. For selected
-shared vectors, use the separate
+The lexical preset accepts BM25. Selected-source and indexed namespace queries can
+add the [table-cell context](#acquire-a-small-word-document-from-the-workspace)
+described above. Indexed queries expand only sources already hydrated for positive
+hits, without extra reads; no positive hit means no expansion. For selected shared
+vectors, use the separate
 [semantic query procedure](#query-selected-shared-vectors); ordinary namespace
 `query` remains lexical.
 

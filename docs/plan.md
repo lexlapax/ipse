@@ -1391,6 +1391,12 @@ integration evidence; consumer selection, live engines and quality remain open.
 
 ## P31: usable knowledge and prompt assistance
 
+The [initial document controller model](archive/2026-10-26-p30-p31-implementation/document-initial-public-model-20261106.md)
+returns a selected synthetic generation for 1,000 sources and 10,000 chunks,
+with an independently reconciled trace and approximately 3.59 GB of minimum
+modeled action-journal bytes. Native Session handoffs, physical peaks, capacity
+fit and the complete recipe remain unqualified.
+
 The [expected-forget target control](archive/2026-10-26-p30-p31-implementation/expected-forget-target-20261106.md)
 adds an opt-in internal exact-target and control-ledger constraint with a fresh
 synthetic native journey. It does not qualify other lifecycle operations, annual
