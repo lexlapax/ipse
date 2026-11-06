@@ -1,0 +1,9 @@
+# Knowledge preset verifier repair, 2026-11-06
+
+Historical verification record. For current procedures see the [testing manual](../../developer/testing.md) and [extension authoring guide](../../developer/extensions.md).
+
+The Linux platform job in CI run 42220203678, at `bf2aa604ba4a2fec2ff1394ed2e1195fe2a86df4`, passed artifact compatibility and stopped at the preset verifier's command-count assertion. That verifier expected three commands and one tool for every non-Research package, while Graph declares four commands and two tools. The catalog assertion also assumed the old total. The repair checks the explicit command and tool IDs for each package and the corresponding catalog stage and ID pairs, retaining the compatibility, capability, file inventory and host module-isolation checks.
+
+A pure synthetic fixture passed one test covering all three package declarations and wrong, missing and duplicate entries. A separate host run used a fresh private checkout of `2014e0dce02d74cc0ba49addbe2545fc9c021f97`, the reviewed verifier changes and an existing 16-application SDK closure. The canonical builder and verifier completed all 15 enumerated presets: eight Corpus, three Research and four Graph. The verifier reported no domain modules loaded in the host. Source, SDK and overlay inventories matched before and after, and the build process group was empty after exit. This is artifact and declaration verification, not an installed-package or model-quality result.
+
+An earlier private attempt stopped during checkout because the temporary filesystem reported a disk quota error. It did not start the builder or reach its inventory checks; the failed checkout was retained. The later workspace run was a separate attempt. The macOS installed Memory failure from the same CI run recorded an unknown action outcome; its cause was not established by this repair.

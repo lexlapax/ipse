@@ -1,3 +1,6 @@
+Code.require_file("verification/knowledge_builds.exs", __DIR__)
+alias Ipse.Development.Verification.KnowledgeBuilds
+
 [sdk, output] = System.argv()
 sdk = Path.expand(sdk)
 output = Path.expand(output)
@@ -27,9 +30,7 @@ records =
     bytes = File.read!(Path.join(directory, "extension.json"))
     {:ok, manifest} = Ipse.Extension.Artifact.decode(bytes)
     true = Ipse.Extension.Artifact.compatible?(manifest)
-    expected = if package == "research", do: 2, else: 3
-    true = length(manifest["exports"]["commands"]) == expected
-    true = length(manifest["exports"]["tools"]) == 1
+    true = KnowledgeBuilds.exports_match?(package, manifest["exports"])
     [] = manifest["exports"]["services"]
     false = Map.has_key?(manifest, "subscriptions")
     caps = manifest["capabilities"]
@@ -51,7 +52,7 @@ records =
         ]
       })
 
-    true = length(catalog["entries"]) == expected + 1
+    true = KnowledgeBuilds.catalog_match?(package, catalog)
 
     for item <- manifest["files"] do
       file = Path.join(directory, item["path"])
@@ -63,7 +64,7 @@ records =
       "package" => package,
       "preset" => preset,
       "artifact_sha256" => Ipse.JSON.sha256(bytes),
-      "catalog_entries" => expected + 1
+      "catalog_entries" => length(catalog["entries"])
     }
   end
 
