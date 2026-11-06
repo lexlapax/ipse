@@ -14,6 +14,10 @@ defmodule Ipse.Session.PlanningDecisionNativeTest do
                stderr_to_stdout: true
              )
 
+    if expected = System.get_env("IPSE_TEST_PLANNING_DRIVER_SHA256") do
+      assert Ipse.JSON.sha256(File.read!(driver)) == expected
+    end
+
     on_exit(fn -> File.rm_rf!(root) end)
     %{driver: driver}
   end
@@ -47,6 +51,38 @@ defmodule Ipse.Session.PlanningDecisionNativeTest do
 
       assert status == 0, output
       assert output =~ "PLANNING_DECISION_JOURNEY_PASSED"
+    end
+  end
+
+  for scenario <-
+        ~w(plan_assistant plan_assistant_stale plan_assistant_revoke plan_assistant_withdraw plan_assistant_root_changed plan_assistant_unknown) do
+    @tag timeout: 90_000
+    @tag planning_decision_scenario: scenario
+    test "native assistant planning decision journey: #{scenario}", c do
+      root = Path.join(System.tmp_dir!(), "ipse-assistant-plan-" <> Ipse.Usage.id())
+      File.mkdir!(root)
+      File.chmod!(root, 0o700)
+      IO.puts("ASSISTANT_PLANNING_FIXTURE_ROOT=#{root}")
+
+      paths =
+        :code.get_path()
+        |> Enum.map(&List.to_string/1)
+        |> Enum.reject(&(&1 == "."))
+        |> Enum.map(&Path.expand/1)
+        |> Enum.reverse()
+        |> Enum.flat_map(&["-pa", &1])
+
+      {output, status} =
+        System.cmd(
+          c.driver,
+          ["--planning-decision", System.find_executable("elixir"), "--erl", "+S 2:2"] ++
+            paths ++
+            [Path.expand("test/support/assistant_planning_cli.exs"), root, unquote(scenario)],
+          stderr_to_stdout: true
+        )
+
+      assert status == 0, output
+      assert output =~ "ASSISTANT_PLANNING_JOURNEY_PASSED"
     end
   end
 end

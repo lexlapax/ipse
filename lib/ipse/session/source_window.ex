@@ -12,6 +12,8 @@ defmodule Ipse.Session.SourceWindow do
     :effective_source,
     :historical_window,
     :draft_id,
+    :planning_entry,
+    :last_planning_answer,
     workspace_acquisitions: %Ipse.Session.WorkspaceAcquisition{},
     admitted: false,
     pending: %{},
@@ -82,6 +84,10 @@ defmodule Ipse.Session.SourceWindow do
          {:ok, index} <- SourceIndex.new(session, 1, if(origin, do: JSON.digest([origin]))) do
       window = %__MODULE__{
         index: index,
+        planning_entry:
+          if(is_map(metadata["planning_local_start"]),
+            do: JSON.digest([metadata["planning_local_start"]])
+          ),
         workspace_acquisitions: Ipse.Session.WorkspaceAcquisition.new(metadata),
         admitted: metadata["source_layout"] == @layout,
         coverage:
@@ -99,6 +105,27 @@ defmodule Ipse.Session.SourceWindow do
 
   def snapshot(%__MODULE__{} = w),
     do: Map.put(SourceIndex.snapshot(w.index), "coverage", w.coverage)
+
+  @doc false
+  def planning_answer_request(%__MODULE__{} = w, entry, turn, request, quote) do
+    digest = JSON.digest([entry])
+
+    if w.planning_entry === digest and w.last_planning_answer === {digest, turn, request},
+      do: SourceIndex.answer_request(w.index, turn, request, quote),
+      else: {:error, :source_index_refused}
+  rescue
+    _ -> {:error, :source_index_refused}
+  end
+
+  @doc false
+  def planning_answer_current?(%__MODULE__{} = w, entry_sha, turn, request, proof) do
+    w.last_planning_answer === {entry_sha, turn, request} and
+      match?({:ok, %{"proof" => ^proof}}, SourceIndex.revalidate_stored(w.index, proof))
+  rescue
+    _ -> false
+  end
+
+  def planning_answer_current?(_, _, _, _, _), do: false
 
   def execute(%__MODULE__{} = w, operation, request) do
     case operation do
@@ -213,7 +240,7 @@ defmodule Ipse.Session.SourceWindow do
   end
 
   defp do_advance(%{draft_id: nil} = w, %{"type" => "draft_started", "draft_id" => id}, _),
-    do: %{w | draft_id: id}
+    do: %{w | draft_id: id, last_planning_answer: nil}
 
   defp do_advance(%{draft_id: id} = w, %{"type" => "draft_cancelled", "draft_id" => id}, _)
        when not is_nil(id),
@@ -225,7 +252,14 @@ defmodule Ipse.Session.SourceWindow do
 
   defp do_advance(%{draft_id: id} = w, _event, _) when not is_nil(id), do: w
 
-  defp do_advance(w, %{"type" => "input_received"} = event, _), do: store(w, :input, event)
+  defp do_advance(w, %{"type" => type} = event, _)
+       when type in ~w(planning_entry_observed planning_start_selected),
+       do: %{w | planning_entry: JSON.digest([event]), last_planning_answer: nil}
+
+  defp do_advance(w, %{"type" => "planning_exited"}, _), do: %{w | planning_entry: nil}
+
+  defp do_advance(w, %{"type" => "input_received"} = event, _),
+    do: store(%{w | last_planning_answer: nil}, :input, event)
 
   defp do_advance(w, %{"type" => "operator_assertion"} = event, _),
     do: admit(w, SourceIndex.admit_assertion(w.index, event))
@@ -343,8 +377,9 @@ defmodule Ipse.Session.SourceWindow do
       |> drop(:assistant)
       |> drop(:assistant_final)
       |> admit(SourceIndex.admit_answer(w.index, event))
+      |> remember_planning_answer(event)
     else
-      w |> count("unavailable") |> count("observed")
+      %{w | last_planning_answer: nil} |> count("unavailable") |> count("observed")
     end
   end
 
@@ -460,6 +495,25 @@ defmodule Ipse.Session.SourceWindow do
     do: w |> count("observed") |> count("unavailable")
 
   defp do_advance(w, _, _), do: w
+
+  defp remember_planning_answer(w, answer) do
+    valid =
+      is_binary(w.planning_entry) and
+        answer["original_sha256"] === answer["presented_sha256"] and
+        answer["original_bytes"] === answer["presented_bytes"] and
+        Enum.any?(w.index.entries, fn {_, item} ->
+          item.kind === "answer.original" and item.origin === "assistant_proposal" and
+            item.coverage === "available" and
+            item.provenance["turn_id"] === answer["turn_id"] and
+            item.provenance["request_id"] === answer["request_id"] and
+            item.provenance["receipt_sha256"] === JSON.digest([answer]) and
+            item.content_sha256 === answer["original_sha256"]
+        end)
+
+    if valid,
+      do: %{w | last_planning_answer: {w.planning_entry, answer["turn_id"], answer["request_id"]}},
+      else: %{w | last_planning_answer: nil}
+  end
 
   defp admit(w, {:ok, index}) do
     added = length(index.order) - length(w.index.order)

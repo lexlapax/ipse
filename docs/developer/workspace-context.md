@@ -191,9 +191,19 @@ digest. The receipt is not admitted to `SourceWindow`, so it is not by itself a
 saveable source or a collection mutation. Plain `/plan exit` marks the matching
 local entry exited without publication. `/plan decisions` reports the retained
 IDs; chronological replay checks the entry, observation uniqueness and exit.
+`/plan decide-assistant EXACT_QUOTE` instead selects a unique quote from the
+latest committed answer under that local entry. `SourceWindow` revalidates its
+`answer.original` proof against the matching turn and request. The native
+review records the assistant origin and both witnessed inputs; it does not
+publish. The Session permits no managed dependencies except authenticated,
+same-root metadata observations classified by the existing root-only predicate;
+presentation transforms and after-turn subscriptions are refused. Replay
+reconstructs that classification against the validated admission and cached
+host observations. These historical facts do not grant current-use or publication
+authority. A new user turn invalidates this particular selection.
 
-After exit, `/plan save ID` begins the existing native assertion review for that
-same text and ordinary category. The Session checks its current permission and
+After exit, `/plan save ID` for an operator-authored decision begins the existing
+native assertion review for that same text and ordinary category. The Session checks its current permission and
 source-window binding again when the review is confirmed. It records a one-shot
 save-start intent before admitting an `operator_assertion` event that includes
 the original planning acceptance. The derived source proof hashes the full
@@ -207,9 +217,13 @@ conservative fence against recording an unstarted refusal; it does not attribute
 that invocation to the decision. A save-start status proves the intent was
 recorded, not that a worker started.
 Cancelling the second review before the save intent leaves the decision available
-for another explicit review. The resulting record is an operator-authored literal,
-not an accepted-proposal/link record. Acceptance of assistant suggestions during
-planning is not implemented.
+for another explicit review. The resulting record is an operator-authored literal.
+For an assistant decision, the post-exit review instead journals a witnessed
+one-shot staging intent with the original proof and destination. The existing
+protected capture produces a pending proposal with that proof, and standalone
+native knowledge review independently confirms any resulting accepted decision.
+Replay authenticates the earlier selection, current source and both staging
+observations; an interrupted stage is never replayed automatically.
 After a resumed pending draft is cancelled or consumed, `PlanningMCP` replay
 returns from the temporary draft mode to the persisted startup mode; completion
 alone does not exit the draft. Check both an ordinary continuation and one that

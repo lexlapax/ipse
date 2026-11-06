@@ -3031,13 +3031,12 @@ defmodule Ipse.Session do
     decisions =
       s.planning_decisions
       |> Enum.map(fn {id, decision} ->
-        status =
-          cond do
-            decision.refused -> "save_refused_before_publication"
-            decision.attempted -> "save_started_inspect_journal"
-            decision.exited -> "ready_for_save_review"
-            true -> "waiting_for_planning_exit"
-          end
+        assistant_current? =
+          if decision.receipt["version"] == 2 and decision.exited and not decision.attempted,
+            do: planning_decision_source_current?(s, decision.receipt),
+            else: true
+
+        status = Ipse.Session.PlanningDecisions.status(decision, assistant_current?)
 
         %{"id" => id, "text" => decision.receipt["text"], "status" => status}
       end)
@@ -4362,12 +4361,10 @@ defmodule Ipse.Session do
          true <- map_size(s.planning_decisions) < 16,
          {:ok, mode} <- Ipse.Extension.Mode.capture(s.config),
          true <- mode["ceiling"] == "planning",
-         {:ok, text} <- Ipse.Session.PlanningDecisions.parse(command),
          {:ok, observation} <-
            Ipse.Session.Input.submit(ticket, command, operator_binding(s, "prompt", nil)),
          true <- Ipse.Session.Input.valid_observation?(observation, command, 2),
-         {:ok, render} <-
-           Ipse.Session.PlanningDecisions.render(s.id, channel, s.planning_entry, text),
+         {:ok, render} <- planning_decision_render(s, channel, command),
          false <- Map.has_key?(s.planning_decisions, render["id"]) do
       pending = %{
         render: render,
@@ -4399,6 +4396,7 @@ defmodule Ipse.Session do
     with true <- planning_entry_quiet?(s) and is_map(s.planning_entry),
          true <- pending.input_generation == s.input_generation,
          true <- render["entry_sha256"] == Ipse.JSON.digest([s.planning_entry]),
+         true <- planning_decision_source_current?(s, render),
          {:ok, mode} <- Ipse.Extension.Mode.capture(s.config),
          true <- mode["ceiling"] == "planning",
          {:ok, observation} <-
@@ -4453,23 +4451,16 @@ defmodule Ipse.Session do
          true <- mode["ceiling"] == "normal" and mode["enclosing_ceiling"] == "normal",
          {:ok, id} <- Ipse.Session.PlanningDecisions.parse_save(command),
          %{receipt: decision, exited: true, attempted: false} <- s.planning_decisions[id],
-         {:ok, scope, name} <- Ipse.Session.OperatorAssertion.selection(s.config),
+         {:ok, _scope, name, render, kind} <- planning_save_render(s, channel, decision),
          {:ok, origin} when is_map(origin) <- Writer.source_query(s.journal_writer, :origin),
          {:ok, window} <- Writer.source_query(s.journal_writer, :snapshot),
          {:ok, observation} <-
            Ipse.Session.Input.submit(ticket, command, operator_binding(s, "prompt", nil)),
          true <- Ipse.Session.Input.valid_observation?(observation, command, 2),
-         true <- observation["display_sha256"] == Ipse.JSON.sha256("you> "),
-         {:ok, render} <-
-           Ipse.Session.OperatorAssertion.render(
-             s.id,
-             channel,
-             "ordinary",
-             decision["text"],
-             scope
-           ) do
+         true <- observation["display_sha256"] == Ipse.JSON.sha256("you> ") do
       pending = %{
         render: render,
+        kind: kind,
         purpose: nil,
         name: name,
         source_generation: window["generation"],
@@ -4520,6 +4511,78 @@ defmodule Ipse.Session do
 
   def handle_call({:prepare_assertion, _, _, _}, _, s),
     do: {:reply, {:error, :operator_assertion_refused}, s}
+
+  def handle_call(
+        {:accept_assertion_observed, channel, render_id, text, witness},
+        {client, _},
+        %{
+          phase: :idle,
+          operator_channel: %{id: channel, client: client},
+          assertion_render:
+            %{kind: :planning_assistant, render: %{"id" => render_id} = render} = pending
+        } = s
+      ) do
+    decision = pending.planning_decision
+
+    with true <- planning_entry_quiet?(s),
+         true <- pending.input_generation === s.input_generation,
+         %{receipt: ^decision, exited: true, attempted: false} = old <-
+           s.planning_decisions[decision["id"]],
+         true <- planning_decision_source_current?(s, decision),
+         {:ok, scope, name} <- planning_proposal_selection(s),
+         true <- scope === render["scope"] and name === pending.name,
+         {:ok, window} <- Writer.source_query(s.journal_writer, :snapshot),
+         true <- window["generation"] === pending.source_generation,
+         {:ok, observation} <-
+           Ipse.Session.Input.consume(witness, text, operator_binding(s, "assertion", render_id)),
+         {:ok, event} <-
+           Ipse.Session.PlanningDecisions.stage_started(
+             render,
+             decision,
+             pending.planning_save_observation,
+             text,
+             observation
+           ),
+         :ok <- Writer.ensure_source_window(s.journal_writer),
+         {:ok, source} <-
+           Writer.source_query(
+             s.journal_writer,
+             {:answer_request, decision["turn_id"], decision["request_id"], decision["text"]}
+           ),
+         {:ok, %{"proof" => proof}} <- Writer.source_query(s.journal_writer, {:proof, source}),
+         true <- proof === decision["source_proof"] do
+      record(s, event)
+
+      next =
+        s
+        |> Map.put(:assertion_render, nil)
+        |> Map.put(:input_generation, Ipse.Usage.id())
+        |> Map.put(
+          :planning_decisions,
+          Map.put(s.planning_decisions, decision["id"], %{old | attempted: true})
+        )
+        |> Map.put(:post_reply_answer_recorded, {s.turn_id, s.last_request_id})
+        |> Map.put(:pending_nomination, nil)
+        |> Map.put(:post_reply_capture, nil)
+
+      args = %{
+        "text" => decision["text"],
+        "category" => "ordinary",
+        "reason" => "Assistant proposal accepted during planning.",
+        "event_at_ms" => nil,
+        "source" => source
+      }
+
+      case CurrentInvocation.invoke_export(next, :command, name, args) do
+        {:reply, :ok, _} = started -> started
+        _ -> {:reply, {:error, :planning_save_refused}, next}
+      end
+    else
+      _ ->
+        Ipse.Session.Input.discard(witness)
+        {:reply, {:error, :planning_save_refused}, %{s | assertion_render: nil}}
+    end
+  end
 
   def handle_call(
         {:accept_assertion_observed, channel, render_id, text, witness},
@@ -8469,6 +8532,131 @@ defmodule Ipse.Session do
 
       epoch
     end
+  end
+
+  defp planning_save_render(s, channel, %{"version" => 1} = decision) do
+    with {:ok, scope, name} <- Ipse.Session.OperatorAssertion.selection(s.config),
+         {:ok, render} <-
+           Ipse.Session.OperatorAssertion.render(
+             s.id,
+             channel,
+             "ordinary",
+             decision["text"],
+             scope
+           ) do
+      {:ok, scope, name, render, :operator}
+    end
+  end
+
+  defp planning_save_render(s, channel, %{"version" => 2} = decision) do
+    with true <- planning_decision_source_current?(s, decision),
+         {:ok, scope, name} <- planning_proposal_selection(s),
+         {:ok, render} <-
+           Ipse.Session.PlanningDecisions.stage_render(s.id, channel, decision, scope) do
+      {:ok, scope, name, render, :planning_assistant}
+    else
+      _ -> {:error, :planning_save_refused}
+    end
+  end
+
+  defp planning_save_render(_, _, _), do: {:error, :planning_save_refused}
+
+  defp planning_proposal_selection(s) do
+    admission = s.config[:semantic_admission]
+
+    with true <- Ipse.Extension.SemanticAdmission.valid?(admission, s.id),
+         {:ok, scope} <- Ipse.Session.OperatorAssertion.scope(admission),
+         true <- admission["instance"] == "knowledge",
+         %{"kind" => "reviewed.bundle", "artifact_sha256" => digest} <-
+           get_in(admission, ["policy", "settings", "activation"]),
+         true <- digest == scope["artifact_sha256"],
+         settings when is_map(settings) <- get_in(admission, ["policy", "settings"]),
+         categories when is_list(categories) <- get_in(settings, ["sources", "categories"]),
+         true <- "assistant_proposal" in categories,
+         {:ok, mode} <- Ipse.Extension.Mode.capture(s.config),
+         false <- mode["headless"],
+         :ok <- Ipse.Extension.Mode.knowledge(mode, "collection.publish"),
+         name = "ext__knowledge__capture",
+         {:ok, entry, descriptor} <-
+           Ipse.Extension.Catalog.lookup(s.config, "invoke.command", name),
+         true <- entry.identity["artifact_sha256"] == digest,
+         true <- planning_proposal_contract?(settings, descriptor) do
+      {:ok, scope, name}
+    else
+      _ -> {:error, :planning_save_refused}
+    end
+  rescue
+    _ -> {:error, :planning_save_refused}
+  end
+
+  defp planning_proposal_contract?(settings, descriptor) do
+    settings["effects"]
+    |> Enum.filter(fn mapping ->
+      mapping["class"] == "collection.publish" and
+        mapping["outer_sha256"] == Ipse.JSON.digest([descriptor]) and
+        mapping["inner_op"] == "collection.managed"
+    end)
+    |> Enum.any?(fn mapping ->
+      with {:ok, recipe} <- Ipse.Extension.SemanticConsent.recipe(settings, mapping),
+           {:ok, _} <- Ipse.Extension.SemanticConsent.constraints(settings, mapping),
+           true <- Ipse.Extension.ManagedRecipe.valid?(recipe),
+           true <- recipe["constraints_sha256"] == mapping["constraints_sha256"],
+           true <- recipe["kind"] == "proposal" and recipe["key_prefix"] == "pending.",
+           rule when is_map(rule) <- Enum.find(recipe["rules"], &(&1["category"] == "ordinary")) do
+        "assistant_proposal" in rule["origins"]
+      else
+        _ -> false
+      end
+    end)
+  rescue
+    _ -> false
+  end
+
+  defp planning_decision_render(s, channel, command) do
+    case Ipse.Session.PlanningDecisions.parse(command) do
+      {:ok, text} ->
+        Ipse.Session.PlanningDecisions.render(s.id, channel, s.planning_entry, text)
+
+      _ ->
+        with {:ok, text} <- Ipse.Session.PlanningDecisions.parse_assistant(command),
+             true <- post_reply_capture_inputs?(s),
+             false <- Ipse.Extension.Host.enabled?(s.config, "transform.presentation"),
+             [] <- Ipse.Extension.Subscriptions.declarations(s.config, "after_turn"),
+             {:ok, request} <-
+               Writer.source_query(
+                 s.journal_writer,
+                 {:planning_answer_request, s.planning_entry, s.turn_id, s.last_request_id, text}
+               ),
+             {:ok, %{"proof" => proof}} <-
+               Writer.source_query(s.journal_writer, {:proof, request}),
+             true <- proof["content_sha256"] === Ipse.JSON.sha256(s.final) do
+          Ipse.Session.PlanningDecisions.render_assistant(
+            s.id,
+            channel,
+            s.planning_entry,
+            text,
+            s.turn_id,
+            s.last_request_id,
+            proof
+          )
+        else
+          _ -> {:error, :planning_decision_refused}
+        end
+    end
+  end
+
+  defp planning_decision_source_current?(_s, %{"version" => 1}), do: true
+
+  defp planning_decision_source_current?(s, render) do
+    post_reply_capture_inputs?(s) and s.turn_id === render["turn_id"] and
+      s.last_request_id === render["request_id"] and
+      not Ipse.Extension.Host.enabled?(s.config, "transform.presentation") and
+      Ipse.Extension.Subscriptions.declarations(s.config, "after_turn") == [] and
+      Writer.source_query(
+        s.journal_writer,
+        {:planning_answer_current, render["entry_sha256"], render["turn_id"],
+         render["request_id"], render["source_proof"]}
+      ) == {:ok, true}
   end
 
   defp planning_entry_quiet?(s) do

@@ -1,3 +1,5 @@
+Code.require_file("../../support/managed_policy.exs", __DIR__)
+
 defmodule Ipse.Session.ManagedLineageTest do
   use ExUnit.Case, async: true
   alias Ipse.{JSON, Usage}
@@ -25,6 +27,125 @@ defmodule Ipse.Session.ManagedLineageTest do
         "result_sha256" => JSON.sha256("result")
       }
     }
+  end
+
+  defp authenticated_root_fixture do
+    session = Usage.id()
+    binding = Ipse.Test.ManagedPolicy.binding()
+    policy = Ipse.Test.ManagedPolicy.policy()
+    {:ok, selectors} = Ipse.Extension.SemanticRoutes.selectors(policy["settings"]["routes"])
+
+    pin = %{
+      "version" => 1,
+      "session_id" => session,
+      "epoch" => 1,
+      "project_id" => binding["project_id"],
+      "worktree_id" => binding["worktree_id"],
+      "binding_sha256" => binding["binding_sha256"],
+      "namespace" => policy["settings"]["namespace"],
+      "policy_sha256" => JSON.digest([policy]),
+      "identity_sha256" => policy["settings"]["identity_sha256"],
+      "routes_sha256" => JSON.digest([policy["settings"]["routes"]]),
+      "source_sha256" => policy["source_sha256"]
+    }
+
+    admission = %{
+      "version" => 2,
+      "binding" => binding,
+      "instance" => "knowledge",
+      "pin" => pin,
+      "policy" => policy,
+      "selectors" => selectors,
+      "status" => "active"
+    }
+
+    assert Ipse.Extension.SemanticAdmission.valid?(admission, session)
+
+    root =
+      dependency()
+      |> Map.put("project_id", pin["project_id"])
+      |> Map.put("namespace", pin["namespace"])
+      |> Map.put("pin_sha256", JSON.digest([pin]))
+      |> put_in(["collection", "project"], pin["namespace"])
+
+    {:ok, lineage} = ManagedLineage.new(session)
+    {lineage, admission, root}
+  end
+
+  defp root_lineage(lineage, admission, dependencies, cache) do
+    message = %{"role" => "assistant", "content" => "Synthetic proposal."}
+    producer = %{"kind" => "assistant", "id" => Usage.id(), "parent_id" => nil}
+
+    {:ok, _, reference} =
+      ManagedReference.admit(lineage.reference, producer, 0, message, dependencies)
+
+    {%{lineage | reference: reference, admission: admission, root_observations: cache}, [message]}
+  end
+
+  test "assistant planning replay accepts only authenticated root-only observations" do
+    {lineage, admission, root} = authenticated_root_fixture()
+    cache = %{JSON.digest([root]) => true}
+    {current, messages} = root_lineage(lineage, admission, [root], cache)
+
+    changed =
+      put_in(root, ["collection"], %{
+        "project" => root["namespace"],
+        "generation" => 1,
+        "floor" => 0,
+        "floor_anchor" => nil,
+        "root_state" => "present",
+        "root_sha256" => JSON.sha256("different root"),
+        "manifest_sha256" => JSON.sha256("different manifest")
+      })
+
+    assert ManagedReference.dependency?(changed)
+
+    {mixed, mixed_messages} =
+      root_lineage(
+        lineage,
+        admission,
+        [root, changed],
+        Map.put(cache, JSON.digest([changed]), true)
+      )
+
+    {changed_only, changed_messages} = root_lineage(lineage, admission, [changed], cache)
+    forged = put_in(admission, ["pin", "policy_sha256"], JSON.sha256("forged"))
+    stale_pin = put_in(admission, ["pin", "epoch"], 2)
+
+    for type <- ~w(planning_decision_accepted planning_decision_save_started) do
+      event = %{"version" => 2, "type" => type}
+      assert {:ok, ^current} = ManagedLineage.advance(current, event, messages, messages)
+
+      for {bad, input} <- [
+            {%{current | root_observations: %{}}, messages},
+            {%{current | root_observations: %{JSON.digest([root]) => "metadata_only"}}, messages},
+            {%{current | admission: forged}, messages},
+            {%{current | admission: stale_pin}, messages},
+            {mixed, mixed_messages},
+            {changed_only, changed_messages}
+          ] do
+        assert {:error, :managed_lineage_unavailable} =
+                 ManagedLineage.advance(bad, event, input, input)
+      end
+    end
+  end
+
+  @tag managed_audit_pure: true
+  test "assistant planning selection and staging reject unavailable managed lineage" do
+    {:ok, lineage} = ManagedLineage.new(Usage.id())
+    {tainted, messages, _} = worker(lineage, [], dependency())
+    assert {:ok, [_]} = ManagedLineage.dependencies(tainted, messages)
+
+    for type <- ~w(planning_decision_accepted planning_decision_save_started) do
+      event = %{"version" => 2, "type" => type}
+      assert {:ok, ^lineage} = ManagedLineage.advance(lineage, event, [], [])
+
+      assert {:error, :managed_lineage_unavailable} =
+               ManagedLineage.advance(%{lineage | unavailable: true}, event, [], [])
+
+      assert {:error, :managed_lineage_unavailable} =
+               ManagedLineage.advance(tainted, event, messages, messages)
+    end
   end
 
   @tag managed_audit_pure: true

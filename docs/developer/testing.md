@@ -90,6 +90,10 @@ completed ExUnit summary plus exit status. SIGTERM/partial output is not a finis
 suite; deliberate process/TLS failure logs alone are not failed tests. Retain failed
 runs when investigating.
 
+The assistant planning native fixture prints and retains its synthetic project,
+including successful runs. Account for that disk use when running the suite
+repeatedly. Inspect interrupted or unknown effects without replaying them.
+
 Hosted CI runs the same default suite in four separate jobs per OS with Mix's
 file partitioning. Each job builds the candidate, then runs one of these
 commands:

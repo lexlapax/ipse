@@ -22,6 +22,24 @@ extern "C" {
     fn poll(fds: *mut Poll, count: Count, timeout: i32) -> i32;
 }
 
+fn assistant_review_ready(tail: &str) -> bool {
+    let Some(after_challenge) = tail.get(16..) else { return false; };
+    let Some(approval_at) = after_challenge.find("approval> ") else { return false; };
+    !after_challenge[..approval_at].contains("\nType accept ")
+}
+
+#[cfg(test)]
+mod tests {
+    use super::assistant_review_ready;
+
+    #[test]
+    fn review_waits_for_matching_native_approval_prompt() {
+        assert!(!assistant_review_ready("0123456789abcdef to confirm, or anything else to cancel.\n> "));
+        assert!(assistant_review_ready("0123456789abcdef to confirm, or anything else to cancel.\n> approval> "));
+        assert!(!assistant_review_ready("0123456789abcdef to confirm.\nType accept fedcba9876543210 to confirm.\napproval> "));
+    }
+}
+
 fn main() {
     #[cfg(target_os = "linux")]
     let flags = 0x100 | 0x80000;
@@ -76,6 +94,8 @@ fn main() {
     let mut answered = Vec::new();
     let mut assertion_step = 0;
     let mut assertion_sent_at = 0;
+    let mut plan_prompt_sent_at = 0;
+    let mut plan_invalid_sent_at = 0;
     let status = loop {
         if let Some(status) = child.try_wait().unwrap() {
             loop {
@@ -137,7 +157,9 @@ fn main() {
                     let reply = format!("{command} {code}");
                     if !answered.contains(&reply) {
                         if command == "pin" && code == "0123456789abcdef" && !tail.contains("approval> ") { continue; }
-                        if (management_review || (assertion && ["forget", "pin", "ordinary", "duration"].contains(&command))) && !tail.contains("approval> ") { continue; }
+                        let assistant_review = planning_decision && command == "accept" && args.last().is_some_and(|value| value.to_string_lossy().starts_with("plan_assistant"));
+                        if (management_review || assistant_review || (assertion && ["forget", "pin", "ordinary", "duration"].contains(&command))) && !tail[16..].contains("approval> ") { continue; }
+                        if assistant_review && !assistant_review_ready(tail) { continue; }
                         if hold_session_review { continue; }
                         if race_session_review {
                             let root = std::env::var_os("IPSE_REVIEW_TEST_SIGNAL_DIR").expect("review test signal directory");
@@ -246,8 +268,38 @@ fn main() {
                     }
                     if let Some((_, after_entry)) = tail.split_once("Planning mode entered.") {
                         if after_entry.contains("you> ") && !answered.iter().any(|s| s == "plan-propose") {
-                            master.write_all(b"/plan decide Use a synthetic local fixture.\n").unwrap();
+                            if scenario.starts_with("plan_assistant") {
+                                if !answered.iter().any(|s| s == "plan-ask") {
+                                    master.write_all(b"Suggest a synthetic decision.\n").unwrap();
+                                    answered.push("plan-ask".to_owned());
+                                    plan_prompt_sent_at = text.len();
+                                }
+                                let Some(current_turn) = text.get(plan_prompt_sent_at..) else { continue; };
+                                if !current_turn.contains("you> ") || !current_turn.contains("Finished.") || !current_turn.contains("Use a synthetic local fixture.") { continue; }
+                                if !answered.iter().any(|s| s == "plan-invalid-quote") {
+                                    master.write_all(b"/plan decide-assistant This quote does not occur.\n").unwrap();
+                                    answered.push("plan-invalid-quote".to_owned());
+                                    plan_invalid_sent_at = text.len();
+                                    continue;
+                                }
+                                let Some(after_invalid) = text.get(plan_invalid_sent_at..) else { continue; };
+                                if !after_invalid.split_once("Decision review refused;").is_some_and(|(_, after)| after.contains("you> ")) { continue; }
+                                master.write_all(b"/plan decide-assistant Use a synthetic local fixture.\n").unwrap();
+                            } else {
+                                master.write_all(b"/plan decide Use a synthetic local fixture.\n").unwrap();
+                            }
                             answered.push("plan-propose".to_owned());
+                        }
+                    }
+                    if scenario.starts_with("plan_assistant") {
+                        if let Some((_, after_prefix)) = tail.rsplit_once("Type stage ") {
+                            if let Some(code) = after_prefix.get(..32) {
+                                if code.bytes().all(|b| b.is_ascii_hexdigit()) && after_prefix[32..].contains("stage> ") && !answered.iter().any(|s| s == "plan-stage") {
+                                    master.write_all(format!("stage {code}\n").as_bytes()).unwrap();
+                                    answered.push("plan-stage".to_owned());
+                                    assertion_sent_at = text.len();
+                                }
+                            }
                         }
                     }
                     if let Some((_, after_prefix)) = tail.rsplit_once("Type accept ") {
@@ -264,6 +316,15 @@ fn main() {
                     let notice = if scenario == "plan_cancel" || scenario == "plan_stale" { "Planning decision was not accepted." } else { "retained in this Session; nothing was saved to knowledge." };
                     if let Some((_, after_accept)) = tail.split_once(notice) {
                         if after_accept.contains("you> ") && !answered.iter().any(|s| s == "plan-exit") {
+                            if scenario == "plan_assistant_stale" {
+                                if !answered.iter().any(|s| s == "plan-later-turn") {
+                                    master.write_all(b"Suggest another synthetic decision.\n").unwrap();
+                                    answered.push("plan-later-turn".to_owned());
+                                    plan_prompt_sent_at = text.len();
+                                }
+                                let Some(current_turn) = text.get(plan_prompt_sent_at..) else { continue; };
+                                if !current_turn.contains("you> ") || !current_turn.contains("Finished.") { continue; }
+                            }
                             master.write_all(b"/plan exit\n").unwrap();
                             answered.push("plan-exit".to_owned());
                         }
@@ -278,12 +339,13 @@ fn main() {
                                 let id = after_id.get(..32).unwrap();
                                 assert!(id.bytes().all(|b| b.is_ascii_hexdigit()));
                                 master.write_all(format!("/plan save {id}\n").as_bytes()).unwrap();
+                                if scenario.starts_with("plan_assistant") { assertion_sent_at = text.len(); }
                             } else { continue; }
                             answered.push("plan-next".to_owned());
                         }
                     }
                     if answered.iter().any(|s| s == "plan-next") && !answered.iter().any(|s| s == "plan-finish") && scenario != "plan_exit" && scenario != "plan_cancel" && scenario != "plan_stale" {
-                        let finished = tail.rfind("Finished.").or_else(|| tail.rfind("Finished with an error.")).or_else(|| tail.rfind("Decision save refused;")).or_else(|| tail.rfind("Statement review or note publication admission was refused;"));
+                        let finished = if scenario.starts_with("plan_assistant") { text.get(assertion_sent_at..).and_then(|part| part.rfind("Finished.").or_else(|| part.rfind("Finished with an error.")).or_else(|| part.rfind("Decision save refused;")).or_else(|| part.rfind("Statement review or note publication admission was refused;")).map(|p| p + assertion_sent_at)).map(|p| p.saturating_sub(text.len() - tail.len())) } else { tail.rfind("Finished.").or_else(|| tail.rfind("Finished with an error.")).or_else(|| tail.rfind("Decision save refused;")).or_else(|| tail.rfind("Statement review or note publication admission was refused;")) };
                         if let Some(pos) = finished {
                             let prompt_ready = tail[pos..].contains("you> ") || text.get(assertion_sent_at..).is_some_and(|after_reply| after_reply.contains("you> "));
                             if prompt_ready {

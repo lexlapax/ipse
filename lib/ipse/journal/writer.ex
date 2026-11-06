@@ -468,6 +468,19 @@ defmodule Ipse.Journal.Writer do
         {:answer_request, turn, request, quote} ->
           Ipse.Session.SourceIndex.answer_request(window.index, turn, request, quote)
 
+        {:planning_answer_request, entry, turn, request, quote} ->
+          Ipse.Session.SourceWindow.planning_answer_request(window, entry, turn, request, quote)
+
+        {:planning_answer_current, entry_sha, turn, request, proof} ->
+          {:ok,
+           Ipse.Session.SourceWindow.planning_answer_current?(
+             window,
+             entry_sha,
+             turn,
+             request,
+             proof
+           )}
+
         {:assertion_request, id} ->
           Ipse.Session.SourceIndex.assertion_request(window.index, id)
 

@@ -159,6 +159,7 @@ defmodule Ipse.CLI.Terminal do
   /plan                                Enter planning mode from an idle native terminal
   /plan exit                           Exit a locally entered planning mode
   /plan decide TEXT                    Review an operator-authored decision for later saving
+  /plan decide-assistant EXACT_QUOTE   Review an exact quote from the latest planning reply
   /plan decisions                      Inspect retained planning decisions in this Session
   /plan save ID                        Review and save one accepted decision after planning
   /enhance show|replace [TEXT]|replace multi|accept [ID]|cancel  Review and manage the draft
@@ -214,7 +215,8 @@ defmodule Ipse.CLI.Terminal do
                 client_loop(s)
             end
 
-          match?({:ok, _}, Ipse.Session.PlanningDecisions.parse(text)) and
+          (match?({:ok, _}, Ipse.Session.PlanningDecisions.parse(text)) or
+             match?({:ok, _}, Ipse.Session.PlanningDecisions.parse_assistant(text))) and
             not s.busy and s.draft_action == nil ->
             case Ipse.Session.prepare_planning_decision(s.pid, s.input_channel, text, ticket) do
               {:ok, %{"render_id" => id}} ->
@@ -1228,6 +1230,10 @@ defmodule Ipse.CLI.Terminal do
                             s.draft_action == nil) or
                          ((text in ["/plan", "/plan exit"] or
                              match?({:ok, _}, Ipse.Session.PlanningDecisions.parse(text)) or
+                             match?(
+                               {:ok, _},
+                               Ipse.Session.PlanningDecisions.parse_assistant(text)
+                             ) or
                              match?({:ok, _}, Ipse.Session.PlanningDecisions.parse_save(text))) and
                             s.draft_action == nil)))) ->
         Ipse.Session.discard_input(s.pid, s.input_channel, witness)

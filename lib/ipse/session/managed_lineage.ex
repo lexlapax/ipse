@@ -167,6 +167,10 @@ defmodule Ipse.Session.ManagedLineage do
   def released_tool_message?(_, _), do: false
 
   @doc "Consume only an event and message projection already committed and validated by their owning host."
+  def advance(%__MODULE__{unavailable: true}, %{"version" => 2, "type" => type}, _, _)
+      when type in ~w(planning_decision_accepted planning_decision_save_started),
+      do: @error
+
   def advance(%__MODULE__{unavailable: true} = state, _, _, _), do: {:ok, state}
 
   def advance(%__MODULE__{} = state, event, before, after_messages) do
@@ -179,8 +183,14 @@ defmodule Ipse.Session.ManagedLineage do
   rescue
     _ -> @error
   catch
-    :throw, :managed_lineage_capacity -> {:ok, %{state | unavailable: true}}
-    _, _ -> @error
+    :throw, :managed_lineage_capacity ->
+      if event["version"] === 2 and
+           event["type"] in ~w(planning_decision_accepted planning_decision_save_started),
+         do: @error,
+         else: {:ok, %{state | unavailable: true}}
+
+    _, _ ->
+      @error
   end
 
   def advance(_, _, _, _), do: @error
@@ -821,6 +831,22 @@ defmodule Ipse.Session.ManagedLineage do
 
       _ ->
         false
+    end
+  end
+
+  defp inputs(state, %{"version" => 2, "type" => type}, messages)
+       when type in ~w(planning_decision_accepted planning_decision_save_started) do
+    with {:ok, dependencies} <- dependencies(state, messages),
+         true <-
+           dependencies == [] or
+             (Ipse.Extension.SemanticAdmission.valid?(state.admission, state.reference.session_id) and
+                Ipse.Session.ManagedToolUse.root_only?(
+                  %{config: %{semantic_admission: state.admission}, managed_lineage: state},
+                  dependencies
+                )) do
+      {:ok, state}
+    else
+      _ -> @error
     end
   end
 

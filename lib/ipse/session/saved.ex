@@ -17,7 +17,6 @@ defmodule Ipse.Session.Saved do
          :ok <- Ipse.Session.ChatReviewHandoff.validate_reoffers(events, id),
          :ok <- Ipse.Session.OperatorAssertion.validate_events(events, id),
          :ok <- Ipse.Session.PlanningTransition.validate_events(events, id),
-         {:ok, planning_decisions} <- Ipse.Session.PlanningDecisions.restore(events, id),
          :ok <- Ipse.Session.OperatorAnswer.validate_events(events, id),
          {:ok, pending_acceptance_unknown} <-
            Ipse.Session.PendingAcceptance.unknown_effects(events, id),
@@ -51,7 +50,8 @@ defmodule Ipse.Session.Saved do
              projected_messages,
              messages
            ),
-         {:ok, source_window} <- Ipse.Session.SourceWindow.restore(events, id) do
+         {:ok, source_window} <- Ipse.Session.SourceWindow.restore(events, id),
+         {:ok, planning_decisions} <- Ipse.Session.PlanningDecisions.restore(events, id) do
       {question, managed_lineage, question_recovery} =
         recover_question(question, managed_lineage, extension_state)
 

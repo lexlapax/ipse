@@ -176,7 +176,8 @@ defmodule Ipse.Session.OperatorAssertion do
   end
 
   def valid_event?(%{"planning_decision" => decision} = event, session) do
-    Ipse.Session.PlanningDecisions.valid_accepted?(decision, session) and
+    decision["version"] === 1 and
+      Ipse.Session.PlanningDecisions.valid_accepted?(decision, session) and
       event["text"] === decision["text"] and event["category"] === "ordinary" and
       valid_event?(Map.delete(event, "planning_decision"), session)
   rescue

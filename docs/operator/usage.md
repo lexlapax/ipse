@@ -204,9 +204,22 @@ text and enter the displayed `accept CODE`. This records a
 deferred decision in the Session journal; it does not publish a note. Bare `yes`,
 a stale code, or cancelling the review does not accept it. Use `/plan decisions`
 to inspect retained IDs and status, including after resuming the same Session.
-Up to sixteen decisions can be retained per Session. This records your own words;
-acceptance of an assistant-proposed decision remains a separate, unimplemented
-planning path.
+Up to sixteen decisions can be retained per Session.
+
+To retain the assistant's proposal, first ask for it while planning and wait for
+the reply. Copy a unique, exact, contiguous quote from the latest reply:
+
+```text
+/plan decide-assistant Use the local fixture for this check.
+```
+
+Review the displayed assistant proposal and enter its fresh `accept CODE`.
+The quote must be nonblank valid UTF-8, at most 1,024 bytes, and occur exactly
+once in the original reply. This path requires the latest committed planning
+reply, no presentation transform or after-turn extension, and no protected
+managed note content in the conversation. Authenticated observations of the
+collection root alone are permitted. A new user turn makes the old reply
+ineligible. Acceptance retains the assistant source and does not save a note.
 
 Ordinary-chat [decision cards](knowledge-permissions.md#review-a-proposed-decision-during-chat)
 require normal execution ceilings and remain unavailable while planning.
@@ -222,17 +235,38 @@ demo` example is for planning alone and can fail that pinned route. After
 
 Saving needs both active and enclosing ceilings to be `normal`, the Session's
 active [native knowledge permission](knowledge-permissions.md), current source
-and supported protected storage. Review the exact statement again and enter its
-fresh `remember CODE`; cancelling this review before confirmation saves nothing.
-A successful capture stores it as an ordinary operator-authored literal, with its source
-receipt linked to the earlier planning acceptance. Exiting planning alone never
-saves it. A cancelled save review leaves the decision available for a new
+and supported protected storage. For your own words, review the exact statement
+again and enter its fresh `remember CODE`; cancelling saves nothing.
+A successful capture of your own words stores an ordinary operator-authored
+literal with its source receipt linked to the earlier planning acceptance. For
+an assistant proposal, the separate save review shows the exact quote and
+destination and requires `stage CODE`. This creates a pending proposal, not an
+accepted note. Keep the returned `pending.` key, exit the Session, then complete
+the independent native review in the same project and home:
+
+```sh
+ipse knowledge review pending.COPY_THE_64_CHARACTER_ID --cwd /path/to/project
+```
+
+Include the same `--config` and `--no-project-config` options when needed to
+select the original permission. If the original Session used a custom sessions
+directory, also pass `--state-dir /path/to/original/sessions`. The independent
+review rechecks the proposal, its source and current permission; it may refuse
+stale or unavailable evidence.
+See [review a pending proposal](knowledge-permissions.md#review-a-pending-proposal).
+Exiting planning alone never saves a decision. A cancelled save review leaves the decision available for a new
 explicit review. `/plan decisions` distinguishes a known refusal before the
 extension starts from a save intent that needs journal inspection. The intent
 alone does not establish that the extension started. Neither is automatically
 repeated; an attempted save cannot be retried with the same ID. The displayed
 statuses are `waiting_for_planning_exit`, `ready_for_save_review`,
-`save_refused_before_publication` and `save_started_inspect_journal`. If its
+`source_unavailable_for_save`, `save_refused_before_publication` and
+`save_started_inspect_journal`. The source-unavailable status means the assistant
+reply is no longer eligible for this save, for example after a later user turn.
+Ready status reflects the retained Session evidence; it does not check the
+current collection root or saved permission. The protected capture checks those
+again and can refuse if they changed.
+If an attempted save's
 outcome is unavailable, inspect the Session journal and stored state. The ID is
 bound to this Session. If an enclosing ceiling prevents saving, keep its journal;
 a fresh ordinary Session can review the text as a new assertion, but does not

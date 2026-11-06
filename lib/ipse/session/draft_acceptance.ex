@@ -96,6 +96,14 @@ defmodule Ipse.Session.DraftAcceptance do
           } ->
             [command, accepted]
 
+          %{
+            "type" => "planning_decision_save_started",
+            "version" => 2,
+            "command_observation" => %{"event_id" => command},
+            "observation" => %{"event_id" => accepted}
+          } ->
+            [command, accepted]
+
           %{"type" => "planning_decision_save_started", "observation" => %{"event_id" => id}} ->
             [id]
 
