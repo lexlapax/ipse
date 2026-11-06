@@ -20,7 +20,7 @@ defmodule Ipse.Development.Evaluation.SelectionExperiment do
   }
 
   def declare(spec) do
-    with true <- exact?(spec, @spec_keys) and spec["version"] === 1,
+    with true <- exact?(spec, @spec_keys) and spec["version"] in [1, 2],
          true <-
            Enum.all?(
              ~w(source_sha256 runtime_sha256 artifact_sha256 main_route_sha256 policy_sha256 label_commitment),
@@ -47,7 +47,7 @@ defmodule Ipse.Development.Evaluation.SelectionExperiment do
            ) do
       {:ok,
        %{
-         "version" => 1,
+         "version" => spec["version"],
          "kind" => "selection_shadow_declaration",
          "spec" => spec,
          "bars" => @bars,
@@ -137,75 +137,229 @@ defmodule Ipse.Development.Evaluation.SelectionExperiment do
   end
 
   def score(d, sha, first, first_sha, labels_loader, load) do
-    with {:ok, baselines} <- verify_inputs(d, sha, load),
-         true <-
-           exact?(first, ~w(version declaration_sha256 rows)) and JSON.sha256?(first_sha) and
-             JSON.digest([first]) === first_sha,
-         {:ok, ^first} <- freeze_rows(d, sha, first["rows"]),
+    with true <- d["version"] === 1,
+         {:ok, baselines} <- verified_first(d, sha, first, first_sha, load),
          {:ok, labels_bytes} <- labels_loader.(),
          true <-
            is_binary(labels_bytes) and byte_size(labels_bytes) <= 1_048_576 and
              JSON.sha256(labels_bytes) === d["spec"]["label_commitment"],
          {:ok, labels} <- JSON.decode_unique(labels_bytes),
          true <- labels?(labels, d) do
-      rows = Map.new(first["rows"], &{&1["case_id"], &1})
+      report(d, sha, first, first_sha, baselines, labels)
+    else
+      _ -> @error
+    end
+  rescue
+    _ -> @error
+  end
 
-      complete =
-        Enum.all?(
-          d["spec"]["cases"],
-          &(is_map(rows[&1["id"]]) and rows[&1["id"]]["status"] in ~w(ok refused))
-        )
+  @doc "Validate reference-only bytes for commitment before either answer is produced. Custody and chronology remain caller-owned."
+  def commit_references(bytes) do
+    with true <- is_binary(bytes) and byte_size(bytes) <= 1_048_576,
+         {:ok, references} <- JSON.decode_unique(bytes),
+         true <- references?(references) do
+      {:ok, JSON.sha256(bytes)}
+    else
+      _ -> @error
+    end
+  rescue
+    _ -> @error
+  end
 
-      {:ok, baseline, bs} = aggregate(d, baselines, labels, :baseline)
-      candidate = if complete, do: aggregate(d, rows, labels, :candidate), else: nil
+  @doc "Check version-two committed references before candidate work; no prediction IDs or semantic verdicts are accepted here."
+  def verify_references(d, sha, loader) do
+    with :ok <- verify(d, sha),
+         true <- d["version"] === 2,
+         {:ok, bytes} <- loader.(),
+         {:ok, commitment} <- commit_references(bytes),
+         true <- commitment === d["spec"]["label_commitment"],
+         {:ok, references} <- JSON.decode_unique(bytes),
+         true <- case_ids(references["rows"], "case_id") === case_ids(d["spec"]["cases"], "id") do
+      {:ok, references}
+    else
+      _ -> @error
+    end
+  rescue
+    _ -> @error
+  end
 
-      measured =
-        case candidate do
-          {:ok, _, semantic} ->
-            d["spec"]["engine"]["availability"] == "available" and
-              Enum.all?(baselines, fn {_, b} -> b["prediction"]["status"] in ~w(ok refused) end) and
-              semantic["support"]["complete"] and semantic["citation"]["complete"] and
-              bs["support"]["complete"] and bs["citation"]["complete"]
-
-          _ ->
-            false
-        end
-
-      comparison =
-        if measured do
-          {:ok, value, _} = candidate
-
-          gates =
-            Map.new(
-              ~w(protocol quality_bars citation_integrity matched_workload finite_resources paired_critical),
-              &{&1, "unverified"}
-            )
-
-          {:ok, compared} = DecisionMetrics.selection(baseline, value, gates)
-          compared
-        end
-
+  @doc "Prepare unmeasured reviews only after verifying the actual first rows and complete baseline blobs. A binding is not proof of independence."
+  def prepare_reviews(d, sha, first, first_sha, load) do
+    with true <- d["version"] === 2,
+         {:ok, baselines} <- verified_first(d, sha, first, first_sha, load) do
       {:ok,
        %{
-         "disposition" => "unverified",
-         "qualification" => "none",
-         "comparison" => comparison,
-         "baseline" => baseline,
-         "candidate" => if(candidate, do: elem(candidate, 1)),
-         "baseline_semantics" => bs,
-         "candidate_semantics" => if(candidate, do: elem(candidate, 2)),
-         "known_rows_complete" => complete,
-         "support_and_citations_measured" => measured,
-         "engine" => d["spec"]["engine"],
-         "first_prediction_sha256" => first_sha,
-         "declaration_sha256" => sha,
-         "truth_and_independence" => "asserted_not_verified"
+         "version" => 2,
+         "review_binding_sha256" => review_binding(sha, first_sha),
+         "semantic" =>
+           predictions(baselines, first)
+           |> Enum.sort_by(& &1["prediction_id"])
+           |> Enum.map(&unmeasured_review/1)
        }}
     else
       _ -> @error
     end
   rescue
     _ -> @error
+  end
+
+  @doc "Score version two with precommitted references and a separate post-prediction review loader. Version one retains score/6."
+  def score(d, sha, first, first_sha, reference_loader, review_loader, load) do
+    with true <- d["version"] === 2,
+         {:ok, baselines} <- verified_first(d, sha, first, first_sha, load),
+         {:ok, references} <- verify_references(d, sha, reference_loader),
+         {:ok, bytes} <- review_loader.(),
+         true <- is_binary(bytes) and byte_size(bytes) <= 1_048_576,
+         {:ok, reviews} <- JSON.decode_unique(bytes),
+         true <- reviews?(reviews, d, sha, first, first_sha, baselines) do
+      by_id = Map.new(reviews["semantic"], &{&1["prediction_id"], &1})
+      rows = Map.new(first["rows"], &{&1["case_id"], &1})
+
+      labels = %{
+        "rows" =>
+          Enum.map(references["rows"], fn r ->
+            Map.merge(r, %{
+              "baseline" => by_id[baselines[r["case_id"]]["prediction"]["prediction_id"]],
+              "candidate" => by_id[get_in(rows, [r["case_id"], "prediction", "prediction_id"])]
+            })
+          end)
+      }
+
+      with {:ok, result} <- report(d, sha, first, first_sha, baselines, labels),
+           do: {:ok, Map.put(result, "review_binding_sha256", reviews["review_binding_sha256"])}
+    else
+      _ -> @error
+    end
+  rescue
+    _ -> @error
+  end
+
+  defp report(d, sha, first, first_sha, baselines, labels) do
+    rows = Map.new(first["rows"], &{&1["case_id"], &1})
+
+    complete =
+      Enum.all?(
+        d["spec"]["cases"],
+        &(is_map(rows[&1["id"]]) and rows[&1["id"]]["status"] in ~w(ok refused))
+      )
+
+    {:ok, baseline, bs} = aggregate(d, baselines, labels, :baseline)
+    candidate = if complete, do: aggregate(d, rows, labels, :candidate), else: nil
+
+    measured =
+      case candidate do
+        {:ok, _, semantic} ->
+          d["spec"]["engine"]["availability"] == "available" and
+            Enum.all?(baselines, fn {_, b} -> b["prediction"]["status"] in ~w(ok refused) end) and
+            semantic["support"]["complete"] and semantic["citation"]["complete"] and
+            bs["support"]["complete"] and bs["citation"]["complete"]
+
+        _ ->
+          false
+      end
+
+    comparison =
+      if measured do
+        {:ok, value, _} = candidate
+
+        gates =
+          Map.new(
+            ~w(protocol quality_bars citation_integrity matched_workload finite_resources paired_critical),
+            &{&1, "unverified"}
+          )
+
+        {:ok, compared} = DecisionMetrics.selection(baseline, value, gates)
+        compared
+      end
+
+    {:ok,
+     %{
+       "disposition" => "unverified",
+       "qualification" => "none",
+       "comparison" => comparison,
+       "baseline" => baseline,
+       "candidate" => if(candidate, do: elem(candidate, 1)),
+       "baseline_semantics" => bs,
+       "candidate_semantics" => if(candidate, do: elem(candidate, 2)),
+       "known_rows_complete" => complete,
+       "support_and_citations_measured" => measured,
+       "engine" => d["spec"]["engine"],
+       "first_prediction_sha256" => first_sha,
+       "declaration_sha256" => sha,
+       "truth_and_independence" => "asserted_not_verified"
+     }}
+  end
+
+  defp verified_first(d, sha, first, first_sha, load) do
+    with {:ok, baselines} <- verify_inputs(d, sha, load),
+         true <-
+           exact?(first, ~w(version declaration_sha256 rows)) and JSON.sha256?(first_sha) and
+             JSON.digest([first]) === first_sha,
+         {:ok, ^first} <- freeze_rows(d, sha, first["rows"]),
+         true <- prediction_populations?(d, baselines, first) do
+      {:ok, baselines}
+    else
+      _ -> @error
+    end
+  end
+
+  defp references?(r) do
+    exact?(r, ~w(version rows)) and r["version"] === 2 and is_list(r["rows"]) and
+      length(r["rows"]) in 1..200 and unique?(r["rows"], "case_id") and
+      Enum.all?(
+        r["rows"],
+        &(exact?(&1, ~w(case_id critical_members)) and id?(&1["case_id"]) and
+            members?(&1["critical_members"], 16))
+      )
+  end
+
+  defp prediction_populations?(%{"version" => 1}, _, _), do: true
+
+  defp prediction_populations?(_, baselines, first) do
+    values = predictions(baselines, first)
+
+    match?({:ok, _}, Metrics.semantic(values, [])) and
+      Enum.all?(values, fn p ->
+        JSON.sha256?(p["prediction_id"]) and
+          Enum.all?(p["citations"], &JSON.sha256?(&1["citation_id"]))
+      end)
+  end
+
+  defp predictions(baselines, first),
+    do:
+      (Map.values(baselines) ++ first["rows"])
+      |> Enum.map(& &1["prediction"])
+      |> Enum.reject(&is_nil/1)
+
+  defp reviews?(reviews, _d, sha, first, first_sha, baselines) do
+    values = predictions(baselines, first)
+
+    exact?(reviews, ~w(version review_binding_sha256 semantic)) and reviews["version"] === 2 and
+      reviews["review_binding_sha256"] === review_binding(sha, first_sha) and
+      is_list(reviews["semantic"]) and
+      case_ids(reviews["semantic"], "prediction_id") === case_ids(values, "prediction_id") and
+      match?({:ok, _}, Metrics.semantic(values, reviews["semantic"]))
+  end
+
+  defp case_ids(rows, key), do: rows |> Enum.map(& &1[key]) |> Enum.sort()
+
+  defp review_binding(sha, first_sha),
+    do: JSON.digest(["ipse-selection-review-binding", 2, sha, first_sha])
+
+  defp unmeasured_review(nil), do: nil
+
+  defp unmeasured_review(p) do
+    %{
+      "prediction_id" => p["prediction_id"],
+      "verdict" => "unmeasured",
+      "reviewer_id" => "unassigned",
+      "independent" => false,
+      "citations" =>
+        Enum.map(
+          p["citations"],
+          &%{"citation_id" => &1["citation_id"], "verdict" => "unmeasured"}
+        )
+    }
   end
 
   defp row?(r, d) do

@@ -6,7 +6,7 @@ defmodule Ipse.Development.Evaluation.ProtectedAnswerIsolationTest do
   false = :code.is_loaded(IpseKnowledge.Profiles)
   Code.require_file(__TEST_FILE__)
   result = ExUnit.run()
-  if result.failures != 0 or result.skipped != 0 or result.excluded != 0 or result.total != 19,
+  if result.failures != 0 or result.skipped != 0 or result.excluded != 0 or result.total != 20,
     do: System.halt(1)
   IO.puts("PROTECTED_ANSWER_ISOLATED_PASS")
   """

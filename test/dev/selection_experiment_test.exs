@@ -127,6 +127,236 @@ defmodule Ipse.Test.SelectionExperimentTest do
     S.score(f.d, f.sha, first, JSON.digest([first]), fn -> {:ok, f.labels} end, load(f))
   end
 
+  defp version_two do
+    f = fixture()
+
+    opaque = fn prediction ->
+      prediction
+      |> Map.update!("prediction_id", &JSON.sha256/1)
+      |> Map.update!(
+        "citations",
+        fn citations ->
+          Enum.map(citations, fn c -> Map.update!(c, "citation_id", &JSON.sha256/1) end)
+        end
+      )
+    end
+
+    baseline = Map.update!(f.baseline, "prediction", opaque)
+    baseline_bytes = Jason.encode!(baseline)
+    baseline_sha = JSON.sha256(baseline_bytes)
+    spec = put_in(f.d["spec"], ["cases", Access.at(0), "baseline_sha256"], baseline_sha)
+    row = f.row |> Map.update!("prediction", opaque) |> Map.put("baseline_sha256", baseline_sha)
+    f = %{f | baseline: baseline, row: row, blobs: Map.put(f.blobs, baseline_sha, baseline_bytes)}
+
+    references =
+      Jason.encode!(%{
+        "version" => 2,
+        "rows" => [%{"case_id" => "one", "critical_members" => Enum.take(f.keys, 1)}]
+      })
+
+    {:ok, commitment} = S.commit_references(references)
+    {:ok, d} = S.declare(%{spec | "version" => 2, "label_commitment" => commitment})
+    f = Map.merge(f, %{d: d, sha: JSON.digest([d]), references: references})
+    {:ok, first} = S.freeze_rows(d, f.sha, [f.row])
+    {:ok, reviews} = S.prepare_reviews(d, f.sha, first, JSON.digest([first]), load(f))
+    Map.merge(f, %{first: first, reviews: reviews})
+  end
+
+  defp score_two(f, reviews, first \\ nil) do
+    first = first || f.first
+
+    S.score(
+      f.d,
+      f.sha,
+      first,
+      JSON.digest([first]),
+      fn -> {:ok, f.references} end,
+      fn -> {:ok, Jason.encode!(reviews)} end,
+      load(f)
+    )
+  end
+
+  test "version two commits reference-only labels and refuses prediction verdicts in the commitment" do
+    f = version_two()
+    assert {:ok, _} = S.verify_references(f.d, f.sha, fn -> {:ok, f.references} end)
+    assert {:error, _} = S.commit_references(f.labels)
+    reference = Jason.decode!(f.references)
+
+    for changed <- [
+          put_in(reference, ["rows", Access.at(0), "prediction_id"], "future"),
+          put_in(reference, ["rows", Access.at(0), "critical_members"], ["invalid"]),
+          %{reference | "rows" => reference["rows"] ++ reference["rows"]},
+          Map.put(reference, "independent", true)
+        ] do
+      assert {:error, _} = S.commit_references(Jason.encode!(changed))
+    end
+
+    bytes = Jason.encode!(put_in(reference, ["rows", Access.at(0), "case_id"], "foreign"))
+    {:ok, commitment} = S.commit_references(bytes)
+    {:ok, d} = S.declare(%{f.d["spec"] | "label_commitment" => commitment})
+    assert {:error, _} = S.verify_references(d, JSON.digest([d]), fn -> {:ok, bytes} end)
+  end
+
+  test "later review template binds both actual arms and remains unmeasured with absent measurements" do
+    f = version_two()
+    by_id = Map.new(f.reviews["semantic"], &{&1["prediction_id"], &1})
+    baseline = by_id[f.baseline["prediction"]["prediction_id"]]
+    candidate = by_id[f.row["prediction"]["prediction_id"]]
+    assert baseline["prediction_id"] === f.baseline["prediction"]["prediction_id"]
+    assert candidate["prediction_id"] === f.row["prediction"]["prediction_id"]
+
+    assert candidate["citations"] === [
+             %{"citation_id" => JSON.sha256("candidate-cite"), "verdict" => "unmeasured"}
+           ]
+
+    assert Enum.sort(Map.keys(f.reviews)) === ~w(review_binding_sha256 semantic version)
+    refute baseline["independent"]
+    refute candidate["independent"]
+    assert {:ok, report} = score_two(f, f.reviews)
+    assert report["comparison"] === nil
+    assert report["qualification"] === "none"
+    refute report["support_and_citations_measured"]
+
+    row = %{f.row | "elapsed_ms" => nil, "cost_nanos" => nil}
+    {:ok, first} = S.freeze_rows(f.d, f.sha, [row])
+    {:ok, reviews} = S.prepare_reviews(f.d, f.sha, first, JSON.digest([first]), load(f))
+    assert {:ok, report} = score_two(f, reviews, first)
+    assert report["candidate"]["p95_ms"] === nil and report["candidate"]["cost_nanos"] === nil
+  end
+
+  test "review binding, prediction IDs, citation membership and closed populations cannot be substituted" do
+    f = version_two()
+
+    for changed <- [
+          put_in(f.reviews, ["review_binding_sha256"], JSON.sha256("foreign freeze")),
+          put_in(f.reviews, ["semantic", Access.at(0), "prediction_id"], JSON.sha256("foreign")),
+          put_in(
+            f.reviews,
+            ["semantic", Access.at(0), "citations", Access.at(0), "citation_id"],
+            JSON.sha256("foreign")
+          ),
+          put_in(f.reviews, ["semantic", Access.at(0)], nil),
+          %{f.reviews | "semantic" => []},
+          %{f.reviews | "semantic" => f.reviews["semantic"] ++ f.reviews["semantic"]},
+          Map.put(f.reviews, "baseline", %{}),
+          Map.put(f.reviews, "independent", true)
+        ] do
+      assert {:error, _} = score_two(f, changed)
+    end
+
+    changed_first = put_in(f.first, ["rows", Access.at(0), "elapsed_ms"], 111)
+    assert {:error, _} = score_two(f, f.reviews, changed_first)
+    changed_baseline = %{f.baseline | "members" => []}
+
+    assert {:error, _} =
+             S.prepare_reviews(f.d, f.sha, f.first, JSON.digest([f.first]), fn _ ->
+               {:ok, Jason.encode!(changed_baseline)}
+             end)
+  end
+
+  test "invalid first rows or committed references refuse before the later review loader" do
+    f = version_two()
+
+    assert {:error, _} =
+             S.score(
+               f.d,
+               f.sha,
+               f.first,
+               JSON.sha256("different"),
+               fn -> flunk("reference exposed before first-row verification") end,
+               fn -> flunk("review exposed before first-row verification") end,
+               load(f)
+             )
+
+    assert {:error, _} =
+             S.score(
+               f.d,
+               f.sha,
+               f.first,
+               JSON.digest([f.first]),
+               fn -> {:ok, "{}"} end,
+               fn -> flunk("review exposed before reference verification") end,
+               load(f)
+             )
+
+    assert {:ok, _} =
+             S.score(
+               f.d,
+               f.sha,
+               f.first,
+               JSON.digest([f.first]),
+               fn ->
+                 send(self(), :reference_loaded)
+                 {:ok, f.references}
+               end,
+               fn ->
+                 assert_received :reference_loaded
+                 send(self(), :review_loaded)
+                 {:ok, Jason.encode!(f.reviews)}
+               end,
+               load(f)
+             )
+
+    assert_received :review_loaded
+  end
+
+  test "unknown and absent candidate predictions require null reviews rather than invented outcomes" do
+    f = version_two()
+
+    unknown = %{
+      f.row
+      | "status" => "unknown",
+        "prediction" => nil,
+        "selection_output_sha256" => nil,
+        "members" => [],
+        "elapsed_ms" => nil,
+        "cost_nanos" => nil
+    }
+
+    for rows <- [[], [unknown]] do
+      {:ok, first} = S.freeze_rows(f.d, f.sha, rows)
+      {:ok, reviews} = S.prepare_reviews(f.d, f.sha, first, JSON.digest([first]), load(f))
+
+      assert Enum.map(reviews["semantic"], & &1["prediction_id"]) === [
+               f.baseline["prediction"]["prediction_id"]
+             ]
+
+      assert {:ok, report} = score_two(f, reviews, first)
+      assert report["candidate"] === nil and report["comparison"] === nil
+      assert {:error, _} = score_two(f, %{reviews | "semantic" => f.reviews["semantic"]}, first)
+    end
+  end
+
+  test "historical combined labels and new separate-review formats cannot be silently interchanged" do
+    f = version_two()
+
+    assert {:error, _} =
+             S.score(
+               f.d,
+               f.sha,
+               f.first,
+               JSON.digest([f.first]),
+               fn -> flunk("v2 must not use historical labels loader") end,
+               load(f)
+             )
+
+    old = fixture()
+    {:ok, first} = S.freeze_rows(old.d, old.sha, [old.row])
+
+    assert {:error, _} =
+             S.score(
+               old.d,
+               old.sha,
+               first,
+               JSON.digest([first]),
+               fn -> flunk("v1 must not use v2 references") end,
+               fn -> flunk("v1 must not use v2 reviews") end,
+               load(old)
+             )
+
+    assert {:ok, _} = score(old, [old.row])
+  end
+
   test "frozen recipe OFF, full six-member baseline and four-member alternative remain distinct" do
     f = fixture()
 

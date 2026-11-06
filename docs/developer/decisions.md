@@ -396,14 +396,71 @@ Matched whole-task latency and cost remain null. Private failure roots are
 preserved for inspection; the keep flag also preserves a successful root.
 
 For a frozen selection study, use
-`dev/evaluation/selection_experiment.exs` to bind the source, runtime, artifact,
-routes, policy, finite shared limits, case inputs and complete engine-free
-baselines before collecting candidate rows. `declare/1` creates an OFF data
-record, not an execution grant. `verify_inputs/3` checks the committed input and
-baseline bytes. Freeze the first candidate rows with `freeze_rows/3` and retain
-their digest before calling `score/6`; only then may its label loader run.
-Independently establish label custody and source authority: matching hashes alone
-prove neither.
+`dev/evaluation/selection_experiment.exs` with a version-2 declaration. Separate
+reference labels from the semantic reviews of later answers: references identify
+critical note members for each case, while reviews name prediction and citation
+IDs that exist only after those answers have been produced. Commit the exact
+reference bytes before either answer is generated, and retain that commitment
+with the study's custody evidence. This reference-only format contains no
+prediction IDs, verdicts or independence assertions:
+
+```elixir
+alias Ipse.Development.Evaluation.SelectionExperiment
+references = %{
+  "version" => 2,
+  "rows" => [%{"case_id" => case_id, "critical_members" => critical_note_keys}]
+}
+reference_bytes = Jason.encode!(references)
+{:ok, label_commitment} = SelectionExperiment.commit_references(reference_bytes)
+```
+
+After the ordinary engine-free answer is projected and its complete baseline
+blob frozen, put that earlier `label_commitment` in the declaration's version-2
+spec. `declare/1` binds source, runtime, artifact, routes, policy, finite shared
+limits, case inputs and baseline hashes before candidate collection. It creates
+an OFF data record, not an execution grant. `verify_inputs/3` checks the committed
+input and baseline bytes; `verify_references/3` checks the reference bytes and
+exact declared case population before candidate work. Neither function dispatches
+an actor or gives reference labels to a predictor.
+
+Freeze the actual first candidate rows before preparing blinded review. With
+`declaration_sha` and `load` referring to the verified declaration and its
+hash-addressed blob loader, the next steps are:
+
+```elixir
+{:ok, first} = SelectionExperiment.freeze_rows(declaration, declaration_sha, rows)
+first_sha = Ipse.JSON.digest([first])
+{:ok, template} = SelectionExperiment.prepare_reviews(
+  declaration, declaration_sha, first, first_sha, load)
+```
+
+Persist the first rows and their digest before supplying the template to reviewers.
+It binds the declaration, full baseline blobs and first-row population. Its flat
+`semantic` list names actual opaque prediction and citation IDs without exposing
+baseline/candidate arm labels, routes or engine names. Version 2 requires distinct
+SHA256 prediction IDs and SHA256 citation IDs, as produced by `ProtectedAnswer`.
+Its initial verdicts are
+`unmeasured`, with `independent:false` and an unassigned reviewer. A matching
+binding is not proof of independence: retain genuine reviewer identity, blinding
+and custody evidence separately. Supply the corresponding saved answers and
+evidence under those IDs, withholding arm/engine mappings from reviewers;
+the template alone is not a blinded answer packet. The predictor must not
+manufacture that evidence.
+Only then pass the returned review bytes to `score/7`:
+
+```elixir
+SelectionExperiment.score(declaration, declaration_sha, first, first_sha,
+  fn -> {:ok, reference_bytes} end,
+  fn -> {:ok, reviewed_bytes} end, load)
+```
+
+The scorer verifies exact baseline and first-row bytes and the committed
+references before invoking the review loader. Changed populations, foreign IDs
+and citation pairs refuse. The caller still owns chronological custody: hashes
+cannot prove that labels were never exposed earlier or that a supplied review
+was independent. Historical version-1 declarations and combined label/review
+files retain their original `score/6` behavior. They are not silently converted
+to the separate version-2 contract; new studies should use version 2.
 
 The scorer retains full baseline membership separately from the candidate's
 four-record ceiling. Missing, unknown and unavailable rows stay unmeasured;
@@ -497,13 +554,18 @@ pair IDs. The live service still owns fresh source checks and native approval;
 an offline projection grants no permission. Unknown or unavailable outcomes retain
 absent predictions and null unobserved timing/cost.
 
-Keep the complete answer in its saved result, commit the first prediction rows,
-and only then open independent answer and claim/span review labels for the
-existing `Metrics.semantic/2` and `SelectionExperiment.score/6` owners. A valid
+Keep the complete answer in its saved result and commit the first prediction
+rows before preparing the version-2 review envelope. Reference-only labels were
+committed before either answer; later independent answer and claim/span reviews
+bind the actual output IDs through `Metrics.semantic/2` and
+`SelectionExperiment.score/7`. A valid
 quote join establishes byte integrity, not support or reviewer independence.
 Constructed protocol tests and synthetic replies cannot establish actual model
 quality. The source adapters need their own focused checks and a genuine paired
-Session journey before they can supply actual experiment evidence:
+Session journey before supplying actual experiment evidence. The
+[packaged synthetic paired journey](../archive/2026-11-05-packaged-paired-cli/index.md)
+qualifies its local CLI/protected-output protocol, with quality explicitly
+unverified; it does not supply independent labels or scored model quality:
 
 ```sh
 mix test test/dev/evaluation/protected_answer_test.exs test/dev/selection_experiment_test.exs

@@ -359,6 +359,155 @@ defmodule Ipse.Development.Evaluation.ProtectedAnswerTest do
     assert semantic["support"]["accuracy"] === nil
   end
 
+  test "reference commitment precedes actual invocation IDs while later reviews bind projected citation pairs" do
+    r = record()
+
+    reference_bytes =
+      Jason.encode!(%{
+        "version" => 2,
+        "rows" => [%{"case_id" => "query", "critical_members" => [r["key"]]}]
+      })
+
+    assert {:ok, reference_sha} = SelectionExperiment.commit_references(reference_bytes)
+    # Construct real invocation/result objects after the reference commitment.
+    # This pure control exercises the scoring join, not a live protected service.
+    make_prediction = fn ->
+      p = parent(ProtectedAnswer.schema())
+
+      assert {:ok, result} =
+               Invocation.build_result(p, %{
+                 "api_version" => 1,
+                 "kind" => "result",
+                 "value" => response(r)
+               })
+
+      id = JSON.digest(["query", p["invocation_id"], result])
+      assert {:ok, prediction} = ProtectedAnswer.response(result["value"], [r], "query", id)
+      {p, result, prediction}
+    end
+
+    {baseline_parent, _, baseline_prediction} = make_prediction.()
+    input = Jason.encode!(%{"query" => "Frozen query", "packs" => []})
+    source = Jason.encode!(%{"scope" => "pure scoring join, no source authority"})
+
+    baseline = %{
+      "case_id" => "query",
+      "input_sha256" => JSON.sha256(input),
+      "source_receipt_sha256" => JSON.sha256(source),
+      "prediction" => baseline_prediction,
+      "members" => [r["key"]],
+      "elapsed_ms" => nil,
+      "cost_nanos" => nil
+    }
+
+    baseline_bytes = Jason.encode!(baseline)
+    hash = JSON.sha256("synthetic scoring integration")
+
+    c = %{
+      "id" => "query",
+      "input_sha256" => baseline["input_sha256"],
+      "source_receipt_sha256" => baseline["source_receipt_sha256"],
+      "baseline_sha256" => JSON.sha256(baseline_bytes)
+    }
+
+    assert {:ok, d} =
+             SelectionExperiment.declare(%{
+               "version" => 2,
+               "source_sha256" => hash,
+               "runtime_sha256" => hash,
+               "artifact_sha256" => hash,
+               "main_route_sha256" => hash,
+               "policy_sha256" => hash,
+               "label_commitment" => reference_sha,
+               "shared_limits" => Ipse.Extension.Consent.zero(),
+               "cases" => [c],
+               "engine" => %{
+                 "id" => "loopback",
+                 "availability" => "synthetic_protocol_only",
+                 "route_sha256" => hash
+               }
+             })
+
+    sha = JSON.digest([d])
+
+    assert {:ok, _} =
+             SelectionExperiment.verify_references(d, sha, fn -> {:ok, reference_bytes} end)
+
+    {candidate_parent, candidate_result, candidate_prediction} = make_prediction.()
+    refute candidate_parent["invocation_id"] === baseline_parent["invocation_id"]
+    refute candidate_prediction["prediction_id"] === baseline_prediction["prediction_id"]
+    refute candidate_prediction["citations"] === baseline_prediction["citations"]
+
+    row =
+      Map.take(c, ~w(input_sha256 source_receipt_sha256 baseline_sha256))
+      |> Map.merge(%{
+        "case_id" => "query",
+        "status" => "ok",
+        "selection_output_sha256" => JSON.digest([candidate_result]),
+        "prediction" => candidate_prediction,
+        "members" => [r["key"]],
+        "elapsed_ms" => nil,
+        "cost_nanos" => nil
+      })
+
+    blobs = Map.new([input, source, baseline_bytes], &{JSON.sha256(&1), &1})
+    load = &Map.fetch(blobs, &1)
+    assert {:ok, first} = SelectionExperiment.freeze_rows(d, sha, [row])
+    first_sha = JSON.digest([first])
+    assert {:ok, reviews} = SelectionExperiment.prepare_reviews(d, sha, first, first_sha, load)
+
+    review =
+      Enum.find(
+        reviews["semantic"],
+        &(&1["prediction_id"] === candidate_prediction["prediction_id"])
+      )
+
+    assert review["prediction_id"] === candidate_prediction["prediction_id"]
+
+    assert Enum.map(review["citations"], & &1["citation_id"]) ===
+             Enum.map(candidate_prediction["citations"], & &1["citation_id"])
+
+    refute review["independent"]
+
+    assert {:ok, report} =
+             SelectionExperiment.score(
+               d,
+               sha,
+               first,
+               first_sha,
+               fn -> {:ok, reference_bytes} end,
+               fn ->
+                 send(self(), :post_prediction_review_loaded)
+                 {:ok, Jason.encode!(reviews)}
+               end,
+               load
+             )
+
+    assert_received :post_prediction_review_loaded
+    assert report["comparison"] === nil and report["qualification"] === "none"
+    assert report["candidate"]["p95_ms"] === nil and report["candidate"]["cost_nanos"] === nil
+
+    forged =
+      Map.update!(reviews, "semantic", fn rows ->
+        Enum.map(rows, fn r ->
+          if r["prediction_id"] === candidate_prediction["prediction_id"],
+            do: %{r | "prediction_id" => baseline_prediction["prediction_id"]},
+            else: r
+        end)
+      end)
+
+    assert {:error, _} =
+             SelectionExperiment.score(
+               d,
+               sha,
+               first,
+               first_sha,
+               fn -> {:ok, reference_bytes} end,
+               fn -> {:ok, Jason.encode!(forged)} end,
+               load
+             )
+  end
+
   test "source revision, quote hash, selection membership and exact UTF8 boundaries are mandatory" do
     r = record("é evidence")
     v = response(r)
