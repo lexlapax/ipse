@@ -7,11 +7,98 @@ defmodule Ipse.Development.ReleaseTest do
   test "draft release matrix retains every ordinary CI verification step" do
     ci = File.read!(Path.expand("../../.github/workflows/ci.yml", __DIR__))
     release = File.read!(Path.expand("../../.github/workflows/release.yml", __DIR__))
-    [_, steps] = String.split(ci, "    steps:\n", parts: 2)
-    assert String.contains?(release, "    steps:\n" <> steps)
+    assert_ci_steps!(ci, release)
     assert release =~ "--draft --verify-tag"
     assert release =~ "verify_assets!"
     refute release =~ "--draft=false"
+  end
+
+  test "CI parity requires every source partition and both complete job step lists" do
+    ci = File.read!(Path.expand("../../.github/workflows/ci.yml", __DIR__))
+    release = File.read!(Path.expand("../../.github/workflows/release.yml", __DIR__))
+    assert_ci_steps!(ci, release)
+
+    for {changed_ci, changed_release} <- [
+          {String.replace(ci, "partition: [1, 2, 3, 4]", "partition: [1, 2, 3]"), release},
+          {ci, String.replace(release, "partition: [1, 2, 3, 4]", "partition: [1, 2, 3]")},
+          {ci,
+           String.replace(
+             release,
+             "mix test --partitions 4",
+             "mix test --partitions 4 --only smoke"
+           )},
+          {ci,
+           String.replace(
+             release,
+             "  source_tests:\n",
+             "  source_tests:\n    continue-on-error: true\n"
+           )},
+          {String.replace(ci, "      - run: ./dev/package.sh\n", ""), release},
+          {ci, String.replace(release, "          \"$RUNNER_TEMP/ipse-operator-tests\"\n", "")}
+        ] do
+      assert_raise ExUnit.AssertionError, fn -> assert_ci_steps!(changed_ci, changed_release) end
+    end
+  end
+
+  defp workflow_jobs!(workflow) do
+    assert [_, jobs] = String.split(workflow, "\njobs:\n", parts: 2)
+
+    rows =
+      Regex.scan(~r/^  ([a-z_]+):\n(.*?)(?=^  [a-z_]+:\n|\z)/ms, jobs, capture: :all_but_first)
+
+    names = Enum.map(rows, &hd/1)
+    assert names === Enum.uniq(names)
+    Map.new(rows, fn [name, body] -> {name, body} end)
+  end
+
+  defp job_steps!(job) do
+    assert [_, steps] = String.split(job, "    steps:\n", parts: 2)
+    steps
+  end
+
+  defp assert_ci_steps!(ci, release) do
+    ci_jobs = workflow_jobs!(ci)
+    release_jobs = workflow_jobs!(release)
+    assert Enum.sort(Map.keys(ci_jobs)) === ~w(source_tests test)
+    assert Enum.sort(Map.keys(release_jobs)) === ~w(draft prepare source_tests test)
+
+    for jobs <- [ci_jobs, release_jobs] do
+      source = jobs["source_tests"]
+
+      assert Regex.scan(~r/^        partition: (.+)$/m, source, capture: :all_but_first) === [
+               ["[1, 2, 3, 4]"]
+             ]
+
+      assert Regex.scan(~r/^        os: (.+)$/m, source, capture: :all_but_first) === [
+               ["[ubuntu-latest, macos-15]"]
+             ]
+
+      assert source =~ "      fail-fast: false\n"
+      assert source =~ "    timeout-minutes: 60\n"
+
+      assert Regex.scan(~r/^      - run: mix test.*$/m, source) === [
+               ["      - run: mix test --partitions 4"]
+             ]
+
+      assert source =~ "          MIX_TEST_PARTITION: ${{ matrix.partition }}\n"
+      assert source =~ "          IPSE_TEST_STDIO_PROBE: '1'\n"
+      refute Regex.match?(~r/^\s*(?:if|continue-on-error|exclude):/m, source)
+      assert jobs["test"] =~ "        os: [ubuntu-latest, macos-15]\n"
+      assert jobs["test"] =~ "    timeout-minutes: 60\n"
+    end
+
+    assert release_jobs["source_tests"] =~ "    needs: prepare\n"
+    assert release_jobs["test"] =~ "    needs: prepare\n"
+    assert job_steps!(ci_jobs["source_tests"]) === job_steps!(release_jobs["source_tests"])
+
+    assert [shared, _] =
+             String.split(
+               job_steps!(release_jobs["test"]),
+               "      - name: Retain verified archives for final admission\n",
+               parts: 2
+             )
+
+    assert job_steps!(ci_jobs["test"]) === shared
   end
 
   test "draft mutation follows both verified platform artifacts and manual validation never publishes" do
@@ -23,6 +110,16 @@ defmodule Ipse.Development.ReleaseTest do
             release,
             "permissions:\n  contents: read",
             "permissions:\n  contents: write"
+          ),
+          String.replace(
+            release,
+            "needs: [prepare, source_tests, test]",
+            "needs: [prepare, test]"
+          ),
+          String.replace(
+            release,
+            "  source_tests:\n",
+            "  source_tests:\n    permissions:\n      contents: write\n"
           ),
           String.replace(
             release,
@@ -55,9 +152,15 @@ defmodule Ipse.Development.ReleaseTest do
   defp assert_release_policy!(release) do
     [header | _] = String.split(release, "jobs:\n", parts: 2)
     assert header =~ "permissions:\n  contents: read\n"
-    [_, prepare, matrix, draft] = Regex.split(~r/^  (?:prepare|test|draft):\n/m, release)
+    jobs = workflow_jobs!(release)
+    assert Enum.sort(Map.keys(jobs)) === ~w(draft prepare source_tests test)
+    prepare = jobs["prepare"]
+    source_tests = jobs["source_tests"]
+    matrix = jobs["test"]
+    draft = jobs["draft"]
 
-    for job <- [prepare, matrix] do
+    for job <- [prepare, source_tests, matrix] do
+      refute job =~ "permissions:"
       refute job =~ "gh release create"
       refute job =~ "gh release upload"
     end
@@ -65,7 +168,7 @@ defmodule Ipse.Development.ReleaseTest do
     assert matrix =~ "actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9"
     assert draft =~ "actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333"
     assert matrix =~ "if-no-files-found: error"
-    assert draft =~ "needs: [prepare, test]"
+    assert draft =~ "needs: [prepare, source_tests, test]"
     assert {admit, _} = :binary.match(draft, "Release.verify_assets!")
     assert {create, _} = :binary.match(draft, "gh release create")
     assert {upload, _} = :binary.match(draft, "gh release upload")

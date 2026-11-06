@@ -90,6 +90,7 @@ nor resource/offline qualification. No daemon configuration or existing model wa
 
 ## Regression closure and fixture qualification — 2026-11-06
 
+- [Complete source CI partitions](ci-source-partitions-20261106.md) replaces the timed-out single hosted suite with four complete file partitions per OS while preserving platform/installed gates and release dependencies. Fifteen focused release controls pass; hosted execution remains unqualified.
 - [Stopped local Word comparison](word-semantic-03-failure-20261106.md) preserves the known failed embedding attempt, all 152 undispatched result slots and failed idle check. Separate filesystem probes support a tmpfs requirement; no retrieval or quality pass is claimed.
 - [Budget reservation before service selection](budget-reservation-pre-slot-20261106.md) closes the observed post-admission service-slot failure gap, with 50 passing focused tests and an independent source review. Earlier preparation failures can still leave an unmatched admission that fails closed; broader regression and model qualification remain open.
 - [Interrupted 489-file source regression](source-regression-489-20261106.md) retains 13 known outer failure headers and two separate nested failures, with no final exit or totals. Later immutable-copy and independent host-neutral checks pass; the complete baseline remains unqualified.

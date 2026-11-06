@@ -3,6 +3,28 @@ on: [push, pull_request]
 permissions:
   contents: read
 jobs:
+  source_tests:
+    name: Source tests (${{ matrix.os }}, ${{ matrix.partition }}/4)
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-15]
+        partition: [1, 2, 3, 4]
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: erlef/setup-beam@54075bcc5e249e4758d363f27d099f55d843f124 # v1
+        with:
+          otp-version: '27'
+          elixir-version: '1.18'
+      - uses: dtolnay/rust-toolchain@b725eda525362e7cf34af9a7243cac1e3f01a7ec # stable action
+      - run: mix local.rebar --force
+      - run: IPSE_BUILD_PDF=1 ./dev/build.sh
+      - run: mix test --partitions 4
+        env:
+          MIX_TEST_PARTITION: ${{ matrix.partition }}
+          IPSE_TEST_STDIO_PROBE: '1'
   test:
     strategy:
       fail-fast: false
@@ -56,9 +78,6 @@ jobs:
           "$RUNNER_TEMP/ipse-operator-tests"
       - run: elixir dev/check-ci-policy.exs
       - run: elixir dev/check-docs.exs
-      - run: mix test
-        env:
-          IPSE_TEST_STDIO_PROBE: '1'
       - name: macOS native enforcement
         if: runner.os == 'macOS'
         run: |

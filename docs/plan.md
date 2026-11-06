@@ -104,6 +104,13 @@ restores the canonical Elixir 1.18 formatting check and replaces the retired
 macOS runner image. Its local formatter and policy checks pass; a new hosted
 baseline, package and installed checks remain unqualified.
 
+The [hosted source-test partition change](archive/2026-10-26-p30-p31-implementation/ci-source-partitions-20261106.md)
+assigns every default test file to one of four jobs per OS after an unpartitioned
+job reached its existing time limit. Platform and installed checks retain their
+own job; draft admission requires both complete matrices. Fifteen focused release
+controls pass. Hosted execution remains open, with no reduced coverage or longer
+job deadlines.
+
 A [schema-validator update](archive/2026-10-26-p30-p31-implementation/schema-validator-security-20261104.md)
 replaces the newly retired JSONSchex version with 0.11.1 and its required pointer
 dependency. The closed schema subset remains unchanged; focused checks and the

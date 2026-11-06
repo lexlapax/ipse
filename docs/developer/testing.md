@@ -90,6 +90,25 @@ completed ExUnit summary plus exit status. SIGTERM/partial output is not a finis
 suite; deliberate process/TLS failure logs alone are not failed tests. Retain failed
 runs when investigating.
 
+Hosted CI runs the same default suite in four separate jobs per OS with Mix's
+file partitioning. Each job builds the candidate, then runs one of these
+commands:
+
+```sh
+MIX_TEST_PARTITION=1 mix test --partitions 4
+MIX_TEST_PARTITION=2 mix test --partitions 4
+MIX_TEST_PARTITION=3 mix test --partitions 4
+MIX_TEST_PARTITION=4 mix test --partitions 4
+```
+
+Mix sorts the complete test-file list and distributes it round-robin. All four
+partitions must pass on each OS; a single partition is not a complete baseline.
+Additional native, platform and installed checks run in the separate platform job. Local
+`mix test` still runs the complete default suite in one VM.
+Nested fixture invocations do not pass `--partitions`, so an inherited
+`MIX_TEST_PARTITION` does not filter their explicit control sets. Preserve that
+distinction when adding a subprocess test.
+
 If your default runtime is newer, select an already installed Elixir 1.18 and
 compatible OTP for only the formatting commands. Replace these paths with your
 actual installations; no particular tool manager is required:
@@ -724,8 +743,9 @@ unchanged configuration and no home creation, then checks unsupported flags and
 an absent-reservation reconciliation. These offline CLI checks do not establish
 native confirmation or actual remote-service quiescence; those require separate
 terminal and service controls.
-The hosted matrix allows 60 minutes for the whole build, test, package and
-independent-proof sequence. This finite orchestration budget is separate from
+Each hosted source-test partition has a 60-minute build/test budget. The separate
+platform job has its own 60-minute build, native, package and independent-proof
+budget. These finite orchestration budgets are separate from
 individual assertions and product deadlines. Record an outer job cancellation
 separately from a failing test, and retain which proofs actually finished.
 Use extracted `./ipse` for CLI and `./bin/ipse eval` for trusted evaluation.
@@ -777,8 +797,10 @@ manuals are shipped files, so a later checkout edit does not repair an existing
 archive. Keep an affected draft unpublished while reconciling its source and
 rebuilding. Never silently move a published tag or replace published assets.
 The tag workflow admits only the `mix.exs` version or a numbered RC and requires
-`docs/releases/vVERSION.md`. It repeats every ordinary CI step on both platforms;
-a guard test catches omissions when CI changes. Asset admission checks exact
+`docs/releases/vVERSION.md`. After tag/notes admission, it repeats all four source
+partitions and the platform checks on both operating systems. Draft admission
+waits for both complete matrices; a guard test compares their CI step lists and
+rejects missing partitions or publication dependencies. Asset admission checks exact
 supported basenames and the `mix.exs` version, both platform archives and their
 checksum sidecars. Archives must be nonempty regular files, and sidecars must be
 regular files; symbolic links refuse before hashing or upload. The draft body
