@@ -275,8 +275,11 @@ following limits until the end-to-end paths are qualified:
    now closes the stopped request's admission marker and renews permission on
    the frozen committed runtime. Both independent audits pass, preserving all
    2,100 operation records, unknown usage, sources and six inert consumers during
-   the lossless control-format upgrade. Four fresh source proofs, the populated
-   recall and measured day remain open; no old consumer is resumed.
+   the lossless control-format upgrade. Four subsequent current-source proofs
+   pass separately. A later read was interrupted; its independent preservation
+   observation finds unchanged original bytes and no new registered dispatch,
+   without qualifying recall. A fresh ordinary read and the measured day remain
+   open; no old consumer is resumed.
    A [native renewed-recall control](archive/2026-10-26-p30-p31-implementation/authenticated-expired-recall-20261104.md)
    now passes after narrowly classifying authenticated expired ordinary neighbors,
    preserving current permission and original-source gates. Two later retained-cohort reads on c8245f87 remain failed: the first
@@ -310,9 +313,8 @@ following limits until the end-to-end paths are qualified:
    it does not directly trace the earlier Session failure. Forty-three pure
    checks, a fresh actual eight-source delivery/Saved/close/idle case, and separate
    current-main root-withdrawal controls pass. The first idle-mode fixture failure
-   remains preserved. Retained recall still requires explicit quarantined-request
-   recovery/upgrade review, fresh current proofs and a successful ordinary read;
-   the populated-day and annual driver remains OFF.
+   remains preserved. These changes do not qualify retained recall; the
+   populated-day and annual driver remain OFF.
    A [lossless Consent v3 storage increment](archive/2026-10-26-p30-p31-implementation/consent-v3-storage-20261105.md)
    addresses a separate serialized-capacity failure: the specified 31,052 IDs
    fit the count cap but their old compacted rows exceed the write budget.
@@ -1400,8 +1402,12 @@ addresses a returned label cell whose adjacent value had no query terms. Direct
 BM25 snapshots retain lexical hits first and add source-exact sibling-cell context
 within the existing result limit, with separate provenance and explicit scope.
 The source-runtime checks pass, including both storage profiles and changed-file
-refusal. A fresh installed 24-case citation run, indexed namespace parity,
-multi-block expansion and broader Word/model quality remain open.
+refusal. The [fresh installed 24-case run](archive/2026-11-05-word-installed-row-context/index.md)
+matched all 24 document manifest commitments and 20 applicable raw revision
+ancestry joins, but failed its frozen citation target at 122 of 124 support slots.
+Both misses were the same no-token-overlap query under the two profiles. Indexed
+namespace parity, multi-block expansion, explicit returned revision fields and
+broader Word/model quality remain open; the failed run is not retroactively passed.
 
 The [operator-authored planning-decision increment](archive/2026-10-26-p30-p31-implementation/operator-planning-20261103/index.md)
 adds a separate native acceptance and explicit post-exit save with linked original

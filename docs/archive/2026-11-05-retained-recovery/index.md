@@ -42,8 +42,22 @@ neutrality; its six empty stdout/stderr witnesses are pinned in
 status fields and hashes. No native challenge, transcript, journal, raw control,
 full inventory, private path or credential is exported.
 
-These outcomes close this recovery pair only. Four fresh locked source proofs,
-an ordinary populated recall, one measured final-arrangement day and longer
+These outcomes close this recovery pair only. A subsequent fresh four-source
+proof run passed its locked current-source checks, complete preservation audits
+and independent host cleanup. Its result has SHA-256
+`cc29ca993c2fb2322aea9e63fb7e070c55cac427288702bdec55abe5f8fb7cf5`.
+The preceding attempt failed before original-source access because a copied
+private input had the wrong mode; that failed attempt remains separate.
+
+The following ordinary read was interrupted and remains unqualified. A separate
+metadata-first preservation observation found all preexisting bytes unchanged,
+no new journal or other child name, and exact knowledge and service controls.
+Only known original Session-lock change times advanced. This establishes no
+newly recorded registered dispatch under the checked journal and ledger ordering;
+it does not independently prove the absence of arbitrary network traffic. The
+observation neither supplies permission nor turns the stopped read into a pass.
+
+An ordinary populated recall, one measured final-arrangement day and longer
 workload feasibility remain separate gates. Earlier failed consumers retain
 their original outcomes; neither the renewal nor reconciliation retroactively
 qualifies them, authorizes replay, or establishes annual or model-quality results.
