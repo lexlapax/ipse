@@ -13,6 +13,8 @@ defmodule IpseKnowledge.Store.Collection.Projection do
   @fact_recipe "ipse.evidence.fact_spans.v1"
   @selection ~w(selection_sha256 profile model dimensions encoding)
   @token ~w(version plan_sha256 catalog_revision root_revision unit stages write)
+  @progress_token @token ++ ~w(maintenance_epoch progress)
+  @progress_fields ~w(version status head_id revision unit maintenance_epoch retirement_epoch slots active prepared plan_sha256 body_sha256 unit_limit kind)
   @page_bytes 48 * 1024
   # A retained slot also carries the bounded manifest and binding metadata.
   @fact_input_page_bytes 7_000
@@ -217,11 +219,12 @@ defmodule IpseKnowledge.Store.Collection.Projection do
         item_kind: if(operation in [:fact_store, :fact_selected], do: :facts, else: :vectors),
         args: args,
         token: Map.get(args, "continuation"),
+        maintenance_epoch: nil,
         reads: 0,
         effects: 0
       }
 
-      io(s, :value_read, %{"key" => catalog_key(s)}, :catalog)
+      io(s, :snapshot, %{}, :boot)
     else
       _ -> error(:invalid_vector_projection)
     end
@@ -530,15 +533,55 @@ defmodule IpseKnowledge.Store.Collection.Projection do
   end
 
   defp token?(t) do
-    exact?(t, @token) and t["version"] === 1 and E.sha256?(t["plan_sha256"]) and
+    shape =
+      (exact?(t, @token) and t["version"] === 1) or
+        (exact?(t, @progress_token) and t["version"] === 2 and
+           E.safe_positive?(t["maintenance_epoch"]) and
+           (is_nil(t["progress"]) or progress?(t["progress"])))
+
+    shape and E.sha256?(t["plan_sha256"]) and
       E.safe_uint?(t["catalog_revision"]) and E.safe_uint?(t["root_revision"]) and
       is_integer(t["unit"]) and t["unit"] in 0..34 and is_list(t["stages"]) and
       length(t["stages"]) <= 2 and Enum.all?(t["stages"], &exact?(&1, ~w(slot epoch))) and
-      (is_nil(t["write"]) or is_map(t["write"]))
+      (is_nil(t["write"]) or is_map(t["write"])) and progress_token?(t)
+  end
+
+  defp progress_token?(%{"version" => 1}), do: true
+
+  defp progress_token?(%{"progress" => nil} = t),
+    do: t["unit"] === 0 and t["stages"] === [] and is_nil(t["write"])
+
+  defp progress_token?(%{"progress" => p} = t) do
+    p["unit"] === t["unit"] and p["maintenance_epoch"] === t["maintenance_epoch"] and
+      p["prepared"] === sorted_refs(t["stages"])
+  end
+
+  defp progress?(p) do
+    C.progress_receipt?(p) and p["status"] === "active" and
+      is_nil(p["retirement_epoch"]) and length(p["slots"]) === 2 and
+      length(p["prepared"]) <= 2 and p["unit_limit"] in 2..34 and p["kind"] === "projection"
   end
 
   defp io(s, operation, args, phase) do
-    advance(C.start(s.profile, operation, args), Map.put(s, :phase, phase))
+    result =
+      cond do
+        is_nil(s.maintenance_epoch) or operation === :selected ->
+          C.start(s.profile, operation, args)
+
+        s.maintenance_epoch > 0 and phase in [:written, :published] ->
+          C.start_with_progress(
+            s.profile,
+            operation,
+            args,
+            s.maintenance_epoch,
+            progress_tag(s, phase)
+          )
+
+        true ->
+          C.start_with_epoch(s.profile, operation, args, s.maintenance_epoch)
+      end
+
+    advance(result, Map.put(s, :phase, phase))
   end
 
   defp advance({:call, request, inner}, s) do
@@ -574,7 +617,10 @@ defmodule IpseKnowledge.Store.Collection.Projection do
   end
 
   defp advance({:done, {:continue, value}}, s) do
-    ready(s, value["continuation"])
+    case update_progress(s, value, s.token["unit"], s.token["stages"]) do
+      {:ok, s} -> ready(s, value["continuation"])
+      _ -> error(:vector_progress_unconfirmed)
+    end
   end
 
   defp advance(other, _) do
@@ -597,6 +643,25 @@ defmodule IpseKnowledge.Store.Collection.Projection do
     else
       _ -> error(:vector_catalog_changed)
     end
+  end
+
+  defp done(%{phase: :boot} = s, value) do
+    with {:ok, epoch, status} <- C.snapshot_epoch(value),
+         true <- status === "idle" or s.operation in [:vector_selected, :fact_selected],
+         true <- is_nil(s.token) or Map.get(s.token, "maintenance_epoch", 0) === epoch,
+         true <-
+           epoch === 0 or s.operation in [:vector_selected, :fact_selected] or
+             C.progress_supported?(value) do
+      io(%{s | maintenance_epoch: epoch}, :value_read, %{"key" => catalog_key(s)}, :catalog)
+    else
+      _ -> error(:document_epoch_changed)
+    end
+  end
+
+  defp done(%{phase: :progress} = s, value) do
+    if value["progress"] === s.token["progress"] and progress_matches_plan?(s, value["progress"]),
+      do: verify_values(s),
+      else: error(:vector_progress_changed)
   end
 
   defp done(%{phase: :source} = s, value) do
@@ -662,21 +727,22 @@ defmodule IpseKnowledge.Store.Collection.Projection do
         s.token["stages"] ++ [value["stage"]]
       end
 
-    token = s.token |> Map.put("stages", stages) |> Map.update!("unit", &(&1 + 1))
-    ready(%{s | token: token}, nil)
+    unit = s.token["unit"] + 1
+
+    case update_progress(s, value, unit, stages) do
+      {:ok, s} ->
+        token = s.token |> Map.put("stages", stages) |> Map.put("unit", unit)
+        ready(%{s | token: token}, nil)
+
+      _ ->
+        error(:vector_progress_unconfirmed)
+    end
   end
 
-  defp done(%{phase: :published} = s, _) do
-    {:done,
-     {:ok,
-      %{
-        "status" => "stored_" <> item_field(s),
-        "revision" => s.planned_root["revision"],
-        item_field(s) => s.planned_root[item_field(s)],
-        "pages" => length(s.pages),
-        "continuation" => nil,
-        "coverage" => coverage(s)
-      }}}
+  defp done(%{phase: :published} = s, value) do
+    if s.maintenance_epoch === 0 or finished_progress?(s, value["progress"]),
+      do: published(s),
+      else: error(:vector_progress_unconfirmed)
   end
 
   defp done(%{phase: :page, pending: [_ | rest]} = s, value) do
@@ -697,6 +763,19 @@ defmodule IpseKnowledge.Store.Collection.Projection do
     else
       error(:vector_catalog_changed)
     end
+  end
+
+  defp published(s) do
+    {:done,
+     {:ok,
+      %{
+        "status" => "stored_" <> item_field(s),
+        "revision" => s.planned_root["revision"],
+        item_field(s) => s.planned_root[item_field(s)],
+        "pages" => length(s.pages),
+        "continuation" => nil,
+        "coverage" => coverage(s)
+      }}}
   end
 
   defp prepare_plan(s) do
@@ -732,17 +811,27 @@ defmodule IpseKnowledge.Store.Collection.Projection do
 
       plan_hash = E.sha256(json(root))
 
-      token =
-        s.token ||
-          %{
-            "version" => 1,
-            "plan_sha256" => plan_hash,
-            "catalog_revision" => s.catalog["revision"],
-            "root_revision" => revision(s.root),
-            "unit" => 0,
-            "stages" => [],
-            "write" => nil
-          }
+      fresh = %{
+        "version" => 1,
+        "plan_sha256" => plan_hash,
+        "catalog_revision" => s.catalog["revision"],
+        "root_revision" => revision(s.root),
+        "unit" => 0,
+        "stages" => [],
+        "write" => nil
+      }
+
+      fresh =
+        if s.maintenance_epoch > 0,
+          do:
+            Map.merge(fresh, %{
+              "version" => 2,
+              "maintenance_epoch" => s.maintenance_epoch,
+              "progress" => nil
+            }),
+          else: fresh
+
+      token = s.token || fresh
 
       count = length(pages)
 
@@ -757,7 +846,19 @@ defmodule IpseKnowledge.Store.Collection.Projection do
             verify: Enum.take(refs, min(token["unit"], count))
           })
 
-        verify_values(s)
+        cond do
+          s.maintenance_epoch === 0 ->
+            verify_values(s)
+
+          is_nil(token["progress"]) and progress_token?(token) ->
+            verify_values(s)
+
+          progress_matches_plan?(s, token["progress"]) ->
+            io(s, :progress_inspect, %{"head_id" => token["progress"]["head_id"]}, :progress)
+
+          true ->
+            error(:invalid_vector_continuation)
+        end
       else
         _ -> error(:invalid_vector_continuation)
       end
@@ -821,6 +922,66 @@ defmodule IpseKnowledge.Store.Collection.Projection do
       :written
     )
   end
+
+  defp progress_tag(s, phase) do
+    case s.token["progress"] do
+      nil ->
+        %{
+          "version" => 1,
+          "action" => "start",
+          "kind" => "projection",
+          "plan_sha256" => s.token["plan_sha256"],
+          "body_sha256" => E.sha256(json(s.source)),
+          "unit_limit" => length(s.pages) + 2
+        }
+
+      progress ->
+        %{
+          "version" => 1,
+          "action" => if(phase === :published, do: "finish", else: "continue"),
+          "head_id" => progress["head_id"],
+          "revision" => progress["revision"],
+          "unit" => progress["unit"]
+        }
+    end
+  end
+
+  defp progress_matches_plan?(s, p) do
+    progress?(p) and p["maintenance_epoch"] === s.maintenance_epoch and
+      p["plan_sha256"] === s.token["plan_sha256"] and
+      p["body_sha256"] === E.sha256(json(s.source)) and
+      p["unit_limit"] === length(s.pages) + 2
+  end
+
+  defp update_progress(%{maintenance_epoch: 0} = s, _, _, _), do: {:ok, s}
+
+  defp update_progress(s, value, unit, stages) do
+    p = value["progress"]
+    old = s.token["progress"]
+
+    with true <- progress_matches_plan?(s, p),
+         true <- p["unit"] === unit and p["prepared"] === sorted_refs(stages),
+         true <- unit === s.token["unit"] or is_nil(p["active"]),
+         true <-
+           is_nil(old) or (p["head_id"] === old["head_id"] and p["revision"] > old["revision"]) do
+      {:ok, %{s | token: Map.put(s.token, "progress", p)}}
+    else
+      _ -> {:error, :vector_progress_unconfirmed}
+    end
+  end
+
+  defp finished_progress?(s, p) do
+    old = s.token["progress"]
+    changed = ~w(status revision slots active prepared)
+
+    exact?(p, @progress_fields) and is_map(old) and p["status"] === "finished" and
+      E.safe_positive?(p["revision"]) and p["revision"] > old["revision"] and
+      p["slots"] === [] and is_nil(p["active"]) and p["prepared"] === [] and
+      p["unit"] === length(s.pages) + 2 and
+      Map.drop(p, changed) === Map.drop(old, changed)
+  end
+
+  defp sorted_refs(refs), do: Enum.sort_by(refs, & &1["slot"])
 
   defp ready(s, write) do
     {:done,

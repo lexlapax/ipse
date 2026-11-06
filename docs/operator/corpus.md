@@ -530,6 +530,17 @@ storage and returns no safe automatic continuation. Inspect before new work;
 do not replay stages or remove protected files. Read-time source expiry remains
 separate from transport-stage expiry.
 
+Source ingestion and supplied per-source projection continuations after internal
+maintenance also bind the stored progress, owning Session and exact artifact.
+Keep the complete returned command unchanged; changing counters or checksums
+cannot renew an old draft. Fresh work may propose a storage verification write
+to reuse existing immutable bytes. Review that write as an ordinary mutation.
+Admission reserves space for outstanding native draft cleanup and can refuse
+before the store's advertised ceilings. Corpus does not yet expose retirement
+of these source or projection drafts; preserve the journal and follow protected
+recovery guidance if one becomes stale or unknown. Repeated fresh drafts do not
+repair the retained work.
+
 Managed-derived document mutations refuse before approval/intent, with a second
 execution check for an already queued action. Its document grant supplies no
 protected-note permission. The separately reviewed `/remember` new-v3 capture
@@ -876,8 +887,8 @@ configured route; returned model/input/vector checks still apply.
 The shared Job's epoch checks do not qualify producer claims or already in-flight
 model requests across internal maintenance. Do not infer that a job refusal
 cancelled a provider request, erased an unknown result or refunded its budget.
-Cross-fence Source/Projection work also lacks complete durable-opening
-authentication; no general document maintenance or adoption command is exposed.
+The separate Source and supplied-projection progress checks do not renew a
+producer claim. No general document maintenance or adoption command is exposed.
 
 `inspect` is read-only. A pending or unknown claim offers no retry/adoption token,
 including across Sessions. An unsupported v1 binding can approve an inert claim
@@ -1019,6 +1030,12 @@ your `/result` reads do not disclose the document to the model.
 
 ## Inspect, replace and forget a source
 
+These lifecycle commands apply to State and MCP stores. The experimental
+Collection source command supports ingestion and its returned continuations;
+source inspection, forgetting and export still return
+`collection_lifecycle_unavailable`. Its lexical and shared-job inspection
+commands inspect those builds, not a source lifecycle draft.
+
 Inspect before changing the source:
 
 ```text
@@ -1038,7 +1055,7 @@ journals, exports, backups and provider transfers remain. Follow
 
 ## Publish a larger source
 
-Small `put` accepts at most 8192 text bytes when the work fits its invocation
+For State and MCP stores, small `put` accepts at most 8192 text bytes when the work fits its invocation
 allowance. Larger sources use explicit `open`, contiguous `append` calls and
 `publish`, up to 64 KiB. Retain the returned draft ID, revision and next offset.
 Publish verifies the declared byte count and hash. An incomplete draft is not

@@ -483,13 +483,84 @@ defmodule Ipse.KnowledgeCollectionAdapterSessionTest do
 
     assert native_status(c) === before_refused
 
+    # Every field here is public and recomputed; none can manufacture a native head.
+    body_hash = token["plan_sha256"]
+
+    epoch_binding =
+      JSON.sha256(
+        IO.iodata_to_binary(
+          Elixir.JSON.encode!(%{
+            "version" => 4,
+            "source_sha256" => body_hash,
+            "maintenance_epoch" => 1
+          })
+        )
+      )
+
+    native_plan =
+      JSON.sha256(
+        IO.iodata_to_binary(
+          Elixir.JSON.encode!(%{
+            "version" => 1,
+            "body_sha256" => body_hash,
+            "expected_revision" => 0,
+            "profile" => %{"kind" => "collection", "scope" => "project", "partition" => "notes"},
+            "unit_limit" => 5
+          })
+        )
+      )
+
+    forged =
+      token
+      |> Map.merge(%{
+        "version" => 5,
+        "maintenance_epoch" => 1,
+        "epoch_binding_sha256" => epoch_binding,
+        "progress" => %{
+          "version" => 1,
+          "status" => "active",
+          "head_id" => Usage.id(),
+          "revision" => before_refused["generation"],
+          "unit" => token["unit"],
+          "maintenance_epoch" => 1,
+          "retirement_epoch" => nil,
+          "slots" => [0, 1, 2],
+          "active" => nil,
+          "prepared" => [],
+          "plan_sha256" => native_plan,
+          "body_sha256" => body_hash,
+          "unit_limit" => 5,
+          "kind" => "source"
+        }
+      })
+
+    assert invoke(c, "put", Map.put(args, "continuation", forged))["status"] === "refused"
+    assert native_status(c) === before_refused
+
     current = invoke(c, "put", args)
     assert current["status"] === "staged"
-    assert current["continuation"]["version"] === 4
+    assert current["continuation"]["version"] === 5
     assert current["continuation"]["maintenance_epoch"] === 1
     assert current["continuation"]["plan_sha256"] === token["plan_sha256"]
     refute current["continuation"]["epoch_binding_sha256"] === token["plan_sha256"]
+    progress = current["continuation"]["progress"]
+    assert progress["plan_sha256"] === native_plan
+    assert progress["unit"] === 1 and progress["unit_limit"] === 5
+    assert progress["body_sha256"] === token["plan_sha256"]
+    assert progress["slots"] === Enum.sort(progress["slots"])
+    assert length(progress["slots"]) === 3
+    assert current["coverage"]["effects_used"] === 1
     before_tampering = native_status(c)
+
+    for {key, value} <- [
+          {"head_id", Usage.id()},
+          {"revision", progress["revision"] + 1},
+          {"unit", progress["unit"] + 1},
+          {"slots", [13, 14, 15]}
+        ] do
+      tampered = put_in(current["continuation"], ["progress", key], value)
+      assert invoke(c, "put", Map.put(args, "continuation", tampered))["status"] === "refused"
+    end
 
     for bad <- [0, -1, 1.0, "1", nil, 2] do
       assert invoke(
@@ -3296,6 +3367,153 @@ defmodule Ipse.KnowledgeCollectionAdapterSessionTest do
     IO.puts("VECTOR_NATIVE_BUDGET " <> Jason.encode!(native_status(c)))
   end
 
+  @tag :projection_maintenance_progress
+  @tag timeout: 120_000
+  test "vector progress refuses a forged native opening and reuses an old page only through a new native effect",
+       c do
+    [source] = seed_index_sources(c, [{"fixture:vector-progress", "Vega orbit evidence.", nil}])
+    args = %{"action" => "put", "source_id" => source["source_id"], "dimensions" => 4096}
+    old = invoke(c, "vectors", args)
+    assert old["status"] === "staged_vectors", inspect(old)
+    assert old["continuation"]["version"] === 1
+    assert old["continuation"]["unit"] === 1
+    assert old["continuation"]["stages"] === []
+    assert old["continuation"]["write"] === nil
+
+    fence = job_open_fence(c)
+
+    assert invoke(c, "vectors", Map.put(args, "continuation", old["continuation"]))[
+             "status"
+           ] === "refused"
+
+    job_close_fence(fence)
+    before = native_status(c)
+    head_id = Usage.id()
+
+    invented = %{
+      "version" => 1,
+      "status" => "active",
+      "head_id" => head_id,
+      "revision" => before["generation"],
+      "unit" => 1,
+      "maintenance_epoch" => 1,
+      "retirement_epoch" => nil,
+      "slots" => [0, 1],
+      "active" => nil,
+      "prepared" => [],
+      "plan_sha256" => old["continuation"]["plan_sha256"],
+      "body_sha256" => JSON.sha256(IO.iodata_to_binary(Elixir.JSON.encode!(source))),
+      "unit_limit" => 3,
+      "kind" => "projection"
+    }
+
+    rewritten =
+      Map.merge(old["continuation"], %{
+        "version" => 2,
+        "maintenance_epoch" => 1,
+        "progress" => invented
+      })
+
+    assert invoke(c, "vectors", Map.put(args, "continuation", rewritten))["status"] ===
+             "refused"
+
+    assert native_status(c) === before
+    assert {:ok, refused_events} = Journal.load(c.dir, c.id)
+
+    assert Enum.any?(refused_events, fn event ->
+             get_in(event, ["request", "request", "op"]) === "progress.inspect" and
+               get_in(event, ["request", "request", "head_id"]) === head_id
+           end)
+
+    fresh = invoke(c, "vectors", args)
+    assert fresh["status"] === "staged_vectors", inspect(fresh)
+    token = fresh["continuation"]
+    assert token["version"] === 2 and token["maintenance_epoch"] === 1
+    assert token["unit"] === 1 and token["progress"]["unit"] === 1
+    assert token["progress"]["head_id"] !== head_id
+    assert native_status(c)["operations"] === before["operations"] + 1
+    before_tampering = native_status(c)
+
+    attacks = [
+      put_in(token, ["unit"], 2),
+      token |> put_in(["unit"], 2) |> put_in(["progress", "unit"], 2),
+      put_in(token, ["progress", "head_id"], Usage.id()),
+      put_in(token, ["progress", "revision"], token["progress"]["revision"] + 1),
+      put_in(token, ["progress", "body_sha256"], JSON.sha256("other source body")),
+      put_in(token, ["progress", "slots"], [14, 15])
+    ]
+
+    for attack <- attacks do
+      assert invoke(c, "vectors", Map.put(args, "continuation", attack))["status"] ===
+               "refused"
+    end
+
+    assert native_status(c) === before_tampering
+    assert finish_vectors(c, args, fresh)["status"] === "stored_vectors"
+    selected = invoke(c, "vectors", %{args | "action" => "get"})
+    assert selected["status"] === "ok" and selected["vectors"] === 1
+    assert selected["citation"]["source_id"] === source["source_id"]
+    active = job_open_fence(c)
+    assert invoke(c, "vectors", %{args | "action" => "get"})["status"] === "ok"
+
+    assert invoke(c, "vectors", Map.put(args, "expected_revision", 1))["status"] ===
+             "refused"
+
+    job_close_fence(active)
+    assert invoke(c, "vectors", %{args | "action" => "get"})["status"] === "ok"
+    assert {:ok, events} = Journal.load(c.dir, c.id)
+
+    assert Enum.any?(events, fn event ->
+             get_in(event, ["request", "request", "op"]) === "value.verify" and
+               get_in(event, ["request", "request", "progress", "action"]) === "start"
+           end)
+
+    assert :ok = Session.close_confirmed(c.pid)
+    assert {:ok, closed} = Journal.load(c.dir, c.id)
+    assert {:ok, _} = Session.Saved.restore(closed, c.id)
+
+    assert {:ok, resumed} =
+             DynamicSupervisor.start_child(
+               Ipse.Sessions,
+               {Session, Keyword.put(c.opts, :id, c.id)}
+             )
+
+    assert :ok = Session.close_confirmed(resumed)
+    assert_inert_resume(c, closed)
+  end
+
+  @tag :projection_maintenance_progress
+  @tag :packed_fact_session
+  @tag timeout: 120_000
+  test "facts after a fence bind prepared metadata and terminal publication to native progress",
+       c do
+    seed_index_sources(c, [{"fixture:fact-progress", "Orion links exact source evidence.", nil}])
+    args = %{"action" => "put", "source_id" => "fixture:fact-progress"}
+    assert invoke(c, "facts", %{args | "action" => "get"})["status"] === "refused"
+    job_close_fence(job_open_fence(c))
+    opened = invoke(c, "facts", args)
+    assert opened["status"] === "staged_facts", inspect(opened)
+    assert opened["continuation"]["version"] === 2
+    head_id = opened["continuation"]["progress"]["head_id"]
+
+    result =
+      finish_facts(c, args, opened, fn current ->
+        token = current["continuation"]
+        progress = token["progress"]
+        assert progress["head_id"] === head_id and progress["maintenance_epoch"] === 1
+        assert progress["unit"] === token["unit"]
+        assert progress["prepared"] === Enum.sort_by(token["stages"], & &1["slot"])
+      end)
+
+    assert result["status"] === "stored_facts" and result["facts"] === 20
+    selected = invoke(c, "facts", %{args | "action" => "get"})
+    assert selected["status"] === "ok" and selected["facts"] === 20
+    assert selected["citation"]["source_id"] === args["source_id"]
+    assert :ok = Session.close_confirmed(c.pid)
+    assert {:ok, closed} = Journal.load(c.dir, c.id)
+    assert {:ok, _} = Session.Saved.restore(closed, c.id)
+  end
+
   @tag :packed_vector_corruption
   @tag timeout: 120_000
   test "actual projection hydration refuses missing, reordered and rehashed wrong-chunk vector pages",
@@ -4912,5 +5130,296 @@ defmodule Ipse.KnowledgeCollectionAdapterSessionTest do
                Usage.id(),
                "document_graph_v1"
              )
+  end
+
+  @tag :progress_retire_session
+  @tag timeout: 120_000
+  test "explicit SDK retirement consumes an empty-stage Source head without deleting immutable bytes",
+       c do
+    assert invoke(c, "namespace", %{"query" => "Orion"})["status"] === "refused"
+    job_close_fence(job_open_fence(c))
+
+    args = %{
+      "tiny" => true,
+      "source_id" => "fixture:retire-progress",
+      "text" => "Orion retained immutable retirement evidence."
+    }
+
+    opened = invoke(c, "put", args)
+    assert opened["status"] === "staged"
+    token = opened["continuation"]
+    progress = token["progress"]
+    assert token["version"] === 5 and token["maintenance_epoch"] === 1
+    assert progress["unit"] === 1 and progress["status"] === "active"
+    assert is_nil(progress["active"]) and progress["prepared"] === []
+    assert {:ok, before_events} = Journal.load(c.dir, c.id)
+
+    [first_effect] =
+      Enum.filter(before_events, fn event ->
+        event["type"] === "extension_action_result" and
+          get_in(event, ["request", "request", "progress", "action"]) === "start"
+      end)
+
+    immutable_key = get_in(first_effect, ["request", "request", "key"])
+    immutable = physical(c, immutable_key)
+    job_close_fence(job_open_fence(c))
+    before = native_status(c)
+
+    retired = invoke(c, "put", %{"retire_progress" => true, "progress" => progress})
+    assert retired["status"] === "retired", inspect(retired)
+    assert retired["progress"]["status"] === "retired"
+    assert retired["progress"]["head_id"] === progress["head_id"]
+    assert retired["progress"]["maintenance_epoch"] === 1
+    assert retired["progress"]["retirement_epoch"] === 2
+    assert retired["progress"]["slots"] === [] and retired["progress"]["prepared"] === []
+    assert is_nil(retired["progress"]["active"])
+    assert retired["coverage"]["effects_used"] === 1
+    assert retired["coverage"]["reads_used"] === 1
+    assert retired["native_generation"] === before["generation"] + 1
+    assert native_status(c)["operations"] === before["operations"] + 1
+    assert physical(c, immutable_key) === immutable
+    after_retirement = native_status(c)
+
+    assert invoke(c, "put", %{"inspect_progress" => progress["head_id"]})["status"] === "refused"
+    assert invoke(c, "put", Map.put(args, "continuation", token))["status"] === "refused"
+    assert native_status(c) === after_retirement
+    assert physical(c, immutable_key) === immutable
+    assert {:ok, retired_events} = Journal.load(c.dir, c.id)
+
+    [retirement] =
+      Enum.filter(retired_events, fn event ->
+        event["type"] === "extension_action_result" and
+          get_in(event, ["request", "request", "op"]) === "progress.retire"
+      end)
+
+    assert retirement["outcome"]["status"] === "ok"
+
+    assert Enum.map(
+             Enum.filter(retired_events, fn event ->
+               event["type"] === "extension_action_result" and
+                 event["parent_invocation_id"] === retirement["parent_invocation_id"]
+             end),
+             &get_in(&1, ["request", "request", "op"])
+           ) ===
+             ["snapshot", "progress.inspect", "progress.retire"]
+
+    assert retirement["request"]["request"]["progress"] === %{
+             "version" => 1,
+             "action" => "retire",
+             "head_id" => progress["head_id"],
+             "revision" => progress["revision"]
+           }
+
+    assert retirement["outcome"]["value"]["request_sha256"] ===
+             JSON.digest([retirement["request"]])
+
+    fresh = invoke(c, "put", args)
+    assert fresh["status"] === "staged"
+    assert fresh["continuation"]["maintenance_epoch"] === 2
+    assert fresh["continuation"]["progress"]["head_id"] !== progress["head_id"]
+    assert fresh["coverage"]["effects_used"] === 1
+    assert finish(c, args, fresh)["status"] === "stored"
+    selected = invoke(c, "query", %{"source_ids" => [args["source_id"]], "query" => "Orion"})
+    assert hd(selected["evidence"])["citation"]["source_id"] === args["source_id"]
+    assert :ok = Session.close_confirmed(c.pid)
+    assert {:ok, closed} = Journal.load(c.dir, c.id)
+    assert {:ok, _} = Session.Saved.restore(closed, c.id)
+
+    assert {:ok, resumed} =
+             DynamicSupervisor.start_child(
+               Ipse.Sessions,
+               {Session, Keyword.put(c.opts, :id, c.id)}
+             )
+
+    assert :ok = Session.close_confirmed(resumed)
+    assert_inert_resume(c, closed)
+  end
+
+  @tag :document_progress_fault
+  @tag timeout: 180_000
+  test "a controlled effect baseline returns authentic partial progress and resumes the exact transport",
+       c do
+    assert invoke(c, "namespace", %{"query" => "Nocturne"})["status"] === "refused"
+    job_close_fence(job_open_fence(c))
+    args = %{"large_blocks" => true, "generation" => 1, "expected_revision" => 0}
+    before = native_status(c)
+
+    # The baseline is a fixture condition, not fifteen measured native effects.
+    partial = invoke(c, "put", Map.put(args, "effects_used", 15))
+    assert partial["status"] === "staged", inspect(partial)
+    token = partial["continuation"]
+    progress = token["progress"]
+    active = token["active"]
+    assert token["version"] === 5 and token["maintenance_epoch"] === 1
+    assert token["unit"] === 0 and progress["unit"] === 0
+    assert token["stages"] === [] and progress["prepared"] === []
+    assert active["state"] === "open" and active["offset"] > 0
+    assert active["offset"] < active["byte_count"]
+    assert progress["active"]["offset"] === active["offset"]
+    assert partial["coverage"]["effects_used"] === 16
+    assert native_status(c)["operations"] === before["operations"] + 1
+    retained = native_status(c)
+
+    for forged <- [
+          put_in(token, ["active", "offset"], active["offset"] + 1),
+          put_in(token, ["progress", "active", "offset"], active["offset"] + 1),
+          put_in(token, ["progress", "revision"], progress["revision"] + 1)
+        ] do
+      assert invoke(c, "put", Map.put(args, "continuation", forged))["status"] === "refused"
+    end
+
+    assert native_status(c) === retained
+    assert {:ok, events} = Journal.load(c.dir, c.id)
+
+    first =
+      Enum.find(events, fn event ->
+        event["type"] === "extension_action_result" and
+          get_in(event, ["request", "request", "progress", "action"]) === "start"
+      end)
+
+    assert first["outcome"]["status"] === "ok"
+    assert get_in(first, ["request", "request", "op"]) === "value.write_parts"
+    assert get_in(first, ["outcome", "value", "progress"]) === progress
+
+    resumed = invoke(c, "put", Map.put(args, "continuation", token))
+    assert resumed["status"] === "staged", inspect(resumed)
+    assert resumed["continuation"]["unit"] === 1
+    assert resumed["continuation"]["progress"]["head_id"] === progress["head_id"]
+    assert resumed["coverage"]["effects_used"] < 16
+    assert {:ok, resumed_events} = Journal.load(c.dir, c.id)
+
+    next_write =
+      Enum.find(Enum.drop(resumed_events, length(events)), fn event ->
+        event["type"] === "extension_action_intent" and
+          get_in(event, ["request", "request", "op"]) === "value.write_parts"
+      end)
+
+    assert get_in(next_write, ["request", "request", "offset"]) === active["offset"]
+    assert get_in(next_write, ["request", "request", "slot"]) === active["slot"]
+    assert get_in(next_write, ["request", "request", "epoch"]) === active["epoch"]
+    assert finish(c, args, resumed)["status"] === "stored"
+    selected = invoke(c, "query", %{"query" => "Nocturne"})
+    assert hd(selected["evidence"])["citation"]["source_id"] === "fixture:word"
+    assert :ok = Session.close_confirmed(c.pid)
+    assert {:ok, closed} = Journal.load(c.dir, c.id)
+    assert {:ok, _} = Session.Saved.restore(closed, c.id)
+  end
+
+  @tag :document_progress_fault
+  @tag timeout: 180_000
+  test "unknown nonzero-epoch transport retains its native head and never returns a replay continuation",
+       c do
+    assert invoke(c, "namespace", %{"query" => "Nocturne"})["status"] === "refused"
+    job_close_fence(job_open_fence(c))
+    before_native = native_status(c)
+    target_generation = before_native["generation"] + 2
+    handler = "progress-source-unknown-" <> Usage.id()
+    parent = self()
+
+    assert :ok =
+             :telemetry.attach(
+               handler,
+               [:ipse, :extension, :collection, :staged],
+               fn _, _, metadata, _ ->
+                 if metadata.generation === target_generation do
+                   cap = Process.get({Ipse.Extension.Collection, :lock_held})
+                   Port.close(cap.port)
+                   send(parent, :progress_native_lost)
+                 end
+               end,
+               nil
+             )
+
+    on_exit(fn -> :telemetry.detach(handler) end)
+    guard = :sys.get_state(c.pid).lock_guard
+    guard_ref = Process.monitor(guard)
+
+    assert :ok =
+             Session.invoke_export(c.pid, :command, "ext__documents__put", %{
+               "large_blocks" => true,
+               "generation" => 1,
+               "expected_revision" => 0
+             })
+
+    assert :unknown = wait_unknown(c)
+    assert_receive :progress_native_lost
+    :telemetry.detach(handler)
+
+    if Process.alive?(c.pid) do
+      assert Session.close_confirmed(c.pid) in [:ok, {:error, :cleanup_unconfirmed}]
+      if Process.alive?(c.pid), do: Process.exit(c.pid, :kill)
+    end
+
+    assert_receive {:DOWN, ^guard_ref, :process, ^guard, _}, 5000
+    assert {:ok, closed} = Journal.load(c.dir, c.id)
+
+    known =
+      Enum.filter(closed, fn event ->
+        event["type"] === "extension_action_result" and
+          get_in(event, ["request", "request", "op"]) === "value.write_parts" and
+          get_in(event, ["outcome", "status"]) === "ok"
+      end)
+
+    assert [first] = known
+    progress = get_in(first, ["outcome", "value", "progress"])
+    assert progress["maintenance_epoch"] === 1 and progress["unit"] === 0
+    assert progress["active"]["offset"] > 0
+
+    [unknown] =
+      Enum.filter(closed, fn event ->
+        event["type"] === "extension_action_result" and
+          get_in(event, ["outcome", "status"]) === "unknown"
+      end)
+
+    assert get_in(unknown, ["request", "request", "op"]) === "value.write_parts"
+    assert get_in(unknown, ["request", "request", "maintenance_epoch"]) === 1
+
+    assert get_in(unknown, ["request", "request", "progress"]) === %{
+             "version" => 1,
+             "action" => "continue",
+             "head_id" => progress["head_id"],
+             "revision" => progress["revision"],
+             "unit" => 0
+           }
+
+    refute Enum.any?(closed, fn event ->
+             event["type"] === "extension_invocation_result" and
+               event["invocation_id"] === unknown["parent_invocation_id"] and
+               is_map(event["value"]) and Map.has_key?(event["value"], "continuation")
+           end)
+
+    assert {:ok, _} = Session.Saved.restore(closed, c.id)
+    ctx = job_epoch_context(c)
+    assert {:ok, native} = Ipse.Extension.Collection.document_snapshot(ctx.root, ctx.namespace)
+    head = native["document_drafts"][progress["head_id"]]
+    assert is_map(head) and head["id"] === progress["head_id"]
+    assert head["maintenance_epoch"] === 1 and head["unit"] === 0
+    assert head["plan_sha256"] === progress["plan_sha256"]
+    assert head["body_sha256"] === progress["body_sha256"]
+    assert head["revision"] >= progress["revision"]
+    assert head["active"]["slot"] === progress["active"]["slot"]
+    assert head["active"]["epoch"] === progress["active"]["epoch"]
+    assert head["active"]["offset"] >= progress["active"]["offset"]
+    assert head["active"]["offset"] < head["active"]["byte_count"]
+
+    files = fn ->
+      Path.wildcard(Path.join(Ipse.Extension.CollectionStore.root(c.home), "**/*"),
+        match_dot: true
+      )
+      |> Enum.filter(&File.regular?/1)
+      |> Map.new(&{&1, JSON.sha256(File.read!(&1))})
+    end
+
+    retained = files.()
+
+    assert {:ok, resumed} =
+             DynamicSupervisor.start_child(
+               Ipse.Sessions,
+               {Session, Keyword.put(c.opts, :id, c.id)}
+             )
+
+    assert :ok = Session.close_confirmed(resumed)
+    assert_inert_resume(c, closed)
+    assert files.() === retained
   end
 end

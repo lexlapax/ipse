@@ -10,7 +10,7 @@ defmodule Ipse.Extension.Collection.DocumentStage do
   """
   alias Ipse.{JSON, Usage}
   alias Ipse.Extension.{Collection, ResultDocument}
-  alias Ipse.Extension.Collection.{Directory, Profile}
+  alias Ipse.Extension.Collection.{Directory, DocumentDraft, Profile}
   @body_bytes 60 * 1024
   @part_bytes 6144
   @parts 10
@@ -31,9 +31,18 @@ defmodule Ipse.Extension.Collection.DocumentStage do
     }
 
   def request?(r) when is_map(r) do
-    (not Map.has_key?(r, "maintenance_epoch") or
-       (mutating?(r) and JSON.safe_uint?(r["maintenance_epoch"]))) and
-      base_request?(Map.delete(r, "maintenance_epoch")) and Ipse.Extension.validate(r) == :ok
+    progress = r["progress"]
+    bare = Map.delete(r, "progress")
+
+    (is_nil(progress) or
+       (DocumentDraft.tag?(progress) and mutating?(r) and
+          JSON.safe_uint?(r["maintenance_epoch"]) and r["maintenance_epoch"] > 0)) and
+      (not Map.has_key?(r, "progress") or not is_nil(progress)) and
+      (not Map.has_key?(r, "maintenance_epoch") or
+         (mutating?(r) and JSON.safe_uint?(r["maintenance_epoch"]))) and
+      base_request?(Map.delete(bare, "maintenance_epoch")) and
+      (r["op"] not in ~w(value.verify progress.retire) or not is_nil(progress)) and
+      Ipse.Extension.validate(r) == :ok
   end
 
   def request?(_), do: false
@@ -95,18 +104,32 @@ defmodule Ipse.Extension.Collection.DocumentStage do
         op when op in ~w(value.stat value.layout) ->
           exact?(r, ~w(op key generation)) and public_key?(r["key"])
 
+        "value.verify" ->
+          exact?(r, ~w(op key expected_revision byte_count sha256 generation)) and
+            public_key?(r["key"]) and JSON.safe_uint?(r["expected_revision"]) and
+            r["expected_revision"] > 0 and is_integer(r["byte_count"]) and
+            r["byte_count"] in 2..@body_bytes and JSON.sha256?(r["sha256"])
+
+        "progress.retire" ->
+          exact?(r, ~w(op generation))
+
+        "progress.inspect" ->
+          exact?(r, ~w(op head_id)) and id?(r["head_id"])
+
         "value.index" ->
           Directory.document_index_request?(r)
 
-        op when op in ~w(snapshot stage.list) ->
+        op when op in ~w(snapshot stage.list stage.available) ->
           exact?(r, ~w(op))
 
         _ ->
           false
       end
 
-    shape and (r["op"] in ~w(snapshot stage.list) or JSON.safe_uint?(r["generation"])) and
-      (r["op"] in ~w(commit value.put_inline value.read value.stat value.layout value.index snapshot stage.list) or
+    shape and
+      (r["op"] in ~w(snapshot stage.list stage.available progress.inspect) or
+         JSON.safe_uint?(r["generation"])) and
+      (r["op"] in ~w(commit value.put_inline value.read value.stat value.layout value.index value.verify progress.retire progress.inspect snapshot stage.list stage.available) or
          stage_ref?(r)) and
       Ipse.Extension.validate(r) == :ok
   rescue
@@ -115,7 +138,7 @@ defmodule Ipse.Extension.Collection.DocumentStage do
 
   def mutating?(r),
     do:
-      r["op"] not in ~w(value.read value.stat value.layout value.index stage.inspect snapshot stage.list)
+      r["op"] not in ~w(value.read value.stat value.layout value.index stage.inspect snapshot stage.list stage.available progress.inspect)
 
   @doc "The owner is supplied by the trusted host, never by the worker request."
   def owner?(owner),
@@ -247,9 +270,14 @@ defmodule Ipse.Extension.Collection.DocumentStage do
     with true <-
            is_list(opts) and Keyword.keyword?(opts) and
              length(Keyword.keys(opts)) == length(Enum.uniq(Keyword.keys(opts))) and
-             Enum.all?(Keyword.keys(opts), &(&1 in [:publish_before_ms, :publication_guard])),
+             Enum.all?(
+               Keyword.keys(opts),
+               &(&1 in [:publish_before_ms, :publication_guard, :sdk_request_sha256])
+             ),
          guard = Keyword.get(opts, :publication_guard),
          true <- is_nil(guard) or is_function(guard, 2),
+         request_sha256 = Keyword.get(opts, :sdk_request_sha256),
+         true <- is_nil(request_sha256) or JSON.sha256?(request_sha256),
          true <- is_nil(previous_guard),
          deadline = Keyword.get(opts, :publish_before_ms),
          true <- is_nil(deadline) or (JSON.safe_uint?(deadline) and deadline > 0),
@@ -261,7 +289,7 @@ defmodule Ipse.Extension.Collection.DocumentStage do
       Process.put(@publication_guard_key, guard)
 
       try do
-        execute_current(root, namespace, request, operation_id, owner)
+        execute_current(root, namespace, request, operation_id, owner, request_sha256)
       after
         Process.delete(@publication_guard_key)
 
@@ -276,14 +304,42 @@ defmodule Ipse.Extension.Collection.DocumentStage do
     _ -> @error
   end
 
-  defp execute_current(root, namespace, request, operation_id, owner) do
+  defp execute_current(root, namespace, request, operation_id, owner, request_sha256) do
     with true <- request?(request) and owner?(owner) and id?(operation_id) do
       result =
         Collection.with_document_admission(root, namespace, owner, fn snapshot ->
           if live_epoch?(request) and
-               (request["op"] in ~w(snapshot stage.list) or
+               (request["op"] in ~w(snapshot stage.list stage.available progress.inspect) or
                   request["generation"] == snapshot["generation"]) do
-            dispatch(root, namespace, request, operation_id, owner, snapshot)
+            if Map.has_key?(request, "progress") do
+              sha256 =
+                request_sha256 ||
+                  JSON.digest([
+                    %{"op" => "collection.store", "scope" => "project", "request" => request}
+                  ])
+
+              Collection.with_document_progress(request, sha256, operation_id, fn ->
+                case request["op"] do
+                  "value.verify" ->
+                    Collection.document_verify(root, namespace, request, operation_id)
+
+                  "progress.retire" ->
+                    Collection.document_retire_empty(root, namespace, request, operation_id)
+
+                  _ ->
+                    dispatch(
+                      root,
+                      namespace,
+                      Map.delete(request, "progress"),
+                      operation_id,
+                      owner,
+                      snapshot
+                    )
+                end
+              end)
+            else
+              dispatch(root, namespace, request, operation_id, owner, snapshot)
+            end
           else
             @error
           end
@@ -300,7 +356,8 @@ defmodule Ipse.Extension.Collection.DocumentStage do
   defp live_epoch?(request) do
     not mutating?(request) or
       (Collection.admitted_document_status() === "idle" and
-         (request["op"] in ~w(value.abort value.reclaim) or
+         ((not Map.has_key?(request, "progress") and
+             request["op"] in ~w(value.abort value.reclaim)) or
             Map.get(request, "maintenance_epoch", 0) === Collection.admitted_document_epoch()))
   end
 
@@ -314,13 +371,41 @@ defmodule Ipse.Extension.Collection.DocumentStage do
 
         epoch ->
           Map.merge(descriptor, %{
-            "version" => 3,
+            "version" => 4,
             "maintenance_epoch" => epoch,
-            "maintenance_status" => Collection.admitted_document_status()
+            "maintenance_status" => Collection.admitted_document_status(),
+            "progress" => 1
           })
       end
 
     {:ok, Map.put(snapshot, "document_store", descriptor)}
+  end
+
+  defp dispatch(_, _, %{"op" => "stage.available"}, _, _, snapshot) do
+    if Collection.admitted_document_epoch() > 0,
+      do:
+        {:ok,
+         Map.put(snapshot, "available_slots", Collection.admitted_document_available_slots())},
+      else: @error
+  end
+
+  defp dispatch(_, _, %{"op" => "progress.inspect", "head_id" => id}, _, owner, snapshot) do
+    head = Collection.admitted_document_drafts()[id]
+
+    if is_map(head) and DocumentDraft.owner(owner) === head["owner"] do
+      progress =
+        DocumentDraft.receipt(
+          head,
+          head,
+          "inspect",
+          head["revision"],
+          Collection.admitted_document_epoch()
+        )
+
+      {:ok, Map.put(snapshot, "progress", progress)}
+    else
+      @error
+    end
   end
 
   defp dispatch(root, ns, %{"op" => "value.index"} = r, _, _, _),

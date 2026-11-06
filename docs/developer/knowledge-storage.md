@@ -557,7 +557,9 @@ Checkpoint rollback does not reset the persisted epoch.
 
 The document snapshot exposes this consistency condition separately from
 authority. At epoch zero it retains the version-two `document_store` descriptor;
-after a fence, version three adds `maintenance_epoch` and `maintenance_status`.
+after a fence, version four adds `maintenance_epoch`, `maintenance_status` and
+`progress: 1`. The prior version-three descriptor remains valid historical epoch
+data but does not advertise native progress.
 New mutations carry the captured `maintenance_epoch` in their inner SDK request.
 Missing means exactly zero, not the current epoch. Before any effect the host
 requires the actual idle epoch to match, then repeats its trusted root, namespace,
@@ -566,18 +568,42 @@ remains available without granting a current write. See the
 [SDK contract](collection-sdk.md#stage-ordinary-documents-under-their-own-grant).
 
 The Source adapter captures the snapshot epoch once for each logical put. Epoch
-zero retains its version-three continuation and original plan hash. A later
-epoch uses version four with a separate `epoch_binding_sha256` that binds the
-complete source hash and that counter; all subsequent units retain it. The
-existing `plan_sha256` remains the actual source-body hash used by acquisition
-and workspace guards. An unchanged old continuation refuses even after the
-ordinary generation is refreshed, but that public digest is not an authenticated
-opening record. A caller can rewrite the counter and recompute the digest after
-an immutable unit has completed. Source does not yet have a durable opening
-claim that independently fences that prefix. Do not treat the limited token
-tamper controls as complete Source epoch authentication or edit tokens to resume
-work. The lexical Index
-adapter instead binds its continuation to the stored job's epoch, so changing
+zero retains its version-three continuation and original plan hash. At a later
+epoch, version five carries the complete native progress receipt as well as the
+captured epoch and public `epoch_binding_sha256`. The existing `plan_sha256`
+remains the actual source-body hash used by acquisition and workspace guards;
+the native head's separate plan also binds the expected revision, profile and
+unit geometry. Version-four public-digest continuations remain historical data,
+but cannot be upgraded into a native head after a fence. Recomputing their epoch
+and hashes cannot authenticate earlier completed work.
+
+That native Source plan fixes the source body and logical target, rather than
+authenticating the original catalog snapshot. The checkpoint's `base` is an
+optimistic catalog consistency stamp. The controller rereads the target and
+catalog, verifies immutable values and prepared metadata, and publishes with
+the current exact CAS revisions. Projection separately binds its rendered root.
+
+The first actual Source unit allocates its head and reserves three transport
+slots atomically. If its immutable value already exists, `value.verify` checks
+the actual current revision and decoded logical bytes/hash while allocating and
+advancing the head; a bare read cannot count as completion. Each continuation
+must match an owner-bound inspection of the complete native receipt, including
+its unit, prepared refs, active descriptor and reserved slots. Native CAS checks
+the same head revision, epoch and actual owner again for every effect. Partial
+transport changes the native revision/offset without advancing the logical unit.
+The final three-stage metadata commit consumes the head and reservations in the
+same publication. Unknown outcomes stop without replay.
+
+Projection uses the same native contract, with two reserved slots and its own
+body/plan identity. The document-only metadata admits at most eight live heads;
+actual occupied slots, encoded metadata, operation-ID capacity and allocation
+can reduce admission further. Ordinary allocations use the native
+`stage.available` view so another writer cannot take reserved slots. Native
+retirement can reduce exact owned work, but the Source and Projection commands
+currently expose no abort action. Do not edit a token, remove metadata or change
+owner identity to recover capacity. General cleanup remains separate work.
+
+The lexical Index adapter binds its continuation to the stored job's epoch, so changing
 the token alone cannot adopt an older job. Its read-only inspection and query
 remain available. After close, an explicit Index `abort` can mark the exact
 older job aborted under the current idle epoch, retaining its old job identity
@@ -603,8 +629,8 @@ returns token3 with the old job epoch and a separately frozen `retirement_epoch`
 only abort can consume it. Its plan digest includes that retirement epoch, and
 native stage headers retain their actual opening epoch. A known same-epoch
 continuation resumes its exact stage and offset; after another fence it refuses.
-Unknown work supplies no safe replay token. Existing producer claims, in-flight
-model egress and Projection still require their own epoch integration. General
+Unknown work supplies no safe replay token. Existing producer claims and in-flight
+model egress still require their own epoch integration. General
 maintenance, adoption and garbage collection remain closed.
 
 Exercise the internal lifecycle and the real SDK boundary with disposable native
@@ -615,6 +641,7 @@ mix test test/ipse/extension/collection_document_maintenance_test.exs --trace
 mix test test/ipse/extension/collection_document_stage_test.exs
 mix test test/ipse/extension/collection_store_session_test.exs --only document_maintenance_session
 mix test test/extensions/knowledge/collection_adapter_session_test.exs --only source_maintenance_epoch
+mix test test/extensions/knowledge/collection_adapter_session_test.exs --only projection_maintenance_progress
 mix test test/extensions/knowledge/collection_split_append_native_test.exs --only lexical_maintenance_stale --only lexical_maintenance_fresh
 mix test test/extensions/knowledge/collection_adapter_session_test.exs --only generation_maintenance_session --max-cases 1
 ```
@@ -622,8 +649,10 @@ mix test test/extensions/knowledge/collection_adapter_session_test.exs --only ge
 The Session controls prepare approved work, open/close the internal fence and
 check old-stage and stored-Job refusal, fresh guarded publication and exact
 retirement. They reconstruct closed journals without invoking a model. The
-Source token case covers unchanged or incompletely edited tokens, not a
-recomputed public binding. Index controls exercise actual native jobs and
+Source token case includes a fully recomputed public continuation with a
+fabricated native head, actual immutable verify/reuse, and complete receipt
+tampering. Projection controls exercise both vector and fact publication.
+Index controls exercise actual native jobs and
 retrieval. These are lifecycle checks, not destructive GC, migration or
 full-capacity qualification.
 

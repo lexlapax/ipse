@@ -34,6 +34,18 @@ defmodule IpseTest.CollectionAdapter do
     state = Map.merge(state, %{mode: mode, args: args})
 
     case mode do
+      "put" when :erlang.map_get("retire_progress", args) == true ->
+        drive(
+          Collection.start(profile, :snapshot, %{}),
+          Map.merge(state, %{mode: "retire_progress", retire_phase: :snapshot})
+        )
+
+      "put" when :erlang.is_map_key("inspect_progress", args) ->
+        drive(
+          Collection.start(profile, :progress_inspect, %{"head_id" => args["inspect_progress"]}),
+          state
+        )
+
       "group_job" ->
         operation =
           if args["guarded_selection"] == true,
@@ -167,6 +179,11 @@ defmodule IpseTest.CollectionAdapter do
           "continuation" => args["continuation"]
         }
 
+        request =
+          if Map.has_key?(args, "effects_used"),
+            do: Map.put(request, "effects_used", args["effects_used"]),
+            else: request
+
         result =
           if Map.has_key?(args, "primitive_epoch"),
             do: Collection.start_with_epoch(profile, :put, request, args["primitive_epoch"]),
@@ -294,6 +311,39 @@ defmodule IpseTest.CollectionAdapter do
 
   defp drive({:done, {:ok, value}}, %{mode: "value"} = state),
     do: finish(Map.put(value, "status", "stored"), state)
+
+  defp drive(
+         {:done, {:ok, snapshot}},
+         %{mode: "retire_progress", retire_phase: :snapshot} = state
+       ) do
+    progress = state.args["progress"]
+    profile = %{"kind" => "collection", "scope" => "project", "partition" => "notes"}
+
+    with {:ok, epoch, "idle"} <- Collection.snapshot_epoch(snapshot),
+         true <- Collection.progress_supported?(snapshot),
+         true <- Collection.progress_receipt?(progress) do
+      drive(
+        Collection.start_with_progress(
+          profile,
+          :progress_retire,
+          %{"generation" => snapshot["generation"]},
+          epoch,
+          %{
+            "version" => 1,
+            "action" => "retire",
+            "head_id" => progress["head_id"],
+            "revision" => progress["revision"]
+          }
+        ),
+        %{state | retire_phase: :done}
+      )
+    else
+      _ -> finish(%{"status" => "refused", "code" => "invalid_progress_retirement"}, state)
+    end
+  end
+
+  defp drive({:done, {:ok, value}}, %{mode: "retire_progress", retire_phase: :done} = state),
+    do: finish(Map.put(value, "status", "retired"), state)
 
   defp drive({:done, {:ok, snapshot}}, %{mode: "group_append", group_phase: :source} = state) do
     bundles = Enum.sort_by(snapshot["bundles"], & &1["source"]["source_key"])

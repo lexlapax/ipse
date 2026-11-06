@@ -30,11 +30,18 @@ defmodule IpseKnowledge.Store.Collection do
           ] ->
         {:ok, 0, "idle"}
 
-      exact?(
-        descriptor,
-        ~w(version inline_bytes write_parts maintenance_epoch maintenance_status)
-      ) and
-        descriptor["version"] === 3 and descriptor["inline_bytes"] === 8192 and
+      is_map(descriptor) and
+        exact?(
+          descriptor,
+          if(descriptor["version"] === 4,
+            do:
+              ~w(version inline_bytes write_parts maintenance_epoch maintenance_status progress),
+            else: ~w(version inline_bytes write_parts maintenance_epoch maintenance_status)
+          )
+        ) and
+        descriptor["version"] in [3, 4] and
+        (descriptor["version"] === 3 or descriptor["progress"] === 1) and
+        descriptor["inline_bytes"] === 8192 and
         descriptor["write_parts"] === 2 and E.safe_positive?(descriptor["maintenance_epoch"]) and
           descriptor["maintenance_status"] in ~w(idle active) ->
         {:ok, descriptor["maintenance_epoch"], descriptor["maintenance_status"]}
@@ -45,6 +52,79 @@ defmodule IpseKnowledge.Store.Collection do
   end
 
   def snapshot_epoch(_), do: {:error, :document_epoch_changed}
+
+  def progress_supported?(result) when is_map(result),
+    do:
+      match?({:ok, _, _}, snapshot_epoch(result)) and
+        get_in(result, ["document_store", "version"]) === 4
+
+  def progress_supported?(_), do: false
+
+  @doc false
+  def start_with_progress(profile, operation, args, epoch, tag) do
+    if operation in [
+         :value_put_inline_at,
+         :fact_input_put_at,
+         :value_write,
+         :value_prepare,
+         :value_commit_at,
+         :fact_commit_at,
+         :group_commit_at,
+         :selection_commit_at,
+         :value_commit,
+         :progress_retire
+       ] and E.safe_positive?(epoch) and progress_tag?(tag) do
+      pending =
+        if operation === :progress_retire do
+          if tag["action"] === "retire" and profile?(profile) and
+               exact?(args, ~w(generation)) and E.safe_uint?(args["generation"]) do
+            call(
+              %{
+                operation: :progress_retire,
+                generation: args["generation"],
+                reads: 0,
+                effects: 0,
+                request: nil,
+                maintenance_epoch: epoch,
+                progress_tag: tag
+              },
+              Map.put(args, "op", "progress.retire"),
+              :values_committed_at
+            )
+          else
+            error(:invalid_collection_progress)
+          end
+        else
+          start_with_epoch(profile, operation, args, epoch)
+        end
+
+      case pending do
+        {:call, _, _} = pending ->
+          if tag["action"] === "start" do
+            dispatch_progress(pending, tag, nil)
+          else
+            call(
+              %{
+                operation: :progress_gate,
+                reads: 0,
+                effects: 0,
+                request: nil,
+                pending: pending,
+                progress_tag: tag,
+                maintenance_epoch: epoch
+              },
+              %{"op" => "progress.inspect", "head_id" => tag["head_id"]},
+              :progress_gate
+            )
+          end
+
+        other ->
+          other
+      end
+    else
+      error(:invalid_collection_progress)
+    end
+  end
 
   @doc "Primitive I/O with an explicitly frozen epoch condition, never a refreshed observation."
   def start_with_epoch(profile, operation, args, epoch)
@@ -68,7 +148,9 @@ defmodule IpseKnowledge.Store.Collection do
              :page_read,
              :selected_keys,
              :lexical_keys,
-             :source_keys
+             :source_keys,
+             :progress_inspect,
+             :progress_retire
            ] do
     if E.safe_uint?(epoch) do
       case start(profile, operation, args) do
@@ -93,6 +175,34 @@ defmodule IpseKnowledge.Store.Collection do
   end
 
   def start_with_epoch(_, _, _, _), do: error(:invalid_collection_epoch_operation)
+
+  def start(profile, :progress_inspect, %{"head_id" => id} = args) do
+    if profile?(profile) and exact?(args, ~w(head_id)) and native_id?(id),
+      do:
+        call(
+          %{operation: :progress_inspect, reads: 0, effects: 0, request: nil},
+          Map.put(args, "op", "progress.inspect"),
+          :progress_inspected
+        ),
+      else: error(:invalid_collection_progress)
+  end
+
+  def start(profile, :progress_retire, %{"generation" => generation} = args) do
+    if profile?(profile) and exact?(args, ~w(generation)) and E.safe_uint?(generation),
+      do:
+        call(
+          %{
+            operation: :progress_retire,
+            generation: generation,
+            reads: 0,
+            effects: 0,
+            request: nil
+          },
+          Map.put(args, "op", "progress.retire"),
+          :values_committed_at
+        ),
+      else: error(:invalid_collection_progress)
+  end
 
   def start(profile, :snapshot, args) do
     if profile?(profile) and args === %{} do
@@ -684,7 +794,8 @@ defmodule IpseKnowledge.Store.Collection do
 
   @doc false
   def read_request?(%{"op" => "collection.store", "request" => %{"op" => op}}),
-    do: op in ~w(snapshot value.stat value.read stage.list stage.inspect)
+    do:
+      op in ~w(snapshot value.stat value.read stage.list stage.inspect stage.available progress.inspect)
 
   def read_request?(_), do: false
 
@@ -711,30 +822,70 @@ defmodule IpseKnowledge.Store.Collection do
   def resume(_, %{"status" => status}) when status != "ok", do: error(:collection_refused)
 
   def resume(state, %{"status" => "ok", "value" => wrapped}) do
-    with true <- exact?(wrapped, ~w(version operation_id request_sha256 result)),
-         true <- wrapped["version"] === 1,
+    tagged = is_map(state.request["request"]["progress"])
+
+    with true <-
+           exact?(
+             wrapped,
+             if(tagged,
+               do: ~w(version operation_id request_sha256 result progress),
+               else: ~w(version operation_id request_sha256 result)
+             )
+           ),
+         true <- wrapped["version"] === if(tagged, do: 2, else: 1),
+         true <- not tagged or native_id?(wrapped["operation_id"]),
          {:ok, request_hash} <- Ipse.Extension.canonical_digest([state.request]),
          true <- request_hash == wrapped["request_sha256"],
+         true <-
+           not tagged or
+             (progress_transition?(state, wrapped["progress"]) and
+                (state.request["request"]["progress"]["action"] !== "start" or
+                   wrapped["progress"]["head_id"] === wrapped["operation_id"])),
          result when is_map(result) <- wrapped["result"] do
+      state = if tagged, do: remember_progress(state, wrapped["progress"]), else: state
+
       if Map.get(state, :pinned_inline, false) do
         if is_binary(wrapped["operation_id"]) and
              Regex.match?(~r/\A[0-9a-fA-F]{32}\z/, wrapped["operation_id"]),
-           do: next(Map.put(state, :operation_id, wrapped["operation_id"]), result),
+           do:
+             progress_return(
+               next(Map.put(state, :operation_id, wrapped["operation_id"]), result),
+               state
+             ),
            else: {:stop, :unknown_effect}
       else
-        next(state, result)
+        progress_return(next(state, result), state)
       end
     else
       _ ->
-        if Map.get(state, :pinned_inline, false),
+        if tagged or Map.get(state, :pinned_inline, false),
           do: {:stop, :unknown_effect},
           else: error(:collection_response)
     end
   rescue
     _ ->
-      if Map.get(state, :pinned_inline, false),
+      if is_map(state.request["request"]["progress"]) or Map.get(state, :pinned_inline, false),
         do: {:stop, :unknown_effect},
         else: error(:collection_response)
+  end
+
+  defp next(%{phase: :progress_inspected}, result) do
+    if progress_receipt?(result["progress"]),
+      do: {:done, {:ok, result}},
+      else: error(:collection_progress_changed)
+  end
+
+  defp next(%{phase: :progress_gate} = s, result) do
+    p = result["progress"]
+    t = s.progress_tag
+
+    if progress_receipt?(p) and p["head_id"] === t["head_id"] and
+         p["revision"] === t["revision"] and
+         (t["action"] === "retire" or
+            (p["unit"] === t["unit"] and p["maintenance_epoch"] === s.maintenance_epoch and
+               p["status"] === "active")),
+       do: dispatch_progress(add_progress_reads(s.pending, s.reads), t, p),
+       else: error(:collection_progress_changed)
   end
 
   defp next(%{phase: :snapshot}, result) do
@@ -745,30 +896,71 @@ defmodule IpseKnowledge.Store.Collection do
 
   defp next(%{phase: :boot, operation: :put} = s, result) do
     with {:ok, epoch, "idle"} <- snapshot_epoch(result),
-         true <- not s.continuing or Map.get(s.checkpoint, "maintenance_epoch", 0) === epoch do
+         true <- not s.continuing or Map.get(s.checkpoint, "maintenance_epoch", 0) === epoch,
+         true <- epoch === 0 or progress_supported?(result),
+         true <- epoch === 0 or not s.continuing or s.checkpoint["version"] === 5 do
       checkpoint =
         if not s.continuing and epoch > 0,
           do:
             Map.merge(s.checkpoint, %{
-              "version" => 4,
+              "version" => 5,
               "maintenance_epoch" => epoch,
-              "epoch_binding_sha256" => source_plan(s.source_sha256, epoch)
+              "epoch_binding_sha256" => source_plan(s.source_sha256, epoch),
+              "progress" => nil
             }),
           else: s.checkpoint
 
-      fetch(
+      s =
         admitted_inline(
           s
           |> Map.put(:maintenance_epoch, epoch)
           |> Map.put(:checkpoint, checkpoint)
           |> Map.put(:generation, result["generation"]),
           result
-        ),
-        catalog_key(s),
-        :catalog
-      )
+        )
+
+      cond do
+        epoch === 0 ->
+          fetch(s, catalog_key(s), :catalog)
+
+        s.continuing ->
+          call(
+            s,
+            %{"op" => "progress.inspect", "head_id" => checkpoint["progress"]["head_id"]},
+            :source_progress_boot
+          )
+
+        true ->
+          s =
+            Map.put(s, :progress_tag, %{
+              "version" => 1,
+              "action" => "start",
+              "kind" => "source",
+              "plan_sha256" => source_progress_plan(s),
+              "body_sha256" => s.source_sha256,
+              "unit_limit" => length(s.prepared) + 3
+            })
+
+          fetch(s, catalog_key(s), :catalog)
+      end
     else
       _ -> error(:document_epoch_changed)
+    end
+  end
+
+  defp next(%{phase: :source_progress_boot} = s, result) do
+    p = result["progress"]
+    cp = s.checkpoint
+
+    if progress_receipt?(p) and p === cp["progress"] and p["status"] === "active" and
+         p["kind"] === "source" and p["maintenance_epoch"] === s.maintenance_epoch and
+         p["plan_sha256"] === source_progress_plan(s) and p["body_sha256"] === s.source_sha256 and
+         p["unit_limit"] === length(s.prepared) + 3 and p["unit"] === cp["unit"] and
+         p["prepared"] === Enum.sort_by(cp["stages"], & &1["slot"]) and
+         source_progress_active?(s, p["active"]) do
+      fetch(remember_progress(s, p), catalog_key(s), :catalog)
+    else
+      error(:collection_progress_changed)
     end
   end
 
@@ -1036,6 +1228,25 @@ defmodule IpseKnowledge.Store.Collection do
        else: error(:collection_value_unconfirmed)
   end
 
+  defp next(%{phase: :source_reused} = s, result) do
+    if result["generation"] === s.generation + 1,
+      do: unit_done(%{s | generation: result["generation"]}, nil),
+      else: {:stop, :unknown_effect}
+  end
+
+  defp next(%{phase: :value_reused} = s, result) do
+    if result["generation"] === s.generation + 1,
+      do:
+        {:done,
+         {:ok,
+          %{
+            "record" => s.reused_row,
+            "native_generation" => result["generation"],
+            "coverage" => coverage(s, false)
+          }}},
+      else: {:stop, :unknown_effect}
+  end
+
   defp next(%{phase: :verify_data, verify: [body | rest]} = s, result) do
     bytes = json(body)
 
@@ -1136,8 +1347,10 @@ defmodule IpseKnowledge.Store.Collection do
   defp next(%{phase: :opened} = s, result), do: append(%{s | generation: result["generation"]})
 
   defp next(%{phase: :allocate_stage} = s, result) do
-    occupied = Enum.map(result["stages"], & &1["slot"])
-    slot = Enum.find(0..15, &(&1 not in occupied))
+    slot =
+      if Map.get(s, :maintenance_epoch, 0) > 0,
+        do: List.first(result["available_slots"] || []),
+        else: Enum.find(0..15, &(&1 not in Enum.map(result["stages"], fn r -> r["slot"] end)))
 
     if slot != nil and result["generation"] == s.generation,
       do: open_stage(s, slot),
@@ -1242,6 +1455,9 @@ defmodule IpseKnowledge.Store.Collection do
 
   defp loaded(%{operation: op} = s, :value, row) when op in [:value_write, :value_prepare] do
     cond do
+      s.args["reuse"] and row != nil and row["value"] === s.value and is_map(s[:progress_tag]) ->
+        verify_reuse(s, s.key, s.bytes, row, :value_reused)
+
       s.args["reuse"] and row != nil and row["value"] === s.value ->
         {:done,
          {:ok,
@@ -1348,9 +1564,16 @@ defmodule IpseKnowledge.Store.Collection do
     bytes = json(body)
 
     cond do
-      row == nil -> stage(s, data_key(s, E.sha256(bytes)), body, 0, true, 0)
-      row["sha256"] == E.sha256(bytes) and row["value"] === body -> unit_done(s, nil)
-      true -> error(:collection_block_conflict)
+      row == nil ->
+        stage(s, data_key(s, E.sha256(bytes)), body, 0, true, 0)
+
+      row["sha256"] == E.sha256(bytes) and row["value"] === body ->
+        if is_map(s[:progress_tag]),
+          do: verify_reuse(s, data_key(s, E.sha256(bytes)), bytes, row, :source_reused),
+          else: unit_done(s, nil)
+
+      true ->
+        error(:collection_block_conflict)
     end
   end
 
@@ -1470,7 +1693,8 @@ defmodule IpseKnowledge.Store.Collection do
 
     with true <- row != nil and row["sha256"] == ref["sha256"],
          value = row["value"],
-         true <- exact?(value, ~w(version kind pieces bundle_sha256 ordinal source_bundle_sha256)),
+         true <-
+           exact?(value, ~w(version kind pieces bundle_sha256 ordinal source_bundle_sha256)),
          true <- value["version"] === 1 and value["kind"] == "source_lexical",
          true <- value["source_bundle_sha256"] == s.head["value"]["bundle_sha256"],
          true <- value["bundle_sha256"] == manifest["bundle_sha256"],
@@ -1726,7 +1950,28 @@ defmodule IpseKnowledge.Store.Collection do
                 publish: publish
               })
 
-            call(s, %{"op" => "stage.list"}, :allocate_stage)
+            if is_map(s[:progress]) do
+              occupied =
+                Enum.map(s.progress["prepared"], & &1["slot"]) ++
+                  if(is_map(s.progress["active"]), do: [s.progress["active"]["slot"]], else: [])
+
+              case Enum.find(s.progress["slots"], &(&1 not in occupied)) do
+                nil -> error(:collection_stages_occupied)
+                slot -> open_stage(s, slot)
+              end
+            else
+              call(
+                s,
+                %{
+                  "op" =>
+                    if(Map.get(s, :maintenance_epoch, 0) > 0,
+                      do: "stage.available",
+                      else: "stage.list"
+                    )
+                },
+                :allocate_stage
+              )
+            end
           )
     else
       error(:collection_unit_bound)
@@ -1830,9 +2075,9 @@ defmodule IpseKnowledge.Store.Collection do
     end
 
     r = request.(data)
-    r = if frame_fits?(r, s[:maintenance_epoch]), do: r, else: request.([first])
+    r = if state_frame_fits?(s, r), do: r, else: request.([first])
 
-    if frame_fits?(r, s[:maintenance_epoch]),
+    if state_frame_fits?(s, r),
       do: call(s, r, :writing_parts),
       else: error(:collection_budget)
   end
@@ -1870,10 +2115,204 @@ defmodule IpseKnowledge.Store.Collection do
 
   defp selection_key(s), do: if(s.key_mode, do: hd(s.remaining), else: E.sha256(hd(s.remaining)))
 
+  defp native_id?(id), do: is_binary(id) and Regex.match?(~r/\A[0-9a-f]{32}\z/, id)
+
+  defp source_progress_plan(s),
+    do:
+      E.sha256(
+        json(%{
+          "version" => 1,
+          "body_sha256" => s.source_sha256,
+          "expected_revision" => s.checkpoint["expected_revision"],
+          "profile" => s.profile,
+          "unit_limit" => length(s.prepared) + 3
+        })
+      )
+
+  defp source_progress_active?(s, nil), do: is_nil(s.checkpoint["active"])
+
+  defp source_progress_active?(s, actual) do
+    expected = s.checkpoint["active"]
+
+    is_map(expected) and expected["state"] === "open" and
+      Map.drop(actual, ["publish"]) === Map.drop(expected, ["state"]) and
+      actual["publish"] === s.checkpoint["unit"] < length(s.prepared)
+  end
+
+  defp verify_reuse(s, key, bytes, row, phase),
+    do:
+      call(
+        Map.put(s, :reused_row, row),
+        %{
+          "op" => "value.verify",
+          "key" => key,
+          "expected_revision" => row["revision"],
+          "byte_count" => byte_size(bytes),
+          "sha256" => E.sha256(bytes),
+          "generation" => s.generation
+        },
+        phase
+      )
+
+  defp progress_tag?(t) do
+    is_map(t) and t["version"] === 1 and
+      case t["action"] do
+        "start" ->
+          exact?(t, ~w(version action kind plan_sha256 body_sha256 unit_limit)) and
+            t["kind"] in ~w(source projection) and E.sha256?(t["plan_sha256"]) and
+            E.sha256?(t["body_sha256"]) and E.safe_positive?(t["unit_limit"])
+
+        a when a in ~w(continue finish) ->
+          exact?(t, ~w(version action head_id revision unit)) and
+            native_id?(t["head_id"]) and E.safe_positive?(t["revision"]) and
+            E.safe_uint?(t["unit"])
+
+        "retire" ->
+          exact?(t, ~w(version action head_id revision)) and
+            native_id?(t["head_id"]) and E.safe_positive?(t["revision"])
+
+        _ ->
+          false
+      end
+  end
+
+  @doc false
+  def progress_receipt?(p) do
+    exact?(
+      p,
+      ~w(version status head_id revision unit maintenance_epoch retirement_epoch slots active prepared plan_sha256 body_sha256 unit_limit kind)
+    ) and
+      p["version"] === 1 and p["status"] in ~w(active retiring finished retired) and
+      native_id?(p["head_id"]) and E.safe_positive?(p["revision"]) and
+      E.safe_uint?(p["unit"]) and E.safe_positive?(p["unit_limit"]) and
+      p["unit"] <= p["unit_limit"] and E.safe_positive?(p["maintenance_epoch"]) and
+      (is_nil(p["retirement_epoch"]) or E.safe_positive?(p["retirement_epoch"])) and
+      p["kind"] in ~w(source projection) and E.sha256?(p["plan_sha256"]) and
+      E.sha256?(p["body_sha256"]) and
+      is_list(p["slots"]) and length(p["slots"]) <= 3 and
+      Enum.all?(p["slots"], &(is_integer(&1) and &1 in 0..15)) and
+      p["slots"] === Enum.sort(Enum.uniq(p["slots"])) and
+      is_list(p["prepared"]) and length(p["prepared"]) <= 3 and
+      Enum.all?(p["prepared"], fn ref ->
+        exact?(ref, ~w(slot epoch)) and
+          ref["slot"] in p["slots"] and native_id?(ref["epoch"])
+      end) and
+      p["prepared"] === Enum.sort_by(Enum.uniq_by(p["prepared"], & &1["slot"]), & &1["slot"]) and
+      progress_active?(p["active"], p["slots"]) and
+      (is_nil(p["active"]) or Enum.all?(p["prepared"], &(&1["slot"] !== p["active"]["slot"]))) and
+      case p["status"] do
+        "active" ->
+          length(p["slots"]) === if(p["kind"] === "source", do: 3, else: 2) and
+            is_nil(p["retirement_epoch"])
+
+        "retiring" ->
+          length(p["slots"]) === if(p["kind"] === "source", do: 3, else: 2) and
+            E.safe_positive?(p["retirement_epoch"]) and
+            p["retirement_epoch"] >= p["maintenance_epoch"]
+
+        "finished" ->
+          p["slots"] === [] and p["prepared"] === [] and is_nil(p["active"]) and
+            is_nil(p["retirement_epoch"]) and p["unit"] === p["unit_limit"]
+
+        "retired" ->
+          p["slots"] === [] and p["prepared"] === [] and is_nil(p["active"]) and
+            E.safe_positive?(p["retirement_epoch"]) and
+            p["retirement_epoch"] >= p["maintenance_epoch"]
+      end
+  end
+
+  defp progress_active?(nil, _), do: true
+
+  defp progress_active?(a, slots),
+    do:
+      exact?(a, ~w(slot epoch key expected_revision byte_count sha256 offset publish)) and
+        a["slot"] in slots and native_id?(a["epoch"]) and value_key?(a["key"]) and
+        E.safe_uint?(a["expected_revision"]) and E.safe_uint?(a["offset"]) and
+        is_integer(a["byte_count"]) and a["byte_count"] in 2..61_440 and
+        a["offset"] < a["byte_count"] and E.sha256?(a["sha256"]) and is_boolean(a["publish"])
+
+  defp progress_transition?(s, p) do
+    t = s.request["request"]["progress"]
+
+    progress_receipt?(p) and
+      if(t["action"] === "retire",
+        do: p["retirement_epoch"] === s.maintenance_epoch,
+        else: p["maintenance_epoch"] === s.maintenance_epoch
+      ) and
+      if t["action"] === "start" do
+        p["status"] === "active" and p["unit"] in [0, 1] and
+          p["kind"] === t["kind"] and p["plan_sha256"] === t["plan_sha256"] and
+          p["body_sha256"] === t["body_sha256"] and p["unit_limit"] === t["unit_limit"]
+      else
+        p["head_id"] === t["head_id"] and p["revision"] > t["revision"] and
+          case t["action"] do
+            "finish" -> p["status"] === "finished" and p["unit"] === t["unit"]
+            "retire" -> p["status"] in ~w(retiring retired)
+            "continue" -> p["status"] === "active"
+          end and
+          (t["action"] === "retire" or p["unit"] in [t["unit"], t["unit"] + 1])
+      end
+  end
+
+  defp remember_progress(s, p) do
+    s = s |> Map.put(:progress, p) |> Map.put(:progress_tag, progress_next_tag(p))
+
+    if s[:operation] === :put,
+      do: Map.update!(s, :checkpoint, &Map.put(&1, "progress", p)),
+      else: s
+  end
+
+  defp progress_next_tag(p),
+    do: %{
+      "version" => 1,
+      "action" => "continue",
+      "head_id" => p["head_id"],
+      "revision" => p["revision"],
+      "unit" => p["unit"]
+    }
+
+  defp progress_return({:done, {status, value}}, %{progress: p})
+       when status in [:ok, :continue] and is_map(value) and is_map(p),
+       do: {:done, {status, Map.put(value, "progress", p)}}
+
+  defp progress_return(result, _), do: result
+
+  defp add_progress_reads({:call, request, state}, reads),
+    do: {:call, request, Map.update!(state, :reads, &(&1 + reads))}
+
+  defp dispatch_progress({:call, request, s}, tag, receipt) do
+    s = s |> Map.put(:progress_tag, tag) |> Map.put(:progress, receipt)
+
+    request =
+      if read_request?(request),
+        do: request,
+        else: put_in(request, ["request", "progress"], tag)
+
+    if s.reads <= @reads and host_frame_fits?(request),
+      do: {:call, request, Map.put(s, :request, request)},
+      else: error(:collection_budget)
+  end
+
   defp call(s, inner, phase) do
-    read = inner["op"] in ~w(snapshot value.stat value.read stage.inspect stage.list)
+    read =
+      inner["op"] in ~w(snapshot value.stat value.read stage.inspect stage.list stage.available progress.inspect)
+
     reads = s.reads + if(read, do: 1, else: 0)
     effects = s.effects + if(read, do: 0, else: 1)
+
+    inner =
+      if not read and is_map(s[:progress_tag]),
+        do:
+          Map.put(
+            inner,
+            "progress",
+            if(phase === :published,
+              do: Map.put(s.progress_tag, "action", "finish"),
+              else: s.progress_tag
+            )
+          ),
+        else: inner
+
     request = %{"op" => "collection.store", "scope" => "project", "request" => inner}
 
     request =
@@ -1927,16 +2366,24 @@ defmodule IpseKnowledge.Store.Collection do
   defp admitted_inline(s, result) do
     bytes =
       case result["document_store"] do
-        %{"version" => 1, "inline_bytes" => 8192} -> 8192
-        %{"version" => 2, "inline_bytes" => 8192, "write_parts" => 2} -> 8192
-        %{"version" => 3, "inline_bytes" => 8192, "write_parts" => 2} -> 8192
-        _ -> 0
+        %{"version" => 1, "inline_bytes" => 8192} ->
+          8192
+
+        %{"version" => 2, "inline_bytes" => 8192, "write_parts" => 2} ->
+          8192
+
+        %{"version" => version, "inline_bytes" => 8192, "write_parts" => 2}
+        when version in [3, 4] ->
+          8192
+
+        _ ->
+          0
       end
 
     parts =
       case result["document_store"] do
         %{"version" => version, "inline_bytes" => 8192, "write_parts" => 2}
-        when version in [2, 3] ->
+        when version in [2, 3, 4] ->
           2
 
         _ ->
@@ -1962,7 +2409,19 @@ defmodule IpseKnowledge.Store.Collection do
 
   defp inline_fits?(s, request) do
     byte_size(request["data"]) <= Map.get(s, :inline_bytes, 0) and
-      frame_fits?(request, s[:maintenance_epoch])
+      state_frame_fits?(s, request)
+  end
+
+  defp state_frame_fits?(s, request) do
+    request =
+      if is_map(s[:progress_tag]), do: Map.put(request, "progress", s.progress_tag), else: request
+
+    request = %{"op" => "collection.store", "scope" => "project", "request" => request}
+
+    request =
+      if s[:source_guard], do: Map.put(request, "source_guard", s.source_guard), else: request
+
+    host_frame_fits?(epoch_request(request, s[:maintenance_epoch]))
   end
 
   defp frame_fits?(request, epoch \\ nil),
@@ -2146,7 +2605,14 @@ defmodule IpseKnowledge.Store.Collection do
             ~w(version plan_sha256 expected_revision unit stages base active maintenance_epoch epoch_binding_sha256)
           ) and
             c["version"] === 4 and E.safe_positive?(c["maintenance_epoch"]) and
-            c["epoch_binding_sha256"] === source_plan(hash, c["maintenance_epoch"]))) and
+            c["epoch_binding_sha256"] === source_plan(hash, c["maintenance_epoch"])) or
+         (exact?(
+            c,
+            ~w(version plan_sha256 expected_revision unit stages base active maintenance_epoch epoch_binding_sha256 progress)
+          ) and
+            c["version"] === 5 and E.safe_positive?(c["maintenance_epoch"]) and
+            c["epoch_binding_sha256"] === source_plan(hash, c["maintenance_epoch"]) and
+            progress_receipt?(c["progress"]) and c["progress"]["status"] === "active")) and
         c["plan_sha256"] == hash and
         c["expected_revision"] == rev and E.safe_uint?(c["unit"]) and
         is_list(c["stages"]) and length(c["stages"]) <= 3 and

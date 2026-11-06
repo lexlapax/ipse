@@ -27,6 +27,7 @@ defmodule Ipse.Extension.Collection do
   alias Ipse.Extension.Collection.{
     Blocks,
     Directory,
+    DocumentDraft,
     DocumentMaintenance,
     Encoding,
     Migration,
@@ -51,6 +52,7 @@ defmodule Ipse.Extension.Collection do
   @notes_admission_key {__MODULE__, :notes_publication_admission}
   @acceptance_attempt_key {__MODULE__, :acceptance_effect_attempted}
   @document_epoch_key {__MODULE__, :document_epoch}
+  @document_progress_key {__MODULE__, :document_progress}
   @error {:error, :collection_unavailable}
 
   def limits do
@@ -208,13 +210,17 @@ defmodule Ipse.Extension.Collection do
         namespace: namespace,
         owner: owner,
         status: snapshot["document_maintenance"]["status"],
-        epoch: snapshot["document_maintenance"]["epoch"]
+        epoch: snapshot["document_maintenance"]["epoch"],
+        drafts: Map.get(snapshot, "document_drafts", %{}),
+        available_slots: Map.get(snapshot, "document_available_slots", [])
       }
 
       Process.put(@document_epoch_key, admission)
 
       try do
-        fun.(Map.delete(snapshot, "document_maintenance"))
+        fun.(
+          Map.drop(snapshot, ~w(document_maintenance document_drafts document_available_slots))
+        )
       after
         if is_nil(previous),
           do: Process.delete(@document_epoch_key),
@@ -239,6 +245,86 @@ defmodule Ipse.Extension.Collection do
       %{status: status} -> status
       nil -> nil
     end
+  end
+
+  @doc false
+  def admitted_document_drafts do
+    case Process.get(@document_epoch_key) do
+      %{drafts: drafts} -> drafts
+      _ -> %{}
+    end
+  end
+
+  @doc false
+  def admitted_document_available_slots do
+    case Process.get(@document_epoch_key) do
+      %{available_slots: slots} -> slots
+      _ -> []
+    end
+  end
+
+  @doc false
+  def with_document_progress(request, request_sha256, operation_id, fun)
+      when is_function(fun, 0) do
+    admission = Process.get(@document_epoch_key)
+
+    with true <- is_map(admission),
+         true <- is_nil(Process.get(@document_progress_key)),
+         true <- is_map(request) and DocumentDraft.tag?(request["progress"]),
+         true <- JSON.sha256?(request_sha256) and id?(operation_id) do
+      Process.put(@document_progress_key, %{
+        request: request,
+        request_sha256: request_sha256,
+        operation_id: operation_id,
+        owner: admission.owner
+      })
+
+      try do
+        fun.()
+      after
+        Process.delete(@document_progress_key)
+      end
+    else
+      _ -> {:error, :invalid_document_admission}
+    end
+  end
+
+  @doc false
+  def document_verify(root, namespace, request, operation_id) do
+    context = Process.get(@document_progress_key)
+
+    with %{request: ^request, operation_id: ^operation_id} <- context,
+         true <- request["op"] === "value.verify",
+         internal =
+           request
+           |> Map.take(~w(key expected_revision byte_count sha256))
+           |> Map.put("op", "progress.verify")
+           |> Map.put("expected_generation", request["generation"]) do
+      Profile.run(Profile.documents(), fn ->
+        locked(root, namespace, internal, operation_id, :document_verify)
+      end)
+    else
+      _ -> {:error, :invalid_document_admission}
+    end
+  rescue
+    _ -> @error
+  end
+
+  @doc false
+  def document_retire_empty(root, namespace, request, operation_id) do
+    context = Process.get(@document_progress_key)
+
+    with %{request: ^request, operation_id: ^operation_id} <- context,
+         true <- request["op"] === "progress.retire",
+         internal = %{"op" => "progress.retire", "expected_generation" => request["generation"]} do
+      Profile.run(Profile.documents(), fn ->
+        locked(root, namespace, internal, operation_id, :document_verify)
+      end)
+    else
+      _ -> {:error, :invalid_document_admission}
+    end
+  rescue
+    _ -> @error
   end
 
   @doc "Read only fixed-profile public document descriptors under the actual native owner."
@@ -863,12 +949,26 @@ defmodule Ipse.Extension.Collection do
                 apply_request(path, uid, state, manifest, request, operation_id)
 
               :document_snapshot ->
-                {:ok,
-                 Map.put(
-                   summary(state),
-                   "document_maintenance",
-                   DocumentMaintenance.metadata(state)
-                 )}
+                result =
+                  Map.put(
+                    summary(state),
+                    "document_maintenance",
+                    DocumentMaintenance.metadata(state)
+                  )
+
+                result =
+                  if DocumentMaintenance.metadata(state)["epoch"] > 0 do
+                    result
+                    |> Map.put("document_drafts", DocumentDraft.heads(state))
+                    |> Map.put("document_available_slots", DocumentDraft.available_slots(state))
+                  else
+                    result
+                  end
+
+                {:ok, result}
+
+              :document_verify ->
+                apply_mutation(path, uid, state, manifest, request, operation_id, %{})
 
               {:document_maintenance, owner} ->
                 apply_document_maintenance(
@@ -2040,6 +2140,7 @@ defmodule Ipse.Extension.Collection do
 
   defp apply_mutation(path, uid, s, manifest, r, id, extra_receipt) do
     known = Migration.known_operations(s)
+    draft = document_draft_plan(s, r, id)
 
     cond do
       Map.has_key?(known, id) ->
@@ -2051,6 +2152,19 @@ defmodule Ipse.Extension.Collection do
 
       Migration.fenced?(s, r["op"]) ->
         {:failed, Map.put(summary(s), "code", "collection_writer_fenced")}
+
+      Profile.selected() === Profile.documents() and DocumentDraft.present?(s) and
+          not DocumentDraft.physical?(s, &read_record(path, uid, s, &1)) ->
+        {:failed, Map.put(summary(s), "code", "collection_document_draft_unconfirmed")}
+
+      Profile.selected() === Profile.documents() and
+          match?({:error, _}, draft) ->
+        {:error, :document_store_refused}
+
+      Profile.selected() === Profile.documents() and
+          DocumentDraft.admission_error(s, r, draft_slots(draft)) !== nil ->
+        {:failed,
+         Map.put(summary(s), "code", DocumentDraft.admission_error(s, r, draft_slots(draft)))}
 
       document_admission_error(path, s, r, id) !== nil ->
         {:failed, Map.put(summary(s), "code", document_admission_error(path, s, r, id))}
@@ -2066,14 +2180,14 @@ defmodule Ipse.Extension.Collection do
         capacity(s)
 
       true ->
-        case prepare(s, r, id) do
+        case prepare_with_document_draft(path, uid, s, r, id, draft) do
           {:ok, next, values, extra} ->
             receipt =
               Map.merge(
                 %{
                   "generation" => s["generation"] + 1,
                   "floor" => next["floor"],
-                  "request_sha256" => JSON.digest([r])
+                  "request_sha256" => document_request_sha256(draft, r)
                 },
                 extra
               )
@@ -2091,10 +2205,153 @@ defmodule Ipse.Extension.Collection do
                 else: next
 
             publish(path, uid, s, next, manifest, values, receipt, r)
+            |> attach_document_progress(draft, next, s)
 
           {:failed, code} ->
             {:failed, Map.put(summary(s), "code", code)}
         end
+    end
+  end
+
+  defp draft_slots({:ok, %{head: head}}), do: head["slots"]
+  defp draft_slots(_), do: []
+
+  defp document_request_sha256({:ok, %{request_sha256: sha256}}, _), do: sha256
+  defp document_request_sha256(_, r), do: JSON.digest([r])
+
+  defp attach_document_progress({:ok, receipt}, {:ok, %{head: previous, tag: tag}}, next, old) do
+    current = DocumentDraft.heads(next)[previous["id"]]
+
+    progress =
+      DocumentDraft.receipt(
+        previous,
+        current,
+        tag["action"],
+        receipt["generation"],
+        DocumentMaintenance.metadata(old)["epoch"]
+      )
+
+    {:ok, Map.put(receipt, "document_progress", progress)}
+  end
+
+  defp attach_document_progress(result, _, _, _), do: result
+
+  defp document_draft_plan(s, r, id) do
+    case Process.get(@document_progress_key) do
+      nil ->
+        {:ok, nil}
+
+      %{request: request, request_sha256: sha256, operation_id: ^id, owner: owner} ->
+        tag = request["progress"]
+
+        with true <-
+               Profile.selected() === Profile.documents() and
+                 r["op"] in ~w(commit progress.verify progress.retire),
+             true <- JSON.sha256?(sha256),
+             {:ok, head} <-
+               if(tag["action"] === "start",
+                 do: DocumentDraft.first_head(s, tag, id, owner, request["slot"]),
+                 else: DocumentDraft.authorize(s, tag, owner)
+               ) do
+          {:ok, %{head: head, tag: tag, request: request, request_sha256: sha256}}
+        else
+          _ -> {:error, :invalid_document_progress}
+        end
+
+      _ ->
+        {:error, :invalid_document_progress}
+    end
+  rescue
+    _ -> {:error, :invalid_document_progress}
+  end
+
+  defp prepare_with_document_draft(_path, _uid, s, r, id, {:ok, nil}),
+    do: prepare(s, r, id)
+
+  defp prepare_with_document_draft(
+         path,
+         uid,
+         s,
+         %{"op" => "progress.verify"} = r,
+         _id,
+         {:ok, plan}
+       )
+       when is_map(plan) do
+    with {:ok, %{"value" => packed} = row} <- read_record(path, uid, s, r["key"]),
+         true <- row["revision"] === r["expected_revision"],
+         true <- packed["byte_count"] === r["byte_count"] and packed["sha256"] === r["sha256"],
+         {:ok, _} <- Ipse.Extension.Collection.DocumentStage.decode_packed(packed),
+         {:ok, head} <- DocumentDraft.verified_reuse(plan.head, plan.tag, s["generation"] + 1),
+         next = put_document_draft(s, plan.head["id"], head) do
+      {:ok, next, %{}, %{}}
+    else
+      _ -> {:failed, "collection_document_draft_unconfirmed"}
+    end
+  end
+
+  defp prepare_with_document_draft(_path, _uid, s, %{"op" => "progress.retire"}, _id, {:ok, plan})
+       when is_map(plan) do
+    with {:ok, nil} <-
+           DocumentDraft.retire(
+             plan.head,
+             plan.tag,
+             plan.request,
+             [],
+             s["generation"] + 1,
+             DocumentMaintenance.metadata(s)["epoch"]
+           ) do
+      {:ok, put_document_draft(s, plan.head["id"], nil), %{}, %{}}
+    else
+      _ -> {:failed, "collection_document_draft_unconfirmed"}
+    end
+  end
+
+  defp prepare_with_document_draft(path, uid, s, r, id, {:ok, plan}) when is_map(plan) do
+    with {:ok, next, values, extra} <- prepare(s, r, id),
+         {:ok, head} <- document_draft_step(s, r, plan),
+         next = put_document_draft(next, plan.head["id"], head),
+         read = fn key -> changed_or_existing(path, uid, s, r["changes"], key) end,
+         true <- DocumentDraft.physical?(next, read) do
+      {:ok, next, values, extra}
+    else
+      {:failed, _} = failed -> failed
+      _ -> {:failed, "collection_document_draft_unconfirmed"}
+    end
+  end
+
+  defp document_draft_step(s, r, plan) do
+    generation = s["generation"] + 1
+
+    if plan.tag["action"] === "retire" do
+      DocumentDraft.retire(
+        plan.head,
+        plan.tag,
+        plan.request,
+        r["changes"],
+        generation,
+        DocumentMaintenance.metadata(s)["epoch"]
+      )
+    else
+      DocumentDraft.step(plan.head, plan.tag, plan.request, r["changes"], generation)
+    end
+  end
+
+  defp put_document_draft(state, id, nil) do
+    remaining = Map.delete(DocumentDraft.heads(state), id)
+
+    if map_size(remaining) == 0,
+      do: Map.delete(state, "document_drafts"),
+      else: Map.put(state, "document_drafts", remaining)
+  end
+
+  defp put_document_draft(state, id, head),
+    do: Map.put(state, "document_drafts", Map.put(DocumentDraft.heads(state), id, head))
+
+  defp changed_or_existing(path, uid, state, changes, key) do
+    case Enum.find(changes, &(&1["key"] === key)) do
+      nil -> read_record(path, uid, state, key)
+      %{"value" => nil} -> {:ok, nil}
+      %{"value" => value} -> {:ok, %{"value" => value}}
     end
   end
 
@@ -2249,7 +2506,41 @@ defmodule Ipse.Extension.Collection do
   end
 
   defp publish_encoded(path, uid, old, next, manifest, values, receipt, request, bytes, blocks) do
-    terminal = terminal_reserve(next, blocks)
+    case DocumentDraft.cleanup_reserve(next, bytes, blocks) do
+      {:ok, draft_reserve} ->
+        publish_encoded_reserved(
+          path,
+          uid,
+          old,
+          next,
+          manifest,
+          values,
+          receipt,
+          request,
+          bytes,
+          blocks,
+          draft_reserve
+        )
+
+      _ ->
+        capacity(old)
+    end
+  end
+
+  defp publish_encoded_reserved(
+         path,
+         uid,
+         old,
+         next,
+         manifest,
+         values,
+         receipt,
+         request,
+         bytes,
+         blocks,
+         draft_reserve
+       ) do
+    terminal = terminal_reserve(next, blocks) ++ draft_reserve
 
     cond do
       not valid_state?(next, next["project"]) or
@@ -2310,6 +2601,9 @@ defmodule Ipse.Extension.Collection do
             capacity(old)
 
           {:error, :transaction_capacity} ->
+            capacity(old)
+
+          {:error, :invalid_transaction_request} ->
             capacity(old)
 
           {:error, :transaction_filesystem_unsupported} ->
@@ -2527,9 +2821,14 @@ defmodule Ipse.Extension.Collection do
         if(Profile.selected() === Profile.documents() and DocumentMaintenance.present?(s),
           do: ["document_maintenance"],
           else: []
+        ) ++
+        if(Profile.selected() === Profile.documents() and DocumentDraft.present?(s),
+          do: ["document_drafts"],
+          else: []
         )
     ) and
       DocumentMaintenance.valid?(s) and
+      DocumentDraft.valid_absent_or_present?(s) and
       s["version"] === 3 and
       s["project"] == project and uint?(s["generation"]) and uint?(s["floor"]) and
       is_map(s["records"]) and
@@ -2575,7 +2874,8 @@ defmodule Ipse.Extension.Collection do
 
     is_map(imported) and is_map(staged) and
       map_size(s["operations"]) + map_size(imported) + map_size(staged) +
-        Migration.reserved_operation_slots(s) + DocumentMaintenance.reserved_slots(s) <=
+        Migration.reserved_operation_slots(s) + DocumentMaintenance.reserved_slots(s) +
+        DocumentDraft.reserved_operations(s) <=
         Profile.limit(:operations) and
       Enum.all?(imported, fn {id, receipt} -> id?(id) and Migration.receipt?(receipt) end) and
       Enum.all?(Map.keys(imported), &(not Map.has_key?(s["operations"], &1))) and

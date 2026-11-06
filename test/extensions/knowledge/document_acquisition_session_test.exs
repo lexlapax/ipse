@@ -2115,7 +2115,7 @@ defmodule Ipse.KnowledgeDocumentAcquisitionSessionTest do
   @tag :workspace_word_native
   @tag :workspace_word_document_epoch
   @tag timeout: 180_000
-  test "workspace Source after a maintenance fence preserves its content plan and epoch binding",
+  test "workspace Source after a maintenance fence binds native progress and its complete guarded request",
        c do
     run = open(c, "collection-documents")
     home = run.opts[:config][:home]
@@ -2185,9 +2185,20 @@ defmodule Ipse.KnowledgeDocumentAcquisitionSessionTest do
 
     assert finished["status"] === "ok", inspect(finished)
     assert [_ | _] = plans
-    assert Enum.all?(plans, &(&1["version"] === 4 and &1["maintenance_epoch"] === 1))
+    assert Enum.all?(plans, &(&1["version"] === 5 and &1["maintenance_epoch"] === 1))
     [plan_hash] = Enum.uniq(Enum.map(plans, & &1["plan_sha256"]))
     [epoch_binding] = Enum.uniq(Enum.map(plans, & &1["epoch_binding_sha256"]))
+    [progress_head] = Enum.uniq(Enum.map(plans, & &1["progress"]["head_id"]))
+    [progress_plan] = Enum.uniq(Enum.map(plans, & &1["progress"]["plan_sha256"]))
+
+    assert Enum.all?(plans, fn plan ->
+             progress = plan["progress"]
+
+             progress["status"] === "active" and progress["kind"] === "source" and
+               progress["maintenance_epoch"] === 1 and progress["unit"] === plan["unit"] and
+               progress["prepared"] === Enum.sort_by(plan["stages"], & &1["slot"])
+           end)
+
     head = capacity_head(run)["value"]
 
     assert {:ok, source_bytes} =
@@ -2206,6 +2217,8 @@ defmodule Ipse.KnowledgeDocumentAcquisitionSessionTest do
     assert bundle_hash === head["bundle_sha256"]
     assert bundle_hash === plan_hash
     refute bundle_hash === epoch_binding
+    refute bundle_hash === progress_plan
+    assert Enum.all?(plans, &(&1["progress"]["body_sha256"] === bundle_hash))
     assert {:ok, events} = Journal.load(run.dir, id)
 
     [guarded] =
@@ -2218,6 +2231,25 @@ defmodule Ipse.KnowledgeDocumentAcquisitionSessionTest do
     assert guarded["outcome"]["status"] === "ok"
     assert get_in(guarded, ["request", "workspace_guard", "bundle_sha256"]) === bundle_hash
     assert get_in(guarded, ["request", "request", "maintenance_epoch"]) === 1
+    assert get_in(guarded, ["request", "request", "progress", "action"]) === "finish"
+    assert get_in(guarded, ["request", "request", "progress", "head_id"]) === progress_head
+    wrapped = guarded["outcome"]["value"]
+
+    assert Enum.sort(Map.keys(wrapped)) ===
+             Enum.sort(~w(version operation_id request_sha256 result progress))
+
+    assert wrapped["version"] === 2 and wrapped["operation_id"] === guarded["operation_id"]
+    full_request_hash = JSON.digest([guarded["request"]])
+    assert wrapped["request_sha256"] === full_request_hash
+    assert wrapped["result"]["request_sha256"] === full_request_hash
+    refute full_request_hash === JSON.digest([Map.delete(guarded["request"], "workspace_guard")])
+    assert wrapped["progress"]["status"] === "finished"
+    assert wrapped["progress"]["head_id"] === progress_head
+    assert wrapped["progress"]["plan_sha256"] === progress_plan
+    assert wrapped["progress"]["body_sha256"] === bundle_hash
+    assert wrapped["progress"]["slots"] === [] and wrapped["progress"]["prepared"] === []
+    assert is_nil(wrapped["progress"]["active"])
+    assert Ipse.Extension.Actions.valid_result?(guarded)
 
     result =
       invoke(run, "query_selected", %{

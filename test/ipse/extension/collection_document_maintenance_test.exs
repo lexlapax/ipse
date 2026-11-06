@@ -250,11 +250,12 @@ defmodule Ipse.Extension.Collection.DocumentMaintenanceTest do
     assert {:ok, active} = call(c, %{"op" => "snapshot"})
 
     descriptor = %{
-      "version" => 3,
+      "version" => 4,
       "inline_bytes" => 8192,
       "write_parts" => 2,
       "maintenance_epoch" => 1,
-      "maintenance_status" => "active"
+      "maintenance_status" => "active",
+      "progress" => 1
     }
 
     assert active["document_store"] === descriptor
@@ -297,6 +298,22 @@ defmodule Ipse.Extension.Collection.DocumentMaintenanceTest do
     assert valid_snapshot.(legacy_snapshot)
     assert valid_snapshot.(active)
     assert valid_snapshot.(idle)
+
+    previous_descriptor =
+      idle["document_store"] |> Map.delete("progress") |> Map.put("version", 3)
+
+    assert valid_snapshot.(%{idle | "document_store" => previous_descriptor})
+
+    for bad <- [0, -1, 1.0, "1", nil, 2] do
+      refute valid_snapshot.(put_in(idle, ["document_store", "progress"], bad))
+    end
+
+    refute valid_snapshot.(%{
+             idle
+             | "document_store" => Map.delete(idle["document_store"], "progress")
+           })
+
+    refute valid_snapshot.(put_in(idle, ["document_store", "version"], 3))
 
     for bad <- [0, -1, 1.0, "1", nil] do
       refute valid_snapshot.(put_in(idle, ["document_store", "maintenance_epoch"], bad))

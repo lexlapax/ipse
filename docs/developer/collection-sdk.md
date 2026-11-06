@@ -392,8 +392,9 @@ At the original epoch zero, `document_store` keeps its version-one or version-tw
 shape. After an internal host maintenance fence it is exactly:
 
 ```elixir
-%{"version" => 3, "inline_bytes" => 8192, "write_parts" => 2,
-  "maintenance_epoch" => observed_epoch, "maintenance_status" => "idle"}
+%{"version" => 4, "inline_bytes" => 8192, "write_parts" => 2,
+  "maintenance_epoch" => observed_epoch, "maintenance_status" => "idle",
+  "progress" => 1}
 ```
 
 `observed_epoch` is a positive safe integer; status is `idle` or `active`. An
@@ -414,6 +415,58 @@ shapes remain valid historical records; their validation confers no new write.
 Internal maintenance has no public SDK command. The
 [storage walkthrough](knowledge-storage.md#fence-document-stages-before-metadata-maintenance)
 shows how Source and lexical Index continuations preserve this condition.
+The older version-three descriptor remains a valid epoch observation, but it
+does not advertise native progress and cannot start a nonzero-epoch Source or
+Projection operation.
+
+Source and Projection need more than a copied epoch: a caller can recompute a
+public token hash. At a positive epoch, their first actual publication,
+preparation or verified immutable reuse allocates an owner-bound native progress
+head in the same CAS as that effect. The head binds the actual Session/artifact,
+opening epoch, body/plan commitments, declared unit limit, completed unit,
+revision and transport stages. A copied receipt supplies no authority. Before
+resuming, the adapter inspects the actual head and compares the full receipt;
+each later effect checks its expected head ID, revision and unit atomically.
+
+The existing mutating inner request carries a closed `progress` tag. For example,
+the first Source unit adds:
+
+```elixir
+%{"version" => 1, "action" => "start", "kind" => "source",
+  "plan_sha256" => plan_hash, "body_sha256" => original_sha256,
+  "unit_limit" => planned_units}
+```
+
+Later `continue` or terminal `finish` tags contain exactly `version`, `action`,
+`head_id`, `revision` and `unit`. Tagged responses use wrapper version two:
+`operation_id`, `request_sha256`, `result` and `progress`. The hash binds the
+complete outer `collection.store` SDK request, including any source guard;
+historical version-one responses retain their original contract. The native
+receipt contains `version`, `status`, `head_id`, `revision`, `unit`,
+`maintenance_epoch`, `retirement_epoch`, `slots`, `active`, `prepared`,
+`plan_sha256`, `body_sha256`, `unit_limit` and `kind`. A revision may jump after
+another writer's publication. Partial transport advances the native revision
+and active offset, while only completed publication, preparation or verified
+reuse advances the logical unit. Terminal commit consumes the head and its
+reservations together with the exact prepared metadata stages.
+
+Immutable reuse costs an actual `value.verify` mutation. It checks the current
+physical revision and decoded logical byte count/hash under the native lock;
+a matching read alone cannot advance progress. Include this operation, the
+tagged request, source guard and full version-two response in the effect and
+transport budgets. The shared C helper returns the native receipt on both known
+complete and partial results; unknown effects stop without a replay token.
+
+At most eight heads can be live. Source reserves three of the sixteen transport
+slots and Projection reserves two, including when its first effect needs no
+stage. `stage.available` reports unreserved slots; `progress.inspect` reports
+only the actual owner's head. All competing allocations enforce the reservations
+under the native lock. Count, encoded metadata, retained operation IDs or native
+allocation can refuse an otherwise valid operation; a local preflight is no
+reservation. Native owner-bound retirement reduces exact stages under one frozen
+current idle epoch, but Source and Projection expose no public abort command yet.
+Do not remove or rewrite their metadata to free a slot. General garbage
+collection, adoption and recovery remain separate work.
 
 For a metadata inventory, the same document read grant accepts `value.index`.
 Start at a checked snapshot generation with a null cursor:

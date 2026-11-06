@@ -2,7 +2,7 @@ defmodule Ipse.Extension.CollectionStore do
   @moduledoc "Explicit operator-bound project storage, separate from signed-note admission."
   alias Ipse.{JSON, Extension}
   alias Ipse.Extension.{ProjectIdentity, Registry}
-  alias Ipse.Extension.Collection.{DocumentSourceUse, DocumentStage, Profile}
+  alias Ipse.Extension.Collection.{DocumentDraft, DocumentSourceUse, DocumentStage, Profile}
   @error {:error, :document_store_refused}
   @project_fields ~w(version project_id worktree_id scope root primary_root common_directory binding_sha256)
   @binding_fields ~w(kind version namespace profile operator_binding project session_id identity_sha256 request_sha256)
@@ -197,6 +197,7 @@ defmodule Ipse.Extension.CollectionStore do
                             "invocation_id" => intent["parent_invocation_id"]
                           },
                           [
+                            sdk_request_sha256: JSON.digest([intent["request"]]),
                             publication_guard: fn changes, read ->
                               Ipse.Extension.Collection.WorkspaceDocumentGuard.check(
                                 context,
@@ -499,10 +500,20 @@ defmodule Ipse.Extension.CollectionStore do
             (mutating?(request) and value == %{"code" => "document_store_deadline_unavailable"})
 
         status in ~w(ok conflict) ->
-          exact?(value, ~w(version operation_id request_sha256 result)) and value["version"] === 1 and
-            value["operation_id"] == operation_id and
-            value["request_sha256"] == JSON.digest([request]) and
-            result?(request["request"], status, value["result"])
+          if Map.has_key?(request["request"], "progress") do
+            status === "ok" and
+              exact?(value, ~w(version operation_id request_sha256 result progress)) and
+              value["version"] === 2 and value["operation_id"] === operation_id and
+              value["request_sha256"] === JSON.digest([request]) and
+              result?(request["request"], status, value["result"]) and
+              progress_result?(request["request"], value, operation_id)
+          else
+            exact?(value, ~w(version operation_id request_sha256 result)) and
+              value["version"] === 1 and
+              value["operation_id"] == operation_id and
+              value["request_sha256"] == JSON.digest([request]) and
+              result?(request["request"], status, value["result"])
+          end
 
         true ->
           false
@@ -574,6 +585,18 @@ defmodule Ipse.Extension.CollectionStore do
           (exact?(v, ~w(version project generation floor floor_anchor document_store)) and
              summary?(Map.delete(v, "document_store")) and
              document_descriptor?(v["document_store"]))
+
+      r["op"] == "stage.available" ->
+        exact?(v, ~w(version project generation floor floor_anchor available_slots)) and
+          summary?(Map.delete(v, "available_slots")) and is_list(v["available_slots"]) and
+          Enum.all?(v["available_slots"], &(is_integer(&1) and &1 in 0..15)) and
+          v["available_slots"] === Enum.sort(Enum.uniq(v["available_slots"]))
+
+      r["op"] == "progress.inspect" ->
+        exact?(v, ~w(version project generation floor floor_anchor progress)) and
+          summary?(Map.delete(v, "progress")) and DocumentDraft.receipt?(v["progress"]) and
+          v["progress"]["head_id"] === r["head_id"] and
+          v["progress"]["revision"] <= v["generation"]
 
       r["op"] == "stage.list" ->
         exact?(v, ~w(version project generation floor floor_anchor stages)) and
@@ -692,6 +715,112 @@ defmodule Ipse.Extension.CollectionStore do
         v["generation"] == r["generation"] + 1 and JSON.safe_uint?(v["floor"]) and
         v["floor"] <= v["generation"] and JSON.sha256?(v["request_sha256"])
 
+  defp progress_result?(request, value, operation_id) do
+    tag = request["progress"]
+    progress = value["progress"]
+    action = tag["action"]
+
+    DocumentDraft.receipt?(progress) and
+      progress["revision"] === value["result"]["generation"] and
+      value["result"]["request_sha256"] === value["request_sha256"] and
+      progress["head_id"] === if(action === "start", do: operation_id, else: tag["head_id"]) and
+      (action === "start" or progress["revision"] > tag["revision"]) and
+      (action !== "start" or
+         (progress["kind"] === tag["kind"] and progress["plan_sha256"] === tag["plan_sha256"] and
+            progress["body_sha256"] === tag["body_sha256"] and
+            progress["unit_limit"] === tag["unit_limit"])) and
+      (action !== "start" or progress["unit"] === progress_delta(request)) and
+      (action !== "continue" or progress["unit"] === tag["unit"] + progress_delta(request)) and
+      (action !== "finish" or
+         (progress["status"] === "finished" and progress["unit"] === tag["unit"])) and
+      (action !== "retire" or progress["status"] in ~w(retiring retired)) and
+      (action not in ~w(start continue) or progress["status"] === "active") and
+      progress_epoch_matches?(request, progress) and progress_effect_matches?(request, progress)
+  end
+
+  defp progress_epoch_matches?(%{"progress" => %{"action" => "retire"}} = request, progress),
+    do:
+      progress["retirement_epoch"] === request["maintenance_epoch"] and
+        progress["maintenance_epoch"] <= request["maintenance_epoch"]
+
+  defp progress_epoch_matches?(request, progress),
+    do: progress["maintenance_epoch"] === request["maintenance_epoch"]
+
+  defp progress_effect_matches?(%{"op" => op, "progress" => %{"action" => action}}, progress)
+       when op in ~w(value.put_inline value.verify) and action in ~w(start continue),
+       do:
+         is_nil(progress["active"]) and
+           (action !== "start" or progress["prepared"] === [])
+
+  defp progress_effect_matches?(%{"op" => "value.prepare_inline"} = request, progress) do
+    prepared_effect_matches?(request, progress)
+  end
+
+  defp progress_effect_matches?(%{"op" => "value.write_parts"} = request, progress) do
+    action = request["progress"]["action"]
+    offset = request["offset"] + Enum.sum(Enum.map(request["data"], &byte_size/1))
+
+    action in ~w(start continue) and request["slot"] in progress["slots"] and
+      cond do
+        offset < request["byte_count"] ->
+          expected =
+            request
+            |> Map.take(~w(slot epoch key expected_revision byte_count sha256 publish))
+            |> Map.put("offset", offset)
+
+          progress["active"] === expected and
+            (action !== "start" or progress["prepared"] === [])
+
+        request["publish"] ->
+          is_nil(progress["active"]) and
+            Enum.all?(progress["prepared"], &(&1["slot"] !== request["slot"])) and
+            (action !== "start" or progress["prepared"] === [])
+
+        true ->
+          prepared_effect_matches?(request, progress)
+      end
+  end
+
+  defp progress_effect_matches?(%{"op" => "commit", "progress" => %{"action" => "finish"}}, _),
+    do: true
+
+  defp progress_effect_matches?(
+         %{"op" => "value.abort", "progress" => %{"action" => "retire"}} = request,
+         progress
+       ) do
+    (is_nil(progress["active"]) or progress["active"]["slot"] !== request["slot"]) and
+      Enum.all?(progress["prepared"], &(&1["slot"] !== request["slot"]))
+  end
+
+  defp progress_effect_matches?(
+         %{"op" => "progress.retire", "progress" => %{"action" => "retire"}},
+         progress
+       ),
+       do: progress["status"] === "retired"
+
+  defp progress_effect_matches?(_, _), do: false
+
+  defp prepared_effect_matches?(request, progress) do
+    action = request["progress"]["action"]
+    ref = Map.take(request, ~w(slot epoch))
+
+    action in ~w(start continue) and is_nil(progress["active"]) and
+      ref in progress["prepared"] and
+      (action !== "start" or progress["prepared"] === [ref])
+  end
+
+  defp progress_delta(%{"op" => "value.write_parts"} = r) do
+    if r["offset"] + Enum.sum(Enum.map(r["data"], &byte_size/1)) < r["byte_count"],
+      do: 0,
+      else: 1
+  end
+
+  defp progress_delta(%{"op" => op})
+       when op in ~w(value.put_inline value.prepare_inline value.verify),
+       do: 1
+
+  defp progress_delta(_), do: -1
+
   defp summary?(v),
     do:
       exact?(v, ~w(version project generation floor floor_anchor)) and v["version"] === 3 and
@@ -699,7 +828,40 @@ defmodule Ipse.Extension.CollectionStore do
         JSON.safe_uint?(v["floor"]) and
         v["floor"] <= v["generation"] and (is_nil(v["floor_anchor"]) or id?(v["floor_anchor"]))
 
-  defp normalize({status, result}, intent) when status in [:ok, :conflict] do
+  defp normalize({:ok, %{"document_progress" => progress} = result}, intent) do
+    value = %{
+      "version" => 2,
+      "operation_id" => intent["operation_id"],
+      "request_sha256" => JSON.digest([intent["request"]]),
+      "result" => Map.delete(result, "document_progress"),
+      "progress" => progress
+    }
+
+    if valid_outcome?(intent["request"], "ok", value, intent["operation_id"]),
+      do: {:ok, value},
+      else: :unknown
+  end
+
+  defp normalize({:conflict, result}, intent) do
+    if Map.has_key?(intent["request"]["request"], "progress"),
+      do: failed(),
+      else: normalize_legacy(:conflict, result, intent)
+  end
+
+  defp normalize({:ok, result}, intent), do: normalize_legacy(:ok, result, intent)
+
+  defp normalize(:unknown, _), do: :unknown
+  defp normalize({:unknown, _}, _), do: :unknown
+
+  defp normalize({:error, :collection_deadline_fence_unavailable}, intent) do
+    if mutating?(intent["request"]),
+      do: {:failed, %{"code" => "document_store_deadline_unavailable"}},
+      else: failed()
+  end
+
+  defp normalize(_, _), do: failed()
+
+  defp normalize_legacy(status, result, intent) do
     value = %{
       "version" => 1,
       "operation_id" => intent["operation_id"],
@@ -712,16 +874,6 @@ defmodule Ipse.Extension.CollectionStore do
       else: :unknown
   end
 
-  defp normalize(:unknown, _), do: :unknown
-  defp normalize({:unknown, _}, _), do: :unknown
-
-  defp normalize({:error, :collection_deadline_fence_unavailable}, intent) do
-    if mutating?(intent["request"]),
-      do: {:failed, %{"code" => "document_store_deadline_unavailable"}},
-      else: failed()
-  end
-
-  defp normalize(_, _), do: failed()
   defp failed, do: {:failed, %{"code" => "document_store_refused"}}
 
   defp selected?(identity),
@@ -742,6 +894,14 @@ defmodule Ipse.Extension.CollectionStore do
          descriptor["version"] === 3 and descriptor["inline_bytes"] === 8192 and
          descriptor["write_parts"] === 2 and JSON.safe_uint?(descriptor["maintenance_epoch"]) and
          descriptor["maintenance_epoch"] > 0 and
+         descriptor["maintenance_status"] in ~w(idle active)) or
+      (exact?(
+         descriptor,
+         ~w(version inline_bytes write_parts maintenance_epoch maintenance_status progress)
+       ) and
+         descriptor["version"] === 4 and descriptor["inline_bytes"] === 8192 and
+         descriptor["write_parts"] === 2 and descriptor["progress"] === 1 and
+         JSON.safe_uint?(descriptor["maintenance_epoch"]) and descriptor["maintenance_epoch"] > 0 and
          descriptor["maintenance_status"] in ~w(idle active))
   end
 

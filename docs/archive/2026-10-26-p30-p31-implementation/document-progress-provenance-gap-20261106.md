@@ -6,6 +6,11 @@ actual focused results. Current limits belong to the [storage chapter](../../dev
 and [plan](../../plan.md#p31-usable-knowledge-and-prompt-assistance).
 No native experiment, model call or original-notebook access ran for this review.
 
+The later [native progress increment](document-native-progress-20261106.md)
+implements an independent opening/progress anchor and records its actual
+native and Session controls. It supersedes the repair status below without
+changing this historical counterexample or qualifying general GC and migration.
+
 ## Counterexample
 
 A Source put at epoch zero can finish its first immutable unit and return a
