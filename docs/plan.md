@@ -1350,6 +1350,11 @@ the passing snapshot and need their own qualification.
 Required positive integration, lifecycle and fault controls remain open; focused
 passes never alter a historical aggregate.
 
+A [later current-source run](archive/2026-10-26-p30-p31-implementation/full-suite-interrupted-20261106.md)
+was stopped after three failures, including temporary quota exhaustion and a
+nested-test completion-marker defect. The marker repair passes its separate
+focused native control; a fresh complete current-source baseline remains open.
+
 | Package | Output and prerequisites |
 | --- | --- |
 | P30A | Versioned neutral text contract and pure OpenAI/System One wire subsets implemented; synthetic fixtures and finite experiment/benefit criteria prepared; fixed foundation baseline and incremental audit pass. [Developer contract](developer/decisions.md) |
