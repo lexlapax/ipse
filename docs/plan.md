@@ -111,6 +111,11 @@ own job; draft admission requires both complete matrices. Fifteen focused releas
 controls pass. Hosted execution remains open, with no reduced coverage or longer
 job deadlines.
 
+[Bounded native terminal buffering](archive/2026-10-26-p30-p31-implementation/operator-buffered-input-20261106.md)
+addresses per-byte polling after hosted macOS input controls timed out. Twenty-two
+native and nine existing host/input controls pass on Linux, retaining the same
+input ceiling and deadlines. A new hosted macOS result remains required.
+
 A [schema-validator update](archive/2026-10-26-p30-p31-implementation/schema-validator-security-20261104.md)
 replaces the newly retired JSONSchex version with 0.11.1 and its required pointer
 dependency. The closed schema subset remains unchanged; focused checks and the

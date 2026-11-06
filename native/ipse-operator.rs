@@ -569,10 +569,17 @@ pub(crate) mod unix {
             let mut pending = Vec::new();
             loop {
                 io_ready_watch(control, guardian, tty, 1, deadline, watched)?;
-                let mut byte = [0; 1];
-                match tty.read(&mut byte) {
+                let mut input = [0; 4096];
+                match tty.read(&mut input) {
                     Ok(0) => return Err(Failure::Cancelled),
-                    Ok(_) => match byte[0] {
+                    Ok(count) => {
+                      let mut echo = Vec::new();
+                      for value in input[..count].iter().copied() {
+                        if matches!(value, b'\r' | b'\n' | 3 | 4 | 8 | 21 | 127) {
+                            send_watch(control, guardian, tty, &echo, deadline, watched)?;
+                            echo.clear();
+                        }
+                        match value {
                         b'\r' | b'\n' => {
                             if std::str::from_utf8(&text).is_err() {
                                 return Err(Failure::Refused("invalid operator input UTF-8"));
@@ -609,16 +616,22 @@ pub(crate) mod unix {
                             pending.push(value);
                             match std::str::from_utf8(&pending) {
                                 Ok(_) => {
-                                    send_watch(control, guardian, tty, &escaped_echo(&pending), deadline, watched)?;
+                                    echo.extend_from_slice(&escaped_echo(&pending));
                                     pending.clear();
                                 },
                                 Err(e) if e.error_len().is_some() || pending.len() > 4 => {
-                                    send_watch(control, guardian, tty, b"[invalid UTF-8]", deadline, watched)?;
+                                    echo.extend_from_slice(b"[invalid UTF-8]");
                                     pending.clear();
                                 },
                                 Err(_) => {},
                             }
                         }
+                        }
+                      }
+                      // Bound work between owner/deadline checks to one input
+                      // chunk; output retains send_watch's checked 4 KiB writes.
+                      // Bytes following a completed line are not a new answer.
+                      send_watch(control, guardian, tty, &echo, deadline, watched)?;
                     },
                     Err(e) if matches!(e.kind(), std::io::ErrorKind::Interrupted | std::io::ErrorKind::WouldBlock) => {},
                     Err(_) => return Err(Failure::Refused("operator terminal input lost")),
@@ -1349,6 +1362,26 @@ mod tests {
             p.display(b"Refused input> "); p.displayed(); text.push(b'\n');
             let (writer, drain, stop) = send_and_drain(&p, text);
             assert_eq!(p.frame().0, b'e'); assert_eq!(p.frame(), (b'c', NONCE.to_vec()));
+            assert_eq!(p.frame(), (b'R', NONCE.to_vec())); p.done();
+            writer.join().unwrap(); stop.store(true, std::sync::atomic::Ordering::SeqCst); drain.join().unwrap();
+            assert_eq!(terminal_state(&p.tty), original);
+        }
+    }
+    #[test]
+    fn v2_pasted_edits_and_unicode_preserve_one_line() {
+        let mut edited = vec![b'a'; 4095];
+        edited.extend_from_slice("日\x7fé\n".as_bytes());
+        let mut expected = vec![b'a'; 4095];
+        expected.extend_from_slice("é".as_bytes());
+        for (text, expected) in [
+            (edited, expected),
+            (b"discard\x15kept\nsecond line\n".to_vec(), b"kept".to_vec()),
+        ] {
+            let mut p = Probe::v2(); let original = terminal_state(&p.tty);
+            p.display(b"Pasted edit> "); p.displayed();
+            let (writer, drain, stop) = send_and_drain(&p, text);
+            let mut receipt = NONCE.to_vec(); receipt.extend_from_slice(&expected);
+            assert_eq!(p.frame(), (b'i', receipt));
             assert_eq!(p.frame(), (b'R', NONCE.to_vec())); p.done();
             writer.join().unwrap(); stop.store(true, std::sync::atomic::Ordering::SeqCst); drain.join().unwrap();
             assert_eq!(terminal_state(&p.tty), original);
