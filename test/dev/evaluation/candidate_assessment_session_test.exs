@@ -320,6 +320,26 @@ defmodule Ipse.Development.Evaluation.CandidateAssessmentSessionTest do
     end
   end
 
+  test "assessment projection refuses changed and duplicated choice alternatives" do
+    f = fixture()
+    {:ok, p} = S.prepare(f.declaration, f.sha, f.id, f.load, f.options)
+    {events, action, _} = delivery(p, :inline)
+    {before, after_policy} = policies(action)
+
+    for choices <- [
+          ~w(keep_baseline defer_candidate),
+          ~w(keep_baseline),
+          ~w(defer_candidate defer_candidate),
+          ~w(defer_candidate keep_baseline publish)
+        ] do
+      changed = put_in(action, ["request", "questions", Access.at(0), "choices"], choices)
+
+      assert_raise ExUnit.AssertionError, fn ->
+        S.result_row(p, replace(events, action, changed), before, after_policy, 110)
+      end
+    end
+  end
+
   test "cross invocation changed result and withdrawn admission remain unverified" do
     f = fixture()
     {:ok, p} = S.prepare(f.declaration, f.sha, f.id, f.load, f.options)
@@ -500,7 +520,7 @@ defmodule Ipse.Development.Evaluation.CandidateAssessmentSessionTest do
         %{
           "id" => "candidate",
           "type" => "choice",
-          "choices" => ~w(keep_baseline defer_candidate),
+          "choices" => ~w(defer_candidate keep_baseline),
           "instructions" => "rubric"
         }
       ]
@@ -616,7 +636,7 @@ defmodule Ipse.Development.Evaluation.CandidateAssessmentSessionTest do
             "candidates" => [%{"id" => "candidate", "input" => Jason.encode!(p.input)}]
           }),
         "questions" => [
-          %{"choices" => ~w(keep_baseline defer_candidate), "instructions" => "rubric"}
+          %{"choices" => ~w(defer_candidate keep_baseline), "instructions" => "rubric"}
         ]
       },
       "outcome" => %{"status" => "ok"}

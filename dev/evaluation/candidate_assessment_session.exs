@@ -310,7 +310,7 @@ defmodule Ipse.Development.Evaluation.CandidateAssessmentSession do
         assert [%{"id" => "candidate", "input" => frozen}] = input["candidates"]
         assert Jason.decode!(frozen) === p.input
         [question] = action["request"]["questions"]
-        assert question["choices"] === ~w(keep_baseline defer_candidate)
+        assert question["choices"] === ~w(defer_candidate keep_baseline)
         assert JSON.sha256(question["instructions"]) === p.decision_route["rubric_sha256"]
         operation = after_policy["operations"][action["operation_id"]]
 

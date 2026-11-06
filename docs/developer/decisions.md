@@ -370,6 +370,31 @@ these joins before enabling an actual case:
 mix test test/dev/evaluation/candidate_assessment_test.exs test/dev/evaluation/candidate_assessment_session_test.exs
 ```
 
+Exercise the complete materialization path separately with the opt-in synthetic
+recipe. Build the normal bundles first, then reserve the native terminal/Input
+lane; this control must not overlap another operator review:
+
+```sh
+MIX_ENV=test HEX_OFFLINE=1 ./dev/build.sh
+IPSE_RUN_CANDIDATE_ASSESSMENT_PROTOCOL=1 IPSE_KEEP_SHADOW_FIXTURES=1 \
+  MIX_ENV=test HEX_OFFLINE=1 mix test \
+  test/extensions/knowledge/candidate_assessment_evaluation_session_test.exs \
+  --max-cases 1 --trace
+```
+
+The recipe reuses the ordinary experiment CLI and main-tool capture fixture in
+a fresh private cohort. Its first phase closes the source and freezes the actual
+candidate, baseline, routes, policy and input commitments. The second phase uses
+that same one-call grant and loopback endpoint through the real Session/native
+approval owner. It writes and reopens the first-row commitment before invoking
+the scorer. Scripted labels explicitly say `independent:false`, so the expected
+scoring result is refusal, after the label loader actually runs. A known released
+row and this refusal establish materialization and label-admission behavior;
+they establish neither independent labels nor a beneficial or rejected strategy.
+Seven synthetic main requests and one decision request span the two phases.
+Matched whole-task latency and cost remain null. Private failure roots are
+preserved for inspection; the keep flag also preserves a successful root.
+
 For a frozen selection study, use
 `dev/evaluation/selection_experiment.exs` to bind the source, runtime, artifact,
 routes, policy, finite shared limits, case inputs and complete engine-free

@@ -22,6 +22,7 @@ pending_deadline_expired? = scenario == "save_managed_approval_pending_deadline_
 input_source_lost? = scenario == "save_managed_approval_input_source_lost"
 unknown? = scenario == "save_managed_approval_unknown"
 mixed? = scenario == "save_managed_approval_mixed_v4_v7"
+evaluation_seed? = scenario == "save_managed_approval_candidate_evaluation_seed"
 home = Path.join(root, "home")
 cwd = Path.join(root, "project")
 dir = Path.join(root, "sessions")
@@ -502,6 +503,27 @@ namespace = :sys.get_state(seed).config.semantic_admission["pin"]["namespace"]
 Agent.update(assessed_key, fn _ -> key end)
 refute Enum.any?(Agent.get(calls, & &1), &(elem(&1, 0) == :decision))
 assert :ok = Ipse.Session.close_confirmed(seed)
+
+if evaluation_seed? do
+  Code.require_file("../../dev/evaluation/candidate_assessment_recipe.exs", __DIR__)
+
+  Ipse.Development.Evaluation.CandidateAssessmentRecipe.freeze(
+    root,
+    runtime,
+    seed_id,
+    key,
+    seed_write["operation_id"],
+    config_path,
+    base
+  )
+
+  assert Enum.count(Agent.get(calls, & &1), &(elem(&1, 0) === :main)) === 5
+  refute Enum.any?(Agent.get(calls, & &1), &(elem(&1, 0) === :decision))
+  :gen_tcp.close(listener)
+  Task.shutdown(server, :brutal_kill)
+  IO.puts("CANDIDATE_ASSESSMENT_SEED_FROZEN")
+  System.halt(0)
+end
 
 if pending_deadline_seed? do
   collection = Ipse.Extension.SemanticAdmission.collection_root(home)
