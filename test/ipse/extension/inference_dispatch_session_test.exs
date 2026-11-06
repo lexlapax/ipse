@@ -431,6 +431,218 @@ defmodule Ipse.Extension.InferenceDispatchSessionTest do
     assert {:ok, _} = Session.Saved.restore(events, id)
   end
 
+  @tag :registered_budget_store_refusal
+  test "a registered embedding refused before the service slot keeps a budget record and reopens idle",
+       c do
+    {:ok, listener} = :gen_tcp.listen(0, [:binary, active: false, ip: {127, 0, 0, 1}])
+    on_exit(fn -> :gen_tcp.close(listener) end)
+    {:ok, {_, port}} = :inet.sockname(listener)
+    base = "http://127.0.0.1:#{port}"
+    {_metadata, pin} = Ipse.Test.OllamaMetadataFixture.scan()
+
+    config =
+      config(c, base)
+      |> Map.put(:timeout_ms, 60_000)
+      |> Map.put(:budget, %{
+        "version" => 1,
+        "max_requests" => 2,
+        "max_input_tokens" => 2_048,
+        "reserve_input_tokens" => 1_024
+      })
+      |> put_in([:embedding_profiles, "search", "timeout_ms"], 60_000)
+      |> put_in([:embedding_profiles, "search", "ollama_model_pin"], pin)
+
+    File.write!(Path.join(c.home, "inference-services"), "synthetic obstruction", [:exclusive])
+
+    {:ok, pid} =
+      DynamicSupervisor.start_child(
+        Ipse.Sessions,
+        {Session, config: config, cwd: c.cwd, state_dir: c.sessions, subscriber: self()}
+      )
+
+    on_exit(fn -> if Process.alive?(pid), do: Session.close_confirmed(pid) end)
+    id = Session.info(pid).id
+    exports = Session.exports(pid)
+
+    request = %{
+      "op" => "embedding.create",
+      "version" => 1,
+      "profile" => "search",
+      "inputs" => ["Synthetic input"],
+      "timeout_ms" => 120_000
+    }
+
+    assert :ok =
+             Session.invoke_export(pid, :command, "ext__probe__infer", %{"request" => request})
+
+    assert_receive {:ipse, ^pid, {:done, :ok}}, 15_000
+
+    assert %{"status" => "failed", "value" => %{"code" => "embedding_request_failed"}} =
+             Session.info(pid).extension_result["value"]
+
+    assert {:error, :timeout} = :gen_tcp.accept(listener, 1_000)
+
+    {:ok, before} = Ipse.Journal.load(c.sessions, id)
+    assert {:ok, _} = Session.Saved.restore(before, id)
+
+    assert [_] =
+             Enum.filter(
+               before,
+               &(&1["type"] == "request_admitted" and &1["operation"] == "embedding")
+             )
+
+    assert [intent] =
+             Enum.filter(
+               before,
+               &(&1["type"] == "extension_action_intent" and
+                   get_in(&1, ["request", "op"]) == "embedding.create")
+             )
+
+    assert get_in(intent, ["effect_binding", "execution", "ollama_model_pin"]) === pin
+    assert get_in(intent, ["effect_binding", "execution", "timeout_ms"]) === 60_000
+
+    assert [%{"outcome" => "failed", "finality" => "partial"}] =
+             Enum.filter(
+               before,
+               &(&1["type"] == "request_finished" and &1["operation"] == "embedding")
+             )
+
+    refute Enum.any?(before, &(&1["type"] == "inference_dispatch_intent"))
+
+    budget =
+      Path.join([c.sessions, "budgets", id <> ".jsonl"])
+      |> File.stream!()
+      |> Enum.map(&Jason.decode!/1)
+
+    assert Enum.frequencies_by(budget, & &1["type"]) == %{"budget" => 1, "reserved" => 1}
+    assert :ok = Session.close_confirmed(pid)
+    {:ok, closed} = Ipse.Journal.load(c.sessions, id)
+    assert {:ok, _} = Session.Saved.restore(closed, id)
+
+    {:ok, idle} =
+      DynamicSupervisor.start_child(
+        Ipse.Sessions,
+        {Session, config: config, cwd: c.cwd, state_dir: c.sessions, id: id, subscriber: self()}
+      )
+
+    on_exit(fn -> if Process.alive?(idle), do: Session.close_confirmed(idle) end)
+    assert Session.info(idle).phase == :idle
+    assert Session.exports(idle) == exports
+    assert :ok = Session.close_confirmed(idle)
+    {:ok, after_idle} = Ipse.Journal.load(c.sessions, id)
+    assert {:ok, _} = Session.Saved.restore(after_idle, id)
+
+    assert Enum.count(
+             after_idle,
+             &(&1["type"] == "request_admitted" and &1["operation"] == "embedding")
+           ) == 1
+
+    refute Enum.any?(after_idle, &(&1["type"] == "inference_dispatch_intent"))
+    assert {:error, :timeout} = :gen_tcp.accept(listener, 1_000)
+  end
+
+  @tag :unregistered_budget_compatibility
+  test "an unregistered embedding keeps its budgeted provider and idle behavior", c do
+    budgeted_embedding(c, false)
+  end
+
+  @tag :registered_budget_positive
+  test "a registered embedding reserves once, dispatches once and reopens idle", c do
+    budgeted_embedding(c, true)
+  end
+
+  defp budgeted_embedding(c, registered?) do
+    embedding =
+      Jason.encode!(%{
+        "model" => "fixture",
+        "embeddings" => [[1.0, 0.5]],
+        "prompt_eval_count" => 1
+      })
+
+    {base, server} = ProviderFixture.sequence([embedding])
+    on_exit(fn -> if Process.alive?(server.pid), do: Process.exit(server.pid, :kill) end)
+
+    config =
+      config(c, base)
+      |> Map.put(:budget, %{
+        "version" => 1,
+        "max_requests" => 2,
+        "max_input_tokens" => 2_048,
+        "reserve_input_tokens" => 1_024
+      })
+
+    config = if registered?, do: config, else: Map.put(config, :inference_services, %{})
+    if registered?, do: assert({:ok, _} = InferenceSlots.status(config, cwd: c.cwd))
+
+    {:ok, pid} =
+      DynamicSupervisor.start_child(
+        Ipse.Sessions,
+        {Session, config: config, cwd: c.cwd, state_dir: c.sessions, subscriber: self()}
+      )
+
+    on_exit(fn -> if Process.alive?(pid), do: Session.close_confirmed(pid) end)
+    id = Session.info(pid).id
+    exports = Session.exports(pid)
+
+    request = %{
+      "op" => "embedding.create",
+      "version" => 1,
+      "profile" => "search",
+      "inputs" => ["Synthetic input"],
+      "timeout_ms" => 3_000
+    }
+
+    assert :ok =
+             Session.invoke_export(pid, :command, "ext__probe__infer", %{"request" => request})
+
+    assert_receive {:ipse, ^pid, {:done, :ok}}, 15_000
+    assert %{"status" => "ok"} = Session.info(pid).extension_result["value"]
+    assert [_] = Task.await(server, 10_000)
+    assert :ok = Session.close_confirmed(pid)
+    {:ok, closed} = Ipse.Journal.load(c.sessions, id)
+    assert {:ok, _} = Session.Saved.restore(closed, id)
+
+    assert Enum.count(closed, &(&1["type"] == "inference_dispatch_intent")) ==
+             if(registered?, do: 1, else: 0)
+
+    assert [%{"outcome" => "completed"}] =
+             Enum.filter(
+               closed,
+               &(&1["type"] == "request_finished" and &1["operation"] == "embedding")
+             )
+
+    budget =
+      Path.join([c.sessions, "budgets", id <> ".jsonl"])
+      |> File.stream!()
+      |> Enum.map(&Jason.decode!/1)
+
+    assert budget
+           |> Enum.frequencies_by(& &1["type"])
+           |> Map.take(~w(budget reserved dispatch_intent settled)) == %{
+             "budget" => 1,
+             "reserved" => 1,
+             "dispatch_intent" => 1,
+             "settled" => 1
+           }
+
+    {:ok, idle} =
+      DynamicSupervisor.start_child(
+        Ipse.Sessions,
+        {Session, config: config, cwd: c.cwd, state_dir: c.sessions, id: id, subscriber: self()}
+      )
+
+    on_exit(fn -> if Process.alive?(idle), do: Session.close_confirmed(idle) end)
+    assert Session.info(idle).phase == :idle and Session.exports(idle) == exports
+    assert :ok = Session.close_confirmed(idle)
+    {:ok, after_idle} = Ipse.Journal.load(c.sessions, id)
+    assert {:ok, _} = Session.Saved.restore(after_idle, id)
+
+    assert Enum.count(
+             after_idle,
+             &(&1["type"] == "request_admitted" and &1["operation"] == "embedding")
+           ) == 1
+  end
+
   test "actual independent SDK text, embedding and decision share the registered endpoint and publish only settled results",
        c do
     text =
@@ -722,7 +934,7 @@ defmodule Ipse.Extension.InferenceDispatchSessionTest do
     end
   end
 
-  test "a different project's actual SDK embedding waits for main HTTP without reserving its budget",
+  test "a different project's actual SDK embedding reserves its budget while waiting for main HTTP",
        c do
     {:ok, listener} =
       :gen_tcp.listen(0, [:binary, active: false, reuseaddr: true, ip: {127, 0, 0, 1}])
@@ -812,7 +1024,8 @@ defmodule Ipse.Extension.InferenceDispatchSessionTest do
         assert_receive {:ipse, ^sdk, {:inference_service_status, %{"state" => "waiting"}}}, 5000
         assert {:error, :timeout} = :gen_tcp.accept(listener, 100)
         assert {:ok, budget} = Ipse.Usage.Budget.snapshot(:sys.get_state(sdk).config)
-        assert budget["request_count"] == 0
+        assert budget["request_count"] == 1
+        assert budget["unsettled_count"] == 1
         send(handler, :respond)
         assert_receive {:actual_dispatch_http, :embedding, _, second}, 5000
         assert second =~ "POST /api/embed"
@@ -906,7 +1119,8 @@ defmodule Ipse.Extension.InferenceDispatchSessionTest do
         assert_receive {:ipse, ^pid, {:done, :ok}}, 5000
         assert {:error, :timeout} = :gen_tcp.accept(listener, 100)
         assert {:ok, budget} = Ipse.Usage.Budget.snapshot(:sys.get_state(pid).config)
-        assert budget["request_count"] == 0
+        assert budget["request_count"] == 1
+        assert budget["unsettled_count"] == 1
         assert {:ok, events} = Ipse.Journal.load(c.sessions, Session.info(pid).id)
 
         refute Enum.any?(

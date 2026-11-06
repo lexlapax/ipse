@@ -88,6 +88,7 @@ nor resource/offline qualification. No daemon configuration or existing model wa
 
 ## Regression closure and fixture qualification — 2026-11-06
 
+- [Budget reservation before service selection](budget-reservation-pre-slot-20261106.md) closes the observed post-admission service-slot failure gap, with 50 passing focused tests and an independent source review. Earlier preparation failures can still leave an unmatched admission that fails closed; broader regression and model qualification remain open.
 - [Interrupted 489-file source regression](source-regression-489-20261106.md) retains 13 known outer failure headers and two separate nested failures, with no final exit or totals. Later immutable-copy and independent host-neutral checks pass; the complete baseline remains unqualified.
 - [CI runner and formatter readiness](ci-runner-formatter-readiness-20261106.md) records the retired macOS image, canonical Elixir 1.18 source adoption and clean local formatter/policy checks; hosted tests and installed gates remain unqualified.
 - [Word CLI recipe fixture](word-cli-recipe-v18-20261106.md) passes the selected native setup/new-Session/disable case for both State and Collection after updating its stale v17 expectation to v18. Its runtime/source guards and independent cleanup pass; PDF, quality and the whole suite remain separate.

@@ -332,7 +332,8 @@ defmodule Ipse.Session.InferenceDispatchTest do
     end
   end
 
-  test "a queued source change and forged caller fail before provider IO or shared budget reservation",
+  @tag :registered_budget_changed_source
+  test "a queued source change and forged caller fail before provider IO while retaining the budget reservation",
        c do
     config =
       config(c, "http://127.0.0.1:11434")
@@ -360,7 +361,7 @@ defmodule Ipse.Session.InferenceDispatchTest do
                )
 
       assert {:ok, before} = Ipse.Usage.Budget.snapshot(state.config)
-      assert before["request_count"] == 0
+      assert before["request_count"] == 1 and before["unsettled_count"] == 1
       # A trusted-host fixture changes the actual owner Writer's current source
       # generation while the inference task is queued; no worker supplies proof.
       :sys.replace_state(state.journal_writer, fn writer ->
@@ -371,7 +372,7 @@ defmodule Ipse.Session.InferenceDispatchTest do
       assert {:ok, :released} = Task.await(held, 5000)
       assert_receive {:ipse, ^pid, {:done, :error}}, 5000
       assert {:ok, budget} = Ipse.Usage.Budget.snapshot(state.config)
-      assert budget["request_count"] == 0
+      assert budget["request_count"] == 1 and budget["unsettled_count"] == 1
       assert {:ok, events} = Ipse.Journal.load(c.dir, state.id)
       refute Enum.any?(events, &(&1["type"] == "inference_dispatch_intent"))
       refute Enum.any?(events, &(get_in(&1, ["message", "role"]) == "assistant"))
@@ -380,7 +381,7 @@ defmodule Ipse.Session.InferenceDispatchTest do
     end
   end
 
-  test "queued cancellation never reserves provider budget or admits a dispatch intent", c do
+  test "queued cancellation never admits a dispatch intent", c do
     config = config(c, "http://127.0.0.1:11434")
 
     if supported?(c, config) do
@@ -397,17 +398,32 @@ defmodule Ipse.Session.InferenceDispatchTest do
     end
   end
 
+  @tag :registered_budget_unknown
   test "unknown provider outcome suppresses assistant text and blocks later Session requests",
        c do
     {base, server} = ProviderFixture.start("synthetic remote failure", 500, "", :whole)
     on_exit(fn -> if Process.alive?(server.pid), do: Process.exit(server.pid, :kill) end)
-    config = config(c, base)
+
+    config =
+      config(c, base)
+      |> Map.put(:budget, %{
+        "version" => 1,
+        "max_requests" => 4,
+        "max_input_tokens" => 128,
+        "reserve_input_tokens" => 32,
+        "max_output_tokens" => 128,
+        "reserve_output_tokens" => 32
+      })
 
     if supported?(c, config) do
       pid = start(c, config)
       assert :ok = Session.prompt(pid, "Synthetic failure")
       assert_receive {:ipse, ^pid, {:done, :error}}, 5000
       Task.await(server)
+      state = :sys.get_state(pid)
+      assert {:ok, budget} = Ipse.Usage.Budget.snapshot(state.config)
+      assert budget["request_count"] == 1
+      assert Enum.find(budget["dimensions"], &(&1["unit"] == "input_tokens"))["booked"] == 32
       assert :ok = Session.prompt(pid, "A fresh request is not reconciliation")
       assert_receive {:ipse, ^pid, {:done, :error}}, 5000
       assert {:ok, events} = Ipse.Journal.load(c.dir, Session.info(pid).id)
@@ -416,6 +432,24 @@ defmodule Ipse.Session.InferenceDispatchTest do
       refute_receive {:ipse, ^pid, {:text, _}}
       assert {:ok, slots} = InferenceSlots.status(config, cwd: c.root)
       assert is_map(slots["services"]["local"]["active"])
+      id = Session.info(pid).id
+      assert :ok = Session.close_confirmed(pid)
+      assert {:ok, closed} = Ipse.Journal.load(c.dir, id)
+      assert {:ok, _} = Session.Saved.restore(closed, id)
+
+      assert {:ok, idle} =
+               DynamicSupervisor.start_child(
+                 Ipse.Sessions,
+                 {Session,
+                  config: config, cwd: c.root, state_dir: c.dir, id: id, subscriber: self()}
+               )
+
+      on_exit(fn -> if Process.alive?(idle), do: Session.close_confirmed(idle) end)
+      assert Session.info(idle).phase == :idle
+      assert :ok = Session.close_confirmed(idle)
+      assert {:ok, reopened} = Ipse.Journal.load(c.dir, id)
+      assert {:ok, _} = Session.Saved.restore(reopened, id)
+      assert Enum.count(reopened, &(&1["type"] == "inference_dispatch_intent")) == 1
     end
   end
 

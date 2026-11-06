@@ -352,6 +352,45 @@ defmodule Ipse.BudgetTest do
     refute_receive :unexpected_budget_dispatch, 20
   end
 
+  @tag :registered_budget_prepare
+  test "a pre-dispatch reservation retains liability and matches a known failed admission", c do
+    {id, config} = attached(c)
+    admitted = admission(config, id)
+    assert :ok = Budget.reserve(config, admitted)
+    assert {:ok, snapshot} = Budget.snapshot(config)
+    assert snapshot["unsettled_count"] == 1
+    assert booked(snapshot) == %{"requests" => 1, "input_tokens" => 40, "output_tokens" => 32}
+    completion = Usage.completion(admitted, {:error, "synthetic service refusal"}, 0, nil)
+    assert :ok = Budget.validate_sources(config, id, [admitted, completion])
+
+    budget =
+      Path.join([c.dir, "budgets", id <> ".jsonl"])
+      |> File.stream!()
+      |> Enum.map(&Jason.decode!/1)
+
+    assert Enum.map(budget, & &1["type"]) == ~w(budget reserved)
+  end
+
+  @tag :registered_budget_prepare
+  test "a reserved execution dispatches and settles once with the original budget clamp", c do
+    {id, config} = attached(c)
+    admitted = admission(config, id)
+    assert :ok = Budget.reserve(config, admitted)
+    owner = self()
+
+    execute = fn selected, _ ->
+      send(owner, {:budget_executed, selected.max_output_tokens})
+      response(7, 3)
+    end
+
+    assert {:ok, _, _} = Budget.run_reserved(config, admitted, fn _ -> :ok end, execute)
+    assert_receive {:budget_executed, 32}
+    assert {:error, _} = Budget.run_reserved(config, admitted, fn _ -> :ok end, execute)
+    refute_receive {:budget_executed, _}, 20
+    assert {:ok, snapshot} = Budget.snapshot(config)
+    assert booked(snapshot) == %{"requests" => 1, "input_tokens" => 7, "output_tokens" => 3}
+  end
+
   test "parallel processes atomically book one remaining request and keep the lock inode", c do
     {id, config} = attached(c, %{"version" => 1, "max_requests" => 1})
     lockpath = Path.join([c.dir, "budgets", id <> ".lock"])

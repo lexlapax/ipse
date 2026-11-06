@@ -3,11 +3,37 @@ defmodule Ipse.Usage.Budget do
   alias Ipse.Usage.BudgetStore
 
   def run(config, admission, emit, execute) do
+    with :ok <- reserve(config, admission) do
+      run_reserved(config, admission, emit, execute)
+    end
+  end
+
+  @doc false
+  def reserve(config, admission) do
+    if config[:budget] == nil do
+      :ok
+    else
+      with {:ok, config} <- request_config(config),
+           {:ok, :reserved} <- decide(config, admission) do
+        :ok
+      else
+        {:ok, :refused} ->
+          {:error,
+           "Budget admission refused: shared reservation limit reached; no provider request was dispatched."}
+
+        _ ->
+          {:error,
+           "Budget admission unavailable. Inspect the original ledger; no provider request was dispatched."}
+      end
+    end
+  end
+
+  @doc false
+  def run_reserved(config, admission, emit, execute) do
     if config[:budget] == nil do
       execute.(config, emit)
     else
       with {:ok, config} <- request_config(config),
-           {:ok, :reserved} <- decide(config, admission),
            {:ok, :ok} <-
              event(config, %{
                "type" => "dispatch_intent",
@@ -31,10 +57,6 @@ defmodule Ipse.Usage.Budget do
              "Budget settlement is unconfirmed. Inspect the original ledger before continuing; no request was replayed."}
         end
       else
-        {:ok, :refused} ->
-          {:error,
-           "Budget admission refused: shared reservation limit reached; no provider request was dispatched."}
-
         _ ->
           {:error,
            "Budget admission unavailable. Inspect the original ledger; no provider request was dispatched."}

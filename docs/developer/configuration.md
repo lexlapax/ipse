@@ -404,8 +404,13 @@ retain their 120000 ceiling. Exercise these distinctions in
 registered service; `InferenceSlots` schedules matching main/compaction, helper,
 embedding, decision and child calls across projects/models. The original owned
 inference task still makes the final source/policy decision. The coordinator and
-slot callback do not inherit that authority. Effective deadlines above 100000 ms
-refuse before dispatch, rather than silently changing configuration.
+slot callback do not inherit that authority. A configured shared budget is
+reserved before service selection and waiting; a failure before the provider
+callback retains that reservation without a budget dispatch intent. Effective
+deadlines above 100000 ms refuse before dispatch, rather than silently changing
+configuration. Managed preflight or decision preparation can refuse before this
+dispatch path reserves anything; an unmatched saved admission fails closed on
+resume instead of being replayed.
 
 An admitted marker survives timeout, owner loss and local HTTP cleanup. A free
 OS lock cannot prove remote completion. Known-terminal settlement depends on the
@@ -493,8 +498,9 @@ inference, the second scan checks the same identity, reported loaded context and
 exact response model before the existing private output buffer can release text,
 tool batches or vectors. Native completion remains independently known if the
 postcheck rejects the domain result, so measured charges remain and the service
-can settle. A failed precheck is unstarted and books no inference reservation.
-Unknown native completion still blocks the service. Existing final managed-source
+can settle. A failed model precheck is unstarted for service settlement, while
+any already booked shared-budget reservation retains its liability. Unknown
+native completion still blocks the service. Existing final managed-source
 and permission gates remain necessary before publication.
 
 Each scan uses up to six 1-MiB responses and ten seconds, narrowed by the same job

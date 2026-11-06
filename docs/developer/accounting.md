@@ -167,17 +167,26 @@ children inherit exact root/origin and cannot replace it through profiles. A
 root-owned ETS checkpoint binds policy and validated ledger prefix. Owner death
 removes that runtime authority. Never serialize it into workers.
 
-After Session syncs canonical admission, `Budget.run/4` performs slow IO in the
-owned request task, outside the GenServer:
+After Session syncs canonical admission, the owned request task performs slow
+budget IO outside the GenServer. Managed preflight and decision preparation can
+refuse before `InferenceDispatch` runs, and an interruption can occur before the
+reservation is durable. An unmatched admission fails the saved source join on
+resume; it is not automatically replayed or repaired. For a registered service,
+`InferenceDispatch` reserves before service selection and slot waiting;
+`Budget.run/4` uses the same reservation and execution steps for an
+unregistered call:
 
 1. Lock the ledger and validate root/policy/prefix. Reserve all configured dimensions
    or durably refuse admission.
-2. Sync `dispatch_intent` before provider setup/inference.
+2. When the provider callback starts, sync `dispatch_intent` before inference.
 3. Sync cumulative usage peaks before forwarding text observations to Session.
 4. Sync settlement before returning a response Session can admit.
 
-Request bookings never refund, even if setup fails. Known successful dimensions
-can release unused booking down to observed peaks. Failure, cancellation, absent
+If selection, slot waiting or callback admission stops before that dispatch
+step, the existing reservation stays outstanding at full liability; it does not
+assert that an uncertain callback was unstarted. Request bookings never refund,
+even if setup fails. Known successful dimensions can release unused booking down
+to observed peaks. Failure, cancellation, absent
 measurement, or uncertain settlement retains at least booking/peak. Billing bases
 cannot offset each other. Input/money bookings cannot guarantee actual in-flight
 charges. Unsupported subscription output quotas refuse rather than simulate a cap.

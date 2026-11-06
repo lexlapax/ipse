@@ -10,10 +10,11 @@ defmodule Ipse.InferenceDispatch do
   # final gate, retaining the Session's ordinary caller/job checks. The separate
   # coordinator and actual slot callback never acquire that authority by ancestry.
   def run(config, runtime, operation, profile, context, emit, final_gate, execute) do
-    with {:ok, selected} <- selection(config, runtime, operation, profile) do
+    with :ok <- Ipse.Usage.Budget.reserve(runtime, context.admission),
+         {:ok, selected} <- selection(config, runtime, operation, profile) do
       case selected do
         :unregistered ->
-          Ipse.Usage.Budget.run(runtime, context.admission, emit, fn admitted, guarded ->
+          Ipse.Usage.Budget.run_reserved(runtime, context.admission, emit, fn admitted, guarded ->
             execute.(admitted, guarded, nil)
           end)
 
@@ -35,6 +36,9 @@ defmodule Ipse.InferenceDispatch do
       {:error, :pinned_model_requires_registered_service} ->
         {:error,
          "Pinned Ollama jobs require one registered inference service for the selected endpoint; no inference request was dispatched."}
+
+      {:error, reason} when is_binary(reason) ->
+        {:error, reason}
 
       _ ->
         {:error, "Inference service selection is invalid; no provider request was dispatched."}
@@ -183,7 +187,7 @@ defmodule Ipse.InferenceDispatch do
                     try do
                       {result, terminal?} =
                         CompletionWitness.capture(runtime, kind(operation), target, fn ->
-                          Ipse.Usage.Budget.run(
+                          Ipse.Usage.Budget.run_reserved(
                             runtime,
                             context.admission,
                             buffered_emit,

@@ -93,6 +93,12 @@ and [evaluation isolation](archive/2026-10-26-p30-p31-implementation/evaluation-
 controls now pass their focused cases. They do not complete that interrupted
 run or establish a current full-source baseline.
 
+The [budget reservation correction](archive/2026-10-26-p30-p31-implementation/budget-reservation-pre-slot-20261106.md)
+reserves before inference-service selection and waiting, preserving full liability
+when the provider callback does not start. Fifty focused tests and independent
+source review pass. Preparation failures before this dispatch path can still
+leave unmatched admissions that fail closed; historical ledgers remain unchanged.
+
 The [CI readiness repair](archive/2026-10-26-p30-p31-implementation/ci-runner-formatter-readiness-20261106.md)
 restores the canonical Elixir 1.18 formatting check and replaces the retired
 macOS runner image. Its local formatter and policy checks pass; a new hosted

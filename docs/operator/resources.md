@@ -64,6 +64,13 @@ Configuration inspection makes no network call. During work, each covered reques
 reserves against the root session's ledger before dispatch. Local children and
 accounted extension text/embedding/decision calls share that ledger. Inspect used, reserved,
 and uncertain dimensions with `ipse budget`; they are not an invoice guarantee.
+For a registered inference service, this reservation is made before waiting for
+the service slot. A refusal or interruption during that wait can leave the
+reservation outstanding even when no provider request was sent. Inspect the
+original ledger; Ipse does not automatically refund or replay that work.
+Some preparation can fail after an attempt is recorded but before its reservation
+is written. If saved accounting and the ledger cannot be reconciled, resume
+refuses; preserve both records and follow the recovery guidance below.
 
 The budget is operator-only. A project cannot replace it, even when trusted.
 Omit a dimension to leave it unlimited by this policy. Zero refuses positive bookings.
