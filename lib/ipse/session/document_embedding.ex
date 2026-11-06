@@ -56,6 +56,7 @@ defmodule Ipse.Session.DocumentEmbedding do
            facts.claim_revision === state.claim.revision and
              facts.claim_sha256 === state.claim.sha256,
          true <- facts.claim_key === state.claim.key and facts.batch_index === state.next,
+         true <- facts.maintenance_epoch === state.claim.maintenance_epoch,
          true <- facts.selection_sha256 === intent["request"]["expected_selection_sha256"],
          true <-
            facts.batch_count in 1..4 and
@@ -86,6 +87,13 @@ defmodule Ipse.Session.DocumentEmbedding do
   def observe_inline(read, witness, request) do
     with {:ok, body} <- pending_inline(request),
          true <- witness["root"]["generation"] === request["generation"],
+         {:ok, epoch} <- request_epoch(request),
+         true <-
+           witness["document_maintenance"] === %{
+             "version" => 1,
+             "epoch" => epoch,
+             "status" => "idle"
+           },
          {:ok, old} <- DocumentStage.read_value(read, request["key"]),
          true <- prior_inline?(old, request) do
       {:ok,
@@ -94,7 +102,8 @@ defmodule Ipse.Session.DocumentEmbedding do
          revision: request["expected_revision"],
          sha256: if(old, do: old["sha256"]),
          body_sha256: Ipse.JSON.sha256(request["data"]),
-         vector_cursor: body["vector_cursor"]
+         vector_cursor: body["vector_cursor"],
+         maintenance_epoch: epoch
        }}
     else
       _ -> @error
@@ -142,11 +151,13 @@ defmodule Ipse.Session.DocumentEmbedding do
          true <- state.status === :ready and is_nil(state.claim) and is_nil(state.prepare),
          true <- is_nil(state.inline),
          {:ok, body} <- pending_inline(request),
-         true <- is_map(observation) and map_size(observation) === 5,
+         true <- is_map(observation) and map_size(observation) === 6,
          true <- observation.generation === request["generation"],
          true <- observation.revision === request["expected_revision"],
          true <- observation.body_sha256 === request["sha256"],
          true <- observation.vector_cursor === body["vector_cursor"],
+         {:ok, epoch} <- request_epoch(request),
+         true <- observation.maintenance_epoch === epoch,
          true <-
            if(request["expected_revision"] === 0,
              do: is_nil(observation.sha256),
@@ -162,7 +173,8 @@ defmodule Ipse.Session.DocumentEmbedding do
         identity_sha256: binding["identity_sha256"],
         parent: intent["parent_invocation_id"],
         generation: request["generation"],
-        guard_version: 2
+        guard_version: 2,
+        maintenance_epoch: epoch
       }
 
       {:reply, :ok,
@@ -198,14 +210,15 @@ defmodule Ipse.Session.DocumentEmbedding do
             Ipse.Extension.Collection.with_document_read(
               CollectionStore.root(data.config[:home]),
               source["namespace"],
-              fn _, read ->
+              fn witness, read ->
                 with true <- data.phase == "embedding.create" and is_map(data.wire),
                      {:ok, facts} <-
                        DocumentSourceUse.authenticate(
                          read,
                          request["source_guard"],
                          request["inputs"],
-                         data.document_source.selection
+                         data.document_source.selection,
+                         witness["document_maintenance"]
                        ),
                      :ok <-
                        GenServer.call(
@@ -327,24 +340,32 @@ defmodule Ipse.Session.DocumentEmbedding do
 
       request["op"] == "value.prepare_inline" and request["expected_revision"] === 0 and
         is_binary(request["key"]) and String.starts_with?(request["key"], "genproducer.") ->
-        prepare = %{
-          ref: Map.take(result["stage"], ~w(slot epoch)),
-          key: request["key"],
-          sha256: request["sha256"],
-          namespace: binding["namespace"],
-          project: binding["project"],
-          identity_sha256: binding["identity_sha256"],
-          parent: parent
-        }
+        case request_epoch(request) do
+          {:ok, epoch} ->
+            prepare = %{
+              ref: Map.take(result["stage"], ~w(slot epoch)),
+              key: request["key"],
+              sha256: request["sha256"],
+              namespace: binding["namespace"],
+              project: binding["project"],
+              identity_sha256: binding["identity_sha256"],
+              parent: parent,
+              maintenance_epoch: epoch
+            }
 
-        if is_nil(state.prepare),
-          do: %{state | prepare: prepare},
-          else: %{state | status: :poisoned}
+            if is_nil(state.prepare),
+              do: %{state | prepare: prepare},
+              else: %{state | status: :poisoned}
+
+          _ ->
+            %{state | status: :poisoned}
+        end
 
       request["op"] == "commit" and not is_nil(state.prepare) ->
         p = state.prepare
 
-        if request["stages"] === [p.ref] and binding["namespace"] === p.namespace and
+        if request["stages"] === [p.ref] and request_epoch(request) === {:ok, p.maintenance_epoch} and
+             binding["namespace"] === p.namespace and
              binding["project"] === p.project and binding["identity_sha256"] === p.identity_sha256 do
           %{
             state
@@ -367,6 +388,11 @@ defmodule Ipse.Session.DocumentEmbedding do
   end
 
   defp record_store(state, _, _, _), do: state
+
+  defp request_epoch(request) do
+    epoch = Map.get(request, "maintenance_epoch", 0)
+    if Ipse.JSON.safe_uint?(epoch), do: {:ok, epoch}, else: @error
+  end
 
   defp initial,
     do: %{

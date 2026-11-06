@@ -1545,7 +1545,10 @@ and its expected selection. `DocumentSourceUse` authenticates retained logical
 records under the native read closure; live `DocumentEmbedding` admission binds
 the claim's actual committing operation to this invocation, known prior batches,
 trusted host time and the final one-use egress decision after approval. The short
-lock does not recall bytes already admitted before a later change.
+lock also binds the live claim and stored Job to the current idle maintenance
+epoch. The producer freezes that epoch for its claim writes, while the host
+rechecks it under the held reader before each batch. A later fence blocks new
+admission; it does not recall bytes already admitted or settle an unknown result.
 
 Select operator collection binding v2 with `source_use: shared_producer_v1`
 explicitly; every embedding from that identity requires a guard. The configuration

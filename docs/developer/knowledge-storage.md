@@ -629,9 +629,11 @@ returns token3 with the old job epoch and a separately frozen `retirement_epoch`
 only abort can consume it. Its plan digest includes that retirement epoch, and
 native stage headers retain their actual opening epoch. A known same-epoch
 continuation resumes its exact stage and offset; after another fence it refuses.
-Unknown work supplies no safe replay token. Existing producer claims and in-flight
-model egress still require their own epoch integration. General
-maintenance, adoption and garbage collection remain closed.
+Unknown work supplies no safe replay token. Producer claim writes retain their
+opening epoch, and the held reader requires the claim, stored Job and current
+idle epoch to agree before each inference admission. A later fence cannot recall
+an already admitted request. General maintenance, adoption and garbage
+collection remain closed.
 
 Exercise the internal lifecycle and the real SDK boundary with disposable native
 storage on a supported profile:

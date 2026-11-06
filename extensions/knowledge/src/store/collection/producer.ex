@@ -59,10 +59,11 @@ defmodule IpseKnowledge.Store.Collection.Producer do
         anchors: [],
         units: [],
         boot: nil,
+        maintenance_epoch: nil,
         queue: ~w(catalog generation genjob genproducer)
       }
 
-      read_next(s)
+      io(s, :snapshot, %{}, :maintenance_snapshot)
     else
       _ -> error(:invalid_shared_producer_request)
     end
@@ -82,8 +83,14 @@ defmodule IpseKnowledge.Store.Collection.Producer do
     advance(result, s)
   end
 
-  defp io(s, op, args, phase),
-    do: advance(C.start(s.profile, op, args), Map.merge(s, %{phase: phase, child: :collection}))
+  defp io(s, op, args, phase) do
+    result =
+      if op in [:value_prepare, :value_commit_at] and is_integer(s.maintenance_epoch),
+        do: C.start_with_epoch(s.profile, op, args, s.maintenance_epoch),
+        else: C.start(s.profile, op, args)
+
+    advance(result, Map.merge(s, %{phase: phase, child: :collection}))
+  end
 
   defp advance({:call, request, inner}, s) do
     read = C.read_request?(request) or request["op"] in ~w(effect.result.read embedding.profile)
@@ -127,6 +134,11 @@ defmodule IpseKnowledge.Store.Collection.Producer do
     true = is_map(catalog) and C.valid_catalog?(catalog["value"], s.profile)
     true = is_map(job) and Job.valid?(job["value"], s.profile)
     j = job["value"]
+
+    true =
+      s.args["action"] === "inspect" or
+        Job.validated_epoch(j, s.profile) === {:ok, s.maintenance_epoch}
+
     true = j["id"] === s.args["job_id"] and job["revision"] === s.args["job_revision"]
     true = j["status"] == "groups" and j["cursor"] < j["catalog"]["sources"]
     true = j["catalog_sha256"] === catalog["sha256"] and j["catalog"] === catalog["value"]
@@ -203,6 +215,15 @@ defmodule IpseKnowledge.Store.Collection.Producer do
           "model_receipt_provenance" => false
         }
       }}}
+  end
+
+  defp done(%{phase: :maintenance_snapshot} = s, value) do
+    with {:ok, epoch, status} <- C.snapshot_epoch(value),
+         true <- s.args["action"] === "inspect" or status === "idle" do
+      read_next(%{s | maintenance_epoch: epoch, boot: value["generation"]})
+    else
+      _ -> error(:shared_producer_maintenance_changed)
+    end
   end
 
   defp done(%{phase: {:anchor, key}} = s, value) do

@@ -884,9 +884,11 @@ then makes one final locked admission for that batch. Expired, historical,
 future-observed or changed sources refuse. Already admitted bytes may remain
 in flight after a later change. Selection pinning separately refuses a changed
 configured route; returned model/input/vector checks still apply.
-The shared Job's epoch checks do not qualify producer claims or already in-flight
-model requests across internal maintenance. Do not infer that a job refusal
-cancelled a provider request, erased an unknown result or refunded its budget.
+The host also checks that the confirmed producer claim and stored Job belong to
+the current idle maintenance epoch immediately before each batch is admitted.
+A maintenance fence prevents an older claim from dispatching another batch; it
+does not cancel an already admitted provider request, erase an unknown result or
+refund its budget.
 The separate Source and supplied-projection progress checks do not renew a
 producer claim. No general document maintenance or adoption command is exposed.
 

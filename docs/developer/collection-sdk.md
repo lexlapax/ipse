@@ -714,9 +714,10 @@ selection digest and `reported_model: nil` without inference or a Usage charge.
 Producer calls propagate that digest as `expected_selection_sha256`;
 legacy unpinned adapter requests retain their exact shape. A pin prevents a
 changed configured route from reaching inference but supplies no source authority.
-Job epoch checks do not qualify existing producer claims or in-flight model
-egress across maintenance. Those owners need their own epoch integration; keep
-their unknown outcomes and liabilities separate from a known Job abort.
+Producer claim writes freeze the Job's epoch; the host joins that live claim and
+the stored Job to the current idle epoch under the held reader before admitting
+each batch. A later fence stops new admission but does not recall an in-flight
+request. Keep unknown outcomes and liabilities separate from a known Job abort.
 Version-1 public `page` uses the same bounded v3 first-page producer qualified through the
 private fixture artifact. It durably commits a claim before inference, then sends
 `source_guard` with version 1, exact `claim_key`, `claim_revision`, `claim_sha256`

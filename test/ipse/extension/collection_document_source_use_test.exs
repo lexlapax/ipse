@@ -21,7 +21,7 @@ defmodule Ipse.Extension.CollectionDocumentSourceUseIsolationTest do
       )
 
     assert status == 0, output
-    assert output =~ "Result: 14 passed"
+    assert output =~ "Result: 15 passed"
     assert [measurement] = Regex.run(~r/SELECTION_SOURCE_MODEL \{[^\n]+\}/, output)
     IO.puts(measurement)
     assert :code.is_loaded(IpseKnowledge.Evidence) == before

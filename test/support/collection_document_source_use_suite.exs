@@ -6,6 +6,7 @@ defmodule Ipse.Extension.CollectionDocumentSourceUseTest do
   Code.require_file("extensions/knowledge/src/evidence.ex")
 
   @seed "docs/archive/2026-10-26-p30-p31-implementation/shared-producer-host-seed/pending-v3-model.exs"
+  @idle0 %{"version" => 1, "epoch" => 0, "status" => "idle"}
 
   setup do
     {seed, _} = Code.eval_file(@seed)
@@ -52,8 +53,45 @@ defmodule Ipse.Extension.CollectionDocumentSourceUseTest do
         read(seed["records"]),
         seed["guard"],
         seed["inputs"],
-        seed["selection"]
+        seed["selection"],
+        @idle0
       )
+
+  @tag :document_egress_unit
+  test "inference source authentication joins the held idle epoch to the stored Job", %{
+    seed: seed
+  } do
+    auth = fn records, maintenance ->
+      DocumentSourceUse.authenticate(
+        read(records),
+        seed["guard"],
+        seed["inputs"],
+        seed["selection"],
+        maintenance
+      )
+    end
+
+    assert {:ok, %{maintenance_epoch: 0}} = auth.(seed["records"], @idle0)
+    idle1 = %{"version" => 1, "epoch" => 1, "status" => "idle"}
+    assert {:error, :document_source_use_refused} = auth.(seed["records"], idle1)
+
+    job =
+      seed["records"]["genjob.notes"]["value"]
+      |> Map.put("version", 4)
+      |> Map.put("maintenance_epoch", 1)
+
+    records = put_in(seed["records"], ["genjob.notes", "value"], job)
+    assert {:ok, %{maintenance_epoch: 1}} = auth.(records, idle1)
+    assert {:error, :document_source_use_refused} = auth.(records, @idle0)
+
+    assert {:error, :document_source_use_refused} =
+             auth.(records, %{idle1 | "status" => "active"})
+
+    assert {:error, :document_source_use_refused} = auth.(records, nil)
+
+    assert {:error, :document_source_use_refused} =
+             auth.(put_in(records, ["genjob.notes", "value", "version"], 7), idle1)
+  end
 
   test "projection source authentication binds the current catalog, head, complete bundle and time",
        %{seed: seed} do
@@ -828,7 +866,8 @@ defmodule Ipse.Extension.CollectionDocumentSourceUseTest do
                fn _ -> {:error, :collection_unavailable} end,
                seed["guard"],
                seed["inputs"],
-               seed["selection"]
+               seed["selection"],
+               @idle0
              )
   end
 
@@ -1399,7 +1438,8 @@ defmodule Ipse.Extension.CollectionDocumentSourceUseNativeTest do
                           read,
                           guard,
                           seed["inputs"],
-                          seed["selection"]
+                          seed["selection"],
+                          witness["document_maintenance"]
                         )
 
                assert facts.claim_operation_id === claim_operation
@@ -1426,7 +1466,13 @@ defmodule Ipse.Extension.CollectionDocumentSourceUseNativeTest do
              end)
 
     assert {:error, :document_source_use_refused} =
-             DocumentSourceUse.authenticate(read, guard, seed["inputs"], seed["selection"])
+             DocumentSourceUse.authenticate(
+               read,
+               guard,
+               seed["inputs"],
+               seed["selection"],
+               @idle0
+             )
 
     assert {:error, :document_source_use_refused} =
              DocumentSourceUse.authenticate_projection_source(read, projection_target)
@@ -1503,7 +1549,8 @@ defmodule Ipse.Extension.CollectionDocumentSourceUseNativeTest do
                           current_read,
                           forged_guard,
                           forged_inputs,
-                          seed["selection"]
+                          seed["selection"],
+                          witness["document_maintenance"]
                         )
 
                {:ok, :refused}

@@ -5,6 +5,13 @@ defmodule Ipse.Session.DocumentEmbeddingTest do
   alias Ipse.Extension.Collection.Profile
   alias Ipse.Session.{DocumentEmbedding, Invocation}
 
+  defp witness(generation, epoch \\ 0) do
+    %{
+      "root" => %{"generation" => generation},
+      "document_maintenance" => %{"version" => 1, "epoch" => epoch, "status" => "idle"}
+    }
+  end
+
   defp fixture do
     operator = %{
       "version" => 2,
@@ -270,7 +277,7 @@ defmodule Ipse.Session.DocumentEmbeddingTest do
   @tag document_inline_v4: true
   test "inline origin observes actual absence or closed ready at the pinned native generation" do
     f = inline_fixture()
-    witness = %{"root" => %{"generation" => 10}}
+    witness = witness(10)
     absent = fn _ -> {:ok, nil} end
 
     assert {:ok, %{revision: 0, sha256: nil}} =
@@ -288,7 +295,9 @@ defmodule Ipse.Session.DocumentEmbeddingTest do
           {packed_read(ready, 8), witness, reuse},
           {packed_read(f.pending, 9), witness, reuse},
           {packed_read(Map.put(ready, "unexpected", true), 9), witness, reuse},
-          {packed_read(ready, 9), %{"root" => %{"generation" => 11}}, reuse}
+          {packed_read(ready, 9), witness(11), reuse},
+          {absent, witness(10, 1), f.request},
+          {absent, put_in(witness(10), ["document_maintenance", "status"], "active"), f.request}
         ] do
       assert {:error, :document_source_use_refused} =
                DocumentEmbedding.observe_inline(reader, pin, request)
@@ -302,7 +311,7 @@ defmodule Ipse.Session.DocumentEmbeddingTest do
     assert {:ok, observed} =
              DocumentEmbedding.observe_inline(
                fn _ -> {:ok, nil} end,
-               %{"root" => %{"generation" => 10}},
+               witness(10),
                f.request
              )
 
@@ -334,6 +343,7 @@ defmodule Ipse.Session.DocumentEmbeddingTest do
 
     for altered <- [
           Map.put(observed, :generation, 11),
+          Map.put(observed, :maintenance_epoch, 1),
           Map.put(observed, :body_sha256, JSON.sha256("foreign")),
           Map.put(observed, :sha256, JSON.sha256("unexpected old row")),
           Map.put(observed, :extra, true)
@@ -349,13 +359,33 @@ defmodule Ipse.Session.DocumentEmbeddingTest do
   end
 
   @tag document_inline_v4: true
+  test "an inline claim retains the native maintenance epoch and rejects a different witness" do
+    f = inline_fixture()
+    request = Map.put(f.request, "maintenance_epoch", 1)
+    result = f.event["outcome"]["value"]["result"]
+    event = store_event(f.c, request, result, Usage.id()) |> Map.put("approval", "approved")
+    state = %{f.state | invocation: %{f.state.invocation | action: %{intent: event}}}
+    absent = fn _ -> {:ok, nil} end
+
+    assert {:ok, %{maintenance_epoch: 1} = observed} =
+             DocumentEmbedding.observe_inline(absent, witness(10, 1), request)
+
+    assert {:error, :document_source_use_refused} =
+             DocumentEmbedding.observe_inline(absent, witness(10), request)
+
+    assert {:reply, :ok, admitted} = DocumentEmbedding.prepare_inline(state, event, observed)
+    live = DocumentEmbedding.record_action(admitted.invocation, event)
+    assert live.document_producer.claim.maintenance_epoch === 1
+  end
+
+  @tag document_inline_v4: true
   test "unknown failed or mismatched inline outcomes consume the observation without authority" do
     f = inline_fixture()
 
     assert {:ok, observed} =
              DocumentEmbedding.observe_inline(
                fn _ -> {:ok, nil} end,
-               %{"root" => %{"generation" => 10}},
+               witness(10),
                f.request
              )
 
@@ -643,6 +673,47 @@ defmodule Ipse.Session.DocumentEmbeddingTest do
       live |> DocumentEmbedding.record_action(prepare) |> DocumentEmbedding.record_action(commit)
 
     assert kept.document_producer.claim === live.document_producer.claim
+  end
+
+  @tag :document_egress_unit
+  test "staged claims preserve the epoch from both confirmed native mutations" do
+    c = fixture()
+    {_, old_prepare, old_commit} = claim(c)
+    prepare_request = Map.put(old_prepare["request"]["request"], "maintenance_epoch", 1)
+    commit_request = Map.put(old_commit["request"]["request"], "maintenance_epoch", 1)
+
+    prepare =
+      store_event(c, prepare_request, old_prepare["outcome"]["value"]["result"], Usage.id())
+
+    commit = store_event(c, commit_request, old_commit["outcome"]["value"]["result"], Usage.id())
+
+    live =
+      c.invocation
+      |> DocumentEmbedding.record_action(prepare)
+      |> DocumentEmbedding.record_action(commit)
+
+    assert live.document_producer.claim.maintenance_epoch === 1
+
+    stale =
+      c.invocation
+      |> DocumentEmbedding.record_action(prepare)
+      |> DocumentEmbedding.record_action(old_commit)
+
+    assert stale.document_producer.status === :poisoned
+    assert is_nil(stale.document_producer.claim)
+
+    malformed =
+      store_event(
+        c,
+        Map.put(prepare_request, "maintenance_epoch", -1),
+        old_prepare["outcome"]["value"]["result"],
+        Usage.id()
+      )
+
+    malformed_live = DocumentEmbedding.record_action(c.invocation, malformed)
+    assert malformed_live.document_producer.status === :ready
+    assert is_nil(malformed_live.document_producer.claim)
+    assert is_nil(malformed_live.document_producer.prepare)
   end
 
   test "only matching known batch results advance and duplicate or failed outcomes poison" do

@@ -160,6 +160,19 @@ if System.get_env("IPSE_PRODUCER_PROGRESS_CHILD") == "1" do
           M.host(r, d.model)
         end
 
+      outcome =
+        if d.fault == :advanced_maintenance and inner["op"] == "snapshot" do
+          put_in(outcome, ["value", "result", "document_store"], %{
+            "version" => 3,
+            "inline_bytes" => 8192,
+            "write_parts" => 2,
+            "maintenance_epoch" => 1,
+            "maintenance_status" => "idle"
+          })
+        else
+          outcome
+        end
+
       value = if inner["op"] == "value.put_inline", do: JSON.decode!(inner["data"])
       d = %{d | model: model}
       d = if is_map(value) and value["status"] == "pending", do: %{d | batch: 0}, else: d
@@ -210,7 +223,8 @@ if System.get_env("IPSE_PRODUCER_PROGRESS_CHILD") == "1" do
               reader,
               guard,
               r["inputs"],
-              @selection
+              @selection,
+              %{"version" => 1, "epoch" => 0, "status" => "idle"}
             )
           end)
 
@@ -646,6 +660,25 @@ if System.get_env("IPSE_PRODUCER_PROGRESS_CHILD") == "1" do
         assert length(chunks) == 32
         source
       end)
+    end
+
+    @tag :v4_maintenance_epoch
+    test "both producer versions refuse an old Job after a maintenance fence before writes or inference" do
+      {resolved, args, d} = initial()
+      old = %{d | fault: :advanced_maintenance}
+      legacy_args = args |> Map.drop(~w(vector_cursor previous_ready)) |> Map.put("version", 1)
+
+      for request <- [legacy_args, args] do
+        assert {{:done, {:error, :shared_producer_changed, _}}, stopped} =
+                 invoke(Producer.start(resolved, @profile, request), old)
+
+        assert stopped.calls === 0
+
+        refute Enum.any?(
+                 stopped.requests,
+                 &(&1["op"] == "embedding.create" or not C.read_request?(&1))
+               )
+      end
     end
 
     @tag :v4_unknown
@@ -1689,7 +1722,7 @@ else
                 v4_object_revision v4_anchor_reserve v4_packed_fact_pages v4_corruption
                 v4_append v4_empty_facts v4_empty_facts_multigroup v4_staged_change
                 v4_selected_reuse v4_fact_batch v4_selected_facts v4_selected_empty_facts
-                v4_public_fact_stage v4_fact_input_pages)a do
+                v4_public_fact_stage v4_fact_input_pages v4_maintenance_epoch)a do
       @tag tag
       @tag timeout: 600_000
       test "isolated producer progress control #{tag}", %{artifact: artifact} do

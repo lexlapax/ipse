@@ -735,6 +735,11 @@ defmodule IpseKnowledge.Store.Collection.Job do
     _ -> false
   end
 
+  @doc false
+  def validated_epoch(job, profile) do
+    if valid?(job, profile), do: {:ok, job_epoch(job)}, else: {:error, :invalid_generation_job}
+  end
+
   defp valid_base?(job, profile) do
     ((exact?(job, @fields) and job["version"] === 1) or
        (exact?(job, @fields ++ ["reduction"]) and job["version"] in [2, 3] and

@@ -70,6 +70,7 @@ defmodule IpseKnowledge.Store.Collection.Producer.Progress do
         effects: 0,
         rows: %{},
         boot: nil,
+        maintenance_epoch: nil,
         queue: queue,
         anchors: [],
         proofs: [],
@@ -81,7 +82,7 @@ defmodule IpseKnowledge.Store.Collection.Producer.Progress do
         pages: []
       }
 
-      read_next(s)
+      io(s, :snapshot, %{}, :maintenance_snapshot)
     else
       _ -> error(:invalid_shared_producer_request)
     end
@@ -101,7 +102,12 @@ defmodule IpseKnowledge.Store.Collection.Producer.Progress do
   end
 
   defp io(s, op, args, phase) do
-    advance(C.start(s.profile, op, args), Map.merge(s, %{phase: phase, child: :collection}))
+    result =
+      if op in [:value_put_inline_at, :value_write] and is_integer(s.maintenance_epoch),
+        do: C.start_with_epoch(s.profile, op, args, s.maintenance_epoch),
+        else: C.start(s.profile, op, args)
+
+    advance(result, Map.merge(s, %{phase: phase, child: :collection}))
   end
 
   defp object(s, ref, phase) do
@@ -185,6 +191,11 @@ defmodule IpseKnowledge.Store.Collection.Producer.Progress do
     true = is_map(catalog) and C.valid_catalog?(catalog["value"], s.profile)
     true = is_map(row) and Job.valid?(row["value"], s.profile)
     job = row["value"]
+
+    true =
+      (s.mode === :page and args_inspect?(s)) or
+        Job.validated_epoch(job, s.profile) === {:ok, s.maintenance_epoch}
+
     true = job["id"] === s.args["job_id"] and row["revision"] === s.args["job_revision"]
     true = job["status"] == "groups" and job["cursor"] < job["catalog"]["sources"]
     true = job["catalog_sha256"] === catalog["sha256"] and job["catalog"] === catalog["value"]
@@ -225,6 +236,18 @@ defmodule IpseKnowledge.Store.Collection.Producer.Progress do
           Map.put(Enum.at(s.job["catalog"]["pages"], s.catalog_page), "generation", s.boot),
           :catalog_page
         )
+    end
+  end
+
+  defp done(%{phase: :maintenance_snapshot} = s, value) do
+    inspect_only = s.mode === :page and args_inspect?(s)
+
+    with {:ok, epoch, status} <- C.snapshot_epoch(value),
+         true <- inspect_only or status === "idle",
+         true <- is_nil(s.token) or Map.get(s.token, "maintenance_epoch", 0) === epoch do
+      read_next(%{s | maintenance_epoch: epoch, boot: value["generation"]})
+    else
+      _ -> error(:shared_producer_maintenance_changed)
     end
   end
 
@@ -539,7 +562,11 @@ defmodule IpseKnowledge.Store.Collection.Producer.Progress do
   end
 
   defp done(%{phase: :append_inspect} = s, value) do
-    io(s, :guarded_generation_append, job_args(s, "append", value["continuation"]), :append_unit)
+    token = value["continuation"]
+
+    if is_map(token) and Map.get(token, "maintenance_epoch", 0) === s.maintenance_epoch,
+      do: io(s, :guarded_generation_append, job_args(s, "append", token), :append_unit),
+      else: error(:shared_producer_maintenance_changed)
   end
 
   defp done(%{phase: :append_unit} = s, value) do
@@ -704,8 +731,9 @@ defmodule IpseKnowledge.Store.Collection.Producer.Progress do
       )
 
     true =
-      ready?(placeholder, slot_key(s)) and inline_frame?(slot_key(s), pending) and
-        inline_frame?(slot_key(s), placeholder)
+      ready?(placeholder, slot_key(s)) and
+        inline_frame?(slot_key(s), pending, s.maintenance_epoch) and
+        inline_frame?(slot_key(s), placeholder, s.maintenance_epoch)
 
     s = Map.merge(s, %{claim: pending, pending_inputs: inputs})
     check_row(s, :claim)
@@ -1172,7 +1200,19 @@ defmodule IpseKnowledge.Store.Collection.Producer.Progress do
       Enum.all?(r["input_sha256"] ++ r["raw_input_sha256"], &Evidence.sha256?/1)
   end
 
-  defp inline_frame?(key, value) do
+  defp inline_frame?(key, value, epoch) do
+    request = %{
+      "op" => "value.put_inline",
+      "key" => key,
+      "expected_revision" => Evidence.safe_integer_max(),
+      "byte_count" => byte_size(json(value)),
+      "sha256" => Evidence.sha256(json(value)),
+      "data" => json(value),
+      "generation" => Evidence.safe_integer_max()
+    }
+
+    request = if epoch > 0, do: Map.put(request, "maintenance_epoch", epoch), else: request
+
     byte_size(json(value)) <= 8192 and
       Ipse.Extension.validate(%{
         "api_version" => 1,
@@ -1180,15 +1220,7 @@ defmodule IpseKnowledge.Store.Collection.Producer.Progress do
         "request" => %{
           "op" => "collection.store",
           "scope" => "project",
-          "request" => %{
-            "op" => "value.put_inline",
-            "key" => key,
-            "expected_revision" => Evidence.safe_integer_max(),
-            "byte_count" => byte_size(json(value)),
-            "sha256" => Evidence.sha256(json(value)),
-            "data" => json(value),
-            "generation" => Evidence.safe_integer_max()
-          }
+          "request" => request
         }
       }) == :ok
   end

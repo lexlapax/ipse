@@ -1003,6 +1003,16 @@ defmodule Ipse.Extension.Collection do
                   state,
                   manifest,
                   fn witness, read, check ->
+                    witness =
+                      if kind == :document_read,
+                        do:
+                          Map.put(
+                            witness,
+                            "document_maintenance",
+                            DocumentMaintenance.metadata(state)
+                          ),
+                        else: witness
+
                     owner = self()
                     cap = Process.get(@lock_key)
                     {token, _, :open} = Process.get({__MODULE__, :managed_read})

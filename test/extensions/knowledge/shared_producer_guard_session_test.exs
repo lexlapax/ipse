@@ -225,6 +225,9 @@ defmodule Ipse.SharedProducerGuardSessionTest do
   end
 
   defp prepare(c, expiry?) do
+    after_fence = expiry? == :v4_after_fence
+    expiry? = if after_fence, do: :v4, else: expiry?
+
     source_count =
       cond do
         expiry? == :selected -> 1
@@ -271,6 +274,8 @@ defmodule Ipse.SharedProducerGuardSessionTest do
 
         expiry
       end)
+
+    if after_fence, do: fixture_maintenance_fence(c)
 
     begun =
       invoke(c, "generation_job", %{
@@ -1383,6 +1388,157 @@ defmodule Ipse.SharedProducerGuardSessionTest do
                },
                Usage.id(),
                "document_graph_v1"
+             )
+  end
+
+  @tag document_guard_maintenance_egress: true, timeout: 240_000
+  test "maintenance after claim and before approval prevents the guarded embedding dispatch", c do
+    assert_maintenance_before_approval(c, :v4)
+  end
+
+  @tag document_guard_maintenance_egress: true, timeout: 240_000
+  test "maintenance after the staged claim prevents legacy producer embedding dispatch", c do
+    assert_maintenance_before_approval(c, false)
+  end
+
+  defp assert_maintenance_before_approval(c, mode) do
+    c = open(c)
+    {args, _} = prepare(c, mode)
+    root = logical(c, "generation.notes")
+    test_owner = self()
+
+    hook = fn ->
+      fixture_maintenance_fence(c)
+      send(test_owner, :producer_maintenance_closed)
+    end
+
+    stopped = invoke(Map.put(c, :before_embedding_approval, hook), "generation_produce", args)
+    assert_receive :producer_maintenance_closed
+    assert stopped.embedding === 1 and stopped.wires === []
+    refute_receive {:embedding_wire, _, _}, 200
+    assert stopped.value["status"] === "refused"
+    key = if mode == :v4, do: "genproducer4.notes.0", else: "genproducer.notes"
+    assert logical(c, key)["value"]["status"] === "pending"
+    assert logical(c, "generation.notes") === root
+    {:ok, events} = Journal.load(c.dir, c.id)
+    assert {:ok, _} = Session.Saved.restore(events, c.id)
+    assert :ok = Session.close_confirmed(c.pid)
+    {:ok, closed} = Journal.load(c.dir, c.id)
+    assert {:ok, _} = Session.Saved.restore(closed, c.id)
+  end
+
+  @tag document_guard_maintenance_inflight: true, timeout: 240_000
+  test "maintenance after dispatch preserves the admitted request and refuses another batch", c do
+    c = open(Map.put(c, :control_wire, true))
+    {args, _} = prepare(c, :v4)
+    root = logical(c, "generation.notes")
+    {:ok, prior} = Journal.load(c.dir, c.id)
+    test_owner = self()
+
+    hook = fn ->
+      fixture_maintenance_fence(c)
+      send(test_owner, :producer_maintenance_after_send)
+    end
+
+    stopped = invoke(Map.put(c, :after_embedding_sent, hook), "generation_produce", args)
+    assert_receive :producer_maintenance_after_send
+    assert length(stopped.wires) === 1
+    assert stopped.value["status"] === "refused"
+    assert logical(c, "genproducer4.notes.0")["value"]["status"] === "pending"
+    assert logical(c, "generation.notes") === root
+    {:ok, events} = Journal.load(c.dir, c.id)
+    new_events = Enum.drop(events, length(prior))
+
+    dispatches =
+      Enum.filter(
+        new_events,
+        &(&1["type"] == "inference_dispatch_intent" and &1["phase"] == "embedding.create")
+      )
+
+    assert length(dispatches) === 2
+
+    outcomes =
+      Enum.map(dispatches, fn dispatch ->
+        id = dispatch["request_id"]
+
+        assert [_] =
+                 Enum.filter(
+                   new_events,
+                   &(&1["type"] == "request_admitted" and &1["request_id"] == id)
+                 )
+
+        assert [finished] =
+                 Enum.filter(
+                   new_events,
+                   &(&1["type"] == "request_finished" and &1["request_id"] == id)
+                 )
+
+        {finished["outcome"], finished["finality"]}
+      end)
+
+    assert outcomes === [{"completed", "final"}, {"failed", "partial"}]
+
+    assert {:ok, _} = Session.Saved.restore(events, c.id)
+    assert :ok = Session.close_confirmed(c.pid)
+  end
+
+  @tag document_guard_maintenance_fresh: true, timeout: 240_000
+  test "a fresh post-maintenance Job admits guarded embedding batches", c do
+    c = open(c)
+    {args, _} = prepare(c, :v4_after_fence)
+    job = logical(c, "genjob.notes")["value"]
+    assert job["version"] === 4 and job["maintenance_epoch"] === 1
+    root = logical(c, "generation.notes")
+    produced = invoke(c, "generation_produce", args)
+    assert produced.value["status"] === "ok"
+    assert produced.embedding > 0 and length(produced.wires) === produced.embedding
+    assert logical(c, "genproducer4.notes.0")["value"]["status"] === "ready"
+    assert logical(c, "generation.notes") === root
+    {:ok, events} = Journal.load(c.dir, c.id)
+    assert {:ok, _} = Session.Saved.restore(events, c.id)
+    assert :ok = Session.close_confirmed(c.pid)
+  end
+
+  defp fixture_maintenance_fence(c) do
+    {:ok, project} = ProjectIdentity.admit(c.home, c.cwd, :folder)
+
+    owner = %{
+      "project_id" => project["project_id"],
+      "session_id" => c.id,
+      "identity_sha256" => Ipse.JSON.sha256("synthetic maintenance fixture"),
+      "invocation_id" => Usage.id()
+    }
+
+    {:ok, before} = Collection.document_snapshot(c.store, c.namespace)
+
+    open = %{
+      "op" => "maintenance.open",
+      "expected_generation" => before["generation"],
+      "expected_epoch" => before["document_maintenance"]["epoch"],
+      "maintenance_id" => Usage.id(),
+      "purpose" => "checkpoint_inspection",
+      "close_operation_id" => Usage.id()
+    }
+
+    assert {:ok, _} =
+             Collection.document_maintenance(c.store, c.namespace, open, Usage.id(), owner)
+
+    {:ok, active} = Collection.document_snapshot(c.store, c.namespace)
+
+    close = %{
+      "op" => "maintenance.close",
+      "expected_generation" => active["generation"],
+      "expected_epoch" => active["document_maintenance"]["epoch"],
+      "maintenance_id" => open["maintenance_id"]
+    }
+
+    assert {:ok, _} =
+             Collection.document_maintenance(
+               c.store,
+               c.namespace,
+               close,
+               open["close_operation_id"],
+               owner
              )
   end
 

@@ -39,8 +39,12 @@ defmodule Ipse.Extension.Collection.DocumentSourceUse do
   end
 
   @doc "Authenticate one batch; returned facts still require the trusted live dispatch owner."
-  def authenticate(read, guard, inputs, selection) when is_function(read, 1) do
-    with true <- guard?(guard),
+  def authenticate(read, guard, inputs, selection, maintenance) when is_function(read, 1) do
+    with true <-
+           exact?(maintenance, ~w(version epoch status)) and
+             maintenance["version"] === 1 and maintenance["status"] === "idle" and
+             J.safe_uint?(maintenance["epoch"]),
+         true <- guard?(guard),
          true <- is_list(inputs) and length(inputs) in 1..2,
          state = %{reads: 0, logical_bytes: 0, bundle_bytes: 0},
          {claim_row, state} = load!(read, guard["claim_key"], state),
@@ -53,7 +57,7 @@ defmodule Ipse.Extension.Collection.DocumentSourceUse do
          {catalog_row, state} = load!(read, "catalog." <> partition, state),
          {root_row, state} = load!(read, "generation." <> partition, state),
          {job_row, state} = load!(read, "genjob." <> partition, state),
-         true <- anchors?(claim, catalog_row, root_row, job_row),
+         true <- anchors?(claim, catalog_row, root_row, job_row, maintenance["epoch"]),
          page_no = div(claim["cursor"], 16),
          {page_row, state} = load!(read, "catalog.#{partition}.#{page_no}", state),
          true <- page?(page_row, page_no, catalog_row["value"], partition),
@@ -75,6 +79,7 @@ defmodule Ipse.Extension.Collection.DocumentSourceUse do
          batch_index: guard["batch_index"],
          batch_count: div(length(claim["inputs"]) + 1, 2),
          selection_sha256: selection["selection_sha256"],
+         maintenance_epoch: maintenance["epoch"],
          sources: Enum.map(sources, &Map.take(&1, ~w(observed_at_ms expires_at_ms historical))),
          reads: state.reads,
          logical_bytes: state.logical_bytes,
@@ -89,7 +94,7 @@ defmodule Ipse.Extension.Collection.DocumentSourceUse do
     _, _ -> @error
   end
 
-  def authenticate(_, _, _, _), do: @error
+  def authenticate(_, _, _, _, _), do: @error
 
   @doc """
   Inspect a proposed source head and its existing blocks under one retained
@@ -1035,7 +1040,7 @@ defmodule Ipse.Extension.Collection.DocumentSourceUse do
         (is_nil(b["expires_at_ms"]) or J.safe_uint?(b["expires_at_ms"])) and
         b["historical"] === false
 
-  defp anchors?(c, catalog_row, root, job_row) do
+  defp anchors?(c, catalog_row, root, job_row, epoch) do
     catalog = catalog_row["value"]
     job = job_row["value"]
 
@@ -1047,6 +1052,7 @@ defmodule Ipse.Extension.Collection.DocumentSourceUse do
       c["cursor"] < catalog["sources"] and
       stamp(root) === %{revision: c["root_revision"], sha256: c["root_sha256"]} and
       job_row["revision"] === c["job_revision"] and job_version(job) in [1, 2, 3] and
+      job_epoch(job) === epoch and
       job["kind"] == "shared_generation_job" and job["status"] == "groups" and
       job["partition"] === c["partition"] and job["id"] === c["job_id"] and
       job["catalog"] === catalog and
