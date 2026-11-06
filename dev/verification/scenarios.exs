@@ -44,8 +44,11 @@ defmodule Ipse.Development.Verification.Scenarios do
          Ipse.Development.Evaluation.Session
        ]},
     "knowledge-complete" =>
-      {"dev/verification/knowledge_complete.exs", IpseKnowledgeExample.CompleteResultProof,
+      {["dev/verification/saved_results.exs", "dev/verification/knowledge_complete.exs"],
+       IpseKnowledgeExample.CompleteResultProof,
        [
+         IpseSavedResultsExample.Proof,
+         IpseSavedResultsExample.Proof.NoModel,
          IpseKnowledgeExample.CompleteResultProof,
          IpseKnowledgeExample.CompleteResultProof.NoModel
        ]},
@@ -408,9 +411,14 @@ defmodule Ipse.Development.Verification.Scenarios do
     all_true!(
       report,
       ~w(citation_crosses_fragment unranked_claim_bases_preserved complete_hashes_verified
-      opposing_assertions_preserved corpus_graph_conflict historical_reads_exact resume_inert journal_unchanged)
+      opposing_assertions_preserved corpus_graph_conflict historical_reads_exact resume_inert journal_prefix_preserved)
     )
 
+    expected_release =
+      if :os.type() == {:unix, :linux}, do: "signed_release_claim", else: "legacy_unchanged"
+
+    ^expected_release = report["first_release_status"]
+    ^expected_release = report["resume_release_status"]
     "confirmed" = report["cleanup"]
     :ok
   end

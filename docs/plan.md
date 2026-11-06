@@ -1340,28 +1340,33 @@ passes generic installed checks and the independent synthetic decision/document
 artifacts; full-source, consumer-quality and installed knowledge qualification
 remain open.
 
-The latest [complete frozen-source baseline](archive/2026-10-26-p30-p31-implementation/full-suite-cancel-repair-20261102.md)
-at `9f1707c` exited 0: 3,753 passed, zero failed, 118 skipped and 112 excluded,
-with unchanged pre/post source, build and helper inventories. It follows the
-[controlled cancellation repair](archive/2026-10-26-p30-p31-implementation/worker-input-cancel-20261102.md).
+The latest [complete frozen-source baseline](archive/2026-10-26-p30-p31-implementation/full-suite-546869c8-20261106.md)
+at `546869c8` exited 0: 4,288 passed, 136 skipped and 124 excluded, with
+matching source, build and toolchain inventories and independently confirmed
+cleanup. It does not cover later changes. The earlier
+[complete `9f1707c` baseline](archive/2026-10-26-p30-p31-implementation/full-suite-cancel-repair-20261102.md)
+followed the [controlled cancellation repair](archive/2026-10-26-p30-p31-implementation/worker-input-cancel-20261102.md).
 The earlier [failed `39c8043` execution](archive/2026-10-26-p30-p31-implementation/full-suite-20261102.md)
-and `f44b63c` baseline remain preserved. Later Word/clock increments are outside
-the passing snapshot and need their own qualification.
+and `f44b63c` baseline remain preserved.
 Required positive integration, lifecycle and fault controls remain open; focused
 passes never alter a historical aggregate.
 
 A [later current-source run](archive/2026-10-26-p30-p31-implementation/full-suite-interrupted-20261106.md)
 was stopped after three failures, including temporary quota exhaustion and a
 nested-test completion-marker defect. The marker repair passes its separate
-focused native control; a fresh complete current-source baseline remains open.
+focused native control and the later frozen baseline above. A complete baseline
+on the final current source remains open.
 The [saved-result verifier repair](archive/2026-10-26-p30-p31-implementation/saved-result-release-verifier-20261106.md)
 passes fresh synthetic source and Linux installed checks while preserving the
 earlier failed CI result and the separate macOS uncertainty.
+The [knowledge-complete verifier repair](archive/2026-10-26-p30-p31-implementation/knowledge-complete-release-verifier-20261106.md)
+also passes fresh synthetic source and installed checks on the frozen 546869c8
+runtime. Later source and the separate macOS Memory failure remain unqualified.
 
 | Package | Output and prerequisites |
 | --- | --- |
 | P30A | Versioned neutral text contract and pure OpenAI/System One wire subsets implemented; synthetic fixtures and finite experiment/benefit criteria prepared; fixed foundation baseline and incremental audit pass. [Developer contract](developer/decisions.md) |
-| P30B | In progress: operator-only profiles, bounded owned HTTP, `host.decision`, Session/replay bindings, v3 usage/prices and shared budgets implemented; [current-source synthetic controls](archive/2026-10-26-p30-p31-implementation/p30-current-decision-followup.md) cover zero-egress refusal, hosted/compatible wire, tampering, owner loss, inert resume and child approvals. A separately built decision artifact and the exact generic Linux package pass synthetic installed checks; the repaired 9f1707c full-source baseline passes, while later increments and live account access remain unverified. No qualified consumer is implied |
+| P30B | In progress: operator-only profiles, bounded owned HTTP, `host.decision`, Session/replay bindings, v3 usage/prices and shared budgets implemented; [current-source synthetic controls](archive/2026-10-26-p30-p31-implementation/p30-current-decision-followup.md) cover zero-egress refusal, hosted/compatible wire, tampering, owner loss, inert resume and child approvals. A separately built decision artifact and the exact generic Linux package pass synthetic installed checks; the frozen 546869c8 full-source baseline passes, while subsequent changes and live account access remain unverified. No qualified consumer is implied |
 | P30C | In progress: [pure Knowledge planners and zero-call controls](archive/2026-10-26-p30-p31-implementation/p30c-pure-policy.md) have an [independent pure-scope audit and reporting correction](archive/2026-10-26-p30-p31-implementation/p30c-pure-policy-audit.md). A later [coverage-gap repair](archive/2026-10-26-p30-p31-implementation/p30c-coverage-followup.md) has a [separate pure-scope review and adversarial grid](archive/2026-10-26-p30-p31-implementation/p30c-coverage-independent-audit.md). A [synthetic planner-to-Session fixture](archive/2026-10-26-p30-p31-implementation/p30-current-decision-followup.md#synthetic-planner-to-session-shadow-control) covers approval and advice mapping; bounded protected selection and pending assessment are implemented and exercised. Qualified consumer selection remains open |
 | P30D | Bounded implementation and synthetic protected journey qualified: explicit over-budget note selection retains the complete ordinary greedy baseline, followed by assessment of a real main-tool-created pending proposal under one finite two-call grant. Exact source/get/release, accounting, Saved/close/idle and no-replay checks pass with failed pipelines separately preserved. The [packaged checkpoint](archive/2026-11-05-packaged-paired-cli/index.md) covers the disclosed synthetic selection and answer protocol; broader workloads and installed-user qualification remain open |
 | P30E | Synthetic lifecycle qualified: frozen declarations/scoring and protected answer projection retain complete baseline reprojection, inherited provenance, citation byte joins and null timing/cost. The [current-package v2 journey](archive/2026-10-26-p30-p31-implementation/p30-paired-selection-v2-20261106.md) passes actual 8→6→4 projection, physical reference freeze before App, first-row freeze and later unmeasured review/report readback through close/idle. The separate assessment materializer qualifies actual row/freeze and rejection of non-independent synthetic labels, with pending-only versus observed-durable strata preserved. Independent quality, accepted matched real-input/label scoring, whole-task time/cost, current whole-source baseline, broader standalone evaluation and installed-user workflows remain open. Retain useful, rejected/no-benefit and unverified dispositions, unverified engine access and separate live/model evidence; no qualified default. Document/graph routing needs later independent qualification |

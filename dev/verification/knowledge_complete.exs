@@ -81,9 +81,31 @@ defmodule IpseKnowledgeExample.CompleteResultProof do
 
       research_id = Session.info(research).id
       research_path = journal_path(root, "research", research_id)
-      research_sha = Ipse.JSON.sha256(File.read!(research_path))
+      :idle = Session.info(research).phase
+      0 = Session.info(research).accounting["request_count"]
+      pre_close_bytes = File.read!(research_path)
+      {:ok, pre_close_events} = Journal.load(state_dir(root, "research"), research_id)
       :ok = Session.close_confirmed(research)
+      research_before = File.read!(research_path)
+      {:ok, research_events_before} = Journal.load(state_dir(root, "research"), research_id)
+
+      {:ok, first_release_mode} =
+        validate_first_close(
+          pre_close_bytes,
+          research_before,
+          pre_close_events,
+          research_events_before,
+          research_id
+        )
+
+      {:ok, first_release_status} =
+        IpseSavedResultsExample.Proof.validate_release_status(first_release_mode, fn ->
+          Ipse.Session.ReleaseReceipt.inspect_current(state_dir(root, "research"), research_id)
+        end)
+
       resumed = start(configs["research"], root, "research", research_id)
+      :idle = Session.info(resumed).phase
+      0 = Session.info(resumed).accounting["request_count"]
       {:ok, historical} = Session.materialize_result(resumed, full.delivery)
       true = historical.bytes == full.bytes and historical.value == full.value
 
@@ -96,7 +118,22 @@ defmodule IpseKnowledgeExample.CompleteResultProof do
 
       true = offline.bytes == escaped.bytes and offline.value == escaped.value
       :ok = Session.close_confirmed(resumed)
-      ^research_sha = Ipse.JSON.sha256(File.read!(research_path))
+      research_after = File.read!(research_path)
+      {:ok, research_events_after} = Journal.load(state_dir(root, "research"), research_id)
+
+      {:ok, release_mode} =
+        IpseSavedResultsExample.Proof.validate_idle_resume(
+          research_before,
+          research_after,
+          research_events_before,
+          research_events_after,
+          research_id
+        )
+
+      {:ok, release_status} =
+        IpseSavedResultsExample.Proof.validate_release_status(release_mode, fn ->
+          Ipse.Session.ReleaseReceipt.inspect_current(state_dir(root, "research"), research_id)
+        end)
 
       corpus = start(configs["corpus"], root, "corpus")
 
@@ -303,7 +340,9 @@ defmodule IpseKnowledgeExample.CompleteResultProof do
         "complete_hashes_verified" => true,
         "historical_reads_exact" => true,
         "resume_inert" => true,
-        "journal_unchanged" => true,
+        "journal_prefix_preserved" => true,
+        "first_release_status" => first_release_status,
+        "resume_release_status" => release_status,
         "model_requests" => 0,
         "host_loaded_domain_modules" => false,
         "cleanup" => "confirmed"
@@ -316,6 +355,49 @@ defmodule IpseKnowledgeExample.CompleteResultProof do
       File.rm_rf!(root)
     end
   end
+
+  @doc false
+  def validate_first_close(before, after_bytes, before_events, after_events, session)
+      when is_binary(before) and is_binary(after_bytes) and is_list(before_events) and
+             is_list(after_events) and is_binary(session) do
+    count = length(before_events)
+
+    with true <- byte_size(after_bytes) >= byte_size(before),
+         true <- binary_part(after_bytes, 0, byte_size(before)) === before,
+         true <- Enum.take(after_events, count) === before_events,
+         suffix = Enum.drop(after_events, count) do
+      case get_in(hd(before_events), ["metadata", "release_receipt_layout"]) do
+        nil ->
+          if suffix === [],
+            do: {:ok, :legacy_unchanged},
+            else: {:error, :unexpected_first_close_journal}
+
+        layout ->
+          with true <- layout == Ipse.Session.ReleaseReceipt.layout(),
+               [intent] <- suffix,
+               owner when is_map(owner) <-
+                 Enum.find(
+                   Enum.reverse(before_events),
+                   &(&1["type"] == "session_release_owner_started")
+                 ),
+               true <- Ipse.Session.ReleaseReceipt.valid_owner_marker?(owner, session),
+               true <- intent["type"] == "session_release_intent",
+               true <- intent["owner_id"] == owner["owner_id"],
+               true <- is_nil(intent["epoch_id"]) and is_nil(intent["closure_sha256"]),
+               {:ok, ^intent} <- Ipse.Session.ReleaseReceipt.current_intent(after_events, session) do
+            {:ok, :signed_release_required}
+          else
+            _ -> {:error, :unexpected_first_close_journal}
+          end
+      end
+    else
+      _ -> {:error, :unexpected_first_close_journal}
+    end
+  rescue
+    _ -> {:error, :unexpected_first_close_journal}
+  end
+
+  def validate_first_close(_, _, _, _, _), do: {:error, :unexpected_first_close_journal}
 
   defp prepare(artifacts, package, root, overrides \\ []) do
     home = Keyword.get(overrides, :home, Path.join(root, "home-" <> package))
@@ -600,6 +682,7 @@ defmodule IpseKnowledgeExample.CompleteResultProof do
           IpseKnowledge.Corpus,
           IpseKnowledge.Graph,
           IpseKnowledge.Research,
+          IpseSavedResultsExample.Worker,
           IpseKnowledge.Evidence,
           IpseKnowledge.Store
         ],

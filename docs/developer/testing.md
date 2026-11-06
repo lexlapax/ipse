@@ -422,7 +422,7 @@ error cannot stand in for the capacity control.
 The sequence case saves 27 candidates through 54 actual adapter requests, checks
 the resulting records and distinct original Session proofs, and crosses a nonzero
 live-page split fence. Each Session must complete, settle and close. Same-mode idle resume follows the
-[suffix contract above](#require-positive-controls-and-inspect-uncertainty), with no Worker replay.
+[suffix contract above](#reopen-the-same-mode-and-inspect-permitted-suffixes), with no Worker replay.
 A separate legacy-reader case first creates a genuine managed record through the
 registered route, then requires a newly reviewed legacy reader to refuse its text.
 These two cases retain private synthetic roots printed as `REGISTERED_CAPTURE_ROOT`.
@@ -662,6 +662,13 @@ retain runtime/evidence to reopen exact files. Retention authorizes no retry.
 | `documents` | Corpus artifact; matching parser-enabled source host or standard archive; default selection |
 | `model-service` | Compiled model-service Rust probe and fresh evidence output |
 | `measured-knowledge`, `measured-authority` | Seven-artifact map, clean repository, fresh output, optional Linux backend |
+
+The `knowledge-complete` proof checks exact historical results across idle resume.
+It preserves the prior journal as an exact prefix and admits only the validated
+ownership and release records; on Linux it checks the signed release claim after
+each close. For a legacy journal without the release layout, the bytes must remain
+unchanged.
+These checks establish neither a live account nor independent answer quality.
 
 Measured-knowledge accepts default/sealed/structured/sealed-structured plus
 sealed-long-answers/sealed-gpu-answers policies. Other scenarios except model use
