@@ -1,7 +1,7 @@
 defmodule Ipse.Extension.Collection.DocumentStageTest do
   use ExUnit.Case, async: false
   alias Ipse.{JSON, Usage}
-  alias Ipse.Extension.Collection
+  alias Ipse.Extension.{Collection, CollectionStore}
   alias Ipse.Extension.Collection.{DocumentStage, Profile}
 
   setup do
@@ -13,7 +13,7 @@ defmodule Ipse.Extension.Collection.DocumentStageTest do
 
     %{
       root: Path.join(directory, "collections"),
-      ns: JSON.sha256("stage"),
+      ns: Ipse.Extension.CollectionStore.namespace(JSON.sha256("project")),
       owner: %{
         "project_id" => JSON.sha256("project"),
         "identity_sha256" => JSON.sha256("identity"),
@@ -190,7 +190,13 @@ defmodule Ipse.Extension.Collection.DocumentStageTest do
     end
 
     assert {:ok, %{"layout" => nil}} = call(c, %{"op" => "value.layout", "key" => "absent"})
-    foreign = %{c | ns: JSON.sha256("foreign layout namespace")}
+    foreign_owner = Map.put(c.owner, "project_id", JSON.sha256("foreign layout project"))
+
+    foreign = %{
+      c
+      | ns: CollectionStore.namespace(foreign_owner["project_id"]),
+        owner: foreign_owner
+    }
 
     assert {:ok, %{"layout" => nil}} =
              call(foreign, %{"op" => "value.layout", "key" => "layout.one"})
@@ -487,12 +493,14 @@ defmodule Ipse.Extension.Collection.DocumentStageTest do
   test "inherited trusted deadlines cannot be cleared or extended and the scope restores exactly",
        c do
     key = {DocumentStage, :publish_before_ms}
+    guard_key = {DocumentStage, :publication_guard}
     prior = Process.get(key)
+    prior_guard = Process.get(guard_key)
     parent = self()
     tracer = spawn(fn -> deadline_trace(parent) end)
     Code.ensure_loaded!(Collection)
     assert 1 = :erlang.trace_pattern({Collection, :execute_profile_before, 6}, true, [])
-    :erlang.trace(self(), true, [:call, {:tracer, tracer}])
+    :erlang.trace(self(), true, [:call, :set_on_spawn, {:tracer, tracer}])
     on_exit(fn -> Process.exit(tracer, :kill) end)
 
     try do
@@ -528,6 +536,12 @@ defmodule Ipse.Extension.Collection.DocumentStageTest do
       assert {:error, :document_store_refused} = execute(c, blocked)
       Process.put(key, :invalid)
       assert {:error, :document_store_refused} = execute(c, blocked)
+      Process.put(key, inherited)
+      inherited_guard = fn _, _ -> :ok end
+      Process.put(guard_key, inherited_guard)
+      assert {:error, :document_store_refused} = execute(c, blocked)
+      assert Process.get(guard_key) === inherited_guard
+      Process.delete(guard_key)
       refute_receive {:deadline_seen, _}, 30
       Process.delete(key)
 
@@ -542,9 +556,14 @@ defmodule Ipse.Extension.Collection.DocumentStageTest do
       assert Enum.join(row["value"]["parts"]) == "{\"v\":1}"
       assert {:ok, _} = execute(c, next_request.())
     after
-      :erlang.trace(self(), false, [:call])
+      :erlang.trace(self(), false, [:call, :set_on_spawn])
       :erlang.trace_pattern({Collection, :execute_profile_before, 6}, false, [])
       if is_nil(prior), do: Process.delete(key), else: Process.put(key, prior)
+
+      if is_nil(prior_guard),
+        do: Process.delete(guard_key),
+        else: Process.put(guard_key, prior_guard)
+
       send(tracer, :stop)
     end
   end
@@ -952,9 +971,10 @@ defmodule Ipse.Extension.Collection.DocumentStageTest do
   @tag :workspace_publication_guard
   test "the trusted publication callback gates inline, fused and staged commits", c do
     body = Jason.encode!(%{"kind" => "synthetic_source_head"})
+    observer = self()
 
     guard = fn changes, _read ->
-      send(self(), {:publication_guard, Enum.map(changes, & &1["key"])})
+      send(observer, {:publication_guard, Enum.map(changes, & &1["key"])})
       {:error, :document_store_refused}
     end
 

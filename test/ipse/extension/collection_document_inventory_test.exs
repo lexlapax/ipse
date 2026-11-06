@@ -87,7 +87,7 @@ defmodule Ipse.Extension.Collection.DocumentInventoryTest do
     File.chmod!(dir, 0o700)
     on_exit(fn -> File.rm_rf!(dir) end)
     root = Path.join(dir, "collections")
-    namespace = JSON.sha256("inventory")
+    namespace = CollectionStore.namespace(JSON.sha256("project"))
     keys = for n <- 0..39, do: "data." <> String.pad_leading(Integer.to_string(n), 91, "a")
 
     private =

@@ -43,6 +43,9 @@ defmodule Ipse.Extension.CollectionStoreSessionTest do
       @behaviour Ipse.Extension
       def describe, do: %{"sdk" => 1, "capabilities" => #{inspect(caps)}, "exports" => #{inspect(exports)}}
       def init(options), do: {:ok, options}
+      def handle("invoke.command", %{"arguments" => %{"mode" => "stage_request", "request" => request}}, _state) do
+        call(%{"op" => "snapshot"}, %{"step" => "stage_request", "request" => request})
+      end
       def handle("invoke.command", %{"arguments" => %{"mode" => "layout"} = args}, _state) do
         call(%{"op" => "snapshot"}, %{"step" => "layout_boot", "args" => args})
       end
@@ -65,6 +68,9 @@ defmodule Ipse.Extension.CollectionStoreSessionTest do
         request = %{"op" => "value.index", "generation" => result["generation"] + (s["args"]["generation_delta"] || 0),
           "after" => s["args"]["after"], "limit" => 16}
         call(request, Map.put(s,"step","inventory_page"))
+      end
+      defp next("stage_request", result, s) do
+        call(Map.put(s["request"], "generation", result["generation"]), Map.put(s,"step","layout_result"))
       end
       defp next("layout_boot", result, s) do
         call(%{"op" => "value.layout", "generation" => result["generation"] + (s["args"]["generation_delta"] || 0),
@@ -313,6 +319,145 @@ defmodule Ipse.Extension.CollectionStoreSessionTest do
              )
 
     assert {:ok, _} = Session.Saved.restore(events, id)
+  end
+
+  @tag :document_maintenance_session
+  test "actual SDK keeps old stages fenced after close while fresh approved publication succeeds",
+       c do
+    run = open(c)
+    root = CollectionStore.root(run.home)
+    namespace = CollectionStore.namespace(run.binding["project_id"])
+    epoch = Usage.id()
+    bytes = Jason.encode!(%{"text" => "original staged document"})
+
+    request = %{
+      "op" => "value.prepare_inline",
+      "slot" => 0,
+      "epoch" => epoch,
+      "key" => "old.staged",
+      "expected_revision" => 0,
+      "byte_count" => byte_size(bytes),
+      "sha256" => JSON.sha256(bytes),
+      "data" => bytes
+    }
+
+    assert :ok =
+             Session.invoke_export(run.pid, :command, "ext__documents__exercise", %{
+               "mode" => "stage_request",
+               "request" => request
+             })
+
+    {prepared, 1} = wait(run)
+    assert prepared["value"]["stage"]["state"] === "sealed"
+
+    assert {:ok, %{"record" => header}} =
+             Collection.execute_profile(
+               root,
+               namespace,
+               %{"op" => "get", "key" => "host.stage.0.header"},
+               Usage.id(),
+               Profile.documents()
+             )
+
+    owner = header["value"]["owner"]
+    assert owner["session_id"] === run.id
+    assert {:ok, before} = Collection.document_snapshot(root, namespace)
+    close_id = Usage.id()
+
+    opening = %{
+      "op" => "maintenance.open",
+      "expected_generation" => before["generation"],
+      "expected_epoch" => 0,
+      "maintenance_id" => Usage.id(),
+      "purpose" => "checkpoint_inspection",
+      "close_operation_id" => close_id
+    }
+
+    # The internal transition is trusted fixture setup, not a public maintenance grant.
+    assert {:ok, opened} =
+             Collection.document_maintenance(root, namespace, opening, Usage.id(), owner)
+
+    assert {:ok, _} =
+             Collection.document_maintenance(
+               root,
+               namespace,
+               %{
+                 "op" => "maintenance.close",
+                 "expected_generation" => opened["generation"],
+                 "expected_epoch" => 1,
+                 "maintenance_id" => opening["maintenance_id"]
+               },
+               close_id,
+               owner
+             )
+
+    old_commit = %{"op" => "commit", "stages" => [%{"slot" => 0, "epoch" => epoch}]}
+
+    assert :ok =
+             Session.invoke_export(run.pid, :command, "ext__documents__exercise", %{
+               "mode" => "stage_request",
+               "request" => old_commit
+             })
+
+    {_refused, 1} = wait(run, 0, true)
+    assert {:ok, events} = Journal.load(run.dir, run.id)
+
+    [failed] =
+      Enum.filter(
+        events,
+        &(&1["type"] === "extension_action_result" and
+            get_in(&1, ["request", "request", "op"]) === "commit")
+      )
+
+    assert failed["outcome"] === %{
+             "status" => "failed",
+             "value" => %{"code" => "document_store_refused"}
+           }
+
+    assert Actions.valid_result?(failed)
+
+    fresh = %{
+      "op" => "value.put_inline",
+      "key" => "fresh.document",
+      "expected_revision" => 0,
+      "byte_count" => byte_size(bytes),
+      "sha256" => JSON.sha256(bytes),
+      "data" => bytes
+    }
+
+    assert :ok =
+             Session.invoke_export(run.pid, :command, "ext__documents__exercise", %{
+               "mode" => "stage_request",
+               "request" => fresh
+             })
+
+    {published, 1} = wait(run)
+    assert published["value"]["key"] === "fresh.document"
+    assert {:ok, after_state} = Collection.document_snapshot(root, namespace)
+
+    assert after_state["document_maintenance"] === %{
+             "version" => 1,
+             "epoch" => 1,
+             "status" => "idle"
+           }
+
+    assert {:ok, %{"record" => nil}} =
+             Collection.execute_profile(
+               root,
+               namespace,
+               %{"op" => "get", "key" => "old.staged"},
+               Usage.id(),
+               Profile.documents()
+             )
+
+    assert :ok = Session.close_confirmed(run.pid)
+    assert {:ok, final} = Journal.load(run.dir, run.id)
+    assert {:ok, _} = Session.Saved.restore(final, run.id)
+
+    assert Enum.all?(
+             Enum.filter(final, &(&1["type"] === "extension_action_result")),
+             &Actions.valid_result?/1
+           )
   end
 
   @tag :document_inventory_session

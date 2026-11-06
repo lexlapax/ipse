@@ -932,7 +932,7 @@ defmodule Ipse.Extension.CollectionDocumentSourceUseNativeTest do
     File.chmod!(parent, 0o700)
     on_exit(fn -> File.rm_rf!(parent) end)
     root = Path.join(parent, "collections")
-    namespace = JSON.sha256("synthetic selection capacity")
+    namespace = Ipse.Extension.CollectionStore.namespace(JSON.sha256("synthetic project"))
     if switch?, do: Process.put({__MODULE__, :capacity}, %{})
 
     batches =

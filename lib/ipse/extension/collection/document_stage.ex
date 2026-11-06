@@ -222,6 +222,19 @@ defmodule Ipse.Extension.Collection.DocumentStage do
 
   @doc "Trusted host deadline only; never accepts deadline or authority fields in worker JSON."
   def execute(root, namespace, request, operation_id, owner, opts) do
+    inherited = Process.get(@publish_deadline_key)
+
+    if (is_nil(inherited) or (JSON.safe_uint?(inherited) and inherited > 0)) and
+         is_nil(Process.get(@publication_guard_key)) do
+      Ipse.Session.Resources.file_effect(fn ->
+        execute_owned(root, namespace, request, operation_id, owner, opts, inherited)
+      end)
+    else
+      @error
+    end
+  end
+
+  defp execute_owned(root, namespace, request, operation_id, owner, opts, inherited) do
     previous = Process.get(@publish_deadline_key)
     previous_guard = Process.get(@publication_guard_key)
 
@@ -235,12 +248,8 @@ defmodule Ipse.Extension.Collection.DocumentStage do
          deadline = Keyword.get(opts, :publish_before_ms),
          true <- is_nil(deadline) or (JSON.safe_uint?(deadline) and deadline > 0),
          true <- is_nil(previous) or (JSON.safe_uint?(previous) and previous > 0),
-         deadline =
-           (case {previous, deadline} do
-              {nil, value} -> value
-              {value, nil} -> value
-              {a, b} -> min(a, b)
-            end),
+         deadlines = Enum.reject([inherited, previous, deadline], &is_nil/1),
+         deadline = if(deadlines == [], do: nil, else: Enum.min(deadlines)),
          true <- is_nil(deadline) or System.system_time(:millisecond) < deadline do
       Process.put(@publish_deadline_key, deadline)
       Process.put(@publication_guard_key, guard)
@@ -262,12 +271,18 @@ defmodule Ipse.Extension.Collection.DocumentStage do
   end
 
   defp execute_current(root, namespace, request, operation_id, owner) do
-    with true <- request?(request) and owner?(owner) and id?(operation_id),
-         {:ok, snapshot} <- read(root, namespace, %{"op" => "snapshot"}),
-         true <-
-           request["op"] in ~w(snapshot stage.list) or
-             request["generation"] == snapshot["generation"] do
-      dispatch(root, namespace, request, operation_id, owner, snapshot)
+    with true <- request?(request) and owner?(owner) and id?(operation_id) do
+      result =
+        Collection.with_document_admission(root, namespace, owner, fn snapshot ->
+          if request["op"] in ~w(snapshot stage.list) or
+               request["generation"] == snapshot["generation"] do
+            dispatch(root, namespace, request, operation_id, owner, snapshot)
+          else
+            @error
+          end
+        end)
+
+      if result === {:error, :invalid_document_admission}, do: @error, else: result
     else
       _ -> @error
     end
@@ -350,7 +365,8 @@ defmodule Ipse.Extension.Collection.DocumentStage do
              "parts" => 0,
              "state" => "sealed",
              "expires_at_ms" => expiry
-           }) do
+           })
+           |> bind_maintenance_epoch() do
       commit(
         root,
         ns,
@@ -359,7 +375,10 @@ defmodule Ipse.Extension.Collection.DocumentStage do
         [change(header_key(r["slot"]), 0, header), change(ready(r), 0, packed)],
         expiry
       )
-      |> inline_receipt(r, Map.put(Map.drop(header, ["owner", "parts"]), "slot", r["slot"]))
+      |> inline_receipt(
+        r,
+        Map.put(Map.drop(header, ["owner", "parts", "maintenance_epoch"]), "slot", r["slot"])
+      )
     else
       _ -> @error
     end
@@ -407,7 +426,8 @@ defmodule Ipse.Extension.Collection.DocumentStage do
              "parts" => 0,
              "state" => "open",
              "expires_at_ms" => System.system_time(:millisecond) + @ttl_ms
-           }) do
+           })
+           |> bind_maintenance_epoch() do
       commit(root, ns, s, id, [change(header_key(r["slot"]), 0, header)], header["expires_at_ms"])
     else
       _ -> @error
@@ -631,6 +651,7 @@ defmodule Ipse.Extension.Collection.DocumentStage do
                "write_publish" => r["publish"],
                "expires_at_ms" => System.system_time(:millisecond) + @ttl_ms
              })
+             |> bind_maintenance_epoch()
          }}
       else
         _ -> @error
@@ -716,6 +737,7 @@ defmodule Ipse.Extension.Collection.DocumentStage do
   defp stage(root, ns, r, owner, s) do
     with {:ok, h} when is_map(h) <- record(root, ns, header(r), s),
          true <- h["value"]["version"] === 1 and h["value"]["epoch"] == r["epoch"],
+         true <- stage_maintenance_current?(h["value"], r),
          opening when is_map(opening) <- h["value"]["owner"],
          true <- owner?(opening),
          true <- opening["project_id"] == owner["project_id"],
@@ -732,6 +754,21 @@ defmodule Ipse.Extension.Collection.DocumentStage do
     else
       _ -> @error
     end
+  end
+
+  defp bind_maintenance_epoch(header) do
+    case Collection.admitted_document_epoch() do
+      epoch when is_integer(epoch) and epoch > 0 -> Map.put(header, "maintenance_epoch", epoch)
+      0 -> header
+    end
+  end
+
+  defp stage_maintenance_current?(header, request) do
+    epoch = Map.get(header, "maintenance_epoch", 0)
+
+    JSON.safe_uint?(epoch) and
+      (request["op"] in ~w(stage.inspect value.abort value.reclaim) or
+         epoch === Collection.admitted_document_epoch())
   end
 
   defp parts(root, ns, r, h, s) do

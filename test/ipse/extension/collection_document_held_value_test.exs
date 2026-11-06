@@ -9,7 +9,11 @@ defmodule Ipse.Extension.CollectionDocumentHeldValueTest do
     File.mkdir!(parent)
     File.chmod!(parent, 0o700)
     on_exit(fn -> File.rm_rf!(parent) end)
-    %{root: parent <> "/collections", namespace: JSON.sha256("held logical fixture")}
+
+    %{
+      root: parent <> "/collections",
+      namespace: Ipse.Extension.CollectionStore.namespace(JSON.sha256("fixture project"))
+    }
   end
 
   defp packed(body) do

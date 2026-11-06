@@ -41,7 +41,7 @@ defmodule Ipse.CollectionPinnedNativeTest do
     File.mkdir!(parent)
     File.chmod!(parent, 0o700)
     root = Path.join(parent, "collections")
-    namespace = JSON.sha256("synthetic pinned native read")
+    namespace = Ipse.Extension.CollectionStore.namespace(JSON.sha256("synthetic pinned project"))
 
     owner = %{
       "project_id" => JSON.sha256("synthetic pinned project"),

@@ -9,9 +9,11 @@ its own permission and execution checks. Follow the
 [SDK capture boundary](collection-sdk.md#follow-one-capture-across-its-owners)
 when selecting a host route.
 
-The existing Corpus/Graph/Research source stores below use explicit State or
-remote CAS contracts. Neither path treats a successfully written orphan page as
-published content. Start with
+Corpus/Graph/Research source stores use explicit State or remote CAS contracts;
+the experimental document Collection uses a separate fixed profile and host-owned
+stages. Choose that profile's [publication fence](#fence-document-stages-before-metadata-maintenance)
+before changing its metadata. None of these owners treats a successfully written
+orphan page as published content. Start with
 [retrieval training](knowledge-extensions.md) and the
 [operator source workflow](../operator/corpus.md).
 
@@ -510,6 +512,65 @@ maximum-record, annual lifecycle, cleanup, concurrent-owner and independent
 semantic qualification remain separate. Both report fields
 `full_6_kib_record_payload_qualification` and `annual_workload_qualification`
 remain false.
+
+## Fence document stages before metadata maintenance
+
+The fixed document profile has an internal metadata-maintenance fence in
+`Collection.DocumentMaintenance`. It is separate from the State and MCP source
+operations below. No public SDK operation, Corpus command, garbage collector or
+adoption procedure exposes it. A trusted host caller must establish ordinary
+approval and project authority before using the internal entry point; an epoch
+or a shaped owner map supplies neither.
+
+An open transition checks the actual locked generation, current epoch and
+absence of another maintenance/import owner. It increments the persisted epoch
+and reserves exactly two distinct operation IDs: the open publication and its
+named close publication. The complete ID reservation must fit before opening. The
+active metadata binds the project, Session, artifact and invocation owner, plus
+the opening descriptor/checkpoint commitment. Reload reconstructs that commitment
+from the immutable opening state and receipt. Ordinary document mutations refuse
+while active; inspection remains available. Close requires the same owner and
+reserved ID, retains the new epoch and leaves records, checkpoints, destructive
+floor and receipt history intact. There is no automatic expiry, adoption or
+unknown-operation replay.
+
+For an admitted document operation, `Collection.with_document_admission/4` reads
+the actual protected snapshot and binds its epoch and idle/active status to the
+canonical root path, project namespace and trusted owner. Never replace this
+step with a worker-supplied counter. The final native CAS compares that context
+again. An admission captured before open, or while active, cannot publish after
+close even with a refreshed generation. A fresh admission after close can publish.
+Plain document commits without that context fail closed after the first fence.
+
+`DocumentStage.execute/6` enters one tracked file-effect owner before installing
+its publication guard and admission context. Nested Collection calls stay in
+that owner. The entry explicitly carries only a validated inherited deadline
+across a newly created effect peer, narrows it against the requested deadline,
+and refuses nested publication guards. Do not copy arbitrary process dictionary
+state or make a callback depend on running in its caller's process.
+
+Stored stage headers bind the opening maintenance epoch internally. Public stage
+requests/results keep their existing closed fields; callers cannot supply an
+epoch to renew a stale stage. After a fence, a legacy or older stage cannot append,
+seal or publish. Exact owner-bound abort and expiry-bound reclaim remain reducing
+operations, subject to the current native fence. Source, Index, Job and Projection
+continuations still require their own epoch integration before a general
+maintenance or GC workflow can be exposed. Checkpoint rollback does not reset
+the persisted epoch.
+
+Exercise the internal lifecycle and the real SDK boundary with disposable native
+storage on a supported profile:
+
+```sh
+mix test test/ipse/extension/collection_document_maintenance_test.exs --trace
+mix test test/ipse/extension/collection_document_stage_test.exs
+mix test test/ipse/extension/collection_store_session_test.exs --only document_maintenance_session
+```
+
+The Session control prepares an approved stage, opens/closes the internal fence,
+refuses publication from that old stage and then approves a fresh publication.
+It reconstructs the closed journal without invoking a model. These are lifecycle
+checks, not destructive GC, migration or full-capacity qualification.
 
 ## Claim a draft before writing immutable pages
 

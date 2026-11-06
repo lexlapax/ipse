@@ -375,6 +375,7 @@ nor resource/offline qualification. No daemon configuration or existing model wa
 - [Hash-bound paged acquisition and explicit staged Word text](word-staged-acquisition.md).
 - [Paged Word locator manifests and authenticated selective hydration](word-locator-manifest.md).
 - [Document storage profile, protected staged blocks and legacy draft expiry repairs](document-store-boundary.md).
+- [Internal document maintenance epoch, native admission fence and stale-stage refusal](document-maintenance-epoch-20261105.md).
 - [Packed document adapter, paged catalog and selected-source Session controls](document-store-adapter.md), with [public Corpus Collection routes](corpus-collection-documents.md), [lossless per-source lexical runs](source-lexical-runs.md) and [namespace lexical indexing](namespace-lexical-index.md); full populated capacity qualification remains open.
 - [Versioned Collection chunking with legacy-reader and citation controls](collection-chunking.md); populated capacity still requires further storage and projection work.
 - [Private project-domain keys, namespace preparation and bounded page authenticators](project-domain-auth-component.md), with its [independent public-API and native adversarial audit](project-domain-auth-audit.md).

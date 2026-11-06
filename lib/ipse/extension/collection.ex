@@ -27,6 +27,7 @@ defmodule Ipse.Extension.Collection do
   alias Ipse.Extension.Collection.{
     Blocks,
     Directory,
+    DocumentMaintenance,
     Encoding,
     Migration,
     Planning,
@@ -49,6 +50,7 @@ defmodule Ipse.Extension.Collection do
   @switch_deadline_key {__MODULE__, :switch_deadline}
   @notes_admission_key {__MODULE__, :notes_publication_admission}
   @acceptance_attempt_key {__MODULE__, :acceptance_effect_attempted}
+  @document_epoch_key {__MODULE__, :document_epoch}
   @error {:error, :collection_unavailable}
 
   def limits do
@@ -153,6 +155,82 @@ defmodule Ipse.Extension.Collection do
   @doc "Trusted fixed-profile storage entry; caller must establish project and operator authority."
   def execute_profile(root, project, request, operation_id, profile) do
     Profile.run(profile, fn -> execute_selected(root, project, request, operation_id, profile) end)
+  end
+
+  @doc "Internal document metadata lifecycle; the caller must establish ordinary host authority. No SDK operation is exposed."
+  def document_maintenance(root, namespace, request, operation_id, owner) do
+    with false <- Process.get(@lock_key, false) != false,
+         true <- DocumentMaintenance.request?(request) and id?(operation_id),
+         true <- Ipse.Extension.Collection.DocumentStage.owner?(owner),
+         true <- namespace === Ipse.Extension.CollectionStore.namespace(owner["project_id"]) do
+      Ipse.Session.Resources.file_effect(fn ->
+        Profile.run(Profile.documents(), fn ->
+          locked(root, namespace, request, operation_id, {:document_maintenance, owner})
+        end)
+      end)
+    else
+      _ -> {:error, :invalid_document_maintenance_request}
+    end
+  rescue
+    _ -> @error
+  end
+
+  @doc false
+  def document_snapshot(root, namespace) do
+    with false <- Process.get(@lock_key, false) != false do
+      Ipse.Session.Resources.file_effect(fn ->
+        Profile.run(Profile.documents(), fn ->
+          locked(root, namespace, %{"op" => "snapshot"}, nil, :document_snapshot)
+        end)
+      end)
+    else
+      _ -> {:error, :collection_lock_order}
+    end
+  rescue
+    _ -> @error
+  end
+
+  @doc "Internal host admission from an actual protected snapshot; no caller supplies an epoch."
+  def with_document_admission(root, namespace, owner, fun) when is_function(fun, 1) do
+    Ipse.Session.Resources.file_effect(fn ->
+      document_admission(root, namespace, owner, fun)
+    end)
+  end
+
+  defp document_admission(root, namespace, owner, fun) do
+    with true <- Ipse.Extension.Collection.DocumentStage.owner?(owner),
+         true <- namespace === Ipse.Extension.CollectionStore.namespace(owner["project_id"]),
+         {:ok, snapshot} <- document_snapshot(root, namespace) do
+      previous = Process.get(@document_epoch_key)
+
+      admission = %{
+        path: Path.expand(Path.join(root, namespace)),
+        namespace: namespace,
+        owner: owner,
+        status: snapshot["document_maintenance"]["status"],
+        epoch: snapshot["document_maintenance"]["epoch"]
+      }
+
+      Process.put(@document_epoch_key, admission)
+
+      try do
+        fun.(Map.delete(snapshot, "document_maintenance"))
+      after
+        if is_nil(previous),
+          do: Process.delete(@document_epoch_key),
+          else: Process.put(@document_epoch_key, previous)
+      end
+    else
+      _ -> {:error, :invalid_document_admission}
+    end
+  end
+
+  @doc false
+  def admitted_document_epoch do
+    case Process.get(@document_epoch_key) do
+      %{epoch: epoch} -> epoch
+      nil -> nil
+    end
   end
 
   @doc "Read only fixed-profile public document descriptors under the actual native owner."
@@ -776,6 +854,25 @@ defmodule Ipse.Extension.Collection do
               nil ->
                 apply_request(path, uid, state, manifest, request, operation_id)
 
+              :document_snapshot ->
+                {:ok,
+                 Map.put(
+                   summary(state),
+                   "document_maintenance",
+                   DocumentMaintenance.metadata(state)
+                 )}
+
+              {:document_maintenance, owner} ->
+                apply_document_maintenance(
+                  path,
+                  uid,
+                  state,
+                  manifest,
+                  request,
+                  operation_id,
+                  owner
+                )
+
               :visible_scan ->
                 scan(path, uid, state, request, true)
 
@@ -1174,6 +1271,21 @@ defmodule Ipse.Extension.Collection do
 
   defp apply_request(path, uid, s, manifest, r, id) do
     apply_mutation(path, uid, s, manifest, r, id, %{})
+  end
+
+  defp apply_document_maintenance(_, _, s, _, %{"op" => "maintenance.inspect"}, _, _) do
+    {:ok, Map.put(summary(s), "document_maintenance", DocumentMaintenance.metadata(s))}
+  end
+
+  defp apply_document_maintenance(path, uid, s, manifest, request, id, owner) do
+    request = Map.put(request, "owner", owner)
+    known = Migration.known_operations(s)[id]
+
+    if is_map(known) and known["request_sha256"] !== JSON.digest([request]) do
+      {:failed, Map.put(summary(s), "code", "collection_operation_identity")}
+    else
+      apply_mutation(path, uid, s, manifest, request, id, %{})
+    end
   end
 
   defp apply_managed(path, uid, s, manifest, original, id, {recipe, normalizer, version}) do
@@ -1932,6 +2044,9 @@ defmodule Ipse.Extension.Collection do
       Migration.fenced?(s, r["op"]) ->
         {:failed, Map.put(summary(s), "code", "collection_writer_fenced")}
 
+      document_admission_error(path, s, r, id) !== nil ->
+        {:failed, Map.put(summary(s), "code", document_admission_error(path, s, r, id))}
+
       r["op"] == "import" and (r["project"] != s["project"] or r["floor"] != s["floor"]) ->
         {:failed, Map.put(summary(s), "code", "collection_import_floor")}
 
@@ -1972,6 +2087,32 @@ defmodule Ipse.Extension.Collection do
           {:failed, code} ->
             {:failed, Map.put(summary(s), "code", code)}
         end
+    end
+  end
+
+  defp document_admission_error(path, %{"project" => project} = s, r, id) do
+    if Profile.selected() === Profile.documents() and
+         r["op"] not in ~w(maintenance.open maintenance.close) do
+      case Process.get(@document_epoch_key) do
+        nil ->
+          DocumentMaintenance.admission_error(s, id, nil)
+
+        %{path: admitted_path, namespace: namespace, owner: owner, epoch: epoch, status: status}
+        when namespace === project ->
+          if admitted_path === Path.expand(path) and
+               Ipse.Extension.Collection.DocumentStage.owner?(owner) do
+            case DocumentMaintenance.admission_error(s, id, epoch) do
+              nil when status === "idle" -> nil
+              nil -> "collection_document_admission"
+              error -> error
+            end
+          else
+            "collection_document_admission"
+          end
+
+        _ ->
+          "collection_document_admission"
+      end
     end
   end
 
@@ -2026,6 +2167,9 @@ defmodule Ipse.Extension.Collection do
     end
   end
 
+  defp prepare(s, %{"op" => op} = r, id) when op in ~w(maintenance.open maintenance.close),
+    do: DocumentMaintenance.prepare(s, r, id, Profile.limit(:operations))
+
   defp prepare(s, r, id), do: Migration.prepare(s, r, id)
 
   defp status(path, uid, s) do
@@ -2041,7 +2185,8 @@ defmodule Ipse.Extension.Collection do
          "checkpoint_records" => map_size(get_in(s, ["checkpoint", "records"]) || %{}),
          "checkpoint_data_bytes" => Migration.bytes(get_in(s, ["checkpoint", "records"]) || %{}),
          "operations" => map_size(Migration.operations(s)),
-         "reserved_operation_slots" => Migration.reserved_operation_slots(s),
+         "reserved_operation_slots" =>
+           Migration.reserved_operation_slots(s) + DocumentMaintenance.reserved_slots(s),
          "data_bytes" => data_bytes(s),
          "envelope_data_bytes" => envelope_bytes(s),
          "disk_bytes" => disk,
@@ -2370,8 +2515,13 @@ defmodule Ipse.Extension.Collection do
   defp valid_state?(s, project) do
     keys?(
       s,
-      ~w(version project generation floor floor_anchor floor_lineage records operations imported_operations migration checkpoint)
+      ~w(version project generation floor floor_anchor floor_lineage records operations imported_operations migration checkpoint) ++
+        if(Profile.selected() === Profile.documents() and DocumentMaintenance.present?(s),
+          do: ["document_maintenance"],
+          else: []
+        )
     ) and
+      DocumentMaintenance.valid?(s) and
       s["version"] === 3 and
       s["project"] == project and uint?(s["generation"]) and uint?(s["floor"]) and
       is_map(s["records"]) and
@@ -2417,7 +2567,8 @@ defmodule Ipse.Extension.Collection do
 
     is_map(imported) and is_map(staged) and
       map_size(s["operations"]) + map_size(imported) + map_size(staged) +
-        Migration.reserved_operation_slots(s) <= Profile.limit(:operations) and
+        Migration.reserved_operation_slots(s) + DocumentMaintenance.reserved_slots(s) <=
+        Profile.limit(:operations) and
       Enum.all?(imported, fn {id, receipt} -> id?(id) and Migration.receipt?(receipt) end) and
       Enum.all?(Map.keys(imported), &(not Map.has_key?(s["operations"], &1))) and
       Enum.all?(

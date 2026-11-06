@@ -74,7 +74,7 @@ if System.get_env("IPSE_SPLIT_APPEND_CHILD") == "1" do
 
       ctx = %{
         root: Path.join(parent, "collections"),
-        namespace: JSON.sha256("synthetic projection race"),
+        namespace: Ipse.Extension.CollectionStore.namespace(JSON.sha256("synthetic project")),
         interpose: interpose?,
         owner: %{
           "project_id" => JSON.sha256("synthetic project"),
@@ -266,7 +266,7 @@ if System.get_env("IPSE_SPLIT_APPEND_CHILD") == "1" do
 
       ctx = %{
         root: Path.join(parent, "collections"),
-        namespace: JSON.sha256("synthetic split append"),
+        namespace: Ipse.Extension.CollectionStore.namespace(JSON.sha256("synthetic project")),
         interpose: interpose?,
         owner: %{
           "project_id" => JSON.sha256("synthetic project"),

@@ -387,7 +387,7 @@ defmodule Ipse.Session.DocumentEmbeddingTest do
     File.mkdir!(parent)
     File.chmod!(parent, 0o700)
     root = Path.join(parent, "collections")
-    namespace = JSON.sha256("synthetic inline v4 native boundary")
+    namespace = CollectionStore.namespace(f.c.project["project_id"])
     ready = ready_record(f.pending)
     bytes = Elixir.JSON.encode!(ready) |> IO.iodata_to_binary()
 
