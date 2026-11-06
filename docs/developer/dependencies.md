@@ -82,7 +82,7 @@ neither approval authorizes package installation or image downloads.
 
 | Dependency | Version/source | Scope and purpose | License |
 | --- | --- | --- | --- |
-| Elixir and Mix | Elixir 1.18+; `mix.exs` requires `~> 1.18` | Core implementation, build, release, ExUnit tests, scripts; installed verification compiles its harness with the selected bundled Elixir, separately from the driver's toolchain; knowledge workers use standard-library `JSON` for binary encoding and Elixir null handling | Apache-2.0 |
+| Elixir and Mix | Elixir 1.18+; `mix.exs` requires `~> 1.18`; canonical source formatter is Elixir 1.18 | Core implementation, build, release, ExUnit tests, scripts; installed verification compiles its harness with the selected bundled Elixir, separately from the driver's toolchain; knowledge workers use standard-library `JSON` for binary encoding and Elixir null handling | Apache-2.0 |
 | Erlang/OTP and ERTS | OTP 27+; system toolchain or bundled release | VM, OTP supervision, crypto, public-key/TLS, filesystem and process APIs | Apache-2.0 with component notices |
 | Jason | Git tag `v1.4.4`, commit `926d2ac6cc0271b9a7079b2ec16ae0cf802f7963` in `mix.lock`; direct override for shared package requirements | JSON for HTTP, native protocol, journals and bounded SDK validation; read-only evaluation audit children include its existing runtime path | Apache-2.0 |
 | MCP Elixir SDK | Hex `mcp_elixir_sdk` 1.1.0, pinned in `mix.exs` and `mix.lock` | MCP 2025-11-25 client handshake, request matching, and protocol types; Ipse supplies bounded stdio/HTTP transports and reuses the SDK's SSE parser | MIT |
@@ -109,6 +109,13 @@ pools without starting OTP's `inets` application. Req/Plug satisfy the SDK's
 compile-time references; Finch/Mint also serve bounded provider/authentication
 transport. Optional Bandit, Decimal and IDNA dependencies are not enabled. No MCP
 listener starts automatically. Ipse requires no Node, JavaScript or Python runtime.
+
+Source formatting uses the same Elixir 1.18 floor selected by CI. Newer supported
+runtimes remain valid for compilation and tests, but their formatter output is
+not the repository's canonical layout. Use a command-scoped installed toolchain
+and separate Mix build and empty archive directories when switching versions, as shown in
+[the source baseline](testing.md#run-the-complete-source-baseline). This requires
+no additional package or tool manager.
 
 Ordinary source builds keep PDF off and retain the dependency-free OS helper's
 Rust 1.85 floor. `IPSE_BUILD_PDF=1 ./dev/build.sh` builds the separate parser;
@@ -191,8 +198,9 @@ populations, accounting contract and verification.
 
 The [checks](../../.github/workflows/ci.yml) and
 [draft release](../../.github/workflows/release.yml) workflows use GitHub Actions
-with `ubuntu-latest` and `macos-14` runners. These hosted services are build and
-verification inputs, not project runtime services.
+with `ubuntu-latest` and `macos-15` runners. The macOS selection uses the standard
+arm64 image. These hosted services are build and verification inputs, not project
+runtime services.
 
 | Action | Pinned source | Purpose and license |
 | --- | --- | --- |

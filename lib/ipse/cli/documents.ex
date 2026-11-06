@@ -75,7 +75,8 @@ defmodule Ipse.CLI.Documents do
            (profile == "state" and is_nil(opts[:scope])) or
              (profile == "collection" and opts[:scope] in ~w(folder repository)),
          {:ok, entries} <- Bundles.inventory(),
-         entry when is_map(entry) <- Enum.find(entries, &(&1.id == "corpus-#{profile}-documents")),
+         entry when is_map(entry) <-
+           Enum.find(entries, &(&1.id == "corpus-#{profile}-documents")),
          true <- Ipse.Extension.Artifact.compatible?(entry.manifest),
          true <- entry.manifest["id"] == "ipse-knowledge/corpus",
          options = options(profile),

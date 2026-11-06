@@ -216,10 +216,12 @@ defmodule Ipse.Session.SourceWindow do
     do: %{w | draft_id: id}
 
   defp do_advance(%{draft_id: id} = w, %{"type" => "draft_cancelled", "draft_id" => id}, _)
-       when not is_nil(id), do: %{w | draft_id: nil}
+       when not is_nil(id),
+       do: %{w | draft_id: nil}
 
   defp do_advance(%{draft_id: id} = w, %{"type" => "draft_consumed", "draft_id" => id}, _)
-       when not is_nil(id), do: %{w | draft_id: nil}
+       when not is_nil(id),
+       do: %{w | draft_id: nil}
 
   defp do_advance(%{draft_id: id} = w, _event, _) when not is_nil(id), do: w
 

@@ -67,6 +67,12 @@ a dead worker without its receipt cannot. Read the consumer that commits the fac
 
 ## Run the complete source baseline
 
+Use Elixir **1.18** for `mix format` and its check below, matching the CI
+toolchain floor. Supported newer Elixir runtimes may still compile and test the
+project. Select the formatter separately when those runtimes produce different
+source layouts; do not alternate formatter versions or weaken the formatting
+check.
+
 ```sh
 ./dev/build.sh
 mix format --check-formatted
@@ -83,6 +89,32 @@ keys, temporary state, and real processes, without paid credentials. Require a
 completed ExUnit summary plus exit status. SIGTERM/partial output is not a finished
 suite; deliberate process/TLS failure logs alone are not failed tests. Retain failed
 runs when investigating.
+
+If your default runtime is newer, select an already installed Elixir 1.18 and
+compatible OTP for only the formatting commands. Replace these paths with your
+actual installations; no particular tool manager is required:
+
+```sh
+IPSE_FORMAT_ELIXIR_BIN=/absolute/path/to/elixir-1.18/bin
+IPSE_FORMAT_OTP_BIN=/absolute/path/to/otp-27/bin
+IPSE_FORMAT_BUILD=$(mktemp -d)
+IPSE_FORMAT_ARCHIVES=$(mktemp -d)
+PATH="$IPSE_FORMAT_ELIXIR_BIN:$IPSE_FORMAT_OTP_BIN:$PATH" \
+  MIX_BUILD_PATH="$IPSE_FORMAT_BUILD" MIX_ARCHIVES="$IPSE_FORMAT_ARCHIVES" mix format
+PATH="$IPSE_FORMAT_ELIXIR_BIN:$IPSE_FORMAT_OTP_BIN:$PATH" \
+  MIX_BUILD_PATH="$IPSE_FORMAT_BUILD" MIX_ARCHIVES="$IPSE_FORMAT_ARCHIVES" \
+  mix format --check-formatted
+```
+
+The separate Mix build directory avoids loading a project cache compiled by a
+newer runtime. Keep it distinct from an SDK or test build under verification.
+The empty archive directory avoids loading Mix archives built for another VM.
+The current formatter configuration has only source inputs, with no plugins or
+dependency imports, so formatting needs no Hex archive or dependency fetch.
+The remaining baseline commands can use your supported development runtime.
+For a broad formatter-only repair, compare parsed source before and after with
+location metadata removed, then require the canonical formatter check. A source
+layout repair should not change executable syntax or test expectations.
 
 Mix locks and fixtures need loopback sockets. Use the environment's permission
 flow or a permitted terminal, without disabling TLS, skipping assertions, or

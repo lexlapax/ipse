@@ -603,7 +603,8 @@ defmodule Ipse.Development.Evaluation.ProtectedAnswer do
   def recall_rendering(items, records, operations, instance, allocation) do
     with true <- is_list(items) and length(items) in 3..8,
          true <- Enum.all?(records, &record?/1) and unique?(records, "key"),
-         true <- Map.keys(operations) |> Enum.sort() === Enum.sort(Enum.map(records, & &1["key"])),
+         true <-
+           Map.keys(operations) |> Enum.sort() === Enum.sort(Enum.map(records, & &1["key"])),
          :ok <- Ipse.Extension.Context.validate(%{"op" => "context.publish", "items" => items}),
          {groups, [index_item, coverage_item]} <- Enum.split(items, -2),
          true <- index_item["id"] === "note_index" and coverage_item["id"] === "note_coverage",
@@ -1095,7 +1096,8 @@ defmodule Ipse.Development.Evaluation.ProtectedAnswer do
              WorkerInput.valid_intent?(input, parent, JSON.digest([]), parent["payload"]),
          true <- input["dependencies_sha256"] === JSON.digest(inherited),
          {:ok, pending} <- ManagedLineage.advance(entered, input, messages, messages),
-         true <- delivery["status"] === "delivered" and WorkerInput.bound_result?(delivery, input),
+         true <-
+           delivery["status"] === "delivered" and WorkerInput.bound_result?(delivery, input),
          {:ok, delivered} <- ManagedLineage.advance(pending, delivery, messages, messages),
          false <- delivered.unavailable do
       {:ok, inherited}
@@ -1123,7 +1125,8 @@ defmodule Ipse.Development.Evaluation.ProtectedAnswer do
            ManagedLineage.preflight_dependencies(state, "model.complete", messages),
          {:ok, checking} <- ManagedLineage.advance(state, intent, messages, messages),
          false <- checking.unavailable,
-         {:ok, ^messages, checked} <- ManagedLineage.replay_projection(checking, result, messages),
+         {:ok, ^messages, checked} <-
+           ManagedLineage.replay_projection(checking, result, messages),
          false <- checked.unavailable do
       :ok
     else

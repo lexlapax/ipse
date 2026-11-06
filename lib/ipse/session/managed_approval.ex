@@ -234,7 +234,8 @@ defmodule Ipse.Session.ManagedApproval do
            s.managed_approval,
          true <- s.phase == :managed_approval and hd(s.calls) == call,
          true <- s.last_request_id == input["request_id"] and s.id == input["session_id"],
-         {:ok, ^arguments} <- JSON.decode_bounded(get_in(call, ["function", "arguments"]), 65_536),
+         {:ok, ^arguments} <-
+           JSON.decode_bounded(get_in(call, ["function", "arguments"]), 65_536),
          {:ok, actual} <- ManagedLineage.tool_dependencies(s.managed_lineage, call["id"]),
          {:ok, ^dependencies} <- ManagedReference.union([actual]),
          true <- JSON.digest(dependencies) == input["dependencies_sha256"] do
@@ -316,7 +317,8 @@ defmodule Ipse.Session.ManagedApproval do
 
   def complete(s, {:managed_approval, id, sha, choice})
       when choice in [true, false, :cancel, :exit] do
-    with %{id: ^id, input: input, sha256: ^sha, call: call, arguments: args} <- s.managed_approval,
+    with %{id: ^id, input: input, sha256: ^sha, call: call, arguments: args} <-
+           s.managed_approval,
          true <- s.share_barrier == nil and current?(s, input) do
       Session.notify(s, :managed_approval_ready)
 

@@ -93,6 +93,11 @@ and [evaluation isolation](archive/2026-10-26-p30-p31-implementation/evaluation-
 controls now pass their focused cases. They do not complete that interrupted
 run or establish a current full-source baseline.
 
+The [CI readiness repair](archive/2026-10-26-p30-p31-implementation/ci-runner-formatter-readiness-20261106.md)
+restores the canonical Elixir 1.18 formatting check and replaces the retired
+macOS runner image. Its local formatter and policy checks pass; a new hosted
+baseline, package and installed checks remain unqualified.
+
 A [schema-validator update](archive/2026-10-26-p30-p31-implementation/schema-validator-security-20261104.md)
 replaces the newly retired JSONSchex version with 0.11.1 and its required pointer
 dependency. The closed schema subset remains unchanged; focused checks and the

@@ -291,7 +291,9 @@ defmodule Ipse.Session.ManagedToolUse do
           if match?(
                %ManagedLineage{unavailable: false, active_discovery: nil},
                next.managed_lineage
-             ), do: {:ok, next}, else: @error
+             ),
+             do: {:ok, next},
+             else: @error
         else
           _ -> @error
         end
@@ -423,7 +425,8 @@ defmodule Ipse.Session.ManagedToolUse do
              event["dependencies_sha256"] == JSON.digest(dependencies),
          true <- event["binding_sha256"] == JSON.digest([event["binding"]]),
          true <- record_target?(event["binding"], input),
-         true <- JSON.safe_uint?(event["checked_at_ms"]) and JSON.safe_uint?(event["deadline_ms"]),
+         true <-
+           JSON.safe_uint?(event["checked_at_ms"]) and JSON.safe_uint?(event["deadline_ms"]),
          true <-
            event["checked_at_ms"] < event["deadline_ms"] and
              event["deadline_ms"] - event["checked_at_ms"] <= 5000 do
@@ -507,7 +510,8 @@ defmodule Ipse.Session.ManagedToolUse do
              message["ipse_tool_outcome"]["status"] in ~w(result_recorded error unknown),
          true <- external_result?(message, call, started),
          true <- event["message_sha256"] == JSON.digest([message]),
-         true <- JSON.safe_uint?(event["checked_at_ms"]) and JSON.safe_uint?(event["deadline_ms"]),
+         true <-
+           JSON.safe_uint?(event["checked_at_ms"]) and JSON.safe_uint?(event["deadline_ms"]),
          true <-
            event["checked_at_ms"] < event["deadline_ms"] and
              event["deadline_ms"] - event["checked_at_ms"] <= 5000 do
@@ -958,7 +962,9 @@ defmodule Ipse.Session.ManagedToolUse do
     case result do
       {:managed_effect_return, id, value} when id == spec.id ->
         if GenServer.call(owner, {:managed_tool_effect_cleanup, job, id, "confirmed"}, 5_000) ==
-             :ok, do: value, else: @unknown
+             :ok,
+           do: value,
+           else: @unknown
 
       _ ->
         GenServer.call(owner, {:managed_tool_effect_cleanup, job, spec.id, "unknown"}, 5_000)

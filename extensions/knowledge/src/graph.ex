@@ -160,7 +160,8 @@ defmodule IpseKnowledge.Graph do
   defp captured_facts(source, relations, extraction) do
     with {:ok, chunks} <- Evidence.chunks(source) do
       Enum.reduce_while(relations, {:ok, []}, fn relation, {:ok, facts} ->
-        with {:ok, start, finish} <- Store.provided_quote_range(source["text"], relation["quote"]),
+        with {:ok, start, finish} <-
+               Store.provided_quote_range(source["text"], relation["quote"]),
              chunk when is_map(chunk) <-
                Enum.find(chunks, &(start >= &1["start_byte"] and finish <= &1["end_byte"])),
              {:ok, citation} <- Evidence.citation(source, chunk, start, finish),

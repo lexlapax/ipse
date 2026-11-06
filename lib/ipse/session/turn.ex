@@ -2396,7 +2396,8 @@ defmodule Ipse.Session.Turn do
       end)
 
   defp mcp_definitions(%{draft: %{status: :pending}, draft_mcp_definitions: definitions})
-       when is_list(definitions), do: definitions
+       when is_list(definitions),
+       do: definitions
 
   defp mcp_definitions(s), do: Ipse.MCP.definitions(s.mcp_tools)
 

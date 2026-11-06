@@ -57,7 +57,8 @@ defmodule Ipse.Session.ManagedSupersession do
     capture = candidate["request"]
 
     with true <- prepared?(prepared, prepared["session_id"]),
-         true <- candidate["type"] == "extension_action_intent" and id?(candidate["operation_id"]),
+         true <-
+           candidate["type"] == "extension_action_intent" and id?(candidate["operation_id"]),
          :ok <- ManagedCollectionCall.validate(capture),
          true <- capture["metadata_version"] === 3,
          true <-
@@ -656,7 +657,8 @@ defmodule Ipse.Session.ManagedSupersession do
       },
       fn binding ->
         with true <- binding === context.config[:semantic_admission]["binding"],
-             {:ok, current, proofs} <- ManagedCollectionCall.supersession_sources(context, intent),
+             {:ok, current, proofs} <-
+               ManagedCollectionCall.supersession_sources(context, intent),
              true <- current === preview.current and proofs === preview.proofs,
              :ok <- Review.check(permit, command, facts),
              do: :ok,

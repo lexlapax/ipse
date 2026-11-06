@@ -592,7 +592,8 @@ defmodule Ipse.Runner.ManagementTerminal do
 
   defp transfer_controls(owned, pid, {cn, cs}, {jn, js}) do
     with :ok <- Resources.management_control_transfer(owned.cli_control, pid, cn, cs),
-         :ok <- Management.management_journal_control_transfer(owned.journal_control, pid, jn, js),
+         :ok <-
+           Management.management_journal_control_transfer(owned.journal_control, pid, jn, js),
          do: :ok
   end
 

@@ -65,7 +65,8 @@ defmodule Ipse.Extension.Collection.ManagedRetention do
            ManagedPages.pack(:live, ManagedPages.zero(:live), %{
              ManagedPages.live_identity(key) => live
            }),
-         %{"clocks" => [first, baseline, _, _], "choice" => choice, "retirement" => nil} <- anchor,
+         %{"clocks" => [first, baseline, _, _], "choice" => choice, "retirement" => nil} <-
+           anchor,
          true <- JSON.safe_uint?(first),
          [
            packed_lineage,
@@ -121,7 +122,8 @@ defmodule Ipse.Extension.Collection.ManagedRetention do
            ManagedPages.pack(:anchor, ManagedPages.zero(:anchor), %{
              candidate["lineage"] => anchor
            }),
-         {:ok, assigned, ^deadline} <- effective(candidate, first, deadline, choice, value_sha256),
+         {:ok, assigned, ^deadline} <-
+           effective(candidate, first, deadline, choice, value_sha256),
          true <- assigned == metadata["category"] do
       true
     else

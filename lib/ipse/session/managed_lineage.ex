@@ -355,7 +355,8 @@ defmodule Ipse.Session.ManagedLineage do
                           dependency["version"] === 3 and
                             dependency["collection"] === guard["collection"]
                         end),
-                      true <- carried != [] and current_root_prerequisites?(state, carried, guard),
+                      true <-
+                        carried != [] and current_root_prerequisites?(state, carried, guard),
                       {:ok, action} <- root_candidate(state, old),
                       true <- action["operation_id"] === operation do
                    [action]
@@ -1199,7 +1200,8 @@ defmodule Ipse.Session.ManagedLineage do
 
   defp inputs(
          state,
-         %{"type" => "extension_action_intent", "request" => %{"op" => "context.publish"}} = event,
+         %{"type" => "extension_action_intent", "request" => %{"op" => "context.publish"}} =
+           event,
          _
        ) do
     instance = get_in(state.invocations, [event["parent_invocation_id"], :instance])
@@ -1217,7 +1219,8 @@ defmodule Ipse.Session.ManagedLineage do
   end
 
   defp inputs(%{active_discovery: pending}, %{"type" => "extension_action_intent"}, _)
-       when not is_nil(pending), do: @error
+       when not is_nil(pending),
+       do: @error
 
   defp inputs(state, %{"type" => "extension_action_intent", "request" => request} = event, _) do
     if Ipse.Extension.Actions.inference?(request) do
@@ -1425,7 +1428,9 @@ defmodule Ipse.Session.ManagedLineage do
              release.raw,
              admission["decision"],
              admission["write_facts"]
-           ), do: {:ok, %{state | output_release: %{release | message_seen: true}}}, else: @error
+           ),
+       do: {:ok, %{state | output_release: %{release | message_seen: true}}},
+       else: @error
   end
 
   defp inputs(state, %{"type" => "managed_action_output_withheld"} = event, _) do
@@ -1575,7 +1580,8 @@ defmodule Ipse.Session.ManagedLineage do
     with true <- state.action_layout == Ipse.Session.ManagedToolUse.action_layout(),
          action when is_map(action) <- state.active_action,
          true <- action["operation_id"] == event["operation_id"],
-         %{parent: parent} when is_map(parent) <- state.invocations[event["parent_invocation_id"]],
+         %{parent: parent} when is_map(parent) <-
+           state.invocations[event["parent_invocation_id"]],
          {:ok, dependencies} <- invocation_dependencies(state, event["parent_invocation_id"]) do
       Ipse.Session.ManagedToolUse.valid_action_record?(
         event,
@@ -1946,7 +1952,8 @@ defmodule Ipse.Session.ManagedLineage do
          true <- event["outcome"]["status"] === "ok",
          true <-
            Ipse.Session.ManagedReads.valid?(receipt, state.reference.session_id, intent, value),
-         true <- Ipse.Session.ManagedReads.managed_mapping?(state.admission, entry.parent, intent),
+         true <-
+           Ipse.Session.ManagedReads.managed_mapping?(state.admission, entry.parent, intent),
          true <-
            Ipse.Session.ManagedReads.covered?(
              state.admission,

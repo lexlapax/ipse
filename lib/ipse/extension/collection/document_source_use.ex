@@ -440,7 +440,8 @@ defmodule Ipse.Extension.Collection.DocumentSourceUse do
              new ===
                old |> Map.put("status", "selected") |> put_in(["reduction", "phase"], "selected"),
          {:ok, previous} <- DocumentStage.read_value(read, "generation." <> partition),
-         true <- stamp(previous) === %{revision: old["root_revision"], sha256: old["root_sha256"]},
+         true <-
+           stamp(previous) === %{revision: old["root_revision"], sha256: old["root_sha256"]},
          root = root_stage["value"],
          reduction = old["reduction"],
          cat = catalog["value"],
@@ -640,7 +641,8 @@ defmodule Ipse.Extension.Collection.DocumentSourceUse do
            exact?(ref, ~w(key sha256 byte_count)) and J.sha256?(ref["sha256"]) and
              ref["key"] === "gensum.#{partition}." <> ref["sha256"] and
              is_integer(ref["byte_count"]) and ref["byte_count"] in 2..49_152,
-         {:ok, summary_row} when is_map(summary_row) <- DocumentStage.read_value(read, ref["key"]),
+         {:ok, summary_row} when is_map(summary_row) <-
+           DocumentStage.read_value(read, ref["key"]),
          true <-
            summary_row["sha256"] === ref["sha256"] and
              summary_row["byte_count"] === ref["byte_count"],

@@ -474,7 +474,8 @@ defmodule Ipse.Session.ManagedReads do
          {:ok, _} <- Ipse.Extension.ManagedRecipe.source_identity(proof),
          true <- subject["acceptance"]["link"]["key"] === "accept." <> value["candidate_id"],
          true <- subject["acceptance"]["event_sha256"] === value["acceptance_event_sha256"],
-         true <- subject["acceptance"]["link"]["value_sha256"] === value["acceptance_link_sha256"],
+         true <-
+           subject["acceptance"]["link"]["value_sha256"] === value["acceptance_link_sha256"],
          true <-
            Map.has_key?(subject["acceptance"], "retention") or
              subject["validity"]["valid_until_ms"] === value["valid_until_ms"] do

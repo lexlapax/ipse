@@ -349,7 +349,9 @@ defmodule Ipse.Provider.Ollama.Models do
         %{owner: owner, ref: ref, binding: expected, deadline: deadline, kind: ^kind}
         when owner == self() and is_reference(ref) ->
           if runtime[:provider] == :ollama and expected == job_binding(runtime) and
-               remaining(deadline) > 0, do: :ok, else: @pin_error
+               remaining(deadline) > 0,
+             do: :ok,
+             else: @pin_error
 
         _ ->
           @pin_error

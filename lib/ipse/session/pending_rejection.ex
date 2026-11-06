@@ -25,7 +25,8 @@ defmodule Ipse.Session.PendingRejection do
          record when is_map(record) <- get_in(observation, ["value", "record"]),
          "pending." <> id <- record["key"],
          true <- JSON.sha256?(id) and record["value"]["id"] === id,
-         true <- record["value"]["kind"] === "proposal" and record["value"]["state"] === "pending",
+         true <-
+           record["value"]["kind"] === "proposal" and record["value"]["state"] === "pending",
          {:ok, candidate} <-
            ManagedRecipe.extract(
              context["recipe"],

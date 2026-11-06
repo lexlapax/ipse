@@ -243,7 +243,9 @@ assert List.last(final.requests)["request"]["generation"] == final.generation - 
 # These are new invocations; counters reset, physical row revisions do not.
 stop = fn request, _ ->
   if get_in(request, ["request", "op"]) == "commit" and
-       length(get_in(request, ["request", "stages"])) == 3, do: :stop, else: :continue
+       length(get_in(request, ["request", "stages"])) == 3,
+     do: :stop,
+     else: :continue
 end
 
 {{:call, _, before_commit}, prepared} =

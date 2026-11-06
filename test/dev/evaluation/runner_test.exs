@@ -329,7 +329,8 @@ if System.get_env("IPSE_EVALUATION_RUNNER_CHILD") == "1" do
           refute requests == []
           encoded = JSON.encode!(requests)
 
-          for secret <- ~w(PRIVATE_FORGOTTEN PRIVATE_EXPIRED NEVER_PROVIDER_INPUT FUTURE_EVIDENCE),
+          for secret <-
+                ~w(PRIVATE_FORGOTTEN PRIVATE_EXPIRED NEVER_PROVIDER_INPUT FUTURE_EVIDENCE),
               do: refute(encoded =~ secret)
 
           for kind <- ctx.model_kinds,

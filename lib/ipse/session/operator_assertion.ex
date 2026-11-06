@@ -86,7 +86,8 @@ defmodule Ipse.Session.OperatorAssertion do
          {:ok, mode} <- Ipse.Extension.Mode.capture(config),
          :ok <- Ipse.Extension.Mode.knowledge(mode, "collection.publish"),
          name = "ext__knowledge__capture",
-         {:ok, entry, descriptor} <- Ipse.Extension.Catalog.lookup(config, "invoke.command", name),
+         {:ok, entry, descriptor} <-
+           Ipse.Extension.Catalog.lookup(config, "invoke.command", name),
          true <- entry.identity["artifact_sha256"] == digest,
          true <- capture_contract?(admission, descriptor) do
       {:ok, scope, name}

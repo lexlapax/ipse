@@ -94,7 +94,8 @@ defmodule Ipse.Session.StoredSources do
     with true <- lock_live?(lock, monitor),
          true <- missing_lock_identity?(lock, before_lock),
          {:ok, current_dir} <- File.lstat(dir),
-         true <- private_directory?(current_dir) and identity(current_dir) == identity(before_dir),
+         true <-
+           private_directory?(current_dir) and identity(current_dir) == identity(before_dir),
          true <- same_lock?(lock_path, before_lock),
          {:error, :enoent} <- File.lstat(journal_path) do
       true

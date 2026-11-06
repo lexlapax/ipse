@@ -793,7 +793,9 @@ defmodule Ipse.Extension.Actions do
        ) do
     if is_map(state.parent) and is_map(state.action) and
          state.parent["invocation_id"] == event["parent_invocation_id"] and
-         state.action["operation_id"] == event["operation_id"], do: {:ok, state}, else: @error
+         state.action["operation_id"] == event["operation_id"],
+       do: {:ok, state},
+       else: @error
   end
 
   defp validate_event(
@@ -827,7 +829,9 @@ defmodule Ipse.Extension.Actions do
            event,
            state.parent["payload"]["session_id"],
            state.action
-         ), do: {:ok, %{state | managed_read: event}}, else: @error
+         ),
+       do: {:ok, %{state | managed_read: event}},
+       else: @error
   end
 
   defp validate_event(%{"type" => "extension_effect_result"} = event, state, _) do
@@ -1367,7 +1371,9 @@ defmodule Ipse.Extension.Actions do
 
   defp action_namespace(identity, %{"op" => "collection.store"} = request, _cwd, id, binding) do
     if Ipse.Extension.CollectionStore.valid_binding?(binding, request, identity) and
-         binding["session_id"] == id, do: {:ok, binding["namespace"]}, else: @error
+         binding["session_id"] == id,
+       do: {:ok, binding["namespace"]},
+       else: @error
   end
 
   defp action_namespace(identity, %{"op" => "collection.managed"} = request, _cwd, id, binding) do

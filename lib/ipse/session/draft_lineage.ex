@@ -49,10 +49,12 @@ defmodule Ipse.Session.DraftLineage do
     do: true
 
   def extension_target?(%{"type" => "request_admitted", "kind" => kind})
-      when kind not in ["model", "compaction"], do: true
+      when kind not in ["model", "compaction"],
+      do: true
 
   def extension_target?(%{"type" => "inference_dispatch_intent", "phase" => phase})
-      when phase not in ["model", "compaction"], do: true
+      when phase not in ["model", "compaction"],
+      do: true
 
   def extension_target?(_), do: false
 
@@ -180,14 +182,16 @@ defmodule Ipse.Session.DraftLineage do
          %{"type" => "inference_dispatch_intent", "request_id" => id, "input_sha256" => hash},
          _
        )
-       when is_binary(hash), do: {:ok, s}
+       when is_binary(hash),
+       do: {:ok, s}
 
   defp step(
          %{lineages: [_ | _]} = s,
          %{"type" => "inference_dispatch_intent", "phase" => phase},
          _
        )
-       when phase not in ["model", "compaction"], do: {:ok, s}
+       when phase not in ["model", "compaction"],
+       do: {:ok, s}
 
   defp step(%{lineages: [_ | _]}, %{"type" => "inference_dispatch_intent"}, _), do: @error
 
@@ -196,7 +200,8 @@ defmodule Ipse.Session.DraftLineage do
          %{"type" => "request_finished", "request_id" => id},
          _
        )
-       when is_binary(hash), do: {:ok, %{s | request: nil}}
+       when is_binary(hash),
+       do: {:ok, %{s | request: nil}}
 
   defp step(%{request: %{id: id}} = _s, %{"type" => "request_finished", "request_id" => id}, _),
     do: @error

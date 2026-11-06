@@ -356,7 +356,8 @@ defmodule Ipse.Session.PlanningMCPTest do
 
     assert :ok =
              PlanningMCP.validate_events(
-               prefix ++ [intent, start, resume_checkpoint, recovered_checkpoint, recovered_epoch],
+               prefix ++
+                 [intent, start, resume_checkpoint, recovered_checkpoint, recovered_epoch],
                session
              )
 

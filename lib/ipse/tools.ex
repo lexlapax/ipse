@@ -218,7 +218,8 @@ defmodule Ipse.Tools do
              true <- byte_size(bytes) == before.size,
              {:ok, ^bytes} <- binary_bytes(file, file_limit),
              {:ok, after_info} <- :file.read_file_info(file, time: :posix),
-             true <- binary_identity(before) == binary_identity(File.Stat.from_record(after_info)),
+             true <-
+               binary_identity(before) == binary_identity(File.Stat.from_record(after_info)),
              {:ok, ^path} <- checked_path(args["path"], context, false),
              {:ok, after_path} <- File.lstat(path, time: :posix),
              true <- binary_identity(before) == binary_identity(after_path),

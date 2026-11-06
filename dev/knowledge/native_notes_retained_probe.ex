@@ -218,7 +218,8 @@ defmodule Ipse.Development.NativeNotesRetainedProbe do
 
       save!(Path.join(output, "before-state.json"), state_receipt(before_root, before_control))
 
-      for key <- ~w(IPSE_PROVIDER IPSE_MODEL IPSE_CONFIG IPSE_PROFILE IPSE_SANDBOX IPSE_SUBAGENTS),
+      for key <-
+            ~w(IPSE_PROVIDER IPSE_MODEL IPSE_CONFIG IPSE_PROFILE IPSE_SANDBOX IPSE_SUBAGENTS),
           do: System.delete_env(key)
 
       client = %{

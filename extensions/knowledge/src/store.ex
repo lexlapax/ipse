@@ -2280,7 +2280,8 @@ defmodule IpseKnowledge.Store do
   defp hydrate_document(state, attrs, generation) do
     case get_in(attrs, ["origin", "receipt"]) do
       %{"version" => 4} = descriptor ->
-        with true <- Evidence.document_reference?(descriptor) and ref?(descriptor["manifest_ref"]),
+        with true <-
+               Evidence.document_reference?(descriptor) and ref?(descriptor["manifest_ref"]),
              {:ok, bytes, _} <-
                load_stream(
                  state,

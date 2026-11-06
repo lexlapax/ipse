@@ -126,7 +126,8 @@ defmodule Ipse.Runner.Review do
          input = command <> " " <> challenge,
          true <- JSON.safe_uint?(observed_at) and observation["text"] === input,
          true <- Ipse.Session.Input.valid_observation?(Map.delete(observation, "text"), input, 2),
-         true <- observation["display_sha256"] === JSON.sha256(display(command, facts, challenge)),
+         true <-
+           observation["display_sha256"] === JSON.sha256(display(command, facts, challenge)),
          true <-
            Resources.current() === scope and Resources.active?() and Process.alive?(upstream),
          true <- now() < deadline do

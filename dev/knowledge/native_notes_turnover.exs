@@ -448,7 +448,8 @@ defmodule Ipse.Development.NativeNotesTurnover do
       home = Path.join(root, "home")
       cwd = Path.join(root, "work")
 
-      for key <- ~w(IPSE_PROVIDER IPSE_MODEL IPSE_CONFIG IPSE_PROFILE IPSE_SANDBOX IPSE_SUBAGENTS),
+      for key <-
+            ~w(IPSE_PROVIDER IPSE_MODEL IPSE_CONFIG IPSE_PROFILE IPSE_SANDBOX IPSE_SUBAGENTS),
           do: System.delete_env(key)
 
       client = %{

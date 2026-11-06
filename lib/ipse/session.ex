@@ -1616,7 +1616,8 @@ defmodule Ipse.Session do
     with true <- candidate === intent and sha === Ipse.JSON.digest([prepared, intent]),
          true <- s.lock_mode in [:header_share_v2, :resume_share_v2],
          true <- supersession_worker?(s, caller, intent),
-         true <- Enum.any?(s.config.extensions, &(&1.identity == s.invocation.parent["identity"])),
+         true <-
+           Enum.any?(s.config.extensions, &(&1.identity == s.invocation.parent["identity"])),
          {:ok, binding} when is_map(binding) <- supersession_lookup(s, caller, intent),
          true <- binding.source_binding === {:supersession, sha},
          true <- Ipse.Session.ManagedSupersession.record?(event, prepared, candidate, []),
@@ -3912,14 +3913,16 @@ defmodule Ipse.Session do
     do: {:reply, {:error, :collection_source_refused}, s}
 
   def handle_call({:managed_preflight_begin, ref, phase}, {caller, _}, %{job_ref: ref} = s)
-      when ref != nil, do: managed_preflight_start(s, caller, phase)
+      when ref != nil,
+      do: managed_preflight_start(s, caller, phase)
 
   def handle_call(
         {:managed_preflight_commit, ref, id, verdicts},
         {caller, _},
         %{job_ref: ref} = s
       )
-      when ref != nil, do: managed_preflight_finish(s, caller, id, verdicts)
+      when ref != nil,
+      do: managed_preflight_finish(s, caller, id, verdicts)
 
   def handle_call({:managed_preflight_begin, _, _}, _, s),
     do: {:reply, {:error, :managed_reference_projection_unsafe}, s}
@@ -3972,20 +3975,24 @@ defmodule Ipse.Session do
     do: {:reply, {:error, :collection_source_refused}, s}
 
   def handle_call({:managed_output_prepare, ref, kind, payload}, {caller, _}, %{job_ref: ref} = s)
-      when ref != nil, do: Ipse.Session.ManagedOutput.prepare(s, caller, kind, payload)
+      when ref != nil,
+      do: Ipse.Session.ManagedOutput.prepare(s, caller, kind, payload)
 
   def handle_call(
         {:managed_output_admit, ref, id, mode, deadline},
         {caller, _},
         %{job_ref: ref} = s
       )
-      when ref != nil, do: Ipse.Session.ManagedOutput.admit(s, caller, id, mode, deadline)
+      when ref != nil,
+      do: Ipse.Session.ManagedOutput.admit(s, caller, id, mode, deadline)
 
   def handle_call({:managed_output_cleanup, ref, id, status}, {caller, _}, %{job_ref: ref} = s)
-      when ref != nil, do: Ipse.Session.ManagedOutput.finish(s, caller, id, status)
+      when ref != nil,
+      do: Ipse.Session.ManagedOutput.finish(s, caller, id, status)
 
   def handle_call({:managed_output_event_complete, ref, id}, {caller, _}, %{job_ref: ref} = s)
-      when ref != nil, do: Ipse.Session.ManagedOutput.complete_event(s, caller, id)
+      when ref != nil,
+      do: Ipse.Session.ManagedOutput.complete_event(s, caller, id)
 
   def handle_call({:managed_output_prepare, _, _, _}, _, s),
     do: {:reply, {:error, :managed_output_unavailable}, s}
@@ -5316,12 +5323,14 @@ defmodule Ipse.Session do
   end
 
   def handle_call(:cancel_draft, _from, %{draft: %{status: status}} = s)
-      when status in [:pending, :completed, :accepted], do: cancel_draft_work(s)
+      when status in [:pending, :completed, :accepted],
+      do: cancel_draft_work(s)
 
   def handle_call(:cancel_draft, _from, s), do: {:reply, {:error, :no_active_draft}, s}
 
   def handle_call(:cancel, _from, %{draft: %{status: status}} = s)
-      when status in [:pending, :completed, :accepted], do: cancel_draft_work(s)
+      when status in [:pending, :completed, :accepted],
+      do: cancel_draft_work(s)
 
   def handle_call(:cancel, _from, s),
     do: cancel_work(%{s | assertion_render: nil, planning_decision_render: nil}, false)
@@ -7432,7 +7441,8 @@ defmodule Ipse.Session do
                true <-
                  prepared["descriptor_sha256"] ==
                    Ipse.JSON.digest([s.invocation.parent["descriptor"]]),
-               {:ok, origin} when is_map(origin) <- Writer.source_query(s.journal_writer, :origin),
+               {:ok, origin} when is_map(origin) <-
+                 Writer.source_query(s.journal_writer, :origin),
                {:ok, _} <- Writer.source_query(s.journal_writer, {:stored_proof, proof}),
                [request] <- intent["request"]["proofs"],
                {:ok, actual} <- Writer.source_query(s.journal_writer, {:proof, request}),

@@ -46,7 +46,8 @@ defmodule Ipse.Session.PendingAcceptance do
     with true <- is_binary(home) and Path.type(home) === :absolute,
          true <- is_binary(history_dir) and Path.type(history_dir) === :absolute,
          true <- SemanticConsent.binding?(binding) and id?(journal_id),
-         true <- is_map(snapshot) and JSON.safe_uint?(snapshot["epoch"]) and snapshot["epoch"] > 0,
+         true <-
+           is_map(snapshot) and JSON.safe_uint?(snapshot["epoch"]) and snapshot["epoch"] > 0,
          policy when is_map(policy) <- snapshot["policy"],
          true <-
            SemanticConsent.policy?(policy) and JSON.safe_uint?(now) and
@@ -146,7 +147,8 @@ defmodule Ipse.Session.PendingAcceptance do
                    get_in(metadata, ["semantic_admission", "pin", "namespace"])
 
                with true <- valid_event?(event),
-                    true <- facts["journal_id"] === journal_id and facts["session_id"] === session,
+                    true <-
+                      facts["journal_id"] === journal_id and facts["session_id"] === session,
                     true <- is_nil(project) or facts["project_id"] === project,
                     true <- is_nil(namespace) or facts["namespace"] === namespace,
                     true <- is_nil(state.at) or review["observed_at_ms"] >= state.at,
@@ -608,7 +610,8 @@ defmodule Ipse.Session.PendingAcceptance do
               with {:ok, before} <- :file.read_file_info(file),
                    {:ok, stats} <- Ipse.Journal.scan_file(file, nil, :load),
                    true <- stats.tail === :none,
-                   metadata when is_map(metadata) <- (List.first(stats.events) || %{})["metadata"],
+                   metadata when is_map(metadata) <-
+                     (List.first(stats.events) || %{})["metadata"],
                    true <-
                      metadata["kind"] === "knowledge_management" and
                        metadata["project_id"] === project and metadata["namespace"] === namespace,
@@ -682,7 +685,8 @@ defmodule Ipse.Session.PendingAcceptance do
   defp prepare_journal_share(true, port, before, link) do
     deadline = System.monotonic_time(:millisecond) + 5_000
 
-    with shares when is_map(shares) and map_size(shares) < 128 <- Process.get(@journal_share_slot),
+    with shares when is_map(shares) and map_size(shares) < 128 <-
+           Process.get(@journal_share_slot),
          {:os_pid, pid} when is_integer(pid) and pid > 0 <- Port.info(port, :os_pid),
          {:ok, %{device: device, inode: inode}} <-
            Ipse.Runner.session_header_lock_identity(port, deadline),
@@ -892,7 +896,8 @@ defmodule Ipse.Session.PendingAcceptance do
          true <- record["revision"] <= root["generation"],
          {:ok, candidate} <-
            ManagedRecipe.extract(context["recipe"], record["key"], value, verified_sources),
-         true <- candidate["kind"] === "proposal" and candidate["lineage"] === metadata["lineage"],
+         true <-
+           candidate["kind"] === "proposal" and candidate["lineage"] === metadata["lineage"],
          true <- candidate["recipe_sha256"] === metadata["recipe_sha256"],
          true <-
            candidate["category"] === metadata["category"] and
@@ -1174,7 +1179,8 @@ defmodule Ipse.Session.PendingAcceptance do
              link["sha256"] === note["acceptance_link_sha256"],
          true <- link["bytes"] === byte_size(Migration.encode(value)),
          {:ok, _} <- ManagedPages.pack(:anchor, ManagedPages.zero(:anchor), %{lineage => anchor}),
-         %{"clocks" => [first, baseline, _, _], "choice" => choice, "retirement" => nil} <- anchor,
+         %{"clocks" => [first, baseline, _, _], "choice" => choice, "retirement" => nil} <-
+           anchor,
          true <-
            JSON.safe_uint?(first) and JSON.safe_uint?(note["accepted_at_ms"]) and
              first <= note["accepted_at_ms"],
@@ -1413,11 +1419,13 @@ defmodule Ipse.Session.PendingAcceptance do
          age = rule["max_age_ms"],
          calculated = if(is_nil(age), do: nil, else: first + age),
          true <- is_nil(calculated) or JSON.safe_uint?(calculated),
-         baseline = if(is_nil(old_first), do: calculated, else: earlier(old_baseline, calculated)),
+         baseline =
+           if(is_nil(old_first), do: calculated, else: earlier(old_baseline, calculated)),
          effective = earlier(baseline, policy_deadline),
          true <- is_nil(effective) or effective > now,
          updated = %{row | "clocks" => [first, baseline, pending, pending_baseline]},
-         {:ok, _} <- ManagedPages.pack(:anchor, ManagedPages.zero(:anchor), %{lineage => updated}),
+         {:ok, _} <-
+           ManagedPages.pack(:anchor, ManagedPages.zero(:anchor), %{lineage => updated}),
          {:ok, values} <- accepted_values(event, effective) do
       {:ok,
        %{
@@ -1575,7 +1583,8 @@ defmodule Ipse.Session.PendingAcceptance do
   """
   def with_sidecar_plan(event, prepared, cap, read, fun)
       when is_function(read, 1) and is_function(fun, 2) do
-    with %Ipse.Extension.ProjectIdentity.DomainAuth.Capability{owner: owner, seal: seal_fn} <- cap,
+    with %Ipse.Extension.ProjectIdentity.DomainAuth.Capability{owner: owner, seal: seal_fn} <-
+           cap,
          true <- owner == self() and is_function(seal_fn, 2),
          {:ok, _intent} <- effect_intent(event, get_in(prepared, ["public", "request"])),
          deadline = get_in(prepared, ["retention", "valid_until_ms"]),

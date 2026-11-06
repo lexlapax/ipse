@@ -506,7 +506,8 @@ defmodule Ipse.Extension.EmbeddingCall do
 
   def profile_binding(scope, request) do
     with :ok <- validate_profile(request),
-         profile when is_map(profile) <- get_in(scope, ["embedding_profiles", request["profile"]]),
+         profile when is_map(profile) <-
+           get_in(scope, ["embedding_profiles", request["profile"]]),
          true <- Profiles.public_embedding_profile?(profile),
          true <- profile["id"] == request["profile"],
          {:ok, selection} <-

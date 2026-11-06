@@ -133,7 +133,8 @@ defmodule Ipse.Session.DocumentEmbedding do
 
     with %{intent: ^intent} <- s.invocation.action,
          true <- Session.Invocation.output_timely?(s) and not s.invocation.interrupted,
-         true <- CollectionStore.embedding_source_required?(identity) and Registry.live?(identity),
+         true <-
+           CollectionStore.embedding_source_required?(identity) and Registry.live?(identity),
          true <- CollectionStore.valid_binding?(binding, intent["request"], identity),
          true <- binding["session_id"] === s.id,
          true <- intent["parent_invocation_id"] === s.invocation.parent["invocation_id"],

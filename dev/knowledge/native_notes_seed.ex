@@ -510,7 +510,8 @@ defmodule Ipse.Development.NativeNotesSeed do
       {output, code} =
         System.cmd(
           "rustc",
-          ["--edition=2021", "-D", "warnings", source] ++ flags ++ ["-o", Path.join(root, target)],
+          ["--edition=2021", "-D", "warnings", source] ++
+            flags ++ ["-o", Path.join(root, target)],
           stderr_to_stdout: true
         )
 
@@ -983,7 +984,9 @@ defmodule Ipse.Development.NativeNotesSeed do
              Enum.any?(
                segment["actions"],
                &(&1["op"] == "pin" and &1["number"] == action["number"])
-             ), do: "pin", else: target["category"]
+             ),
+           do: "pin",
+           else: target["category"]
 
       assert managed["metadata"]["category"] == category
       first = managed["metadata"]["first_admitted_ms"]

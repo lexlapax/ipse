@@ -1056,7 +1056,8 @@ defmodule Ipse.Extension.Collection.ObservedRead do
          {:ok, identity} <- record_identity(record, request["key"], collection),
          {:ok, candidate} <-
            ManagedRecipe.extract(recipe, request["key"], record["value"], verified_sources),
-         true <- candidate["kind"] === "proposal" and candidate["lineage"] === metadata["lineage"],
+         true <-
+           candidate["kind"] === "proposal" and candidate["lineage"] === metadata["lineage"],
          true <-
            metadata["recipe_sha256"] === JSON.digest([recipe]) and
              metadata["eligibility"] === "never_current" and
@@ -1420,7 +1421,8 @@ defmodule Ipse.Extension.Collection.ObservedRead do
     key = "accept." <> record["value"]["candidate_id"]
 
     with {:ok, linked} <- read.(%{"op" => "get_many", "keys" => [key]}),
-         true <- linked["witness"] === first["witness"] and linked["summary"] === first["summary"],
+         true <-
+           linked["witness"] === first["witness"] and linked["summary"] === first["summary"],
          true <- linked["keys"] === [key],
          [link] <- linked["records"] do
       Ipse.Session.PendingAcceptance.retained_decision_metadata(
@@ -1452,7 +1454,8 @@ defmodule Ipse.Extension.Collection.ObservedRead do
     with {:ok, first} <- Collection.view_read(view, %{"op" => "get_many", "keys" => keys}),
          true <- first["keys"] === keys,
          [record, format, nil] <- first["records"],
-         true <- is_map(record) and is_map(format) and first["witness"]["root_state"] == "present",
+         true <-
+           is_map(record) and is_map(format) and first["witness"]["root_state"] == "present",
          {:ok, _} <- ManagedPages.open_format(cap, format),
          {:ok, live} <-
            managed_row(view, cap, :live, ManagedPages.live_identity(request["key"]), first),

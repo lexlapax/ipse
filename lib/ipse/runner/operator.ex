@@ -346,7 +346,8 @@ defmodule Ipse.Runner.Operator do
   defp loop(_port, %{exited: true} = state), do: state
 
   defp loop(_port, %{guarded_stop: true, phase: phase} = state)
-       when phase in [:displayed, :input, :eof], do: state
+       when phase in [:displayed, :input, :eof],
+       do: state
 
   defp loop(port, state) do
     state = flush_request(port, state)

@@ -59,7 +59,8 @@ defmodule IpseKnowledge.Corpus do
     do: invoke(payload, Map.delete(state, :document_budget))
 
   def handle("host.actions", payload, %{phase: phase} = state)
-      when phase in [:document_read, :document_check], do: document_read(payload, state)
+      when phase in [:document_read, :document_check],
+      do: document_read(payload, state)
 
   def handle("host.actions", payload, %{phase: :document_snapshot_open} = state),
     do: document_snapshot_open(payload, state)
@@ -131,17 +132,18 @@ defmodule IpseKnowledge.Corpus do
           input_action = source_args["input_action"]
           input_args = source_args["input_args"]
 
-          if input_action in ~w(put put_document) and valid_source_args?(input_action, input_args),
-            do:
-              collection_provided(
-                state,
-                store,
-                profile,
-                input_action,
-                input_args,
-                source_args["collection_state"]
-              ),
-            else: finish(state, refused(:invalid_collection_continuation))
+          if input_action in ~w(put put_document) and
+               valid_source_args?(input_action, input_args),
+             do:
+               collection_provided(
+                 state,
+                 store,
+                 profile,
+                 input_action,
+                 input_args,
+                 source_args["collection_state"]
+               ),
+             else: finish(state, refused(:invalid_collection_continuation))
 
         profile["kind"] == "collection" ->
           if action in ~w(put put_document),
@@ -296,7 +298,8 @@ defmodule IpseKnowledge.Corpus do
          true <- text?(text, 8192),
          value when is_map(value) <- JSON.decode!(text),
          true <- exact?(value, ~w(byte_count data handle next offset page_sha256 path sha256)),
-         true <- value["path"] === state.ctx.args["path"] and value["sha256"] === state.ctx.sha256,
+         true <-
+           value["path"] === state.ctx.args["path"] and value["sha256"] === state.ctx.sha256,
          true <-
            value["handle"] === state.ctx.snapshot_handle and
              value["byte_count"] === state.ctx.total,
@@ -910,7 +913,8 @@ defmodule IpseKnowledge.Corpus do
 
   defp collection_projection(args, state) do
     with true <- state.resolved["preset"] in ~w(collection-documents collection-dense),
-         true <- exact?(args, ~w(store source_ids vector_selection fact_selection as_of_ms top_k)),
+         true <-
+           exact?(args, ~w(store source_ids vector_selection fact_selection as_of_ms top_k)),
          {:ok, %{"kind" => "collection"} = profile} <-
            Profiles.lookup(state.resolved, "stores", args["store"]),
          true <- args["top_k"] in 1..8,

@@ -1779,7 +1779,8 @@ defmodule IpseKnowledge.Evidence do
   end
 
   defp document_body(%{"kind" => "document_extraction", "version" => version} = receipt)
-       when version in [1, 2], do: receipt
+       when version in [1, 2],
+       do: receipt
 
   defp document_body(_), do: nil
 

@@ -768,10 +768,12 @@ defmodule Ipse.CLI.Knowledge.Management do
   end
 
   defp chat_review_prior_gate(_config, _cwd, _directory, %{"version" => version})
-       when version !== 2, do: :ok
+       when version !== 2,
+       do: :ok
 
   defp chat_review_prior_gate(_config, _cwd, _directory, handoff)
-       when not is_map_key(handoff, "version"), do: :ok
+       when not is_map_key(handoff, "version"),
+       do: :ok
 
   defp chat_review_prior_gate(config, cwd, directory, handoff) do
     with {:ok, history} <-
@@ -921,7 +923,8 @@ defmodule Ipse.CLI.Knowledge.Management do
 
           if Map.has_key?(expected, operation) do
             with true <- wrapper === expected[operation],
-                 true <- metadata["kind"] === "knowledge_management" and metadata["version"] === 1,
+                 true <-
+                   metadata["kind"] === "knowledge_management" and metadata["version"] === 1,
                  true <-
                    metadata["project_id"] === wrapper["event"]["pin"]["project_id"] and
                      metadata["namespace"] === wrapper["event"]["pin"]["namespace"],

@@ -1090,7 +1090,8 @@ defmodule IpseKnowledge.Knowledge do
 
   # Preserve the original bounded selection when the complete set does not fit.
   defp recall_seed_fits?(%{notes: notes})
-       when is_list(notes) and length(notes) < @recall_candidates, do: true
+       when is_list(notes) and length(notes) < @recall_candidates,
+       do: true
 
   defp recall_seed_fits?(%{budget: %{"instance" => instance, "available_bytes" => bytes}} = ctx)
        when is_binary(instance) and is_integer(bytes) and bytes >= 0 do

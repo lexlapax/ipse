@@ -273,7 +273,8 @@ defmodule Ipse.Session.Draft do
   end
 
   defp project_one(%{status: status}, messages, _, _)
-       when status in [:pending, :completed, :accepted] and is_list(messages), do: {:ok, messages}
+       when status in [:pending, :completed, :accepted] and is_list(messages),
+       do: {:ok, messages}
 
   defp project_one(%{status: :cancelled, notice: true} = d, messages, refs, policy)
        when is_list(messages),
