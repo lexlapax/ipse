@@ -107,7 +107,8 @@ defmodule IpseSavedResultsExample.Proof do
       1 = length(String.split(loads, "\n", trim: true))
       1 = length(String.split(callbacks, "\n", trim: true))
       path = Path.join(state_dir, info.id <> ".jsonl")
-      journal_sha = Ipse.JSON.sha256(File.read!(path))
+      journal_before = File.read!(path)
+      {:ok, events_before} = Journal.load(state_dir, info.id)
       {:ok, ^original} = ResultSource.read_saved(state_dir, info.id, delivery["output_id"])
       resumed = start(config, cwd, state_dir, info.id)
       :idle = Session.info(resumed).phase
@@ -123,7 +124,17 @@ defmodule IpseSavedResultsExample.Proof do
       :ok = Session.close_confirmed(resumed)
       ^loads = File.read!(load_marker)
       ^callbacks = File.read!(callback_marker)
-      ^journal_sha = Ipse.JSON.sha256(File.read!(path))
+      journal_after = File.read!(path)
+      {:ok, events_after} = Journal.load(state_dir, info.id)
+
+      {:ok, release_mode} =
+        validate_idle_resume(journal_before, journal_after, events_before, events_after, info.id)
+
+      {:ok, release_status} =
+        validate_release_status(release_mode, fn ->
+          Ipse.Session.ReleaseReceipt.inspect_current(state_dir, info.id)
+        end)
+
       unloaded!()
 
       %{
@@ -133,7 +144,8 @@ defmodule IpseSavedResultsExample.Proof do
         "sha256" => delivery["sha256"],
         "historical_reads_exact" => true,
         "resume_inert" => true,
-        "journal_unchanged" => true,
+        "journal_prefix_preserved" => true,
+        "resume_release_status" => release_status,
         "worker_loads" => 1,
         "callbacks" => 1,
         "model_requests" => 0,
@@ -148,6 +160,60 @@ defmodule IpseSavedResultsExample.Proof do
       File.rm_rf!(root)
     end
   end
+
+  @doc false
+  def validate_idle_resume(before, after_bytes, before_events, after_events, session)
+      when is_binary(before) and is_binary(after_bytes) and is_list(before_events) and
+             is_list(after_events) and is_binary(session) do
+    count = length(before_events)
+
+    with true <- byte_size(after_bytes) >= byte_size(before),
+         true <- binary_part(after_bytes, 0, byte_size(before)) == before,
+         true <- Enum.take(after_events, count) === before_events,
+         suffix = Enum.drop(after_events, count),
+         {:ok, mode} <- validate_idle_suffix(before_events, after_events, suffix, session) do
+      {:ok, mode}
+    else
+      _ -> {:error, :unexpected_resume_journal}
+    end
+  rescue
+    _ -> {:error, :unexpected_resume_journal}
+  end
+
+  def validate_idle_resume(_, _, _, _, _), do: {:error, :unexpected_resume_journal}
+
+  defp validate_idle_suffix(before_events, after_events, suffix, session) do
+    case get_in(hd(before_events), ["metadata", "release_receipt_layout"]) do
+      nil ->
+        if suffix === [], do: {:ok, :legacy_unchanged}, else: {:error, :unexpected_resume_journal}
+
+      layout ->
+        with true <- layout == Ipse.Session.ReleaseReceipt.layout(),
+             [owner, intent] <- suffix,
+             true <- Ipse.Session.ReleaseReceipt.valid_owner_marker?(owner, session),
+             true <- intent["type"] == "session_release_intent",
+             true <- intent["owner_id"] == owner["owner_id"],
+             true <- is_nil(intent["epoch_id"]) and is_nil(intent["closure_sha256"]),
+             {:ok, ^intent} <- Ipse.Session.ReleaseReceipt.current_intent(after_events, session) do
+          {:ok, :signed_release_required}
+        else
+          _ -> {:error, :unexpected_resume_journal}
+        end
+    end
+  end
+
+  @doc false
+  def validate_release_status(:legacy_unchanged, _inspect), do: {:ok, "legacy_unchanged"}
+
+  def validate_release_status(:signed_release_required, inspect) when is_function(inspect, 0) do
+    if inspect.() == :signed_release_claim,
+      do: {:ok, "signed_release_claim"},
+      else: {:error, :release_claim_unconfirmed}
+  rescue
+    _ -> {:error, :release_claim_unconfirmed}
+  end
+
+  def validate_release_status(_, _), do: {:error, :release_claim_unconfirmed}
 
   defp start(config, cwd, state_dir, id \\ nil) do
     {:ok, session} =

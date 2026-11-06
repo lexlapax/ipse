@@ -472,7 +472,16 @@ defmodule Ipse.Development.Verification.Scenarios do
   def validate!(%{name: "saved-results"}, report, "default") do
     4_194_304 = report["byte_count"]
     1024 = report["fragment_count"]
-    for key <- ~w(historical_reads_exact resume_inert journal_unchanged), do: true = report[key]
+
+    for key <-
+          ~w(historical_reads_exact resume_inert journal_prefix_preserved),
+        do: true = report[key]
+
+    expected_release =
+      if :os.type() == {:unix, :linux}, do: "signed_release_claim", else: "legacy_unchanged"
+
+    ^expected_release = report["resume_release_status"]
+
     1 = report["worker_loads"]
     1 = report["callbacks"]
     0 = report["model_requests"]

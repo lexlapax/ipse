@@ -1354,6 +1354,9 @@ A [later current-source run](archive/2026-10-26-p30-p31-implementation/full-suit
 was stopped after three failures, including temporary quota exhaustion and a
 nested-test completion-marker defect. The marker repair passes its separate
 focused native control; a fresh complete current-source baseline remains open.
+The [saved-result verifier repair](archive/2026-10-26-p30-p31-implementation/saved-result-release-verifier-20261106.md)
+passes fresh synthetic source and Linux installed checks while preserving the
+earlier failed CI result and the separate macOS uncertainty.
 
 | Package | Output and prerequisites |
 | --- | --- |

@@ -814,11 +814,12 @@ control copies the release and recompiles a test copy of the public identity
 module, changing a real inventoried host BEAM. An extension-free saved session must
 resume; one with selected extensions must refuse without journal mutation, and
 still resume with the previous release. The original archive/host stay unchanged.
-Successful same-mode idle resume preserves the exact prior journal bytes and adds
-only the validated ownership record and confirmed-close release intent. For a
-legitimate mode transition, apply the [exact suffix rules](#require-positive-controls-and-inspect-uncertainty) above. The verifier checks
-the current intent and native signed-release claim, while a denied resume permits
-no suffix.
+Successful same-mode idle resume preserves the exact prior journal bytes. For a
+release-receipt journal, the verifier permits only a validated ownership record
+and confirmed-close release intent, then checks the current signed-release claim.
+A legacy journal must remain byte-identical. For a legitimate mode transition,
+apply the [exact suffix rules](#reopen-the-same-mode-and-inspect-permitted-suffixes)
+above. A denied resume permits no suffix.
 
 For a local distribution, prepare the exact bundled toolchain's notices in
 `IPSE_NOTICES_DIR` before packaging. Hosted CI/release jobs obtain the official
