@@ -91,13 +91,13 @@ defmodule Ipse.Session.OllamaModelPinTest do
     {pid, server, config}
   end
 
-  defp finish(c, pid, config) do
+  defp finish(c, pid, config, expected_unknown_liabilities \\ 0) do
     id = Session.info(pid).id
     assert :ok = Session.close_confirmed(pid)
     assert {:ok, events} = Journal.load(c.dir, id)
     assert {:ok, _} = Session.Saved.restore(events, id)
     assert {:ok, budget} = Usage.Budget.saved(c.dir, id)
-    assert budget["unknown_liability_count"] == 0
+    assert budget["unknown_liability_count"] == expected_unknown_liabilities
     assert {:ok, ledger} = InferenceSlots.status(config, cwd: c.cwd)
     assert ledger["services"]["local"]["active"] == nil
     refute Enum.any?(events, &(&1["type"] == "tool_started"))
@@ -209,7 +209,7 @@ defmodule Ipse.Session.OllamaModelPinTest do
            )
   end
 
-  test "a preflight mismatch settles unstarted without sending input or booking inference", c do
+  test "a preflight mismatch sends no input and retains its unstarted budget booking", c do
     {_, pin} = metadata()
     bad = Map.put(pin, "metadata_sha256", String.duplicate("f", 64))
     {pid, server, config} = start(c, [], [], nil, %{ollama_model_pin: bad})
@@ -223,8 +223,11 @@ defmodule Ipse.Session.OllamaModelPinTest do
              String.starts_with?(headers, "POST /api/chat ")
            end)
 
-    {events, budget} = finish(c, pid, config)
-    assert budget["request_count"] == 0
+    {events, budget} = finish(c, pid, config, 1)
+    assert budget["request_count"] == 1
+    assert budget["unsettled_count"] == 1
+    assert budget["refused_count"] == 0
+    assert [%{"unit" => "requests", "booked" => 1}] = budget["dimensions"]
     assert Enum.count(events, &(&1["type"] == "request_admitted")) == 1
     refute Enum.any?(events, &(&1["type"] == "request_usage_observed"))
   end

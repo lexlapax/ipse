@@ -92,6 +92,7 @@ nor resource/offline qualification. No daemon configuration or existing model wa
 
 ## Regression closure and fixture qualification — 2026-11-06
 
+- [Conservative budget reservation fixtures](budget-reservation-fixtures-20261106.md) correct stale no-booking assumptions while retaining fixed one/two-request policies and unstarted liabilities. Both nine-test files pass separately; the frozen full regression remains a distinct outcome.
 - [Inactive original result lease](stored-result-lease-20261106.md) records eight actual synthetic controls for same-project committed input, original native ownership, complete dependency unions and checked release. Caller approval, document restore and full-capacity acceptance remain separate.
 - [Exact result-reference SDK helpers](sdk-result-reference-helpers-20261106.md) adds explicit small paged output and bounded canonical object digests through the existing protocol. Thirteen publication controls pass, including a real small-output Worker and stage refusals; document restore and integrated qualification remain separate.
 - [Supplied-Word retrieval comparison](word-semantic-supplied-comparison-20261106.md) records all 152 results, 148 completed local embedding requests, twelve closed/idle Sessions and independently frozen scoring: 61/62 lexical versus 62/62 dense expected support slots with byte/locator fidelity. Installed acquisition, precision, answers and current-file qualification remain separate.

@@ -234,12 +234,12 @@ defmodule Ipse.InferenceDispatchTest do
     end)
   end
 
-  test "postqueue refusal performs no provider callback or budget reservation", c do
+  test "postqueue refusal retains its booking and a fresh admission cannot reuse it", c do
     config =
       config(c, "http://127.0.0.1:11434")
       |> Map.put(:budget, %{
         "version" => 1,
-        "max_requests" => 2,
+        "max_requests" => 1,
         "max_input_tokens" => 100,
         "reserve_input_tokens" => 32,
         "max_output_tokens" => 100,
@@ -270,9 +270,36 @@ defmodule Ipse.InferenceDispatchTest do
       assert message =~ "validation changed"
       refute_received :unexpected_dispatch
       assert {:ok, budget} = Ipse.Usage.Budget.snapshot(config)
-      assert budget["request_count"] == 0
+      assert budget["request_count"] == 1
+      assert budget["unsettled_count"] == 1
+      assert budget["unknown_liability_count"] == 1
+      assert budget["refused_count"] == 0
+      assert booked(budget) == %{"requests" => 1, "input_tokens" => 32, "output_tokens" => 32}
       assert {:ok, state} = InferenceSlots.status(config, cwd: c.cwd)
       assert state["services"]["local"]["active"] == nil and state["queue"] == []
+      assert state["recent"] == []
+
+      assert {:error, error} =
+               InferenceDispatch.run(
+                 config,
+                 config,
+                 "main",
+                 nil,
+                 context(c, config, session),
+                 fn _ -> :ok end,
+                 fn _ -> flunk("exhausted budget reached the service gate") end,
+                 fn _, _, _ -> flunk("exhausted budget dispatched") end
+               )
+
+      assert error =~ "Budget admission refused"
+      assert {:ok, after_refusal} = Ipse.Usage.Budget.snapshot(config)
+      assert after_refusal["request_count"] == 1
+      assert after_refusal["refused_count"] == 1
+      assert after_refusal["unsettled_count"] == 1
+      assert after_refusal["unknown_liability_count"] == 1
+      assert booked(after_refusal) == booked(budget)
+      assert after_refusal["policy_sha256"] == budget["policy_sha256"]
+      assert {:ok, ^state} = InferenceSlots.status(config, cwd: c.cwd)
     end)
   end
 
@@ -313,16 +340,28 @@ defmodule Ipse.InferenceDispatchTest do
              InferenceDispatch.selection(%{}, %{provider: :demo}, "main", nil)
   end
 
-  test "a provably unentered budget callback records not_started and a fresh request uses the only HTTP call",
+  test "a retained pre-callback booking and a fresh admission use two requests for one HTTP call",
        c do
     {base, server} = ProviderFixture.start(text_body(), 200, "", :whole)
     on_exit(fn -> if Process.alive?(server.pid), do: Process.exit(server.pid, :kill) end)
-    config = config(c, base) |> Map.put(:budget, %{"version" => 1, "max_requests" => 0})
+
+    config =
+      config(c, base)
+      |> Map.put(:budget, %{
+        "version" => 1,
+        "max_requests" => 2,
+        "max_input_tokens" => 100,
+        "reserve_input_tokens" => 32,
+        "max_output_tokens" => 100,
+        "reserve_output_tokens" => 32
+      })
+
     id = Usage.id()
     assert {:ok, config} = Ipse.Usage.BudgetStore.attach(config, c.sessions, id, true)
 
     checked(c, config, fn ->
       parent = self()
+      first_context = context(c, config, id)
 
       assert {:error, error} =
                InferenceDispatch.run(
@@ -330,22 +369,32 @@ defmodule Ipse.InferenceDispatchTest do
                  config,
                  "main",
                  nil,
-                 context(c, config, id),
+                 first_context,
                  fn _ -> :ok end,
-                 fn _ -> {:ok, nil} end,
+                 fn _ -> {:error, :source_changed} end,
                  fn _, _, _ ->
                    send(parent, :unexpected_budget_dispatch)
-                   flunk("zero budget dispatched")
+                   flunk("postqueue refusal dispatched")
                  end
                )
 
-      assert error =~ "Budget admission refused"
+      assert error =~ "validation changed"
       refute_received :unexpected_budget_dispatch
       assert {:ok, state} = InferenceSlots.status(config, cwd: c.cwd)
       assert state["services"]["local"]["active"] == nil
-      assert [receipt] = state["recent"]
-      assert receipt["status"] == "not_started"
-      config = Map.delete(config, :budget)
+      assert state["recent"] == []
+      assert {:ok, before_fresh} = Ipse.Usage.Budget.snapshot(config)
+      assert before_fresh["request_count"] == 1
+      assert before_fresh["unsettled_count"] == 1
+
+      assert booked(before_fresh) == %{
+               "requests" => 1,
+               "input_tokens" => 32,
+               "output_tokens" => 32
+             }
+
+      fresh_context = context(c, config, id)
+      refute fresh_context.admission == first_context.admission
 
       assert {:ok, _, _} =
                InferenceDispatch.run(
@@ -353,7 +402,7 @@ defmodule Ipse.InferenceDispatchTest do
                  config,
                  "main",
                  nil,
-                 context(c, config),
+                 fresh_context,
                  fn _ -> :ok end,
                  fn _ -> {:ok, nil} end,
                  &execute/3
@@ -361,8 +410,24 @@ defmodule Ipse.InferenceDispatchTest do
 
       assert {headers, _} = Task.await(server)
       assert headers =~ "POST /api/chat"
+      assert {:ok, budget} = Ipse.Usage.Budget.snapshot(config)
+      assert budget["request_count"] == 2
+      assert budget["refused_count"] == 0
+      assert budget["unsettled_count"] == 1
+      assert budget["unknown_liability_count"] == 1
+      assert budget["overdrawn"] == false
+      assert booked(budget) == %{"requests" => 2, "input_tokens" => 33, "output_tokens" => 33}
+      assert budget["policy_sha256"] == before_fresh["policy_sha256"]
+      assert {:ok, final_state} = InferenceSlots.status(config, cwd: c.cwd)
+      assert final_state["services"]["local"]["active"] == nil and final_state["queue"] == []
+
+      assert [receipt] = final_state["recent"]
+      assert receipt["status"] == "settled"
     end)
   end
+
+  defp booked(snapshot),
+    do: Map.new(snapshot["dimensions"], &{&1["unit"], &1["booked"]})
 
   test "visible text from an incomplete native stream is withheld when its slot becomes unknown",
        c do
