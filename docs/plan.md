@@ -85,6 +85,14 @@ fetched-Research and coalesced-reader changes retain their
 focused evidence outside that freeze. The committed-runtime retained-cohort
 checks remain open before notes acceptance.
 
+The later [489-file attempt](archive/2026-10-26-p30-p31-implementation/source-regression-489-20261106.md)
+was interrupted before its coordination deadline, with 13 known outer failure
+headers and no final test exit or totals. Later immutable-copy and independent
+host cleanup checks pass. Separate [Word setup](archive/2026-10-26-p30-p31-implementation/word-cli-recipe-v18-20261106.md)
+and [evaluation isolation](archive/2026-10-26-p30-p31-implementation/evaluation-domain-isolation-20261106.md)
+controls now pass their focused cases. They do not complete that interrupted
+run or establish a current full-source baseline.
+
 A [schema-validator update](archive/2026-10-26-p30-p31-implementation/schema-validator-security-20261104.md)
 replaces the newly retired JSONSchex version with 0.11.1 and its required pointer
 dependency. The closed schema subset remains unchanged; focused checks and the
