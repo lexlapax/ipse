@@ -36,7 +36,10 @@ defmodule Ipse.Test.WitnessedDraft do
       )
 
     assert status == 0, output
-    assert output =~ "1 passed"
+
+    assert Enum.count(String.split(output, ~r/\r?\n/), &(&1 == "WITNESSED_DRAFT_CONTROL_PASS")) ==
+             1,
+           output
   end
 
   def accept(session, draft_id, revision) do
