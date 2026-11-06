@@ -146,3 +146,12 @@ directory's observed permissions explain the refusal under the tested code,
 although the generic error did not identify its failing check. No account
 permissions were changed and the pilot was not retried. Accounting remains
 **4 of 1,000 local calls** and **238 of 300 conservatively charged ChatGPT calls**.
+
+## Stopped Word comparison, 2026-11-06
+
+The [partial Word comparison](word-semantic-03-failure-20261106.md) recorded one
+admitted embedding attempt before stopping. Its journal has no inference dispatch
+intent, so no embedding wire request is established; retain one conservative
+charge nonetheless. Local liability is **5 of 1,000**, leaving **995** under the
+existing allowance. Metadata requests are counted separately. ChatGPT remains
+**238 of 300 conservatively charged**. No failed attempt was replayed or refunded.

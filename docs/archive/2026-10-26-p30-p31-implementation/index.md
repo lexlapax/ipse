@@ -55,8 +55,10 @@ No local inference ran during provisioning. A later [two-request adapter smoke](
 charges2of1000local calls, leaving998; its loaded contexts were4096tokens and its
 direct chat witness remained false. Later [pinned registered Session jobs](local-pinned-jobs-20261031.md)
 used two further calls, both completed/final, with reported 8,192 context tokens,
-settled service reservations and valid idle resume. Local usage is now 4 of 1,000,
-996 remaining. Download success establishes neither quality
+settled service reservations and valid idle resume. A later
+[stopped Word comparison](word-semantic-03-failure-20261106.md) adds one
+conservatively charged admitted attempt, bringing local usage to 5 of 1,000,
+995 remaining. Download success establishes neither quality
 nor resource/offline qualification. No daemon configuration or existing model was changed.
 
 ## P31I planning and acceptance
@@ -88,6 +90,7 @@ nor resource/offline qualification. No daemon configuration or existing model wa
 
 ## Regression closure and fixture qualification — 2026-11-06
 
+- [Stopped local Word comparison](word-semantic-03-failure-20261106.md) preserves the known failed embedding attempt, all 152 undispatched result slots and failed idle check. Separate filesystem probes support a tmpfs requirement; no retrieval or quality pass is claimed.
 - [Budget reservation before service selection](budget-reservation-pre-slot-20261106.md) closes the observed post-admission service-slot failure gap, with 50 passing focused tests and an independent source review. Earlier preparation failures can still leave an unmatched admission that fails closed; broader regression and model qualification remain open.
 - [Interrupted 489-file source regression](source-regression-489-20261106.md) retains 13 known outer failure headers and two separate nested failures, with no final exit or totals. Later immutable-copy and independent host-neutral checks pass; the complete baseline remains unqualified.
 - [CI runner and formatter readiness](ci-runner-formatter-readiness-20261106.md) records the retired macOS image, canonical Elixir 1.18 source adoption and clean local formatter/policy checks; hosted tests and installed gates remain unqualified.
