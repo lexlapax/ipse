@@ -92,6 +92,7 @@ nor resource/offline qualification. No daemon configuration or existing model wa
 
 ## Regression closure and fixture qualification — 2026-11-06
 
+- [Inactive original result lease](stored-result-lease-20261106.md) records eight actual synthetic controls for same-project committed input, original native ownership, complete dependency unions and checked release. Caller approval, document restore and full-capacity acceptance remain separate.
 - [Exact result-reference SDK helpers](sdk-result-reference-helpers-20261106.md) adds explicit small paged output and bounded canonical object digests through the existing protocol. Thirteen publication controls pass, including a real small-output Worker and stage refusals; document restore and integrated qualification remain separate.
 - [Supplied-Word retrieval comparison](word-semantic-supplied-comparison-20261106.md) records all 152 results, 148 completed local embedding requests, twelve closed/idle Sessions and independently frozen scoring: 61/62 lexical versus 62/62 dense expected support slots with byte/locator fidelity. Installed acquisition, precision, answers and current-file qualification remain separate.
 - [Bounded terminal input buffering](operator-buffered-input-20261106.md) retains 1-MiB limits and deadlines while reducing per-byte polling; 22 native and nine existing host/input controls pass on Linux. Hosted macOS remains unqualified.

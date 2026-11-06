@@ -10,11 +10,230 @@ defmodule Ipse.Session.StoredSources do
   """
   alias Ipse.{JSON, Journal, Runner}
   alias Ipse.Journal.SourceOrigin
+  alias Ipse.Extension.{ProjectIdentity, ResultSource}
   alias Ipse.Session.{Saved, SourceIndex, SourceWindow}
   @error {:error, :collection_source_refused}
   @proof_limit 128
   @snapshot_budget {__MODULE__, :snapshot_budget}
   @share_slot {__MODULE__, :shareable_source}
+
+  @doc """
+  Retain an explicitly selected result from a foreign inactive original Session.
+
+  The caller must authorize the selection and its complete managed dependencies
+  separately. The initial contract requires the source and consumer's same
+  canonical cwd with an actually admitted project, not merely equal absent pins.
+  Its native original-lock identity/checked-release protocol is Linux-only.
+  The callback runs inside the retained target ProjectIdentity binding; nested
+  target storage must use that held binding. A nested distinct-original selection
+  can supply it as `context.held_document_project`; the existing private held
+  capability must actually validate, so copying a binding map grants nothing.
+  Its same-process guard must succeed
+  immediately before the target CAS. Neither the value nor the guard grants a
+  write or current-use permission. An error after callback entry cannot prove
+  that a target effect did not happen.
+  """
+  def with_result(context, selected, fun)
+      when is_map(context) and is_map(selected) and is_function(fun, 2) do
+    Ipse.Session.Resources.file_effect(fn -> retained_result(context, selected, fun) end)
+  rescue
+    _ -> @error
+  catch
+    _, _ -> @error
+  end
+
+  def with_result(_, _, _), do: @error
+
+  defp retained_result(context, selected, fun) do
+    with true <- Enum.sort(Map.keys(selected)) === ~w(delivery session_id version),
+         true <- selected["version"] === 1,
+         id when is_binary(id) <- selected["session_id"],
+         consumer when is_binary(consumer) <- context[:session_id],
+         true <- Regex.match?(~r/\A[0-9a-f]{32}\z/, consumer),
+         true <- Regex.match?(~r/\A[0-9a-f]{32}\z/, id) and id !== context[:session_id],
+         true <- ResultSource.valid_descriptor?(selected["delivery"]),
+         dir when is_binary(dir) <- context[:history_dir],
+         {:ok, ^dir} <- Ipse.Workspace.canonical_path(dir),
+         {:ok, before_dir} <- File.lstat(dir),
+         true <- private_directory?(before_dir),
+         path = Path.join(dir, id <> ".jsonl"),
+         lock_path = Path.join(dir, id <> ".lock"),
+         {:ok, before_lock} <- File.lstat(lock_path),
+         true <- protected?(before_lock) and before_lock.uid === before_dir.uid,
+         {:ok, journal} <- File.lstat(path),
+         true <- protected?(journal) and journal.uid === before_lock.uid,
+         {:ok, lock} <- Runner.share_source_lock(lock_path) do
+      monitor = :erlang.monitor(:port, lock)
+
+      result =
+        try do
+          with true <- missing_lock_identity?(lock, before_lock),
+               true <- lock_live?(lock, monitor),
+               true <- same_lock?(lock_path, before_lock) do
+            result_file(
+              context,
+              selected,
+              fun,
+              path,
+              dir,
+              before_dir,
+              lock_path,
+              before_lock,
+              lock,
+              monitor
+            )
+          else
+            _ -> @error
+          end
+        rescue
+          _ -> @error
+        catch
+          _, _ -> @error
+        end
+
+      try do
+        live = lock_live?(lock, monitor) and same_lock?(lock_path, before_lock)
+        if Runner.unlock_export_candidate(lock) === :ok and live, do: result, else: @error
+      after
+        Process.demonitor(monitor, [:flush])
+      end
+    else
+      _ -> @error
+    end
+  rescue
+    _ -> @error
+  catch
+    _, _ -> @error
+  end
+
+  defp result_file(c, selected, fun, path, dir, before_dir, lock_path, before_lock, lock, monitor) do
+    with {:ok, file} <- :file.open(String.to_charlist(path), [:read, :binary, :raw]) do
+      result =
+        try do
+          with {:ok, info} <- :file.read_file_info(file),
+               true <- protected?(File.Stat.from_record(info)),
+               {:ok, _} <- budget(c, info),
+               {:ok, stats} <- Journal.scan_file(file, c.config[:journal], :load),
+               true <- stats.tail === :none,
+               metadata = (List.first(stats.events) || %{})["metadata"],
+               {:ok, origin} when is_map(origin) <-
+                 SourceOrigin.recorded(metadata, selected["session_id"]),
+               :ok <- SourceOrigin.check(file, path, selected["session_id"], metadata),
+               {:ok, cwd} <- Ipse.Workspace.canonical_path(c.cwd),
+               {:ok, ^cwd} <- Ipse.Workspace.canonical_path(metadata["cwd"]),
+               {:ok, binding} when is_map(binding) <- result_binding(c, cwd),
+               true <- result_project?(metadata["semantic_admission"], binding),
+               true <- result_project?(c.config[:semantic_admission], binding),
+               {:ok, saved} <- Saved.restore(stats.events, selected["session_id"]),
+               true <- closed_result_work?(saved),
+               :ok <- SourceWindow.validate_sources(dir, selected["session_id"], stats.events),
+               {:ok, source} <-
+                 ResultSource.readable_source(saved.result_sources, selected["delivery"]),
+               {:ok, dependencies} when is_list(dependencies) <-
+                 Map.fetch(saved.extension_state.managed_outputs, source.intent["invocation_id"]),
+               {:ok, materialized} <- ResultSource.materialize(source, selected["delivery"]) do
+            owner = self()
+
+            original = fn ->
+              self() === owner and lock_live?(lock, monitor) and
+                missing_lock_identity?(lock, before_lock) and
+                same_result_directory?(dir, before_dir) and
+                same_lock?(lock_path, before_lock) and unchanged?(file, info) and
+                SourceOrigin.check(file, path, selected["session_id"], metadata) === :ok
+            end
+
+            result =
+              with_result_binding(c, cwd, binding, fn actual ->
+                guard = fn ->
+                  if original.() do
+                    ProjectIdentity.with_held_binding(c.config.home, cwd, actual, fn _ -> :ok end)
+                  else
+                    @error
+                  end
+                end
+
+                with :ok <- guard.(),
+                     value =
+                       Map.merge(materialized, %{
+                         delivery: selected["delivery"],
+                         dependencies: dependencies,
+                         source_intent: source.intent,
+                         action_results:
+                           Enum.filter(stats.events, fn event ->
+                             event["type"] === "extension_action_result" and
+                               event["parent_invocation_id"] === source.intent["invocation_id"]
+                           end),
+                         project_binding: actual
+                       }),
+                     result <- fun.(value, guard),
+                     :ok <- guard.() do
+                  result
+                else
+                  _ -> @error
+                end
+              end)
+
+            if original.(), do: result, else: @error
+          else
+            _ -> @error
+          end
+        rescue
+          _ -> @error
+        catch
+          _, _ -> @error
+        end
+
+      if :file.close(file) === :ok, do: result, else: @error
+    else
+      _ -> @error
+    end
+  end
+
+  defp result_binding(c, cwd) do
+    case Map.fetch(c, :held_document_project) do
+      :error ->
+        ProjectIdentity.existing(c.config.home, cwd)
+
+      {:ok, binding} when is_map(binding) ->
+        ProjectIdentity.with_held_binding(c.config.home, cwd, binding, fn actual ->
+          {:ok, actual}
+        end)
+
+      _ ->
+        @error
+    end
+  end
+
+  defp with_result_binding(c, cwd, binding, fun) do
+    if Map.has_key?(c, :held_document_project),
+      do: ProjectIdentity.with_held_binding(c.config.home, cwd, binding, fun),
+      else: ProjectIdentity.with_existing_binding(c.config.home, cwd, binding, fun)
+  end
+
+  defp result_project?(nil, _), do: true
+
+  defp result_project?(admission, binding) when is_map(admission),
+    do:
+      Ipse.Extension.SemanticAdmission.valid?(admission, nil) and
+        (is_nil(admission["pin"]) or
+           get_in(admission, ["pin", "project_id"]) === binding["project_id"])
+
+  defp result_project?(_, _), do: false
+
+  defp closed_result_work?(saved) do
+    state = saved.extension_state
+
+    is_nil(state.parent) and is_nil(state.action) and is_nil(state.resume_needed) and
+      is_nil(state.question) and is_nil(state.output_release) and not state.unknown and
+      state.worker_input_unknown === [] and is_nil(saved.question)
+  end
+
+  defp same_result_directory?(dir, before) do
+    case File.lstat(dir) do
+      {:ok, current} -> private_directory?(current) and identity(current) === identity(before)
+      _ -> false
+    end
+  end
 
   def with_verified(context, intent, proofs, fun) when is_function(fun, 1) do
     with_sources(Map.put(context, :stored_source_resolution, :strict), intent, proofs, fun)

@@ -283,6 +283,81 @@ assistant answer. Expiry is checked at admission/commit, without continuous
 wall-clock preemption. Hashes catch inconsistency, not malicious coherent rewriting
 of a private journal.
 
+### Consume an explicitly selected historical result
+
+A `saved.result` descriptor identifies committed data; it grants no access to
+another Session or permission to use that data in an effect. A host integration
+must first bind the exact selection to an actual operator command and its
+ordinary approvals. Use the internal
+[`StoredSources.with_result/3`](../../lib/ipse/session/stored_sources.ex)
+helper to retain that original while inspecting or consuming it. This is not a
+worker SDK operation, a transcript reader or a replacement for source-currentness
+checks.
+
+The selected reference is a closed version-1 object containing `session_id` and
+the existing saved-result `delivery` descriptor. The host supplies `history_dir`,
+consumer Session ID, configuration and cwd in `context`; the reference supplies
+no filesystem path. The initial contract accepts a foreign, inactive original
+from the same canonical cwd and an actually admitted project. Equal absent
+semantic pins do not establish a project. Same-Session selection, active sources,
+copied/hardlinked journals, legacy origins, partial tails and unfinished work
+refuse before a readable value is delivered. The original-lock identity and
+checked-release protocol is currently Linux-only.
+
+Trace one successful read through the helper before adding a target mutation:
+
+1. Enter the existing `Resources.file_effect` owner before acquiring leases.
+2. Retain the original OS lock and file, check inode/origin and admitted limits,
+   then strictly reconstruct `Saved` and the committed `ResultSource`.
+3. Retain the actual existing target `ProjectIdentity` around the callback.
+4. Run the same-process guard immediately before a target CAS. Confirm the
+   source and project again after the callback, then check close/unlock before
+   returning its value.
+
+The callback receives exact `bytes`, decoded `value`, `delivery`, the complete
+recorded `dependencies`, `source_intent`, `project_binding` and `action_results`.
+The last field contains only validated action-result records belonging to that
+result's producing invocation, not other invocation transcripts. These records
+can bind a later host check to the actual producing command and its native
+outcomes; JSON fields claiming the same provenance are insufficient.
+
+For example, this host-only inspection fragment accepts an already authorized
+selection and returns metadata after the helper's checked return:
+
+```elixir
+Ipse.Session.StoredSources.with_result(context, selected, fn input, guard ->
+  with true <- input.dependencies === [],
+       :ok <- guard.() do
+    {:ok, %{delivery: input.delivery, sha256: Ipse.JSON.sha256(input.bytes)}}
+  else
+    _ -> {:error, :selected_input_refused}
+  end
+end)
+```
+
+The helper preserves nonempty dependency unions; it never silently treats them
+as unmanaged data. The current Restore caller requires a known empty union and
+performs its own operator-selection and validator checks. A future protected
+consumer must implement its existing current-use ownership contract separately.
+Neither the callback value nor its guard grants authority. Do not emit bytes,
+start inference or hand the guard to another process before the checked return.
+For a mutation, use the retained project through
+`ProjectIdentity.with_held_binding/4` and pass the guard to the actual publication
+boundary; acquiring the identity index again would violate lock ordering.
+Nested selections from distinct original Sessions may reuse
+`context.held_document_project` only while its private held capability validates.
+A copied binding map and reentry into the same original do not qualify.
+
+After return, the value is historical and the guard has expired. A failed
+postcheck can withhold a callback result even after its target effect happened;
+record unknown liability when appropriate and never infer rollback or replay.
+Exercise the real lease with
+`mix test test/ipse/session/stored_result_lease_test.exs`: its synthetic originals
+cover nested ownership, complete managed dependencies, changed input, wrong
+project, foreign/expired guards and native owner loss. The
+[dated helper record](../archive/2026-10-26-p30-p31-implementation/stored-result-lease-20261106.md)
+separates that verification from public restore integration.
+
 ## Turn the behavior into a conformance scenario
 
 ```sh
