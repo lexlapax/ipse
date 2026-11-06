@@ -112,6 +112,16 @@ explicitly supplies every required application owner or is definition-only.
 An absent DynamicSupervisor is a setup failure, not evidence that a conformance
 expectation or cleanup boundary should change.
 
+Run preparation-purity assertions in a fresh plain Elixir child. The ordinary
+Mix test process already owns the started application, so its global application
+list cannot establish that an OFF preflight starts no application. Pass the
+parent's actually loaded runtime paths and run the original preflight,
+disabled-entry and no-effect assertions inside that child. Select exactly the
+intended control and require its successful completion. The
+[`CandidateAssessmentSession` test](../../test/dev/evaluation/candidate_assessment_session_test.exs)
+uses this pattern with absent Session/Input supervisors and unchanged ports,
+while remaining runnable under ordinary suite startup.
+
 The declaration-CLI fixture copies tracked and nonignored untracked repository
 files into a temporary synthetic repository. Run the full suite from a clean
 committed clone when the working checkout contains private or unrelated untracked

@@ -161,14 +161,51 @@ defmodule Ipse.Development.Evaluation.CandidateAssessmentSessionTest do
     }
   end
 
+  @tag :candidate_off_preflight
   test "matching OFF preflight starts no App or Session and grants nothing" do
-    f = fixture()
-    refute Enum.any?(Application.started_applications(), &(elem(&1, 0) == :ipse))
-    assert {:ok, p} = S.prepare(f.declaration, f.sha, f.id, f.load, f.options)
-    assert p.recipe["status"] == "off" and p.recipe["note_mutation"] == "none"
-    assert {:error, :execution_disabled} = S.run(f.declaration, f.sha, f.id, f.load, f.options)
-    assert {:error, :execution_disabled} = S.main([])
-    refute Enum.any?(Application.started_applications(), &(elem(&1, 0) == :ipse))
+    if System.get_env("IPSE_CANDIDATE_OFF_PREFLIGHT_CHILD") == "1" do
+      f = fixture()
+      refute Enum.any?(Application.started_applications(), &(elem(&1, 0) == :ipse))
+      assert Process.whereis(Ipse.Sessions) === nil
+      assert Process.whereis(Ipse.Session.Input) === nil
+      ports = Port.list() |> Enum.sort()
+      assert {:ok, p} = S.prepare(f.declaration, f.sha, f.id, f.load, f.options)
+      assert p.recipe["status"] == "off" and p.recipe["note_mutation"] == "none"
+      assert {:error, :execution_disabled} = S.run(f.declaration, f.sha, f.id, f.load, f.options)
+      assert {:error, :execution_disabled} = S.main([])
+      refute Enum.any?(Application.started_applications(), &(elem(&1, 0) == :ipse))
+      assert Process.whereis(Ipse.Sessions) === nil
+      assert Process.whereis(Ipse.Session.Input) === nil
+      assert Enum.sort(Port.list()) === ports
+    else
+      paths =
+        :code.get_path()
+        |> Enum.map(&List.to_string/1)
+        |> Enum.reject(&(&1 == "."))
+        |> Enum.map(&Path.expand/1)
+        |> Enum.reverse()
+        |> Enum.flat_map(&["-pa", &1])
+
+      expression = """
+      ExUnit.start(autorun: false, exclude: [:test], include: [:candidate_off_preflight])
+      Code.require_file(#{inspect(__ENV__.file)})
+      result = ExUnit.run()
+      if result.failures != 0 or result.skipped != 0 or result.total - result.excluded != 1,
+        do: System.halt(1)
+      IO.puts("OFF_PREFLIGHT_ISOLATED_PASS")
+      """
+
+      {output, status} =
+        System.cmd(
+          System.find_executable("elixir"),
+          ["--erl", "+S 1:1 +A 1 +SDcpu 1 +SDio 1"] ++ paths ++ ["-e", expression],
+          env: [{"IPSE_CANDIDATE_OFF_PREFLIGHT_CHILD", "1"}],
+          stderr_to_stdout: true
+        )
+
+      assert status === 0, output
+      assert output =~ "OFF_PREFLIGHT_ISOLATED_PASS"
+    end
   end
 
   test "declaration mismatch refuses before even the read-only loader" do
