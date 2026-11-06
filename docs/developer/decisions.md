@@ -324,19 +324,21 @@ For selection evaluation, `dev/evaluation/decision_metrics.exs` compares
 bounded aggregate counts using the frozen five-percentage-point supported-answer
 or 20% total-cost benefit, nonregression and p95 latency thresholds. For candidate
 assessment it compares false-durable reduction, useful and critical capture, and
-latency. The supplied gate statuses cover protocol and matched workload, plus
+latency. The aggregate interface accepts independently defined labels; validate
+their meaning and relationships for the study before supplying counts.
+
+The supplied gate statuses cover protocol and matched workload, plus
 selection quality, citation integrity, finite resources and paired critical-case
 nonregression or assessment's finite cost cap; the functions do not verify
 those declarations. `critical_pairs/3` uses the existing paired-metric input to
 identify baseline successes lost on specific critical queries. Missing, failed
 or unmeasured pairs leave that gate unverified, even when aggregate recall is
-unchanged. Independently validate the supplied critical labels and verdicts.
-Both comparisons report
-baseline and candidate abstention counts separately with their denominator.
-A missing measurement or gate produces an unverified disposition even if another measured
-criterion failed. A `useful_candidate` is a calculation result, not qualification:
-the experiment, independent review and host safety gates must still be established.
-Exercise the thresholds with:
+unchanged. Independently validate the supplied critical labels and verdicts. Both
+comparisons report baseline and candidate abstention counts with their denominator.
+A missing measurement or gate produces an unverified disposition even if another
+measured criterion failed. A `useful_candidate` is a calculation result, not
+qualification: the experiment, independent review and host safety gates must
+still be established. Exercise the thresholds with:
 
 ```sh
 mix test test/dev/evaluation/decision_metrics_test.exs
@@ -345,6 +347,9 @@ mix test test/extensions/knowledge/decision_policy_test.exs test/ipse/decision_t
 
 Use `dev/evaluation/candidate_assessment.exs` for a frozen keep/defer study,
 with pending proposals and observed-durable records kept in separate strata.
+For this study, false and useful labels are disjoint and critical labels are a
+subset of useful labels. The scorer validates those relationships before deriving
+the aggregates; it cannot establish that labels are accurate or independent.
 `declare/1` creates an OFF declaration; `verify_inputs/3` checks its input,
 source-receipt and baseline blobs. Freeze candidate rows before opening labels.
 Pending proposals are not durable outcomes and cannot demonstrate reduced

@@ -263,6 +263,25 @@ defmodule Ipse.Development.Evaluation.CandidateAssessmentTest do
     assert {:error, _} = score(d, JSON.digest([d]), f.rows, labels, f.load)
   end
 
+  test "the frozen study refuses contradictory label relationships" do
+    f = fixture()
+
+    for changes <- [
+          %{"false" => true, "useful" => true, "critical" => false},
+          %{"false" => false, "useful" => false, "critical" => true}
+        ] do
+      labels =
+        f.labels
+        |> Jason.decode!()
+        |> update_in(["rows", Access.at(0)], &Map.merge(&1, changes))
+        |> Jason.encode!()
+
+      spec = Map.put(f.spec, "label_commitment", JSON.sha256(labels))
+      {:ok, declaration} = A.declare(spec)
+      assert {:error, _} = score(declaration, JSON.digest([declaration]), f.rows, labels, f.load)
+    end
+  end
+
   test "changed first predictions refuse before the label loader is called" do
     f = fixture()
     {:ok, predictions} = A.freeze_rows(f.declaration, f.sha, f.rows)

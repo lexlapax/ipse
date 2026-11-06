@@ -184,8 +184,8 @@ defmodule Ipse.Development.Evaluation.DecisionMetricsTest do
       "false_durable" => 10,
       "useful_total" => 100,
       "useful_kept" => 95,
-      "critical_total" => 100,
-      "critical_kept" => 90,
+      "critical_total" => 50,
+      "critical_kept" => 45,
       "p95_ms" => 1000
     }
 
@@ -193,7 +193,7 @@ defmodule Ipse.Development.Evaluation.DecisionMetricsTest do
       baseline
       | "false_durable" => 8,
         "useful_kept" => 93,
-        "critical_kept" => 88,
+        "critical_kept" => 44,
         "p95_ms" => 1200
     }
 
@@ -209,7 +209,7 @@ defmodule Ipse.Development.Evaluation.DecisionMetricsTest do
     for changed <- [
           %{candidate | "false_durable" => 9},
           %{candidate | "useful_kept" => 92},
-          %{candidate | "critical_kept" => 87},
+          %{candidate | "critical_kept" => 43},
           %{candidate | "p95_ms" => 1201}
         ] do
       assert {:ok, %{"disposition" => "evaluated_rejected"}} =
@@ -231,5 +231,22 @@ defmodule Ipse.Development.Evaluation.DecisionMetricsTest do
                %{candidate | "false_durable" => 0},
                gates
              )
+  end
+
+  test "assessment accepts independently defined aggregate labels" do
+    aggregate = %{
+      "candidates" => 100,
+      "abstentions" => 0,
+      "false_total" => 60,
+      "false_durable" => 10,
+      "useful_total" => 60,
+      "useful_kept" => 20,
+      "critical_total" => 80,
+      "critical_kept" => 40,
+      "p95_ms" => 100
+    }
+
+    gates = Map.new(~w(protocol matched_workload finite_cost_cap), &{&1, "pass"})
+    assert {:ok, _} = DecisionMetrics.assessment(aggregate, aggregate, gates)
   end
 end
