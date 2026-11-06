@@ -75,7 +75,7 @@ document Stage, maintenance, Store Session and profile files plus Collection
 blocks, encoding and core tests. This normal test-runtime selection used the
 same `CollectionStore` source and built test module, with source, runtime and
 link guards and independent neutral checks passing. It is not the complete
-default suite or the separately open Migration compatibility selection. These
+default suite or the separate Migration compatibility selection below. These
 passing and failing selections overlap and must not be added together as a
 full-suite count.
 
@@ -103,8 +103,26 @@ with exit 124 and no final ExUnit summary. One existing test itself permits 300
 seconds, so that outer limit was insufficient for the whole file. Its partial
 progress supplies no aggregate totals or compatibility pass. The unchanged-source
 postcheck passed, and a subsequent host observation found no owned process group
-or Input-lock holder. A properly bounded isolated qualification remains open;
-neither product assertions nor test timeouts were changed.
+or Input-lock holder. That failed outcome remains preserved; neither product
+assertions nor test timeouts were changed.
+
+A subsequent isolated run from commit
+`6fe6b51f97dd9ab9e21d0e38bfea2d409c3fe2ca` passed the complete Migration file:
+**14 tests in 282.4 seconds**, seed 629285. It used a clean tracked-source clone
+with 494 test files and a separate copied runtime. One forced host compilation
+bound BuildInfo and every host compile-source path to that clone; the qualified
+application contained 243 modules across a complete 16-application runtime.
+Dependency, native-helper and normal-bundle bytes were reused unchanged.
+
+The normal-start selection used one scheduler, one async thread and one test
+case at a time, default exclusions and no filters. Its separate coordination
+bound was 1,200 seconds plus 10 seconds of kill grace; existing individual test
+deadlines remained unchanged. Source, runtime, dependency, Hex, SCM, link and
+launcher-input postchecks passed. An independent actual-host observation found
+no owned process or group, and no Input-lock or port-39657 listener holder.
+This closes the selected notes-Migration compatibility check. It does not
+qualify faithful document migration, the complete default suite or target
+capacity; overlapping selections are not additive test totals.
 
 ## Bounded capacity observation
 
@@ -151,6 +169,12 @@ not the retained failed run.
 | CollectionStore source in the compatibility selection | `ef346d109125b868d1a1d450c94e9eaf20562b18f4fa97ade3b28744822db770` |
 | Post-format normal build | `145a534f877752a9adb737f787b8762e751e1f4891f9a2121b5bbe2e2c6f7ee1` |
 | Timed-out Migration selection | `ac3ba7f43a91e295b400dc4b89b6b3d3acf14bf7c53a83c89b35e4b4f7aa197c` |
+| Isolated Migration safe receipt | `7e20df9156651b2d160a37fb4464e74db15e43a188061fc98042aaa6b3546961` |
+| Isolated runtime qualification | `de5b3753352973b29c9e7796aa561f985f20b54960e591e1badcfc2f89b65b7e` |
+| Isolated Migration terminal status | `4ef477d9bf8b82bdc2dfca95ec0ef66ee298ca27a1f965a14a779a8ce2c8130b` |
+| Isolated Migration ExUnit summary | `06b7c16d58806bbfb9e145b98981a2e7f6e89dab1e3fea4d2e03065bce05423c` |
+| Isolated Migration immutable-copy postcheck | `2a042a647cd49c7c46b580c318a893e2b2fb2c75a9730dccfed2693f009658bc` |
+| Isolated Migration independent neutral status | `9c5573a27d576093a9f55c43885f07b0cc443baf048151f182d99f93f47dbfb5` |
 | First formatting failure log | `a3ab6c4ae9e636d04621f2be0858e576115eb5007ffdd594c129a0e50aaf6617` |
 | First Source/Projection fixture failure log | `c2aa672f5071e12be70fc6351951c2b45cd455be9d88b6d243e408f62ac76949` |
 | Second Source/Projection fixture failure log | `41e1423e55075bcbbf8370e7469c4106361d8d2276604a438451a643ad0094c8` |
@@ -164,8 +188,9 @@ files across the pending feature and historical formatting repairs; normalized
 parsed syntax remained equal for all 1,053 selected source files, with modes and
 exact postimages checked. These formatting changes do not supply a new behavior
 test result. The indexed current-manual check passed across 1,243 Markdown files
-and 10,182 local links with zero errors. Separate Migration compatibility and
-the remaining whole-source milestone baseline are still required.
+and 10,182 local links with zero errors. The separate isolated Migration
+compatibility selection subsequently passed as recorded above; the remaining
+whole-source milestone baseline is still required.
 General producer fencing, GC, migration,
 public Source abort and cross-session adoption remain open. No model service,
 paid account, original notebook or broad capacity run was needed for these
