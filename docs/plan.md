@@ -1286,6 +1286,11 @@ scorer rejection after loading non-independent synthetic labels. Earlier failure
 remain separate; accepted scoring, independent quality and matched whole-task
 time/cost remain open or null.
 
+The [paired critical selection observation](archive/2026-10-26-p30-p31-implementation/p30-selection-paired-critical-20261106.md)
+reports known case-level membership losses even when aggregate recall is unchanged.
+Its 28 pure source controls include legacy and current scoring; labels, independence,
+the hard gate and the overall experiment disposition remain unverified.
+
 **Authorized; typed/protocol and admitted-operation increments in progress.** P31 is the active delivery
 path. P30A/B can proceed independently; later
 P30 work consumes the first usable notes journey, not the entire P31 milestone.

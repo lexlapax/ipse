@@ -236,6 +236,7 @@ defmodule Ipse.Development.Evaluation.SelectionExperiment do
 
   defp report(d, sha, first, first_sha, baselines, labels) do
     rows = Map.new(first["rows"], &{&1["case_id"], &1})
+    {:ok, paired_critical} = paired_critical(d["spec"]["cases"], baselines, rows, labels)
 
     complete =
       Enum.all?(
@@ -281,6 +282,8 @@ defmodule Ipse.Development.Evaluation.SelectionExperiment do
        "candidate" => if(candidate, do: elem(candidate, 1)),
        "baseline_semantics" => bs,
        "candidate_semantics" => if(candidate, do: elem(candidate, 2)),
+       "paired_critical_observation" =>
+         Map.put(paired_critical, "scope", "hash_bound_membership_not_independent_review"),
        "known_rows_complete" => complete,
        "support_and_citations_measured" => measured,
        "engine" => d["spec"]["engine"],
@@ -289,6 +292,42 @@ defmodule Ipse.Development.Evaluation.SelectionExperiment do
        "truth_and_independence" => "asserted_not_verified"
      }}
   end
+
+  defp paired_critical(cases, baselines, rows, labels) do
+    labels = Map.new(labels["rows"], &{&1["case_id"], &1["critical_members"]})
+
+    queries =
+      Enum.map(cases, fn c ->
+        %{"query_id" => c["id"], "applicable" => labels[c["id"]] != []}
+      end)
+
+    baseline =
+      Enum.map(cases, fn c ->
+        row = baselines[c["id"]]
+        paired_member_row(c["id"], row["prediction"]["status"], row["members"], labels[c["id"]])
+      end)
+
+    candidate =
+      Enum.flat_map(cases, fn c ->
+        case rows[c["id"]] do
+          nil -> []
+          row -> [paired_member_row(c["id"], row["status"], row["members"], labels[c["id"]])]
+        end
+      end)
+
+    DecisionMetrics.critical_pairs(queries, baseline, candidate)
+  end
+
+  defp paired_member_row(id, "ok", members, critical) do
+    %{
+      "query_id" => id,
+      "status" => "ok",
+      "value" => if(Enum.all?(critical, &(&1 in members)), do: 1, else: 0)
+    }
+  end
+
+  defp paired_member_row(id, _, _, _),
+    do: %{"query_id" => id, "status" => "failed", "value" => nil}
 
   defp verified_first(d, sha, first, first_sha, load) do
     with {:ok, baselines} <- verify_inputs(d, sha, load),

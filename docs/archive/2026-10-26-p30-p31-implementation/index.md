@@ -137,6 +137,8 @@ nor resource/offline qualification. No daemon configuration or existing model wa
 
 - [Anthropic cancelled-draft carryover](anthropic-draft-carryover-20261104.md) repairs live and saved text-only projection, preserves native outside history and passes a fresh four-wire synthetic cancellation/ordinary/same-ID journey. The first saved-policy failure and broader provider/installed/quality limits remain explicit.
 
+- [Paired critical selection observations](p30-selection-paired-critical-20261106.md) reports known per-case membership losses without changing the unverified gate or disposition; 28 pure compatibility controls pass, with accepted real-input scoring still open.
+
 - [Simultaneous decision entry and quiescent recovery](p30-simultaneous-settlement-20261104.md) complete one synthetic settled winner, both normal closes and sequential idle/no-replay paths in one fresh cohort. The loser encounters native-control contention, not observed budget denial; earlier failures and consumer quality remain open.
 
 - [Native pending-proposal burst](native-burst-320-20261105.md) records 40 turns/320 proposals, 100 known settled units, queue/budget advice, authenticated root chains and separate current-pin/source/four-idle qualification. Original aggregate/tail failures and timing/baseline limits remain explicit; annual, quality and broader maximum-shape gates remain open.

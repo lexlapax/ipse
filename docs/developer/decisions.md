@@ -335,6 +335,13 @@ identify baseline successes lost on specific critical queries. Missing, failed
 or unmeasured pairs leave that gate unverified, even when aggregate recall is
 unchanged. Independently validate the supplied critical labels and verdicts. Both
 comparisons report baseline and candidate abstention counts with their denominator.
+Selection experiment reports also include a paired membership observation derived
+from the frozen rows and reference sets. A case recalls its critical set only
+when it contains every referenced member; the report lists known losses even
+when another case's gain leaves aggregate recall unchanged. Missing, refused or
+otherwise failed rows remain unverified. This observation does not independently
+verify the labels, workload, reviewer or paired-critical hard gate, and it does
+not change the experiment's unverified disposition.
 A missing measurement or gate produces an unverified disposition even if another
 measured criterion failed. A `useful_candidate` is a calculation result, not
 qualification: the experiment, independent review and host safety gates must
@@ -476,7 +483,7 @@ qualification `none` until the separate protocol, matched-workload, resource and
 review evidence is established. Exercise these distinctions with:
 
 ```sh
-mix test test/dev/selection_experiment_test.exs
+mix test test/dev/selection_experiment_test.exs test/dev/evaluation/selection_critical_pairs_test.exs
 ```
 
 When the study also compares answers, `dev/evaluation/protected_answer.exs`
