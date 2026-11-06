@@ -7,7 +7,6 @@ inputs = Enum.map(Keyword.get_values(opts, :prefix), &Path.expand/1) ++ [input]
 out = Path.expand(Keyword.fetch!(opts, :out))
 true = String.starts_with?(out, Path.expand("_build") <> "/")
 false = File.exists?(out)
-reads = ~w(snapshot value.stat value.read value.index stage.list stage.inspect)
 
 initial = %{
   sections: %{},
@@ -16,7 +15,10 @@ initial = %{
   events: 0,
   bytes: 0,
   first_event_overflow: nil,
-  first_byte_overflow: nil
+  first_byte_overflow: nil,
+  unknown: 0,
+  output_events: 0,
+  output_codec_bytes: 0
 }
 
 result =
@@ -44,11 +46,14 @@ result =
 
     {ids, native_ids} =
       Enum.reduce(row["requests"], {state.ids, state.native_ids}, fn r, {ids, native_ids} ->
-        id = Map.fetch!(r, "operation_id")
+        id = Map.fetch!(r, "action_id")
         false = MapSet.member?(ids, id)
 
         {MapSet.put(ids, id),
-         if(r["op"] in reads, do: native_ids, else: MapSet.put(native_ids, id))}
+         if(r["native_receipt_modeled"] === true,
+           do: MapSet.put(native_ids, r["operation_id"]),
+           else: native_ids
+         )}
       end)
 
     events = state.events + delta.events
@@ -66,7 +71,13 @@ result =
             if(events > 100_000, do: Map.take(row, ~w(sequence section item stage_count))),
         first_byte_overflow:
           state.first_byte_overflow ||
-            if(bytes > 134_217_728, do: Map.take(row, ~w(sequence section item stage_count)))
+            if(bytes > 134_217_728, do: Map.take(row, ~w(sequence section item stage_count))),
+        unknown:
+          state.unknown + Enum.count(row["requests"], &(&1["outcome_status"] === "unknown")),
+        output_events:
+          state.output_events + (get_in(row, ["public_result", "output_events"]) || 0),
+        output_codec_bytes:
+          state.output_codec_bytes + (get_in(row, ["public_result", "codec_journal_bytes"]) || 0)
     }
   end)
 
@@ -89,26 +100,35 @@ report = %{
   sections: result.sections,
   total_action_ids: MapSet.size(result.ids),
   modeled_native_mutation_ids: known,
-  model_seed_generation: 1000,
+  model_seed_generation: 0,
   missing_seed_history:
-    "synthetic generation1000 is not a native manifest; no corresponding baseline IDs/receipts were supplied or counted. Lifetime admission must add actual Known(target).",
+    "This is a zero-based modeled sequence, not an observed native manifest. Real admission must bind actual Known(target), incoming identity union and reserved/unknown liabilities.",
   native_ids_sha256: Ipse.JSON.digest(Enum.sort(result.native_ids)),
   action_events_lower_bound: result.events,
   action_journal_bytes_lower_bound: result.bytes,
-  first_single_session_event_refusal: result.first_event_overflow,
-  first_single_session_byte_refusal: result.first_byte_overflow,
+  first_aggregate_action_event_crossing: result.first_event_overflow,
+  first_aggregate_action_byte_crossing: result.first_byte_overflow,
+  session_limit_comparison:
+    "aggregate lower bounds only; separate publisher Sessions and unproduced consumer lifecycle/handoffs do not establish an actual per-Session refusal",
+  actual_session_limit_refusal: nil,
   public_record_count: records,
-  fresh_migration_optimistic_operation_minimum: known + 2 * records,
+  unresolved_unknown_actions: result.unknown,
+  result_output_events: result.output_events,
+  result_codec_journal_bytes: result.output_codec_bytes,
+  fresh_migration_optimistic_operation_minimum: nil,
   fresh_migration_minimum_assumptions:
-    "imports every known unique native operation identity; each existing public value costs at least one prepare and one accept; excludes larger multipart values, plans, operation pages, epoch open, progress, checkpoint, recovery, close and terminal cleanup",
+    "No full-target migration sequence was dispatched by this ledger; no prepare-plus-accept arithmetic is treated as implemented cost.",
   native_lifetime_ceiling: 32768,
   public_plus_private_live_key_ceiling: 8192,
   mutation_admission:
-    "not authorized; maintenance and physical-layout export/import are not implemented",
+    "model only; bounded completed-data restore is separate implementation/evidence, full-target lifecycle/migration remains unexecuted here",
   actual_native_operations: 0,
   actual_session_journal_measured: false,
+  exact_session_journal_bytes: nil,
+  actual_physical_peak: nil,
+  capacity_fit: nil,
   serialized_record_note:
-    "JSON pair lower bounds are sufficient refusal evidence; full actual Session journal bytes/events remain unmeasured"
+    "JSON pair lower bounds aggregate modeled actions across invocations; actual per-Session journal bytes/events and refusals remain unmeasured"
 }
 
 File.write!(out, Jason.encode!(report, pretty: true), [:exclusive])

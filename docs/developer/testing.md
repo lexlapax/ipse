@@ -1518,6 +1518,42 @@ mix test test/extensions/knowledge/producer_progress_test.exs
 Its geometry and fault controls exercise bounded synthetic model data; native
 publication and full source/Session qualification need their separate checks.
 
+For the ordered public-controller ledger, run its isolated controls:
+
+```sh
+mix test test/dev/knowledge/collection_recipe_public_test.exs
+```
+
+Follow `dev/knowledge/collection_recipe_model.ex` from a zero-generation store
+through the actual Corpus Source, lexical and producer controllers. The ledger
+publishes bounded per-source fact results, then assembles their selected result
+references in the catalog's captured order. It retains the assembly's actual
+typed read-action metadata and seals/restores the result with the production
+codecs. Native storage and embedding replies remain declared in-memory fixtures;
+these controls start no real inference or native store transaction.
+
+Read `invocations.jsonl` as an emitted-request trace and `summary.json` as its
+completed model state. `collection_recipe_costs.exs` and
+`collection_recipe_report.exs` reduce explicitly supplied, ordered completed
+traces; they do not execute another phase. Keep publication codec bytes separate
+from action pairs: the assembly's action-codec bytes describe an existing subset,
+not additional journal bytes. A resumed phase reports only its new publications;
+the checkpoint retains prior selected inputs for reads. Aggregate action lower bounds can identify a
+single-Session layout that cannot fit, but they do not prove a supported handoff
+or an actual per-Session journal total. Require known stage-free cuts and retain
+the same owner throughout a bound append before testing that execution layout.
+
+Stop a bounded model at its first refusal or coordination limit and retain its
+partial trace. A missing final summary is incomplete work, not an empty or
+successful phase. A source or lexical refusal, blocked input or unknown outcome
+ends the run after its terminal trace row; it cannot advance to the next source
+or phase. A trace-write failure must stop before the next controller
+invocation; an attempted row is not a retained row. Exercise that boundary with
+the trusted developer-only writer callback, keeping the ordinary CLI on its
+checked file writer. Record unknown physical peaks, full Session journals and
+capacity fit as unavailable; neither a small group nor extrapolated operation
+arithmetic establishes the complete target's replacement, history or migration.
+
 For Word ingestion, run `mix test test/extensions/knowledge/document_ingestion_test.exs`.
 Its child VM uses the selected SDK and dependency paths rather than inheriting
 unrelated parent code paths. The fixture checks synthetic documents and does
