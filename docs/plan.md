@@ -448,6 +448,15 @@ following limits until the end-to-end paths are qualified:
    including any scope the existing acceptance rules permit to remain experimental
    or unverified. Publication remains separately authorized.
 
+The [frozen default regression](archive/2026-10-26-p30-p31-implementation/full-source-2a56-regression-20261106.md)
+at `2a56c60b` completed all 497 selected files in 9,447.2 seconds with
+4,184/4,188 passed, four failures, 136 skipped and 124 excluded. Its immutable
+inputs and cleanup checks pass. The four stale fixture expectations have
+separate focused repairs; this is still an exit-two historical result, and the
+final combined current-source suite remains open. Hosted protected-storage
+support, macOS terminal timeouts and installed-memory diagnosis also remain
+separate gates; presentation and MCP-verifier repairs do not qualify them.
+
 Acceptance is bounded by the evidence for each milestone. Internal source review,
 external critique, static scanning, fixture execution, hosted platform checks and
 live accounts establish different claims. P24/P25 acceptance is supervised use in
