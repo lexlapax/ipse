@@ -1,0 +1,12 @@
+ff81df011d226526728d4ce66f527416955842a6d4c05f7c78c6542b84022fcf  docs/archive/2026-10-26-p30-p31-implementation/p30-paired-selection-v2-20261106/safe-result.json
+61ceecfcddf80ebb2d7db12fd03db6afe93afa12bbbe916d8572f50f1e7077c8  docs/archive/2026-10-26-p30-p31-implementation/p30-paired-selection-v2-20261106/helper-sources.sha256
+7b881dddecd6da21e632aa5c5fdcb5b5c1dacbb44090c4cbc5c857af741b5d68  docs/archive/2026-10-26-p30-p31-implementation/p30-paired-selection-v2-20261106/source/README.md
+c560f319c0cfbe70f75fa1b13d28e1e374978900ee7ffd978d4e42440473e76e  docs/archive/2026-10-26-p30-p31-implementation/p30-paired-selection-v2-20261106/source/actor-phases.sh
+6e1385f434ba2f1e28d1c00a9c8a3c1869f19cb198def148aad7756804148395  docs/archive/2026-10-26-p30-p31-implementation/p30-paired-selection-v2-20261106/source/entry.exs
+08fc92b546ab9acdacb141b8a06b7fcd0b2bf9a23c9c41cd897d0e725ee2d764  docs/archive/2026-10-26-p30-p31-implementation/p30-paired-selection-v2-20261106/source/guard.exs
+1224040c126b5dd17b25da9cd24ac5a84fb1f22c3bd71463b32460853543d5fc  docs/archive/2026-10-26-p30-p31-implementation/p30-paired-selection-v2-20261106/source/paired_session.exs
+91260f52eacb47447f715c1383d6f9e2d0f7611dbcfe3dec0b5833928b294bc8  docs/archive/2026-10-26-p30-p31-implementation/p30-paired-selection-v2-20261106/source/prepare-02.OFF.sh
+3c3b82a9e51615dec7f2aa518bae5379066c3a386ed68a87b729ecd0eac27d73  docs/archive/2026-10-26-p30-p31-implementation/p30-paired-selection-v2-20261106/source/prepare.exs
+798aa3312c757cce1929be091c3ecbfad6075a09dc83ab48713cfaff22ee2c63  docs/archive/2026-10-26-p30-p31-implementation/p30-paired-selection-v2-20261106/source/reference-labels.json
+081adccda841981a9744f07447c247cd9f9c2de27ac400227139499670c6c22d  docs/archive/2026-10-26-p30-p31-implementation/p30-paired-selection-v2-20261106/source/run-OFF.sh
+10984cfc6cada7d2defc53e428434bf0217457ef184e1f3bf5ba3c2047fdb1c9  docs/archive/2026-10-26-p30-p31-implementation/p30-paired-selection-v2-20261106/source/run-bounded-OFF.sh

@@ -563,9 +563,13 @@ quote join establishes byte integrity, not support or reviewer independence.
 Constructed protocol tests and synthetic replies cannot establish actual model
 quality. The source adapters need their own focused checks and a genuine paired
 Session journey before supplying actual experiment evidence. The
-[packaged synthetic paired journey](../archive/2026-11-05-packaged-paired-cli/index.md)
-qualifies its local CLI/protected-output protocol, with quality explicitly
-unverified; it does not supply independent labels or scored model quality:
+[packaged synthetic v2 lifecycle](../archive/2026-10-26-p30-p31-implementation/p30-paired-selection-v2-20261106.md)
+exercises physical reference freeze before startup, the actual complete baseline
+before selection, first-row persistence, a later unmeasured review loader and
+exact report readback after idle. It retains the
+[earlier packaged CLI/protected-output qualification](../archive/2026-11-05-packaged-paired-cli/index.md).
+These synthetic controls supply neither independent labels nor scored model
+quality. Keep the review template unmeasured until genuine independent review:
 
 ```sh
 mix test test/dev/evaluation/protected_answer_test.exs test/dev/selection_experiment_test.exs
