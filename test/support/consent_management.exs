@@ -17,7 +17,7 @@ policy = %{
   "settings" => %{},
   "limits" => Map.put(Consent.zero(), "operations", 1),
   "period_ms" => 1000,
-  "expires_at_ms" => now + 1,
+  "expires_at_ms" => now + if(scenario == "fenced_stale", do: 60_000, else: 1),
   "headless" => false
 }
 
@@ -72,6 +72,45 @@ result =
   Resources.file_effect(fn ->
     Review.with_review("forget", facts, fn permit ->
       cond do
+        scenario == "fenced_stale" ->
+          expected = JSON.digest([snapshot])
+
+          interposed =
+            request
+            |> Map.put("id", Usage.id())
+            |> Map.put("operation", "knowledge.capture")
+            |> Map.put("policy_sha256", JSON.digest([policy]))
+            |> Map.put("source_sha256", policy["source_sha256"])
+            |> Map.put("reserved", Map.put(Consent.zero(), "operations", 1))
+
+          assert {:ok, ticket} = Consent.reserve(control, project, interposed, now)
+
+          assert {:ok, %{"status" => "settled"}} =
+                   Consent.settle(control, project, ticket, :unstarted)
+
+          assert {:ok, changed} = Consent.existing_snapshot(control, project)
+          assert changed["operations"][ticket["id"]]["status"] == "settled"
+          assert changed["epoch"] == epoch and changed["policy"] == snapshot["policy"]
+          refute JSON.digest([changed]) == expected
+
+          assert {:error, :consent_management_refused} =
+                   Consent.forget_deferred(
+                     control,
+                     project,
+                     epoch,
+                     request,
+                     permit,
+                     facts,
+                     now + 10,
+                     expected,
+                     fn ->
+                       flunk("changed control reached fenced effect")
+                     end
+                   )
+
+          assert {:ok, ^changed} = Consent.existing_snapshot(control, project)
+          {:error, :consent_management_refused}
+
         scenario == "stale" ->
           assert {:ok, _} = Consent.revoke(control, project, epoch)
 
@@ -120,33 +159,67 @@ result =
           {:error, :consent_management_refused}
 
         true ->
+          callback = fn ->
+            assert {:error, :consent_unavailable} = Consent.revoke(control, project, epoch)
+            assert {:ok, receipt} = Review.consume(permit, "forget", facts)
+
+            if scenario in ~w(unknown fenced_unknown),
+              do: raise("synthetic failure after consuming the review")
+
+            {:ok, request["reserved"],
+             %{
+               "action_sha256" => facts["action_sha256"],
+               "native_review_sha256" => JSON.digest([receipt]),
+               "synthetic" => true
+             }}
+          end
+
           publication =
-            Consent.forget_deferred(
-              control,
-              project,
-              epoch,
-              request,
-              permit,
-              facts,
-              now + 10,
-              fn ->
-                assert {:error, :consent_unavailable} = Consent.revoke(control, project, epoch)
-                assert {:ok, receipt} = Review.consume(permit, "forget", facts)
+            if scenario in ~w(fenced fenced_unknown),
+              do:
+                Consent.forget_deferred(
+                  control,
+                  project,
+                  epoch,
+                  request,
+                  permit,
+                  facts,
+                  now + 10,
+                  JSON.digest([snapshot]),
+                  callback
+                ),
+              else:
+                Consent.forget_deferred(
+                  control,
+                  project,
+                  epoch,
+                  request,
+                  permit,
+                  facts,
+                  now + 10,
+                  callback
+                )
 
-                if scenario == "unknown",
-                  do: raise("synthetic failure after consuming the review")
-
-                {:ok, request["reserved"],
-                 %{
-                   "action_sha256" => facts["action_sha256"],
-                   "native_review_sha256" => JSON.digest([receipt]),
-                   "synthetic" => true
-                 }}
-              end
-            )
-
-          if scenario == "unknown" do
+          if scenario in ~w(unknown fenced_unknown) do
             assert {:unknown, :publication_unconfirmed} = publication
+
+            if scenario == "fenced_unknown" do
+              assert {:error, :consent_management_refused} =
+                       Consent.forget_deferred(
+                         control,
+                         project,
+                         epoch,
+                         request,
+                         permit,
+                         facts,
+                         now + 10,
+                         JSON.digest([snapshot]),
+                         fn ->
+                           flunk("unknown fenced effect was replayed")
+                         end
+                       )
+            end
+
             publication
           else
             assert {:ok, %{"ticket" => _} = packet} = publication
@@ -174,7 +247,7 @@ result =
 assert {:ok, state} = Consent.existing_snapshot(control, project)
 
 case scenario do
-  value when value in ~w(revoked expired) ->
+  value when value in ~w(revoked expired fenced) ->
     assert {:ok, packet} = result
     assert state["operations"][operation]["status"] == "publishing"
     assert state["operations"][operation]["actual"] == nil
@@ -196,12 +269,12 @@ case scenario do
                flunk("management ticket became ordinary capture authority")
              end)
 
-  "unknown" ->
+  value when value in ~w(unknown fenced_unknown) ->
     assert {:unknown, :native_review_unconfirmed} = result
     assert state["operations"][operation]["status"] == "publishing"
     assert state["operations"][operation]["actual"] == nil
 
-  value when value in ~w(stale forbidden) ->
+  value when value in ~w(stale forbidden fenced_stale) ->
     assert {:error, :consent_management_refused} = result
     refute Map.has_key?(state["operations"], operation)
 end

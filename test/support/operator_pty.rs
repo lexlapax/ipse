@@ -171,6 +171,11 @@ fn main() {
                             std::fs::write(root.join(format!("cross-{command}-ready")), b"ready").unwrap();
                             if !root.join(format!("cross-{command}-checked")).is_file() { continue; }
                         }
+                        if assertion && assertion_case == "shared" && command == "forget" && std::env::var_os("IPSE_TEST_FENCED_FORGET").is_some_and(|value| value == "1") {
+                            let root = std::path::Path::new(&args[args.len() - 2]);
+                            std::fs::write(root.join("fenced-forget-review-ready"), b"ready").unwrap();
+                            if !root.join("fenced-forget-control-changed").is_file() { continue; }
+                        }
                         if assertion && command == "forget" && assertion_case == "save_forget_stale" {
                             let root = std::path::Path::new(&args[args.len() - 2]);
                             std::fs::write(root.join("forget-review-ready"), b"ready").unwrap();

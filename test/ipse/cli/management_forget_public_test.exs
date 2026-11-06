@@ -19,6 +19,9 @@ defmodule Ipse.CLI.ManagementForgetPublicTest do
       assert {:error, :knowledge_management_refused} =
                Management.forget(Map.merge(config, extra), root, key)
 
+      assert {:error, :knowledge_management_refused} =
+               Management.forget(Map.merge(config, extra), root, key, %{})
+
       refute File.exists?(root)
     end
   end

@@ -110,6 +110,54 @@ defmodule Ipse.Extension.ConsentManagementReadTest do
     assert File.read!(c.control_file) == before
   end
 
+  test "an exact ledger fence is checked while its native owner remains held", c do
+    {:ok, state} = Consent.existing_snapshot(c.root, c.project)
+    digest = JSON.digest([state])
+    parent = self()
+
+    assert {:error, :consent_read_refused} =
+             Consent.with_existing_management_snapshot(
+               c.root,
+               c.project,
+               1,
+               c.fingerprint,
+               JSON.sha256("stale"),
+               fn _ -> flunk("stale ledger entered callback") end
+             )
+
+    task =
+      Task.async(fn ->
+        Consent.with_existing_management_snapshot(
+          c.root,
+          c.project,
+          1,
+          c.fingerprint,
+          digest,
+          fn snapshot ->
+            send(parent, {:fenced_owner, self(), snapshot})
+            receive do: (:release_fenced_owner -> {:ok, snapshot})
+          end
+        )
+      end)
+
+    assert_receive {:fenced_owner, owner, %{"epoch" => 1, "policy" => policy}}, 5000
+    assert policy === c.policy
+    assert {:error, _} = Consent.revoke(c.root, c.project, 1)
+    send(owner, :release_fenced_owner)
+    assert {:ok, _} = Task.await(task, 5000)
+    assert {:ok, %{"epoch" => 2}} = Consent.revoke(c.root, c.project, 1)
+
+    assert {:error, :consent_read_refused} =
+             Consent.with_existing_management_snapshot(
+               c.root,
+               c.project,
+               1,
+               c.fingerprint,
+               digest,
+               fn _ -> flunk("changed ledger entered callback") end
+             )
+  end
+
   test "existing-only management inspection leaves missing and pending state unchanged", c do
     missing = Path.join(c.parent, "missing")
 

@@ -286,6 +286,22 @@ defmodule Ipse.CLI.Knowledge.Management do
     end
   end
 
+  @doc false
+  def forget(config, cwd, key, expected) when is_map(expected) do
+    case full_facts_forget_candidate(
+           config,
+           cwd,
+           key,
+           "Operator requested forgetting this selected note",
+           expected
+         ) do
+      {:closed, result} -> result
+      result -> result
+    end
+  end
+
+  def forget(_, _, _, _), do: @error
+
   def forget(config, cwd, key) do
     case full_facts_forget_candidate(
            config,
@@ -1948,7 +1964,19 @@ defmodule Ipse.CLI.Knowledge.Management do
 
   def full_facts_forget_candidate(_, _, _, _), do: @error
 
-  defp full_facts_removal_candidate(config, cwd, key, reason, action)
+  @doc false
+  def full_facts_forget_candidate(config, cwd, "note." <> lineage = key, reason, expected)
+      when is_map(config) and is_binary(cwd) and is_binary(reason) and is_map(expected) do
+    if JSON.sha256?(lineage),
+      do: full_facts_removal_candidate(config, cwd, key, reason, :forget, expected),
+      else: @error
+  end
+
+  def full_facts_forget_candidate(_, _, _, _, _), do: @error
+
+  defp full_facts_removal_candidate(config, cwd, key, reason, action, expected \\ nil)
+
+  defp full_facts_removal_candidate(config, cwd, key, reason, action, expected)
        when is_map(config) and is_binary(cwd) and is_binary(reason) do
     overall = System.monotonic_time(:millisecond) + 120_000
     wall = System.system_time(:millisecond) + 120_000
@@ -1960,6 +1988,11 @@ defmodule Ipse.CLI.Knowledge.Management do
          {:ok, :native} <- Ipse.Runner.operator_channel(),
          {:ok, binding} when is_map(binding) <- ProjectIdentity.existing(home, cwd),
          {:ok, namespace} <- SemanticConsent.namespace(binding["project_id"], "knowledge"),
+         true <-
+           is_nil(expected) or
+             (expected["project_id"] === binding["project_id"] and
+                expected["namespace"] === namespace and expected["key"] === key and
+                action == :forget),
          {:ok, snapshot} when is_map(snapshot) <-
            Consent.existing_snapshot(SemanticAdmission.control_root(home), binding["project_id"]),
          true <- snapshot["epoch"] > 0,
@@ -2013,7 +2046,9 @@ defmodule Ipse.CLI.Knowledge.Management do
                                     wall
                                   ),
                                 do: {:ok, {handle, prepared}}
-                         end
+                         end,
+                         nil,
+                         expected
                        ) do
                   reviewed_forget_effect(
                     config,
@@ -2024,7 +2059,8 @@ defmodule Ipse.CLI.Knowledge.Management do
                     owned,
                     token,
                     prepared,
-                    handle
+                    handle,
+                    expected
                   )
                 end
               rescue
@@ -2051,7 +2087,7 @@ defmodule Ipse.CLI.Knowledge.Management do
     _, _ -> {:unknown, :knowledge_management_unconfirmed}
   end
 
-  defp full_facts_removal_candidate(_, _, _, _, _), do: @error
+  defp full_facts_removal_candidate(_, _, _, _, _, _), do: @error
 
   defp reviewed_forget_effect(
          config,
@@ -2062,7 +2098,8 @@ defmodule Ipse.CLI.Knowledge.Management do
          owned,
          token,
          prepared,
-         handle
+         handle,
+         expected \\ nil
        ) do
     slot = {__MODULE__, make_ref()}
 
@@ -2078,7 +2115,17 @@ defmodule Ipse.CLI.Knowledge.Management do
             with :ok <- Writer.append_reserved(owned.writer, token, prepared["intent"]),
                  _ <- Process.put(slot, :effect_unknown),
                  {:ok, packet} <-
-                   publish(config, cwd, binding, snapshot, selected, prepared, permit, owned),
+                   publish(
+                     config,
+                     cwd,
+                     binding,
+                     snapshot,
+                     selected,
+                     prepared,
+                     permit,
+                     owned,
+                     expected
+                   ),
                  {:ok, _} <-
                    settle(
                      SemanticAdmission.control_root(config[:home]),
@@ -2149,7 +2196,8 @@ defmodule Ipse.CLI.Knowledge.Management do
          selected,
          context,
          fun,
-         policy \\ nil
+         policy \\ nil,
+         expected \\ nil
        ) do
     ProjectIdentity.with_existing_domain_auth(
       home,
@@ -2157,58 +2205,77 @@ defmodule Ipse.CLI.Knowledge.Management do
       binding,
       %{namespace: namespace, format: "managed-metadata-v3"},
       fn domain_cap, catalog ->
-        Consent.with_existing_management_snapshot(
-          SemanticAdmission.control_root(home),
-          binding["project_id"],
-          context["management_epoch"],
-          context["management_sha256"],
-          fn _ ->
-            proposal? = context["recipe"]["kind"] == "proposal"
+        control = fn callback ->
+          args = [
+            SemanticAdmission.control_root(home),
+            binding["project_id"],
+            context["management_epoch"],
+            context["management_sha256"]
+          ]
 
-            reader =
-              if(proposal?,
-                do: &ObservedRead.with_managed_proposal_removal/7,
-                else: &ObservedRead.with_managed_note_record/7
+          if is_nil(expected),
+            do: apply(Consent, :with_existing_management_snapshot, args ++ [callback]),
+            else:
+              apply(
+                Consent,
+                :with_existing_management_snapshot,
+                args ++ [expected["control_sha256"], callback]
               )
+        end
 
-            reader.(
-              SemanticAdmission.collection_root(home),
-              namespace,
-              %{"op" => "get_record", "key" => key},
-              domain_cap,
-              catalog,
-              context["recipe"],
-              fn managed ->
-                with {:ok, ^selected} <- selection(home),
-                     {:ok, prepared} <-
-                       if(proposal?,
-                         do: Ipse.Session.PendingRejection.prepare(context, managed, reason),
-                         else:
-                           if(is_nil(policy),
-                             do:
-                               if(managed["metadata"]["management_target"] == "accepted_decision",
-                                 do:
-                                   ManagedLifecycle.prepare_accepted_forget(
-                                     context,
-                                     managed,
-                                     reason
-                                   ),
-                                 else: ManagedLifecycle.prepare(context, managed, reason)
-                               ),
-                             else:
-                               ManagedLifecycle.prepare_retention(
-                                 context,
-                                 managed,
-                                 policy,
-                                 reason
-                               )
-                           )
-                       ),
-                     do: fun.(prepared)
-              end
+        control.(fn _ ->
+          proposal? = context["recipe"]["kind"] == "proposal"
+
+          reader =
+            if(proposal?,
+              do: &ObservedRead.with_managed_proposal_removal/7,
+              else: &ObservedRead.with_managed_note_record/7
             )
-          end
-        )
+
+          reader.(
+            SemanticAdmission.collection_root(home),
+            namespace,
+            %{"op" => "get_record", "key" => key},
+            domain_cap,
+            catalog,
+            context["recipe"],
+            fn managed ->
+              with :ok <-
+                     if(
+                       is_nil(expected) or
+                         ObservedRead.expected_management_record?(expected, namespace, managed),
+                       do: :ok,
+                       else: @error
+                     ),
+                   {:ok, ^selected} <- selection(home),
+                   {:ok, prepared} <-
+                     if(proposal?,
+                       do: Ipse.Session.PendingRejection.prepare(context, managed, reason),
+                       else:
+                         if(is_nil(policy),
+                           do:
+                             if(managed["metadata"]["management_target"] == "accepted_decision",
+                               do:
+                                 ManagedLifecycle.prepare_accepted_forget(
+                                   context,
+                                   managed,
+                                   reason
+                                 ),
+                               else: ManagedLifecycle.prepare(context, managed, reason)
+                             ),
+                           else:
+                             ManagedLifecycle.prepare_retention(
+                               context,
+                               managed,
+                               policy,
+                               reason
+                             )
+                         )
+                     ),
+                   do: fun.(prepared)
+            end
+          )
+        end)
       end
     )
   end
@@ -2891,7 +2958,17 @@ defmodule Ipse.CLI.Knowledge.Management do
     end
   end
 
-  defp publish(config, cwd, binding, snapshot, selection, prepared, permit, owned \\ nil) do
+  defp publish(
+         config,
+         cwd,
+         binding,
+         snapshot,
+         selection,
+         prepared,
+         permit,
+         owned \\ nil,
+         expected \\ nil
+       ) do
     facts = prepared["facts"]
     context = facts["context"]
     namespace = context["namespace"]
@@ -2963,16 +3040,30 @@ defmodule Ipse.CLI.Knowledge.Management do
                 &Consent.forget_deferred/8
             end
 
-          consent.(
+          args = [
             control,
             binding["project_id"],
             snapshot["epoch"],
             request,
             permit,
             facts,
-            System.system_time(:millisecond),
-            callback
-          )
+            System.system_time(:millisecond)
+          ]
+
+          if is_nil(expected),
+            do: apply(consent, args ++ [callback]),
+            else:
+              Consent.forget_deferred(
+                control,
+                binding["project_id"],
+                snapshot["epoch"],
+                request,
+                permit,
+                facts,
+                System.system_time(:millisecond),
+                expected["control_sha256"],
+                callback
+              )
         end
       end
     )

@@ -18,7 +18,7 @@ defmodule Ipse.Extension.ConsentManagementNativeTest do
     %{root: root, helper: helper}
   end
 
-  for scenario <- ~w(revoked expired stale forbidden unknown) do
+  for scenario <- ~w(revoked expired stale forbidden unknown fenced fenced_stale fenced_unknown) do
     @tag timeout: 60_000
     test "native management authority: #{scenario}", c do
       directory = Path.join(c.root, Ipse.Usage.id())

@@ -278,7 +278,146 @@ defmodule Ipse.Test.ManagedSharedSupport do
     assert {:ok, after_expiry_current} = current.()
     assert after_expiry_current["metadata"] == new_current["metadata"]
 
-    assert {:ok, forgotten} = Ipse.CLI.Knowledge.Management.forget(config, cwd, separate["key"])
+    forgotten =
+      if System.get_env("IPSE_TEST_FENCED_FORGET") == "1" do
+        control = Ipse.Extension.SemanticAdmission.control_root(home)
+        {:ok, ledger} = Ipse.Extension.Consent.existing_snapshot(control, binding["project_id"])
+
+        {:ok, observed} =
+          ObservedRead.read(root, pin["namespace"], %{
+            "op" => "get_record",
+            "key" => separate["key"]
+          })
+
+        record = observed["value"]["record"]
+
+        expected = %{
+          "version" => 1,
+          "project_id" => binding["project_id"],
+          "namespace" => pin["namespace"],
+          "root_sha256" => observed["witness"]["root_sha256"],
+          "control_sha256" => Ipse.JSON.digest([ledger]),
+          "key" => record["key"],
+          "revision" => record["revision"],
+          "value_sha256" => record["sha256"],
+          "operation_id" => record["operation_id"]
+        }
+
+        for {key, value} <- [
+              {"root_sha256", Ipse.JSON.sha256("wrong synthetic root")},
+              {"control_sha256", Ipse.JSON.sha256("wrong synthetic control")},
+              {"value_sha256", Ipse.JSON.sha256("wrong synthetic record")}
+            ] do
+          assert {:error, _} =
+                   Ipse.CLI.Knowledge.Management.forget(
+                     config,
+                     cwd,
+                     separate["key"],
+                     Map.put(expected, key, value)
+                   )
+
+          assert {:ok, unchanged} =
+                   ObservedRead.read(root, pin["namespace"], %{
+                     "op" => "get_record",
+                     "key" => separate["key"]
+                   })
+
+          assert unchanged === observed
+
+          assert {:ok, ^ledger} =
+                   Ipse.Extension.Consent.existing_snapshot(control, binding["project_id"])
+        end
+
+        # The PTY holds the native approval until a distinct task advances the
+        # same control ledger. It preserves the epoch and policy, exercising the
+        # full-ledger fence rather than the older policy-only check.
+        signal_dir = Path.dirname(home)
+
+        interposer =
+          Task.async(fn ->
+            deadline = System.monotonic_time(:millisecond) + 30_000
+
+            wait = fn wait ->
+              cond do
+                File.exists?(Path.join(signal_dir, "fenced-forget-review-ready")) ->
+                  :ok
+
+                System.monotonic_time(:millisecond) >= deadline ->
+                  flunk("review was not reached")
+
+                true ->
+                  Process.sleep(10)
+                  wait.(wait)
+              end
+            end
+
+            wait.(wait)
+            policy = ledger["policy"]
+
+            request = %{
+              "id" => Usage.id(),
+              "operation" => hd(policy["operations"]),
+              "artifact_sha256" => policy["artifact_sha256"],
+              "source_sha256" => policy["source_sha256"],
+              "policy_sha256" => Ipse.JSON.digest([policy]),
+              "request_sha256" => Ipse.JSON.sha256("synthetic interposition"),
+              "source_generation" => 0,
+              "headless" => false,
+              "reserved" => Map.put(Ipse.Extension.Consent.zero(), "operations", 1)
+            }
+
+            assert {:ok, ticket} =
+                     Ipse.Extension.Consent.reserve(
+                       control,
+                       binding["project_id"],
+                       request,
+                       System.system_time(:millisecond)
+                     )
+
+            assert {:ok, %{"status" => "settled"}} =
+                     Ipse.Extension.Consent.settle(
+                       control,
+                       binding["project_id"],
+                       ticket,
+                       :unstarted
+                     )
+
+            assert {:ok, checked} =
+                     Ipse.Extension.Consent.existing_snapshot(control, binding["project_id"])
+
+            assert checked["operations"][ticket["id"]]["status"] == "settled"
+
+            File.write!(Path.join(signal_dir, "fenced-forget-control-changed"), "ready")
+          end)
+
+        assert {:error, _} =
+                 Ipse.CLI.Knowledge.Management.forget(config, cwd, separate["key"], expected)
+
+        Task.await(interposer, 30_000)
+
+        assert {:ok, same_target} =
+                 ObservedRead.read(root, pin["namespace"], %{
+                   "op" => "get_record",
+                   "key" => separate["key"]
+                 })
+
+        assert same_target === observed
+
+        assert {:ok, changed} =
+                 Ipse.Extension.Consent.existing_snapshot(control, binding["project_id"])
+
+        assert changed["epoch"] === ledger["epoch"] and changed["policy"] === ledger["policy"]
+        refute Ipse.JSON.digest([changed]) === expected["control_sha256"]
+        expected = Map.put(expected, "control_sha256", Ipse.JSON.digest([changed]))
+
+        assert {:ok, result} =
+                 Ipse.CLI.Knowledge.Management.forget(config, cwd, separate["key"], expected)
+
+        result
+      else
+        assert {:ok, result} = Ipse.CLI.Knowledge.Management.forget(config, cwd, separate["key"])
+        result
+      end
 
     assert forgotten["receipt"]["publication"]["normalization"]["kind"] ==
              "native_literal_forget"

@@ -6,10 +6,27 @@ defmodule Ipse.Session.ManagedSupersessionSessionTest do
     @tag timeout: 90_000
     @tag supersession_scenario: scenario
     test "genuine Session supersession: #{scenario}" do
+      fenced? = unquote(scenario) == "shared" and System.get_env("IPSE_TEST_FENCED_FORGET") == "1"
+
+      if fenced? do
+        assert {:ok, bundles} = Ipse.Extension.Bundles.inventory(),
+               "knowledge bundle unavailable; build this checkout's bundles before starting the native fixture"
+
+        assert Enum.any?(
+                 bundles,
+                 &(&1.id == "knowledge" and Ipse.Extension.Artifact.compatible?(&1.manifest))
+               ),
+               "compatible knowledge bundle unavailable; build this checkout's bundles before starting the native fixture"
+      end
+
       root = Path.join(System.tmp_dir!(), "ipse-supersession-session-" <> Ipse.Usage.id())
       File.mkdir!(root)
       File.chmod!(root, 0o700)
-      on_exit(fn -> File.rm_rf!(root) end)
+
+      if fenced?,
+        do: IO.puts("MANAGED_SUPERSESSION_SESSION_ROOT=#{root}"),
+        else: on_exit(fn -> File.rm_rf!(root) end)
+
       driver = Path.join(root, "pty")
 
       assert {"", 0} =
@@ -47,6 +64,12 @@ defmodule Ipse.Session.ManagedSupersessionSessionTest do
           stderr_to_stdout: true
         )
 
+      if fenced? do
+        log = Path.join(root, "fixture-output.log")
+        File.write!(log, output, [:exclusive])
+        File.chmod!(log, 0o600)
+      end
+
       assert status == 0, output
 
       if unquote(scenario) == "pin_history",
@@ -81,6 +104,7 @@ defmodule Ipse.Session.ManagedSupersessionSessionTest do
           else: "MANAGED_SUPERSESSION_#{String.upcase(unquote(scenario))}_PASSED"
 
       assert output =~ marker
+      if fenced?, do: on_exit(fn -> File.rm_rf!(root) end)
     end
   end
 end

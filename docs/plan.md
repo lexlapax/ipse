@@ -1391,6 +1391,11 @@ integration evidence; consumer selection, live engines and quality remain open.
 
 ## P31: usable knowledge and prompt assistance
 
+The [expected-forget target control](archive/2026-10-26-p30-p31-implementation/expected-forget-target-20261106.md)
+adds an opt-in internal exact-target and control-ledger constraint with a fresh
+synthetic native journey. It does not qualify other lifecycle operations, annual
+turnover or recovery from an active-effect owner loss.
+
 **Active implementation track; P31A qualification and P31B host primitives in progress.**
 An [actual helper interposition](archive/2026-10-26-p30-p31-implementation/strict-deadline-interposition.md)
 confirmed that the current userspace deadline check can precede expiry while the

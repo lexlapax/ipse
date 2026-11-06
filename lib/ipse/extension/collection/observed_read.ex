@@ -805,6 +805,46 @@ defmodule Ipse.Extension.Collection.ObservedRead do
   def with_managed_record(_, _, _, _, _, _, _), do: @error
 
   @doc """
+  Compare a v1 expected fence to a managed observation. This is consistency
+  only: callers must authenticate the observation and the expected control
+  ledger under their actual owners, and it supplies no source or review authority.
+  """
+  def expected_management_record?(expected, namespace, managed) do
+    with true <-
+           exact?(
+             expected,
+             ~w(version project_id namespace root_sha256 control_sha256 key revision value_sha256 operation_id)
+           ),
+         true <- expected["version"] === 1 and expected["namespace"] === namespace,
+         true <-
+           Enum.all?(
+             ~w(project_id namespace root_sha256 control_sha256 value_sha256),
+             &JSON.sha256?(expected[&1])
+           ),
+         true <- is_binary(expected["key"]) and String.starts_with?(expected["key"], "note."),
+         true <- JSON.safe_uint?(expected["revision"]) and expected["revision"] > 0,
+         true <-
+           is_binary(expected["operation_id"]) and
+             Regex.match?(~r/\A[0-9a-f]{32}\z/, expected["operation_id"]),
+         observation when is_map(observation) <- managed["observation"],
+         record when is_map(record) <- get_in(observation, ["value", "record"]),
+         true <- get_in(observation, ["witness", "root", "project"]) === namespace,
+         true <- get_in(observation, ["witness", "root_sha256"]) === expected["root_sha256"],
+         true <-
+           record["key"] === expected["key"] and record["revision"] === expected["revision"],
+         true <-
+           record["sha256"] === expected["value_sha256"] and
+             record["operation_id"] === expected["operation_id"],
+         true <- record["sha256"] === JSON.sha256(Migration.encode(record["value"])) do
+      true
+    else
+      _ -> false
+    end
+  rescue
+    _ -> false
+  end
+
+  @doc """
   Retain an exact signed literal or accepted-decision target for native management.
 
   Accepted decisions require their distinct signed tag and same-root immutable

@@ -153,6 +153,30 @@ defmodule Ipse.Extension.Consent do
 
   def with_existing_management_snapshot(_, _, _, _, _), do: {:error, :consent_read_refused}
 
+  @doc """
+  Check an entire expected management ledger while retaining its existing owner.
+
+  The callback receives only the existing management projection. This check
+  narrows a caller's expected state; it grants no management or publication
+  authority, and callers must separately bind any selected Collection target.
+  """
+  def with_existing_management_snapshot(root, project, epoch, fingerprint, expected, fun)
+      when is_function(fun, 1) do
+    if uint?(epoch) and epoch > 0 and JSON.sha256?(fingerprint) and JSON.sha256?(expected) do
+      existing_transaction(root, project, fn state ->
+        if is_map(state) and state["epoch"] === epoch and
+             management_sha256(project, epoch, state["policy"]) === fingerprint and
+             JSON.digest([state]) === expected,
+           do: existing_callback(fun, Map.take(state, ~w(epoch policy))),
+           else: {:error, :consent_read_refused}
+      end)
+    else
+      {:error, :consent_read_refused}
+    end
+  end
+
+  def with_existing_management_snapshot(_, _, _, _, _, _), do: {:error, :consent_read_refused}
+
   defp policy_matches?(state, epoch, sha, now) do
     policy = state["policy"]
 
@@ -396,6 +420,38 @@ defmodule Ipse.Extension.Consent do
 
   def forget_deferred(_, _, _, _, _, _, _, _), do: {:error, :consent_management_refused}
 
+  @doc """
+  As `forget_deferred/8`, but refuse unless the entire expected control ledger
+  still matches under the publication transaction's native owner. The digest
+  narrows admission and supplies no review or publication authority.
+  """
+  def forget_deferred(
+        root,
+        project,
+        epoch,
+        request,
+        permit,
+        %{"kind" => kind} = facts,
+        now,
+        expected,
+        fun
+      )
+      when is_function(fun, 0) and
+             kind in ["managed_literal_forget", "managed_accepted_decision_forget"] do
+    if JSON.sha256?(expected) do
+      reviewed_management(root, project, epoch, request, permit, facts, now, fun, %{
+        command: "forget",
+        operation: "collection.forget",
+        kind: kind,
+        expected_control: expected
+      })
+    else
+      {:error, :consent_management_refused}
+    end
+  end
+
+  def forget_deferred(_, _, _, _, _, _, _, _, _), do: {:error, :consent_management_refused}
+
   @doc "Reject one exact native-reviewed proposal under existing management policy, including after capture revocation."
   def reject_deferred(root, project, epoch, request, permit, facts, now, fun)
       when is_function(fun, 0) do
@@ -561,7 +617,10 @@ defmodule Ipse.Extension.Consent do
          {:ok, snapshot} when is_map(snapshot) <- existing_snapshot(root, project),
          true <- snapshot["epoch"] === epoch and epoch > 0 do
       transaction(root, project, fn state ->
-        with true <- management_request?(state, epoch, request, facts, now, selected),
+        with true <-
+               is_nil(Map.get(selected, :expected_control)) or
+                 JSON.digest([state]) === selected.expected_control,
+             true <- management_request?(state, epoch, request, facts, now, selected),
              nil <- existing(state, request["id"]),
              :ok <- capacity(state),
              true <- state["sequence"] < 9_007_199_254_740_991,

@@ -220,7 +220,18 @@ It spreads the additional 10,000 changes evenly across the year, cycling through
 update/correct/forget: 3,334 temporal updates, 3,333 ordinary corrections and
 3,333 forgets. This is a balanced working fixture choice, not a developer-fixed
 ratio or ratified pilot mix. Native target aliases are expectation data, not
-source handles or authority. The historical value and its corrected replacement
+source handles or authority. For a caller that has already obtained an exact
+target, the internal `Ipse.CLI.Knowledge.Management.forget/4` accepts an optional
+expected project, namespace, root, key, revision, value digest, original operation
+ID and complete Consent-ledger digest. The retained Identity, Consent and
+Collection owners compare that expectation during review; the publication owner
+checks the ledger again. These comparisons narrow the intended effect and do not
+grant source access, consent or native review. Earlier v1 aliases do not contain
+enough authenticated identity to manufacture this expectation. The public forget
+command retains its normal reviewed path. Other lifecycle operations need their
+own target fences, and an unknown effect must not be replayed.
+
+The historical value and its corrected replacement
 both keep the old ordinary deadline;
 temporal history keeps 365 days after its update. One initial current statement
 has its first update on day 100. Pins/preferences and 50 current slots survive.
