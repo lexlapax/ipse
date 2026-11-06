@@ -536,10 +536,30 @@ Keep the complete returned command unchanged; changing counters or checksums
 cannot renew an old draft. Fresh work may propose a storage verification write
 to reuse existing immutable bytes. Review that write as an ordinary mutation.
 Admission reserves space for outstanding native draft cleanup and can refuse
-before the store's advertised ceilings. Corpus does not yet expose retirement
-of these source or projection drafts; preserve the journal and follow protected
-recovery guidance if one becomes stale or unknown. Repeated fresh drafts do not
-repair the retained work.
+before the store's advertised ceilings. To discard an unfinished Collection
+Source or supplied-projection publication, use its returned `progress.head_id`
+and `progress.kind` in the original Session with the same artifact:
+
+```text
+/ext ext__corpus__source {"store":"notes","action":"abort_collection_draft","args":{"head_id":"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa","kind":"source"}}
+```
+
+Replace the example ID with the actual head ID; use `"projection"` for its
+projection counterpart. For a packaged `documents` instance, use
+`ext__documents__source`; the store selector must match your configuration.
+An older continuation without a native `progress` receipt cannot use this action.
+Review each ordinary storage approval. A known result has outer `status: "ok"`
+and `coverage.status: "aborted"`. The command removes at most three owned stages
+and releases the head's reserved slots. Published sources, selected roots and
+earlier immutable values remain; those values still consume storage. This is
+separate from forgetting a source or collecting unused data.
+
+A different Session or artifact cannot take over the draft. A later maintenance
+fence can stop partially completed cleanup; no command renews that old cleanup.
+If it refuses or becomes unknown, retain the journal for reviewed recovery.
+Unknown results offer no replay continuation, and a missing head is not proof
+that publication never happened. Repeated fresh drafts do not repair retained
+work. State and MCP retain their existing `abort` command and arguments.
 
 Managed-derived document mutations refuse before approval/intent, with a second
 execution check for an already queued action. Its document grant supplies no

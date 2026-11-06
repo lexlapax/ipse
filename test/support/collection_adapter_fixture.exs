@@ -34,6 +34,15 @@ defmodule IpseTest.CollectionAdapter do
     state = Map.merge(state, %{mode: mode, args: args})
 
     case mode do
+      "put" when :erlang.is_map_key("abort_head", args) ->
+        drive(
+          Collection.start(profile, :progress_abort, %{
+            "head_id" => args["abort_head"],
+            "kind" => args["kind"]
+          }),
+          state
+        )
+
       "put" when :erlang.map_get("retire_progress", args) == true ->
         drive(
           Collection.start(profile, :snapshot, %{}),

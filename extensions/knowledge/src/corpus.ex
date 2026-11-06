@@ -12,6 +12,7 @@ defmodule IpseKnowledge.Corpus do
     "continue_document" => :append,
     "continue_collection_document" => :append,
     "continue_collection_source" => :put,
+    "abort_collection_draft" => :progress_abort,
     "open" => :open,
     "append" => :append,
     "publish" => :publish,
@@ -121,10 +122,16 @@ defmodule IpseKnowledge.Corpus do
          {:ok, operation} <- Map.fetch(@source_actions, action),
          true <- valid_source_args?(action, source_args),
          true <-
-           action not in ~w(continue_collection_document continue_collection_source) or
+           action not in ~w(continue_collection_document continue_collection_source abort_collection_draft) or
              profile["kind"] == "collection",
          true <- profile["kind"] != "collection" or action != "continue_document" do
       cond do
+        action == "abort_collection_draft" ->
+          advance(
+            CollectionStore.start(profile, :progress_abort, source_args),
+            %{state | phase: :collection_draft_abort, ctx: %{store: store}}
+          )
+
         action in ~w(read_document continue_document continue_collection_document) ->
           acquire_document(store, profile, source_args, action, state)
 
@@ -1106,6 +1113,7 @@ defmodule IpseKnowledge.Corpus do
     pending =
       if state.phase in [
            :collection_source,
+           :collection_draft_abort,
            :collection_query,
            :collection_projection,
            :collection_semantic_snapshot,
@@ -1765,7 +1773,8 @@ defmodule IpseKnowledge.Corpus do
     end
   end
 
-  defp advance({:done, {:ok, value}}, %{phase: :source} = state) do
+  defp advance({:done, {:ok, value}}, %{phase: phase} = state)
+       when phase in [:source, :collection_draft_abort] do
     continuation =
       if value["status"] == "draft" and Map.has_key?(state.ctx, :document_path) do
         %{
@@ -2268,6 +2277,9 @@ defmodule IpseKnowledge.Corpus do
         "continue_collection_source" ->
           ~w(input_action input_args collection_state)
 
+        "abort_collection_draft" ->
+          ~w(head_id kind)
+
         "open" ->
           ~w(source_id generation expected_revision title uri observed_at_ms event_at_ms expires_at_ms byte_count content_sha256)
 
@@ -2346,6 +2358,8 @@ defmodule IpseKnowledge.Corpus do
       "byte_count" => integer(1, 65_536),
       "content_sha256" => string(64),
       "draft_id" => string(64),
+      "head_id" => string(32),
+      "kind" => %{"type" => "string", "enum" => ~w(source projection)},
       "offset" => integer(0, 65_536),
       "metadata_offset" => integer(0, 16_384),
       "cursor" => %{"type" => ["integer", "null"]},

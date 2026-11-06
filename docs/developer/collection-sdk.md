@@ -464,9 +464,25 @@ only the actual owner's head. All competing allocations enforce the reservations
 under the native lock. Count, encoded metadata, retained operation IDs or native
 allocation can refuse an otherwise valid operation; a local preflight is no
 reservation. Native owner-bound retirement reduces exact stages under one frozen
-current idle epoch, but Source and Projection expose no public abort command yet.
-Do not remove or rewrite their metadata to free a slot. General garbage
-collection, adoption and recovery remain separate work.
+current idle epoch. The Corpus `source` action `abort_collection_draft` takes
+exactly `head_id` and `kind` (`source` or `projection`) under a Collection store.
+Its `Collection.start(profile, :progress_abort, args)` client reads the actual
+idle snapshot and owner-bound head, freezes the retirement epoch, then derives
+at most three `value.abort` effects from the actual active/prepared references.
+An empty head instead needs one `progress.retire` effect. Each retains ordinary
+approval, its own intent and operation ID, the full request digest and the native
+CAS. Returned revisions and remaining references drive the next step; a worker
+cannot supply a deletion list. The terminal receipt releases the head and slots
+with its last stage. Immutable public values remain allocated.
+
+Corpus uses a separate Collection continuation phase for this action; ordinary
+State/MCP source lifecycle still resumes through `Store`. Preserve that dispatch
+distinction when extending the public command. A known refusal after a reducing
+effect reports `document_draft_abort_incomplete`; unknown stops without a replay
+token. A later fence cannot refresh an existing retirement epoch. Missing or
+foreign-owner heads refuse rather than proving nonpublication. See the
+[operator cleanup workflow](../operator/corpus.md#query-a-document-collection).
+General garbage collection, adoption and recovery remain separate work.
 
 For a metadata inventory, the same document read grant accepts `value.index`.
 Start at a checked snapshot generation with a null cursor:

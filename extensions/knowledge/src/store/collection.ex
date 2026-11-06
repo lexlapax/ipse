@@ -216,6 +216,27 @@ defmodule IpseKnowledge.Store.Collection do
     end
   end
 
+  def start(profile, :progress_abort, args) do
+    if profile?(profile) and exact?(args, ~w(head_id kind)) and
+         native_id?(args["head_id"]) and args["kind"] in ~w(source projection) do
+      call(
+        %{
+          operation: :progress_abort,
+          reads: 0,
+          effects: 0,
+          request: nil,
+          head_id: args["head_id"],
+          kind: args["kind"],
+          cleanup_operations: 0
+        },
+        %{"op" => "snapshot"},
+        :draft_abort_boot
+      )
+    else
+      error(:invalid_collection_draft_abort)
+    end
+  end
+
   def start(profile, :generation_selected, args),
     do: IpseKnowledge.Store.Collection.Selected.start(profile, args)
 
@@ -813,6 +834,16 @@ defmodule IpseKnowledge.Store.Collection do
 
   def resume(_, %{"status" => "unknown"}), do: {:stop, :unknown_effect}
 
+  def resume(%{operation: :progress_abort} = state, %{"status" => status})
+      when status != "ok",
+      do:
+        error(
+          if(state.cleanup_operations > 0,
+            do: :document_draft_abort_incomplete,
+            else: :collection_refused
+          )
+        )
+
   def resume(_, %{
         "status" => "failed",
         "value" => %{"code" => "document_store_deadline_unavailable"}
@@ -867,6 +898,82 @@ defmodule IpseKnowledge.Store.Collection do
       if is_map(state.request["request"]["progress"]) or Map.get(state, :pinned_inline, false),
         do: {:stop, :unknown_effect},
         else: error(:collection_response)
+  end
+
+  defp next(%{phase: :draft_abort_boot} = s, result) do
+    with {:ok, epoch, "idle"} <- snapshot_epoch(result),
+         true <- epoch > 0 and progress_supported?(result),
+         true <- E.safe_uint?(result["generation"]) do
+      call(
+        Map.merge(s, %{maintenance_epoch: epoch, generation: result["generation"]}),
+        %{"op" => "progress.inspect", "head_id" => s.head_id},
+        :draft_abort_head
+      )
+    else
+      _ -> error(:document_draft_abort_refused)
+    end
+  end
+
+  defp next(%{phase: :draft_abort_head} = s, result) do
+    p = result["progress"]
+
+    with true <- progress_receipt?(p),
+         true <- p["head_id"] === s.head_id and p["kind"] === s.kind,
+         true <- p["status"] in ~w(active retiring),
+         true <- p["maintenance_epoch"] <= s.maintenance_epoch,
+         true <- is_nil(p["retirement_epoch"]) or p["retirement_epoch"] === s.maintenance_epoch,
+         true <- result["generation"] === s.generation do
+      abort_draft_stage(Map.put(s, :progress, p))
+    else
+      _ -> error(:document_draft_abort_refused)
+    end
+  end
+
+  defp next(%{phase: :draft_abort_step} = s, result) do
+    previous = s.abort_previous
+
+    active =
+      if is_map(previous["active"]) and
+           Map.take(previous["active"], ~w(slot epoch)) === s.abort_ref,
+         do: nil,
+         else: previous["active"]
+
+    prepared = List.delete(previous["prepared"], s.abort_ref)
+    terminal = is_nil(active) and prepared === []
+
+    expected = %{
+      previous
+      | "revision" => result["generation"],
+        "retirement_epoch" => s.maintenance_epoch,
+        "status" => if(terminal, do: "retired", else: "retiring"),
+        "active" => active,
+        "prepared" => prepared,
+        "slots" => if(terminal, do: [], else: previous["slots"])
+    }
+
+    if E.safe_uint?(result["generation"]) and result["generation"] === s.generation + 1 and
+         s.progress === expected do
+      s = %{s | generation: result["generation"], cleanup_operations: s.cleanup_operations + 1}
+
+      if terminal do
+        {:done,
+         {:ok,
+          %{
+            "status" => "aborted",
+            "head_id" => s.head_id,
+            "kind" => s.kind,
+            "maintenance_epoch" => previous["maintenance_epoch"],
+            "retirement_epoch" => s.maintenance_epoch,
+            "native_generation" => s.generation,
+            "cleanup_operations" => s.cleanup_operations,
+            "coverage" => coverage(s, false)
+          }}}
+      else
+        abort_draft_stage(s)
+      end
+    else
+      {:stop, :unknown_effect}
+    end
   end
 
   defp next(%{phase: :progress_inspected}, result) do
@@ -2291,6 +2398,38 @@ defmodule IpseKnowledge.Store.Collection do
     if s.reads <= @reads and host_frame_fits?(request),
       do: {:call, request, Map.put(s, :request, request)},
       else: error(:collection_budget)
+  end
+
+  defp abort_draft_stage(s) do
+    p = s.progress
+    limit = if s.kind === "source", do: 3, else: 2
+
+    ref =
+      if is_map(p["active"]),
+        do: Map.take(p["active"], ~w(slot epoch)),
+        else: List.first(p["prepared"])
+
+    if s.cleanup_operations < limit do
+      tag = %{
+        "version" => 1,
+        "action" => "retire",
+        "head_id" => p["head_id"],
+        "revision" => p["revision"]
+      }
+
+      inner =
+        if is_nil(ref),
+          do: %{"op" => "progress.retire", "generation" => s.generation},
+          else: Map.merge(ref, %{"op" => "value.abort", "generation" => s.generation})
+
+      call(
+        Map.merge(s, %{progress_tag: tag, abort_previous: p, abort_ref: ref}),
+        inner,
+        :draft_abort_step
+      )
+    else
+      error(:document_draft_abort_incomplete)
+    end
   end
 
   defp call(s, inner, phase) do

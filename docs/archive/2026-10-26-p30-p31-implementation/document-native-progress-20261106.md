@@ -182,8 +182,14 @@ not the retained failed run.
 The normal build rebuilt 199 host modules and all four normal bundles with
 source postchecks passing. A separate credential-free scripted demo in a fresh
 home/workspace passed with its source postcheck. After canonical formatting,
-a second normal build rebuilt the same host and bundle owners and passed its
-source postcheck. The installed Elixir 1.18.5/OTP 27.3.4 formatter changed 42
+build 09 rebuilt the same host and bundle owners, but a later review found its
+postcheck parsed a NUL-separated inventory as newline-separated and checked only
+`dev/build-artifact.exs`. Its build exit remains zero; that postcheck does not
+establish the full source inventory. The earlier build 06 used the complete
+553-file guard correctly. A later current-source build, recorded with the draft
+abort work, used corrected NUL-safe input parsing and passed all 553 pre/post
+source checks; it does not retrospectively change build 09's evidence.
+The installed Elixir 1.18.5/OTP 27.3.4 formatter changed 42
 files across the pending feature and historical formatting repairs; normalized
 parsed syntax remained equal for all 1,053 selected source files, with modes and
 exact postimages checked. These formatting changes do not supply a new behavior

@@ -364,7 +364,10 @@ defmodule Ipse.KnowledgeCollectionAdapterSessionTest do
           end
         end
 
-        assert :ok = Session.approve(pid, ref, true)
+        approve =
+          if hook = c[:draft_abort_approval_hook], do: hook.(proposed), else: true
+
+        assert :ok = Session.approve(pid, ref, approve)
         wait(c)
 
       {:ipse, pid, {:done, :ok}} when pid == c.pid ->
@@ -5130,6 +5133,433 @@ defmodule Ipse.KnowledgeCollectionAdapterSessionTest do
                Usage.id(),
                "document_graph_v1"
              )
+  end
+
+  defp draft_abort(c, progress, extra \\ %{}) do
+    invoke(
+      c,
+      "put",
+      Map.merge(%{"abort_head" => progress["head_id"], "kind" => progress["kind"]}, extra)
+    )
+  end
+
+  defp draft_abort_source(c, partial \\ false) do
+    assert invoke(c, "namespace", %{"query" => "Nocturne"})["status"] === "refused"
+    job_close_fence(job_open_fence(c))
+    args = %{"large_blocks" => true, "generation" => 1, "expected_revision" => 0}
+
+    if partial do
+      opened = invoke(c, "put", Map.put(args, "effects_used", 15))
+      assert opened["continuation"]["progress"]["active"]["offset"] > 0
+      {args, opened}
+    else
+      opened =
+        Enum.reduce_while(1..30, invoke(c, "put", args), fn _, value ->
+          assert value["status"] === "staged"
+
+          if length(value["continuation"]["stages"]) >= 2,
+            do: {:halt, value},
+            else: {:cont, invoke(c, "put", Map.put(args, "continuation", value["continuation"]))}
+        end)
+
+      assert length(opened["continuation"]["progress"]["prepared"]) >= 2
+      {args, opened}
+    end
+  end
+
+  defp draft_abort_projection(c) do
+    seed_index_sources(c, [
+      {"fixture:abort-projection", "Orion links exact source evidence.", nil}
+    ])
+
+    assert invoke(c, "facts", %{"action" => "get", "source_id" => "fixture:abort-projection"})[
+             "status"
+           ] === "refused"
+
+    job_close_fence(job_open_fence(c))
+    args = %{"action" => "put", "source_id" => "fixture:abort-projection"}
+
+    opened =
+      Enum.reduce_while(1..40, invoke(c, "facts", args), fn _, value ->
+        assert value["status"] === "staged_facts"
+
+        if length(value["continuation"]["stages"]) === 2,
+          do: {:halt, value},
+          else: {:cont, invoke(c, "facts", Map.put(args, "continuation", value["continuation"]))}
+      end)
+
+    assert length(opened["continuation"]["progress"]["prepared"]) === 2
+    {args, opened}
+  end
+
+  defp draft_abort_immutable(c) do
+    assert {:ok, events} = Journal.load(c.dir, c.id)
+
+    keys =
+      for event <- events,
+          event["type"] === "extension_action_result",
+          get_in(event, ["outcome", "status"]) === "ok",
+          request = get_in(event, ["request", "request"]),
+          is_map(request),
+          is_binary(request["key"]),
+          get_in(request, ["progress", "action"]) in ~w(start continue),
+          do: request["key"]
+
+    Map.new(
+      Enum.uniq([
+        "catalog.notes",
+        "generation.notes",
+        "source.notes." <> JSON.sha256("fixture:word") | keys
+      ]),
+      &{&1, physical(c, &1)}
+    )
+  end
+
+  defp draft_abort_snapshot(c) do
+    ctx = job_epoch_context(c)
+    assert {:ok, snapshot} = Ipse.Extension.Collection.document_snapshot(ctx.root, ctx.namespace)
+    snapshot
+  end
+
+  defp draft_abort_close_idle(c) do
+    assert :ok = Session.close_confirmed(c.pid)
+    assert {:ok, closed} = Journal.load(c.dir, c.id)
+    assert {:ok, _} = Session.Saved.restore(closed, c.id)
+    before = draft_abort_snapshot(c)
+
+    assert {:ok, resumed} =
+             DynamicSupervisor.start_child(
+               Ipse.Sessions,
+               {Session, Keyword.put(c.opts, :id, c.id)}
+             )
+
+    assert :ok = Session.close_confirmed(resumed)
+    assert_inert_resume(c, closed)
+    assert draft_abort_snapshot(c) === before
+  end
+
+  @tag :document_draft_abort
+  @tag :document_draft_abort_three_slots
+  @tag timeout: 180_000
+  test "one Source abort consumes all three prepared slots while the prior published source stays current",
+       c do
+    initial = %{
+      "tiny" => true,
+      "source_id" => "fixture:word",
+      "text" => "Orion prior published source.",
+      "generation" => 1,
+      "expected_revision" => 0
+    }
+
+    stored = finish(c, initial, invoke(c, "put", initial))
+    assert stored["status"] === "stored"
+    source_key = "source.notes." <> JSON.sha256("fixture:word")
+    prior_source = physical(c, source_key)
+    prior_catalog = physical(c, "catalog.notes")
+    assert is_map(prior_source) and is_map(prior_catalog)
+    job_close_fence(job_open_fence(c))
+    args = %{"large_blocks" => true, "generation" => 2, "expected_revision" => stored["revision"]}
+
+    opened =
+      Enum.reduce_while(1..30, invoke(c, "put", args), fn _, value ->
+        assert value["status"] === "staged"
+
+        if length(value["continuation"]["stages"]) === 3,
+          do: {:halt, value},
+          else: {:cont, invoke(c, "put", Map.put(args, "continuation", value["continuation"]))}
+      end)
+
+    p = opened["continuation"]["progress"]
+    assert p["active"] === nil and length(p["prepared"]) === 3
+    assert length(p["slots"]) === 3
+    immutable = draft_abort_immutable(c)
+    assert Enum.any?(immutable, fn {_, row} -> is_map(row) end)
+    before = draft_abort_snapshot(c)
+    before_native = native_status(c)
+    assert {:ok, events} = Journal.load(c.dir, c.id)
+    result = draft_abort(c, p)
+    assert result["status"] === "aborted" and result["cleanup_operations"] === 3
+    assert result["coverage"]["effects_used"] === 3
+    after_abort = draft_abort_snapshot(c)
+    assert after_abort["document_drafts"][p["head_id"]] === nil
+    assert length(after_abort["document_available_slots"]) === 16
+
+    assert length(after_abort["document_available_slots"]) -
+             length(before["document_available_slots"]) === 3
+
+    assert native_status(c)["operations"] === before_native["operations"] + 3
+    assert physical(c, source_key) === prior_source
+    assert physical(c, "catalog.notes") === prior_catalog
+    assert Map.new(immutable, fn {key, _} -> {key, physical(c, key)} end) === immutable
+    assert {:ok, after_events} = Journal.load(c.dir, c.id)
+
+    reductions =
+      Enum.drop(after_events, length(events))
+      |> Enum.filter(
+        &(&1["type"] === "extension_action_result" and
+            get_in(&1, ["request", "request", "op"]) === "value.abort")
+      )
+
+    assert length(reductions) === 3
+    assert Enum.all?(reductions, &(get_in(&1, ["outcome", "status"]) === "ok"))
+
+    assert Enum.map(reductions, &Map.take(&1["request"]["request"], ~w(slot epoch))) ===
+             p["prepared"]
+
+    stable = native_status(c)
+
+    assert invoke(c, "put", Map.put(args, "continuation", opened["continuation"]))["status"] ===
+             "refused"
+
+    assert native_status(c) === stable
+    draft_abort_close_idle(c)
+  end
+
+  @tag :document_draft_abort
+  @tag timeout: 180_000
+  test "same-owner Source abort consumes real prepared stages and preserves published immutable values",
+       c do
+    {args, opened} = draft_abort_source(c)
+    p = opened["continuation"]["progress"]
+    immutable = draft_abort_immutable(c)
+    before = draft_abort_snapshot(c)
+    assert length(p["prepared"]) === 2
+    result = draft_abort(c, p)
+    assert result["status"] === "aborted", inspect(result)
+    assert result["cleanup_operations"] === 2
+    assert result["maintenance_epoch"] === 1 and result["retirement_epoch"] === 1
+    after_abort = draft_abort_snapshot(c)
+    assert after_abort["document_drafts"][p["head_id"]] === nil
+
+    assert length(after_abort["document_available_slots"]) ===
+             length(before["document_available_slots"]) + length(p["slots"])
+
+    assert Map.new(immutable, fn {key, _} -> {key, physical(c, key)} end) === immutable
+    stable = native_status(c)
+
+    assert invoke(c, "put", Map.put(args, "continuation", opened["continuation"]))["status"] ===
+             "refused"
+
+    assert native_status(c) === stable
+    draft_abort_close_idle(c)
+  end
+
+  @tag :document_draft_abort
+  @tag timeout: 180_000
+  test "a partial Source transport abort refuses foreign owners and wrong kind then releases its slots",
+       c do
+    {_args, opened} = draft_abort_source(c, true)
+    p = opened["continuation"]["progress"]
+    before = native_status(c)
+    assert draft_abort(c, p, %{"kind" => "projection"})["status"] === "refused"
+    assert {:ok, other} = DynamicSupervisor.start_child(Ipse.Sessions, {Session, c.opts})
+    foreign = %{c | pid: other, id: Session.info(other).id}
+    assert draft_abort(foreign, p)["status"] === "refused"
+    assert :ok = Session.close_confirmed(other)
+    ctx = job_epoch_context(c)
+
+    assert {:error, :document_store_refused} =
+             Ipse.Extension.Collection.DocumentStage.execute(
+               ctx.root,
+               ctx.namespace,
+               %{"op" => "progress.inspect", "head_id" => p["head_id"]},
+               Usage.id(),
+               Map.put(ctx.owner, "identity_sha256", JSON.sha256("different artifact"))
+             )
+
+    assert native_status(c) === before
+    result = draft_abort(c, p)
+    assert result["status"] === "aborted" and result["cleanup_operations"] === 1
+    assert length(draft_abort_snapshot(c)["document_available_slots"]) === 16
+    draft_abort_close_idle(c)
+  end
+
+  @tag :document_draft_abort
+  @tag :packed_fact_session
+  @tag timeout: 180_000
+  test "Projection abort freezes R after one known cleanup and cannot renew it across another fence",
+       c do
+    {args, opened} = draft_abort_projection(c)
+    p = opened["continuation"]["progress"]
+    immutable = draft_abort_immutable(c)
+    count_key = {:draft_abort_approvals, c.id}
+    Process.put(count_key, 0)
+
+    hook = fn proposed ->
+      assert get_in(proposed, ["request", "request", "op"]) === "value.abort"
+      count = Process.get(count_key) + 1
+      Process.put(count_key, count)
+      if count === 2, do: job_close_fence(job_open_fence(c))
+      true
+    end
+
+    result = draft_abort(Map.put(c, :draft_abort_approval_hook, hook), p)
+    assert result === %{"status" => "refused", "code" => "document_draft_abort_incomplete"}
+    head = draft_abort_snapshot(c)["document_drafts"][p["head_id"]]
+    assert head["retirement_epoch"] === 1 and length(head["prepared"]) === 1
+    stable = native_status(c)
+    assert draft_abort(c, p)["status"] === "refused"
+
+    assert invoke(c, "facts", Map.put(args, "continuation", opened["continuation"]))["status"] ===
+             "refused"
+
+    assert native_status(c) === stable
+    assert Map.new(immutable, fn {key, _} -> {key, physical(c, key)} end) === immutable
+    draft_abort_close_idle(c)
+  end
+
+  @tag :document_draft_abort
+  @tag :packed_fact_session
+  @tag timeout: 180_000
+  test "same-owner Projection abort consumes both actual prepared refs without changing selected roots",
+       c do
+    {args, opened} = draft_abort_projection(c)
+    p = opened["continuation"]["progress"]
+    immutable = draft_abort_immutable(c)
+    source = physical(c, "source.notes." <> JSON.sha256(args["source_id"]))
+    projection = physical(c, "facts.notes." <> JSON.sha256(args["source_id"]))
+    result = draft_abort(c, p)
+    assert result["status"] === "aborted" and result["cleanup_operations"] === 2
+    assert length(draft_abort_snapshot(c)["document_available_slots"]) === 16
+    assert physical(c, "source.notes." <> JSON.sha256(args["source_id"])) === source
+    assert physical(c, "facts.notes." <> JSON.sha256(args["source_id"])) === projection
+    assert Map.new(immutable, fn {key, _} -> {key, physical(c, key)} end) === immutable
+
+    assert invoke(c, "facts", Map.put(args, "continuation", opened["continuation"]))["status"] ===
+             "refused"
+
+    draft_abort_close_idle(c)
+  end
+
+  @tag :document_draft_abort
+  @tag :public_shared_selected
+  @tag timeout: 180_000
+  test "public Corpus abort requires ordinary approval and retires its own empty Source head",
+       c do
+    args = %{
+      "source_id" => "fixture:public-abort",
+      "generation" => 1,
+      "expected_revision" => 0,
+      "title" => "Synthetic Source",
+      "text" => "Orion public abort evidence.",
+      "uri" => "provided:fixture:public-abort",
+      "observed_at_ms" => 20,
+      "event_at_ms" => nil,
+      "expires_at_ms" => nil
+    }
+
+    # The first ordinary source step creates the namespace at epoch zero.
+    first = invoke(c, "source", %{"store" => "local", "action" => "put", "args" => args})
+    assert first["status"] === "draft"
+    job_close_fence(job_open_fence(c))
+    opened = invoke(c, "source", %{"store" => "local", "action" => "put", "args" => args})
+    assert opened["status"] === "draft"
+    p = opened["continuation"]["arguments"]["args"]["collection_state"]["progress"]
+    assert p["active"] === nil and p["prepared"] === []
+
+    request = %{
+      "store" => "local",
+      "action" => "abort_collection_draft",
+      "args" => Map.take(p, ~w(kind)) |> Map.put("head_id", p["head_id"])
+    }
+
+    before = native_status(c)
+    test_owner = self()
+    denied_marker = make_ref()
+
+    deny = fn proposed ->
+      assert get_in(proposed, ["request", "request", "op"]) === "progress.retire"
+      send(test_owner, {:draft_abort_denied, denied_marker})
+      false
+    end
+
+    denied = invoke(Map.put(c, :draft_abort_approval_hook, deny), "source", request)
+    assert_receive {:draft_abort_denied, ^denied_marker}
+    refute_receive {:draft_abort_denied, ^denied_marker}, 0
+    assert denied["status"] === "refused"
+    assert native_status(c) === before
+    aborted = invoke(c, "source", request)
+
+    assert aborted["status"] === "ok",
+           inspect(%{
+             status: aborted["status"],
+             gaps: Enum.map(aborted["gaps"] || [], & &1["code"])
+           })
+
+    assert aborted["coverage"]["status"] === "aborted"
+    assert aborted["coverage"]["cleanup_operations"] === 1
+    assert length(draft_abort_snapshot(c)["document_available_slots"]) === 16
+    assert invoke(c, "source", opened["continuation"]["arguments"])["status"] === "refused"
+    draft_abort_close_idle(c)
+  end
+
+  @tag :document_draft_abort
+  @tag timeout: 180_000
+  test "an unknown abort effect stops without replay and same-ID idle never repeats it", c do
+    {_args, opened} = draft_abort_source(c, true)
+    p = opened["continuation"]["progress"]
+    target = native_status(c)["generation"] + 1
+    handler = "draft-abort-unknown-" <> Usage.id()
+    parent = self()
+    guard = :sys.get_state(c.pid).lock_guard
+    guard_ref = Process.monitor(guard)
+
+    assert :ok =
+             :telemetry.attach(
+               handler,
+               [:ipse, :extension, :collection, :staged],
+               fn _, _, metadata, _ ->
+                 if metadata.generation === target do
+                   cap = Process.get({Ipse.Extension.Collection, :lock_held})
+                   Port.close(cap.port)
+                   send(parent, :draft_abort_native_lost)
+                 end
+               end,
+               nil
+             )
+
+    on_exit(fn -> :telemetry.detach(handler) end)
+
+    assert :ok =
+             Session.invoke_export(c.pid, :command, "ext__documents__put", %{
+               "abort_head" => p["head_id"],
+               "kind" => "source"
+             })
+
+    assert :unknown = wait_unknown(c)
+    assert_receive :draft_abort_native_lost
+    :telemetry.detach(handler)
+
+    if Process.alive?(c.pid) do
+      assert Session.close_confirmed(c.pid) in [:ok, {:error, :cleanup_unconfirmed}]
+      if Process.alive?(c.pid), do: Process.exit(c.pid, :kill)
+    end
+
+    assert_receive {:DOWN, ^guard_ref, :process, ^guard, _}, 5000
+    assert {:ok, closed} = Journal.load(c.dir, c.id)
+
+    [unknown] =
+      Enum.filter(
+        closed,
+        &(&1["type"] === "extension_action_result" and
+            get_in(&1, ["outcome", "status"]) === "unknown")
+      )
+
+    assert get_in(unknown, ["request", "request", "op"]) === "value.abort"
+    later = Enum.drop_while(closed, &(&1 !== unknown)) |> Enum.drop(1)
+    refute Enum.any?(later, &(&1["type"] === "extension_action_intent"))
+    assert {:ok, _} = Session.Saved.restore(closed, c.id)
+    before = draft_abort_snapshot(c)
+
+    assert {:ok, resumed} =
+             DynamicSupervisor.start_child(
+               Ipse.Sessions,
+               {Session, Keyword.put(c.opts, :id, c.id)}
+             )
+
+    assert :ok = Session.close_confirmed(resumed)
+    assert_inert_resume(c, closed)
+    assert draft_abort_snapshot(c) === before
   end
 
   @tag :progress_retire_session

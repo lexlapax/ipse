@@ -598,10 +598,22 @@ Projection uses the same native contract, with two reserved slots and its own
 body/plan identity. The document-only metadata admits at most eight live heads;
 actual occupied slots, encoded metadata, operation-ID capacity and allocation
 can reduce admission further. Ordinary allocations use the native
-`stage.available` view so another writer cannot take reserved slots. Native
-retirement can reduce exact owned work, but the Source and Projection commands
-currently expose no abort action. Do not edit a token, remove metadata or change
-owner identity to recover capacity. General cleanup remains separate work.
+`stage.available` view so another writer cannot take reserved slots. The Corpus
+`source` action `abort_collection_draft` exposes bounded same-owner retirement
+for both kinds through `Collection`'s `:progress_abort` client. It captures one
+current idle epoch, inspects the actual owned head, and removes its active stage
+before its prepared stages. Each separately approved native CAS must return the
+same opening identity, plan, body, unit and frozen retirement epoch, with exactly
+the requested stage removed. The next request uses that actual returned revision
+and generation. Three reductions suffice for the Source slot bound; Projection
+needs at most two. An empty head needs one real retirement operation.
+
+Known terminal completion releases the reservations. A known refusal after
+partial cleanup is reported as incomplete; unknown supplies no replay token.
+Another fence refuses the stored retirement epoch, even on a later explicit
+command. This does not adopt another Session/artifact or remove immutable public
+values. Do not edit tokens or metadata to recover capacity; general GC and
+cross-owner recovery remain separate work.
 
 The lexical Index adapter binds its continuation to the stored job's epoch, so changing
 the token alone cannot adopt an older job. Its read-only inspection and query
@@ -644,6 +656,8 @@ mix test test/ipse/extension/collection_document_stage_test.exs
 mix test test/ipse/extension/collection_store_session_test.exs --only document_maintenance_session
 mix test test/extensions/knowledge/collection_adapter_session_test.exs --only source_maintenance_epoch
 mix test test/extensions/knowledge/collection_adapter_session_test.exs --only projection_maintenance_progress
+mix test test/extensions/knowledge/collection_draft_abort_test.exs
+mix test test/extensions/knowledge/collection_adapter_session_test.exs --only document_draft_abort --only document_draft_abort_three_slots
 mix test test/extensions/knowledge/collection_split_append_native_test.exs --only lexical_maintenance_stale --only lexical_maintenance_fresh
 mix test test/extensions/knowledge/collection_adapter_session_test.exs --only generation_maintenance_session --max-cases 1
 ```
@@ -763,8 +777,10 @@ Suppression erases no other store, backup, journal, or earlier transfer.
 
 ## Abort the exact draft instead of replaying work
 
-Abort requires inspected root revision and exact draft ID for source/fact/vector
-work. A source-only predicate additionally protects append/publish; clearing a fact
+For State and MCP source stores, abort requires inspected root revision and exact
+draft ID for source/fact/vector work. Native Collection progress instead uses the
+[owner-bound head retirement](#fence-document-stages-before-metadata-maintenance)
+described above. A source-only predicate additionally protects append/publish; clearing a fact
 draft does not convert it into source content. Wrong IDs/revisions, stale completions,
 newer drafts, and suppression refuse. Corpus index-abort checks both committed
 root generation and next revision before success, not merely cleared draft state.
