@@ -71,7 +71,7 @@ lanes can proceed together; the arrows identify actual implementation dependenci
 | Documents 2 → 1 | Complete within bounded source-runtime scope: ordered saved-result assembly, one shared 512-read budget and duplicate refusal. The [eight-source/160-fact public journey](archive/2026-10-26-p30-p31-implementation/document-fact-assembly-public-20261106.md) passes through append/finalization and six closed/idle Sessions | Full capacity, installed use and all maximum-value combinations retain separate gates |
 | Documents 3 → 2 | The [developer model](archive/2026-10-26-p30-p31-implementation/document-public-controller-model-20261106.md) now follows public publication, assembly, producer and append controllers with explicit mocked replies. The first full-target attempt timed out after twelve groups. Complete the fixed target, declared replacement, retained history, cleanup and migration | Complete request/response and operation accounting, then actual native journal/allocation peaks and lifecycle controls under unchanged limits; modeled replies do not qualify actual execution |
 | Notes | Current recall, one complete populated day, then the declared annual workload with 10,000 mixed changes. The original retained check is declined; populated recall and integrated endurance remain unqualified | Authorized evidence for those gates; preserve all 2,100 original operations and unknown outcomes without replay or a substitute consumer |
-| Decisions | The [separate reference/review contract](archive/2026-10-26-p30-p31-implementation/p30-selection-review-v2-20261106.md) and [current-package synthetic v2 lifecycle](archive/2026-10-26-p30-p31-implementation/p30-paired-selection-v2-20261106.md) pass their scoped controls, including actual first rows and later unmeasured review. Keep useful, rejected/no-benefit and unverified outcomes distinct | Current complete baseline; independent quality labels and matched time/cost, or a completed supported negative disposition. Synthetic protocol success alone is insufficient; no qualified default or engine/account claim |
+| Decisions | The [separate reference/review contract](archive/2026-10-26-p30-p31-implementation/p30-selection-review-v2-20261106.md) and [current-package synthetic v2 lifecycle](archive/2026-10-26-p30-p31-implementation/p30-paired-selection-v2-20261106.md) pass their scoped controls, including actual first rows and later unmeasured review. Keep useful, rejected/no-benefit and unverified outcomes distinct | Current complete baseline and a reviewed disposition for each engine and consumer. Qualifying a strategy or reporting a negative result needs the applicable independent quality labels and matched time/cost; unverified access remains unverified. Synthetic protocol success alone is insufficient; no qualified default or engine/account claim |
 | Verification | Repair specific hosted/source/installed failures. Draft child counters now have a separate local pass; native filesystem admission and macOS/installed outcomes remain open | A current complete source baseline, supported platform checks, fresh package and installed journeys; no blanket skips or widened native profile |
 | Final → all required gates | Reconcile remaining P31 integration/lifecycle/qualification items, whole operator/developer manuals, adversarial audit and reviewer handoff | Exact candidate checks and an explicit disposition for every remaining acceptance item; no milestone completion from component passes |
 
@@ -407,9 +407,11 @@ following limits until the end-to-end paths are qualified:
    no-token-overlap quality remain open.
 4. **Planning and prompt assistance — P31I.** Finish and qualify the existing
    planning and draft operator paths, including crash/resource boundaries and
-   cancelled-draft carryover. Implement deferred accepted plan decisions and an
-   explicit post-exit save with current-source and permission checks; ordinary
-   exit must not publish them. The terminal work can proceed independently, but
+   cancelled-draft carryover. The [operator-authored deferred decision](archive/2026-10-26-p30-p31-implementation/operator-planning-20261103/index.md)
+   already has native review and a separate post-exit save; ordinary exit does
+   not publish it. Assistant-proposed decision provenance and its deferred save
+   remain open, as do broader current-source and permission combinations. The
+   terminal work can proceed independently, but
    decision acceptance depends on the relevant P31E path, and retrieve-first
    clarification depends on the notes and document paths it uses. An
    [in-chat acceptance protocol plan](archive/2026-10-26-p30-p31-implementation/chat-acceptance-host-protocol-plan-20261103.md)
