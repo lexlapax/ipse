@@ -92,6 +92,7 @@ nor resource/offline qualification. No daemon configuration or existing model wa
 
 ## Regression closure and fixture qualification — 2026-11-06
 
+- [Safe memory-verifier failure diagnostics](ci-memory-failure-diagnostic-20261106.md) preserves fixed phase/event/status fields and allowlisted Core codes before fixture cleanup. Two pure redaction/bounds controls pass; the macOS failure's cause and a current installed run remain open.
 - [Frozen full default regression](full-source-2a56-regression-20261106.md) completes the unchanged 497-file run at `2a56c60b`: 4,184/4,188 passed, four failures, 136 skipped and 124 excluded. Integrity and cleanup checks pass; separate focused fixture repairs do not turn that failed historical result into a current-source pass.
 - [Version-independent child-result counters](ci-child-result-counters-20261106.md) replaces prose parsing with exact ExUnit counters, zero child exit and one control marker. Separate representative checks cover both assigned source groups; unsupported or unrun native/terminal scopes remain explicit.
 - [MCP resume-verifier correction](ci-mcp-resume-verifier-20261106.md) permits only the exact release-owner marker on idle reopen and preserves conservative descriptor-drift uncertainty. All twelve source-proof checks pass; a fresh installed proof remains open.

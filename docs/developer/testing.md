@@ -666,6 +666,25 @@ refuse unsupported OS before inputs/output. Follow [evaluation](knowledge-evalua
 for exact maps/seals/measurement setup rather than inventing launch arguments.
 `test/dev/verification_test.exs` checks grammar, compiler closure, changed inputs,
 source/installed launch, retained failure, and cleanup precedence.
+
+Retain a safe first-failure diagnostic before cleaning up a scenario's synthetic
+store. The Memory verifier projects fixed command-phase and terminal labels,
+counts of recognized journal event types and action statuses, and an explicit
+allowlist of Core-defined machine error codes. Other codes become
+`unrecognized`; an absent code becomes `unavailable`. Even an identifier-shaped
+string can contain private data, so a character-pattern check is insufficient.
+Never include raw error prose, command arguments, State values, transcripts,
+paths or environment in that projection. Keep its row/code limits explicit and
+exclude completed earlier commands from the observed failure window.
+
+Exercise the projection independently with both known codes and synthetic secret
+values, including a secret that resembles a valid code. Check redaction, previous
+command exclusion and bounded output through the precompiled harness. These pure
+controls do not run `Memory.run/1`, establish its retrieval behavior, or diagnose
+an installed failure. If no recognized cause was retained, report it as unknown
+rather than inferring a filesystem or platform cause. Preserve the failing
+scenario outcome and its cleanup/inventory checks separately from a later fix.
+
 The Knowledge independence test keeps the nine real memory/package workflows and
 adds disabled, idle and resumed Sessions for every capability preset. Its call
 counters cover worker startup, State, MCP, embeddings and model requests. These

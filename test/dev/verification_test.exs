@@ -1192,6 +1192,73 @@ defmodule Ipse.Development.VerificationTest do
     end)
   end
 
+  @tag :memory_failure_diagnostic
+  test "memory failure diagnostics retain only bounded current-invocation machine fields" do
+    Runtime.with_runtime(Scenarios.fetch!("memory"), options(), fn runtime ->
+      expression = ~S"""
+      (fn ->
+        secret = "private text /home/operator credential=value"
+        result = fn status, value ->
+          %{"type" => "extension_action_result", "outcome" => %{"status" => status, "value" => value},
+            "request" => %{"text" => secret}}
+        end
+        events = [
+          result.("failed", %{"code" => "earlier_command"}),
+          %{"type" => "extension_invocation_intent", "payload" => secret},
+          result.("failed", %{"code" => "state_deadline_fence_unavailable", "detail" => secret}),
+          result.("unknown", %{}),
+          result.("ok", %{"code" => "private_state_value", "text" => secret}),
+          result.("failed", %{"code" => secret}),
+          result.("failed", %{"code" => "private_token"}),
+          %{"type" => secret, "content" => secret},
+          %{"type" => "turn_finished", "status" => "error", "text" => secret}
+        ]
+        diagnostic = Ipse.Development.Verification.Memory.failure_diagnostic(
+          "remember", "done_error", events, "private_token")
+        %{"phase" => "remember", "terminal" => "done_error", "error_event" => "error",
+          "error_code" => "unrecognized", "events_truncated" => false,
+          "action_error_codes" => ["state_deadline_fence_unavailable", "unrecognized"],
+          "action_statuses" => %{"failed" => 3, "unknown" => 1, "ok" => 1},
+          "event_types" => %{"extension_action_result" => 5, "other" => 1, "turn_finished" => 1}} = diagnostic
+        encoded = Jason.encode!(diagnostic)
+        false = String.contains?(encoded, [secret, "private_token", "earlier_command", "private_state_value", "detail", "payload"])
+        before_intent = events ++ [%{"type" => "turn_finished", "status" => "error"}]
+        %{"action_error_codes" => [], "action_statuses" => %{}} =
+          Ipse.Development.Verification.Memory.failure_diagnostic("remember", "done_error", before_intent)
+        %{"redacted" => true, "current_invocation_only" => true}
+      end).()
+      """
+
+      assert %{"redacted" => true, "current_invocation_only" => true} =
+               Runtime.eval!(runtime, expression)
+    end)
+  end
+
+  @tag :memory_failure_diagnostic
+  test "memory failure diagnostics bound rows and codes and never echo unknown labels" do
+    Runtime.with_runtime(Scenarios.fetch!("memory"), options(), fn runtime ->
+      expression = ~S"""
+      (fn ->
+        codes = ~w(invalid_extension_state_request extension_state_quota write_deadline_elapsed state_deadline_fence_unavailable invalid_extension_invocation extension_output_refused extension_deadline_or_callback_failed extension_action_refused extension_action_stopped cleanup_unconfirmed owner_control_unavailable)
+        events = for n <- 1..20 do
+          code = if n <= 4, do: "extension_state_unavailable", else: Enum.at(codes, rem(n, length(codes)))
+          %{"type" => "extension_action_result",
+            "outcome" => %{"status" => "failed", "value" => %{"code" => code}}}
+        end
+        diagnostic = Ipse.Development.Verification.Memory.failure_diagnostic("secret", "secret", events)
+        %{"phase" => "unknown", "terminal" => "unknown", "error_event" => "not_observed",
+          "error_code" => "unavailable", "events_truncated" => true,
+          "event_types" => %{"extension_action_result" => 16}} = diagnostic
+        8 = length(diagnostic["action_error_codes"])
+        false = "extension_state_unavailable" in diagnostic["action_error_codes"]
+        %{"bounded" => true}
+      end).()
+      """
+
+      assert %{"bounded" => true} = Runtime.eval!(runtime, expression)
+    end)
+  end
+
   test "knowledge storage and web subprocesses use compiled fixtures without source fallback" do
     root = input_root()
     source = Path.join(root, "knowledge.exs")

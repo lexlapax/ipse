@@ -4,6 +4,9 @@ defmodule Ipse.Development.Verification.Memory do
   alias Ipse.Extension.{Config, Registry, State}
   alias Ipse.Builtins.Memory.Records
 
+  @diagnostic_types ~w(extension_invocation_intent extension_invocation_result extension_action_intent extension_action_result turn_finished)
+  @diagnostic_codes ~w(extension_state_unavailable invalid_extension_state_request extension_state_quota write_deadline_elapsed state_deadline_fence_unavailable invalid_extension_invocation extension_output_refused extension_deadline_or_callback_failed extension_action_refused extension_action_stopped cleanup_unconfirmed owner_control_unavailable)
+
   def run(corpus_path) do
     {:ok, _} = Application.ensure_all_started(:ipse)
     corpus_bytes = File.read!(corpus_path)
@@ -86,26 +89,32 @@ defmodule Ipse.Development.Verification.Memory do
       for record <- corpus["records"] do
         pid = sessions[{record["project"], 0}]
         args = Map.drop(record, ~w(project mode))
-        result = command(pid, "remember", args)
+        result = command(pid, "remember", args, root)
         "stored" = result["status"]
 
         case record["mode"] do
           "updated" ->
             "stored" =
-              command(pid, "remember", %{
-                args
-                | "source_generation" => 2,
-                  "expected_revision" => 1,
-                  "text" =>
-                    args["text"] <> " Updated with a conflict-resolved operator statement."
-              })["status"]
+              command(
+                pid,
+                "remember",
+                %{
+                  args
+                  | "source_generation" => 2,
+                    "expected_revision" => 1,
+                    "text" =>
+                      args["text"] <> " Updated with a conflict-resolved operator statement."
+                },
+                root
+              )["status"]
 
           "forgotten" ->
             "stored" =
               command(
                 pid,
                 "forget",
-                Map.take(args, ["source"]) |> Map.put("expected_revision", 1)
+                Map.take(args, ["source"]) |> Map.put("expected_revision", 1),
+                root
               )["status"]
 
           "expired" ->
@@ -145,7 +154,7 @@ defmodule Ipse.Development.Verification.Memory do
           pid = sessions[{q["project"], q["session"]}]
           before_memory = :erlang.memory(:total)
           started = System.monotonic_time(:microsecond)
-          result = command(pid, "recall", %{"query" => q["query"], "limit" => 5})
+          result = command(pid, "recall", %{"query" => q["query"], "limit" => 5}, root)
           elapsed = System.monotonic_time(:microsecond) - started
           "recalled" = result["status"]
           matches = result["matches"]
@@ -251,19 +260,117 @@ defmodule Ipse.Development.Verification.Memory do
 
   def complete(_, _, _, _), do: raise("Memory measurement must not dispatch inference")
 
-  defp command(pid, id, args) do
-    :ok = Session.invoke_export(pid, :command, "ext__notes__" <> id, args)
-    await(pid, nil)
-  end
+  defp command(pid, id, args, root) do
+    session_id = Session.info(pid).id
 
-  defp await(pid, result) do
-    receive do
-      {:ipse, ^pid, {:extension_result, %{"value" => value}}} -> await(pid, value)
-      {:ipse, ^pid, {:done, :ok}} when is_map(result) -> result
-      {:ipse, ^pid, {:done, _}} -> raise("Memory fixture command failed")
-      {:ipse, ^pid, _} -> await(pid, result)
-    after
-      15_000 -> raise("Memory fixture command timed out")
+    case Session.invoke_export(pid, :command, "ext__notes__" <> id, args) do
+      :ok -> await(pid, nil, id, root, session_id, nil)
+      _ -> command_failed!(id, "invoke_refused", root, session_id, nil)
     end
   end
+
+  defp await(pid, result, phase, root, id, first_error) do
+    receive do
+      {:ipse, ^pid, {:extension_result, %{"value" => value}}} ->
+        await(pid, value, phase, root, id, first_error)
+
+      {:ipse, ^pid, {:done, :ok}} when is_map(result) ->
+        result
+
+      {:ipse, ^pid, {:error, reason}} ->
+        code = first_error || error_code(reason)
+        await(pid, result, phase, root, id, code)
+
+      {:ipse, ^pid, {:done, status}} ->
+        terminal = if status == :ok, do: "missing_result", else: "done_error"
+        command_failed!(phase, terminal, root, id, first_error)
+
+      {:ipse, ^pid, _} ->
+        await(pid, result, phase, root, id, first_error)
+    after
+      15_000 -> command_failed!(phase, "timeout", root, id, first_error)
+    end
+  end
+
+  defp command_failed!(phase, terminal, root, id, first_error) do
+    observed =
+      try do
+        case if(terminal == "invoke_refused",
+               do: {:ok, []},
+               else: Journal.load(Path.join(root, "sessions"), id)
+             ) do
+          {:ok, events} -> failure_diagnostic(phase, terminal, events, first_error)
+          _ -> failure_diagnostic(phase, terminal, [], first_error)
+        end
+      rescue
+        _ -> failure_diagnostic(phase, terminal, [], first_error)
+      end
+
+    raise "Memory fixture command failed: " <> Jason.encode!(observed)
+  end
+
+  @doc false
+  def failure_diagnostic(phase, terminal, events, first_error \\ nil) do
+    latest =
+      events
+      |> Enum.reverse()
+      |> Enum.take_while(&(&1["type"] != "extension_invocation_intent"))
+
+    tail =
+      case latest do
+        [%{"type" => "turn_finished"} = finished | rest] ->
+          [finished | Enum.take_while(rest, &(&1["type"] != "turn_finished"))]
+
+        rest ->
+          Enum.take_while(rest, &(&1["type"] != "turn_finished"))
+      end
+
+    rows = Enum.take(tail, 16)
+
+    codes =
+      for %{"type" => "extension_action_result", "outcome" => outcome} <- rows,
+          outcome["status"] in ~w(failed conflict),
+          %{"code" => code} <- [outcome["value"]],
+          do: diagnostic_code(code)
+
+    %{
+      "phase" => if(phase in ~w(remember forget recall), do: phase, else: "unknown"),
+      "terminal" =>
+        if(terminal in ~w(invoke_refused missing_result done_error timeout),
+          do: terminal,
+          else: "unknown"
+        ),
+      "error_event" => if(is_nil(first_error), do: "not_observed", else: "error"),
+      "error_code" => diagnostic_code(first_error),
+      "event_types" =>
+        rows
+        |> Enum.map(fn event ->
+          if event["type"] in @diagnostic_types, do: event["type"], else: "other"
+        end)
+        |> Enum.frequencies(),
+      "action_statuses" =>
+        rows
+        |> Enum.flat_map(fn
+          %{"type" => "extension_action_result", "outcome" => %{"status" => status}}
+          when status in ~w(ok conflict denied unknown answered cancelled failed) ->
+            [status]
+
+          _ ->
+            []
+        end)
+        |> Enum.frequencies(),
+      "action_error_codes" => codes |> Enum.uniq() |> Enum.sort() |> Enum.take(8),
+      "events_truncated" => length(tail) > 16
+    }
+  end
+
+  defp error_code(%{"code" => code}), do: diagnostic_code(code)
+
+  defp error_code(code) when is_atom(code), do: error_code(%{"code" => Atom.to_string(code)})
+  defp error_code(_), do: "unrecognized"
+
+  defp diagnostic_code(nil), do: "unavailable"
+  defp diagnostic_code(code) when code in @diagnostic_codes, do: code
+  defp diagnostic_code("unavailable"), do: "unavailable"
+  defp diagnostic_code(_), do: "unrecognized"
 end
