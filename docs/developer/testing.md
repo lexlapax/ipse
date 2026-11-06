@@ -98,6 +98,13 @@ module they load and use absolute source/code paths with a private working
 directory. A plain Elixir VM can otherwise resolve an application from the
 checkout's basename, and a previously loaded fixture can hide a missing dependency.
 
+Load canonical extension modules only inside the feature test's child VM.
+Top-level requires in a test file run while the whole suite compiles, even when
+that test is synchronous. They can invalidate another runner's deliberate
+host-domain isolation guard. Keep the original cases in a child-only fixture,
+require their exact completed count, and check that the parent domain modules
+remain unloaded; do not purge modules or weaken the runner's guard.
+
 A temporary directory alone does not isolate workspace instructions. Discovery
 can reach a caller's ancestor `AGENTS.md` and linked resources. Conformance
 creates a fresh repository boundary using a private `.git/HEAD` marker, without

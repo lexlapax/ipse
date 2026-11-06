@@ -18,7 +18,7 @@ defmodule IpseKnowledge.PackagesIsolationTest do
       for {module, commands, tools} <- [
         {IpseKnowledge.Corpus, ~w(source query index), ~w(query)},
         {IpseKnowledge.Research, ~w(investigate ledger), ~w(investigate)},
-        {IpseKnowledge.Graph, ~w(source extract query), ~w(query capture)}
+        {IpseKnowledge.Graph, ~w(source extract identity query), ~w(query capture)}
       ] do
         descriptor = module.describe()
         assert descriptor["sdk"] == 2
@@ -471,7 +471,7 @@ defmodule IpseKnowledge.PackagesIsolationTest do
         snapshot=%{"sources"=>[source], "projections"=>%{source["source_key"]=>%{"vectors"=>if(indexed==:missing,do: [],else: [vector])}},
           "tokens"=>[], "gaps"=>[], "coverage"=>%{}}
         ctx=%{snapshot: snapshot, args: %{"query"=>"query", "top_k"=>1, "store"=>"notes", "rerank"=>nil},
-          retrieval: %{"kind"=>kind, "missing_embedding"=>"refuse"},
+          retrieval: %{"kind"=>kind, "missing_embedding"=>"refuse"}, rerank_profile: nil,
           store_profile: %{"kind"=>"state", "scope"=>"project", "partition"=>"notes"}, as_of_ms: 2}
         state=%{resolved: %{}, phase: :query_embed, pending: :adapter, cont: cont, ctx: ctx}
         assert {:ok,%{"kind"=>"result", "value"=>result},_}=
@@ -535,8 +535,8 @@ defmodule IpseKnowledge.PackagesIsolationTest do
         assert original["citation"]["quote"]==text
       end
       outcome=%{"status"=>"ok","value"=>%{"profile"=>"host_rank","text"=>JSON.encode!(%{"order"=>~w(e2 e1)}),"usage"=>%{}}}
-      snapshot=%{"tokens"=>[],"coverage"=>%{"fixture"=>"captured snapshot"},"gaps"=>[],"sources"=>sources}
-      ctx=%{args: %{"store"=>"notes","query"=>"release"},store_profile: %{"kind"=>"state","scope"=>"project","partition"=>"notes"},snapshot: snapshot,rank: rank,as_of_ms: 20}
+      snapshot=%{"tokens"=>[],"coverage"=>%{"fixture"=>"captured snapshot", "effects_used"=>0, "reads_used"=>0},"gaps"=>[],"sources"=>sources}
+      ctx=%{args: %{"store"=>"notes","query"=>"release", "rerank"=>"ordered"},store_profile: %{"kind"=>"state","scope"=>"project","partition"=>"notes"},rerank_profile: resolved["options"]["rerank"]["ordered"],snapshot: snapshot,rank: rank,as_of_ms: 20}
       state=%{resolved: resolved,phase: :query_rerank,pending: :adapter,cont: cont,ctx: ctx}
       assert {:ok,%{"kind"=>"result","value"=>result},_}=Corpus.handle("host.actions",%{"outcome"=>outcome},state)
       assert result["status"]=="ok" and result["coverage"]["revalidated"]
