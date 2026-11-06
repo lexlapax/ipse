@@ -19,6 +19,9 @@ defmodule Ipse.JSON do
 
   def digest(values) when is_list(values), do: sha256(canonical_json(values))
 
+  @doc false
+  def object_digest(value) when is_map(value), do: sha256(canonical_json(value))
+
   # Callers bound the encoded input before invoking the maintained JSON parser.
   # Ordered objects preserve duplicate decoded keys until we can reject them.
   def decode_unique(bytes, max_depth \\ 16)

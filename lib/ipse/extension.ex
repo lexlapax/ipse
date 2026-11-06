@@ -26,6 +26,15 @@ defmodule Ipse.Extension do
 
   def canonical_digest(_), do: {:error, :invalid_extension_value}
 
+  @doc "Hash one bounded result object canonically, without an enclosing list or new data authority."
+  def canonical_object_digest(value) do
+    with {:ok, _bytes} <- Ipse.Extension.ResultDocument.encode(value, %{"type" => "object"}) do
+      {:ok, Ipse.JSON.object_digest(value)}
+    else
+      _ -> {:error, :invalid_extension_value}
+    end
+  end
+
   @doc "Measure a context selection including host receipt framing; this grants no publication authority."
   def context_rendered_bytes(items, instance)
       when is_list(items) and length(items) <= 8 and is_binary(instance) do
@@ -160,11 +169,16 @@ defmodule Ipse.Extension.ResultPublication do
   end
 
   @doc "Prepare an inline callback reply or a private immutable output value."
-  def prepare(value) do
+  def prepare(value), do: prepare(value, :automatic)
+
+  @doc "Use the existing paged result transport even when the complete value fits inline."
+  def prepare_paged(value), do: prepare(value, :paged)
+
+  defp prepare(value, mode) do
     with {:ok, bytes} <- ResultDocument.encode(value, @schema) do
       inline = %{"api_version" => 1, "kind" => "result", "value" => value}
 
-      if bounded?(inline) do
+      if mode === :automatic and bounded?(inline) do
         {:ok, inline}
       else
         {:ok,

@@ -89,6 +89,22 @@ digest; list order does. Private runtime terms and over-bound JSON return
 `invalid_extension_value`. A matching digest
 identifies reviewed data and grants no permission or source authenticity.
 
+When a protocol commits one complete object rather than an ordered list, use
+`Ipse.Extension.canonical_object_digest/1`. It hashes the object without an
+enclosing array, after the complete-result validation described below. This
+permits an aggregate object beyond the ordinary 16-KiB wire limit; it does not
+enlarge a request or result transport. The object and list digests differ:
+
+```elixir
+value = %{"text" => "café", "counts" => [1, 1.0]}
+{:ok, object_digest} = Ipse.Extension.canonical_object_digest(value)
+{:ok, list_digest} = Ipse.Extension.canonical_digest([value])
+false = object_digest == list_digest
+```
+
+Both helpers preserve JSON numeric and string distinctions. Neither a matching
+canonical digest nor a raw delivery digest authorizes reading historical data.
+
 To publish a larger complete tool/command value, declare SDK 2 and
 `invoke.result.pages` in both manifest and description, with the normal invocation
 capability. In `iex -S mix`, compare aggregate validation to ordinary wire validation:
@@ -109,6 +125,12 @@ The 256-member collection exceeds wire limits. `prepare/1` freezes a private
 an inline result. Invalid/over-limit values return `invalid_result_document`.
 Handle that with an explicit domain refusal rather than dropping items to fit.
 Return `{:ok, delivery, state}` from the original callback.
+
+If a consumer needs a saved-result descriptor even for a small value, use
+`ResultPublication.prepare_paged(value)`. It returns the same private `Output`
+without padding or changing the domain object. It uses the existing aggregate
+limits and terminal transport. SDK 2 and `invoke.result.pages` remain required;
+services and other ineligible stages cannot force paged publication this way.
 
 Bootstrap consumes `Output`, discards domain state, and answers terminal
 `result.output` requests from frozen bytes. It does not rerun domain callbacks for

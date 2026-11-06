@@ -74,6 +74,9 @@ defmodule Ipse.Extension.ResultPublicationTest do
               mode == "inline" ->
                 {:ok, reply} = ResultPublication.prepare(%{"ok" => true})
                 {:ok, reply, state}
+              mode == "paged_small" ->
+                {:ok, reply} = ResultPublication.prepare_paged(%{"text" => "café 日本語", "items" => [1, 1.0]})
+                {:ok, reply, state}
               mode == "actions" and stage != "host.actions" ->
                 {:ok, %{"api_version" => 1, "kind" => "host_call", "request" => %{"op" => "fixture"}}, state}
               mode in ["raw_bad_offset", "raw_bad_hash", "raw_bad_count", "raw_bad_eof", "raw_bad_full", "raw_offer"] ->
@@ -209,6 +212,34 @@ defmodule Ipse.Extension.ResultPublicationTest do
     if next.complete,
       do: IO.iodata_to_binary(Enum.reverse([chunk | chunks])),
       else: drain(output, next, [chunk | chunks])
+  end
+
+  test "explicit paging retains a small exact document without changing automatic preparation" do
+    value = %{"text" => "café 日本語", "items" => [1, 1.0]}
+    assert {:ok, %{"kind" => "result", "value" => ^value}} = ResultPublication.prepare(value)
+    assert {:ok, %Output{} = output} = ResultPublication.prepare_paged(value)
+    assert {:ok, bytes} = Ipse.Extension.ResultDocument.encode(value, %{"type" => "object"})
+    assert output.bytes === bytes
+    assert output.byte_count === byte_size(bytes)
+    assert output.sha256 === Ipse.JSON.sha256(bytes)
+    assert {:ok, offer} = ResultPublication.offer(output)
+    assert get_in(offer, ["output", "byte_count"]) === byte_size(bytes)
+
+    assert {:error, :invalid_result_document} =
+             ResultPublication.prepare_paged(%{"bad" => self()})
+  end
+
+  test "canonical object digests preserve result bounds and exact native object encoding" do
+    value = %{"z" => [1, 1.0], "a" => List.duplicate(String.duplicate("é", 3072), 4)}
+    assert {:ok, digest} = Ipse.Extension.canonical_object_digest(value)
+    assert digest === Ipse.JSON.sha256(Ipse.Extension.Collection.Migration.encode(value))
+    refute digest === Ipse.JSON.digest([value])
+
+    assert {:error, :invalid_extension_value} =
+             Ipse.Extension.canonical_object_digest(%{"bad" => self()})
+
+    assert {:error, :invalid_extension_value} =
+             Ipse.Extension.canonical_object_digest(%{"long" => String.duplicate("x", 8193)})
   end
 
   test "preparation retains small inline wrappers and freezes larger aggregate values" do
@@ -413,6 +444,34 @@ defmodule Ipse.Extension.ResultPublicationTest do
              Worker.call(worker, "result.output", request(byte_size(bytes)))
 
     assert :ok = Worker.close(worker)
+  end
+
+  test "explicit small paging uses the same terminal worker protocol and stage fences", c do
+    worker = ready(c, 2, %{"mode" => "paged_small"})
+    assert {:ok, offer} = Worker.call(worker, "invoke.command", %{"invocation_id" => @invocation})
+    assert offer["kind"] === "result_producer"
+    assert {:ok, response} = Worker.call(worker, "result.output", request(0))
+    bytes = Base.decode64!(response["output"]["data_base64"])
+    assert response["output"]["complete"] === true
+    assert response["output"]["next"] === byte_size(bytes)
+    assert Ipse.JSON.sha256(bytes) === offer["output"]["sha256"]
+    assert {:ok, value} = Ipse.Extension.ResultDocument.decode(bytes, %{"type" => "object"})
+    assert value === %{"text" => "café 日本語", "items" => [1, 1.0]}
+
+    assert {:error, :invalid_extension_request} =
+             Worker.call(worker, "invoke.command", %{"invocation_id" => @invocation})
+
+    assert {:error, :invalid_extension_request} =
+             Worker.call(worker, "result.output", request(byte_size(bytes)))
+
+    assert :ok = Worker.close(worker)
+
+    for {sdk, stage} <- [{1, "invoke.command"}, {2, "invoke.service"}] do
+      worker = ready(c, sdk, %{"mode" => "paged_small"})
+      ref = Process.monitor(worker)
+      assert {:error, _} = Worker.call(worker, stage, %{"invocation_id" => @invocation})
+      assert_receive {:DOWN, ^ref, :process, ^worker, :normal}, 3_000
+    end
   end
 
   test "ordinary host.actions retains original eligibility, recovered actions do not", c do
