@@ -1400,9 +1400,14 @@ Select the actual model and dimensions in `encoder` separately; this field does
 not select or download a model. To use the same format for `blend`, add that
 field to its existing hybrid entry as well. Ipse concatenates the prefix and
 query exactly once, without adding whitespace or shortening either value. The
-embedding approval shows those complete dispatched bytes. Indexing still sends
-the original passage; lexical matching, reranking and displayed citations still
-use the original query/source. Changing only this query format needs no source
+query must not already begin with the complete configured prefix: Ipse refuses
+it before reading the store or requesting an embedding. This exact-byte check
+also refuses a literal query that happens to begin with the prefix, so choose a
+distinctive instruction rather than a short common string. It does not detect a
+different or altered wrapper. The embedding approval shows the complete
+dispatched bytes. Indexing still sends the original passage; lexical matching,
+reranking and displayed citations still use the original query/source. Changing
+only this query format needs no source
 reindex because it does not change document-vector inputs. Freeze the chosen
 format with the options/artifact before evaluating retrieval quality. The dated
 reference comparison does not qualify a newly selected model or query format.

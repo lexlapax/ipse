@@ -797,6 +797,7 @@ defmodule IpseKnowledge.Corpus do
          {:ok, retrieval} <- Profiles.lookup(state.resolved, "retrieval", args["retrieval"]),
          true <- collection_query_shape?(args, retrieval, state.resolved),
          true <- text?(args["query"], 1024) and args["top_k"] in 1..10,
+         true <- query_prefix_valid?(retrieval, args["query"]),
          at = args["as_of_ms"] || System.system_time(:millisecond),
          true <- Evidence.safe_uint?(at) do
       if retrieval["kind"] == "bm25" do
@@ -1163,6 +1164,7 @@ defmodule IpseKnowledge.Corpus do
          {:ok, rerank_profile} <- Profiles.lookup(state.resolved, "rerank", args["rerank"]),
          true <-
            text?(args["query"], 1024) and is_integer(args["top_k"]) and args["top_k"] in 1..10,
+         true <- query_prefix_valid?(retrieval, args["query"]),
          true <-
            args["as_of_ms"] == nil or
              Evidence.safe_uint?(args["as_of_ms"]),
@@ -1217,6 +1219,12 @@ defmodule IpseKnowledge.Corpus do
       _ -> finish(state, refused(:invalid_query))
     end
   end
+
+  defp query_prefix_valid?(%{"kind" => kind, "query_prefix" => prefix}, query)
+       when kind in ~w(dense hybrid),
+       do: not String.starts_with?(query, prefix)
+
+  defp query_prefix_valid?(_, _), do: true
 
   defp index(args, state) do
     with true <- exact?(args, ~w(store embedding source_id generation action chunks)),

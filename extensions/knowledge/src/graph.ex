@@ -68,6 +68,7 @@ defmodule IpseKnowledge.Graph do
         :store -> Store.resume(cont, outcome)
         :state -> IpseKnowledge.Store.State.resume(cont, outcome)
         :adapter -> Adapters.resume(cont, outcome)
+        :mcp_probe -> IpseKnowledge.Store.MCPCAS.resume(cont, outcome)
       end
 
     advance(result, state)
@@ -316,15 +317,33 @@ defmodule IpseKnowledge.Graph do
   end
 
   defp advance({:call, request, cont}, state) do
-    pending =
-      cond do
-        state.phase === :extract_adapter -> :adapter
-        state.phase in [:identity_write, :query_identity_revalidate] -> :state
-        true -> :store
-      end
+    if state.phase === :query_mcp_empty_probe do
+      read = request["op"] === "effect.result.read"
+      effects = state.ctx.probe_effects + if(read, do: 0, else: 1)
+      reads = state.ctx.probe_reads + if(read, do: 1, else: 0)
 
-    {:ok, %{"api_version" => 1, "kind" => "host_call", "request" => request},
-     %{state | cont: cont, pending: pending}}
+      if effects <= 16 and reads <= 512 and effects + reads <= 528 do
+        {:ok, %{"api_version" => 1, "kind" => "host_call", "request" => request},
+         %{
+           state
+           | cont: cont,
+             pending: :mcp_probe,
+             ctx: %{state.ctx | probe_effects: effects, probe_reads: reads}
+         }}
+      else
+        finish(state, refused(:effect_budget))
+      end
+    else
+      pending =
+        cond do
+          state.phase === :extract_adapter -> :adapter
+          state.phase in [:identity_write, :query_identity_revalidate] -> :state
+          true -> :store
+        end
+
+      {:ok, %{"api_version" => 1, "kind" => "host_call", "request" => request},
+       %{state | cont: cont, pending: pending}}
+    end
   end
 
   defp advance({:stop, :unknown_effect}, state), do: finish(state, refused(:unknown_effect))
@@ -477,9 +496,12 @@ defmodule IpseKnowledge.Graph do
   end
 
   defp advance({:done, {:ok, snapshot}}, %{phase: :query_snapshot} = state) do
+    empty_mcp = state.ctx.profile["kind"] === "mcp_cas" and snapshot["tokens"] === []
+
     if not query_plan?(
          snapshot["coverage"],
-         if(state.ctx.profile["kind"] === "state", do: 1, else: 0)
+         if(state.ctx.profile["kind"] === "state", do: 1, else: if(empty_mcp, do: 15, else: 0)),
+         if(empty_mcp, do: 1, else: 0)
        ) do
       finish(state, refused(:effect_budget))
     else
@@ -538,6 +560,10 @@ defmodule IpseKnowledge.Graph do
             |> Map.put(:snapshot, snapshot)
             |> Map.put(:rank, ranked)
             |> Map.put(:identity, identity)
+            |> Map.put(
+              :next_query_transition,
+              next_query_transition(snapshot["sources"], facts, state.ctx.as_of_ms)
+            )
 
           advance(
             Store.start(state.ctx.args["store"], state.ctx.profile, :revalidate, %{
@@ -578,8 +604,46 @@ defmodule IpseKnowledge.Graph do
           finish(state, refused(:effect_budget))
         end
       else
-        finish_query(state)
+        cond do
+          state.ctx.snapshot["tokens"] === [] ->
+            counts = checked["coverage"]
+
+            ctx =
+              state.ctx
+              |> Map.put(:checked, checked)
+              |> Map.put(:probe_effects, counts["effects_used"])
+              |> Map.put(:probe_reads, counts["reads_used"])
+
+            advance(
+              IpseKnowledge.Store.MCPCAS.start(state.ctx.profile, :get_many, %{
+                "keys" => [Evidence.graph_identity_key(state.ctx.profile["partition"])]
+              }),
+              %{state | phase: :query_mcp_empty_probe, ctx: ctx}
+            )
+
+          checked["store_generation"] !== state.ctx.snapshot["coverage"]["generation"] ->
+            finish(state, output("conflict", [], [], [%{"code" => "snapshot_changed"}], %{}, nil))
+
+          true ->
+            finish_query(%{state | ctx: Map.put(state.ctx, :checked, checked)})
+        end
       end
+    else
+      finish(state, output("conflict", [], [], [%{"code" => "snapshot_changed"}], %{}, nil))
+    end
+  end
+
+  defp advance({:done, {:ok, checked}}, %{phase: :query_mcp_empty_probe} = state) do
+    [record] = checked["records"]
+
+    if checked["generation"] === state.ctx.snapshot["coverage"]["generation"] and
+         record["revision"] === 0 and record["deleted"] === true and record["value"] === nil do
+      coverage = %{
+        "effects_used" => state.ctx.probe_effects,
+        "reads_used" => state.ctx.probe_reads
+      }
+
+      finish_query(%{state | ctx: put_in(state.ctx, [:checked, "coverage"], coverage)})
     else
       finish(state, output("conflict", [], [], [%{"code" => "snapshot_changed"}], %{}, nil))
     end
@@ -588,18 +652,13 @@ defmodule IpseKnowledge.Graph do
   defp advance({:done, {:ok, checked}}, %{phase: :query_identity_revalidate} = state) do
     [record] = checked["records"]
     prior = state.ctx.snapshot["graph_identity"]
-    {:ok, _, identity} = state.ctx.identity
 
     same =
       if prior === nil,
         do: record["revision"] === 0 and record["deleted"] === true and record["value"] === nil,
         else: record === prior
 
-    generation =
-      if identity["steps"] !== [],
-        do: state.ctx.snapshot["coverage"]["generation"],
-        else:
-          state.ctx.checked["store_generation"] || state.ctx.snapshot["coverage"]["generation"]
+    generation = state.ctx.snapshot["coverage"]["generation"]
 
     if same and checked["generation"] === generation,
       do: finish_query(state),
@@ -613,6 +672,26 @@ defmodule IpseKnowledge.Graph do
   defp advance(_, state), do: finish(state, refused(:invalid_operation_state))
 
   defp finish_query(state) do
+    now = System.system_time(:millisecond)
+    transition = state.ctx.next_query_transition
+
+    if state.ctx.args["as_of_ms"] === nil and
+         (now < state.ctx.as_of_ms or (is_integer(transition) and now >= transition)) do
+      finish(state, refused(:query_time_changed))
+    else
+      finish_current_query(state)
+    end
+  end
+
+  defp next_query_transition(sources, facts, selected) do
+    times =
+      Enum.flat_map(sources, &[&1["observed_at_ms"], &1["expires_at_ms"]]) ++
+        Enum.flat_map(facts, &[&1["valid_from_ms"], &1["valid_to_ms"]])
+
+    times |> Enum.filter(&(is_integer(&1) and &1 > selected)) |> Enum.min(fn -> nil end)
+  end
+
+  defp finish_current_query(state) do
     rank =
       Evidence.query_scope(
         state.ctx.rank,
@@ -631,7 +710,7 @@ defmodule IpseKnowledge.Graph do
                 state.ctx.snapshot["coverage"],
                 Map.update!(state.ctx.checked["coverage"], "reads_used", &(&1 + 1))
               ),
-            else: state.ctx.snapshot["coverage"]
+            else: Map.merge(state.ctx.snapshot["coverage"], state.ctx.checked["coverage"])
           ),
         "revalidated" => true
       })
@@ -900,10 +979,10 @@ defmodule IpseKnowledge.Graph do
         coverage["model_effects"] + coverage["commit_effects_worst_case"]
   end
 
-  defp query_plan?(coverage, extra_reads) do
+  defp query_plan?(coverage, extra_reads, extra_effects) do
     is_map(coverage) and is_integer(coverage["effects_used"]) and
       is_integer(coverage["revalidate_effects_worst_case"]) and
-      coverage["effects_used"] + coverage["revalidate_effects_worst_case"] <= 16 and
+      coverage["effects_used"] + coverage["revalidate_effects_worst_case"] + extra_effects <= 16 and
       is_integer(coverage["reads_used"]) and
       is_integer(coverage["revalidate_reads_worst_case"]) and
       coverage["reads_used"] + coverage["revalidate_reads_worst_case"] + extra_reads <= 512

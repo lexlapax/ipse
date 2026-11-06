@@ -267,6 +267,25 @@ As-of queries filter retained generations; they do not reconstruct replaced
 source generations or deleted graph history. A past timestamp cannot recover
 facts whose source generation has been replaced or forgotten.
 
+For `as_of_ms: null`, Graph checks the captured snapshot's next source or fact
+time boundary again after store revalidation. If that boundary passed, or the
+clock is earlier than the selected time, it refuses with `query_time_changed`;
+run a fresh query to rebuild the view. This is conservative: an unrelated
+captured item can cause a refusal. Explicit timestamps keep their selected-time
+semantics. The time check covers the captured snapshot, and cannot detect a
+clock rollback and recovery between samples or guarantee validity through delivery.
+
+With a State-backed store, Graph also checks that the State scope has not changed
+between the snapshot and its final read. A concurrent write anywhere in that
+scope can cause a conflict, including for an empty result or an explicit as-of
+query; retry after writes settle. MCP-backed queries also compare the selected
+service's reported generation after revalidation. An empty snapshot needs one
+additional MCP read to obtain that generation. A change causes a conflict; retry
+after writes settle. This relies on the service reporting generations correctly
+and does not protect the interval after the final check through delivery. The
+additional call and its result pages count against the existing effect and read
+limits, so a query near those limits can refuse with `effect_budget`.
+
 Traversal follows outgoing positive relationships, matching entity names without
 case. Two positive requirements such as `Release requires quiescence` and
 `Release requires tests` can coexist. Graph flags a conflict when current
@@ -424,10 +443,11 @@ requesting new work rather than changing the expected revision blindly.
 Denied writes stop. An unknown write may already have applied: keep its journal
 and State files, then run a fresh inspection before deciding on a new explicit
 operation. Inspection does not replay or settle that unknown. Querying also
-revalidates sources and the exact selection row before return. Replaced,
-expired, suppressed or altered support withholds the current selected view;
-historical inspection and an explicit latest-step undo remain available. A
-returned query cannot revoke text already disclosed earlier.
+revalidates sources and the exact selection row. The current-time snapshot
+boundary above applies to identity queries too; a choice whose own support
+expired still requires inspection or undo. Historical inspection and an explicit
+latest-step undo remain available. A returned query cannot revoke text already
+disclosed earlier.
 
 ## Read every claim's supporting citations
 

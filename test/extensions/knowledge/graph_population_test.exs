@@ -6,6 +6,9 @@ defmodule Ipse.KnowledgeGraphPopulationTest do
   for file <- ~w(evidence profiles adapters store/state store/mcp_cas store graph) do
     Code.require_file("extensions/knowledge/src/" <> file <> ".ex")
   end
+  for file <- ~w(collection collection/projection collection/selected) do
+    Code.require_file("extensions/knowledge/src/store/" <> file <> ".ex")
+  end
   corpus=File.read!("extensions/knowledge/src/corpus.ex")
     |>String.replace(~s(@preset "state-lexical"),~s(@preset "state-dense"))
   Code.compile_string(corpus,"extensions/knowledge/src/corpus.ex")
@@ -105,6 +108,50 @@ defmodule Ipse.KnowledgeGraphPopulationTest do
     use ExUnit.Case,async: false
     alias PopulationDriver,as: D
     alias IpseKnowledge.Evidence,as: E
+    test "configured semantic query wrappers reject already wrapped input before any host call" do
+      alias IpseKnowledge.{Corpus,Profiles}
+      {_,state,_}=D.initial()
+      prefix="Instruct: Retrieve passages.\nQuery: "
+      for kind<-~w(dense hybrid),store_kind<-~w(state mcp collection) do
+        options=state.resolved["options"]
+        profile=if kind=="dense",do: %{"kind"=>"dense","version"=>1,"embedding"=>"native"},
+          else: %{"kind"=>"hybrid","version"=>1,"embedding"=>"native","lexical"=>"words",
+            "graph"=>nil,"rrf_k"=>60,"missing_embedding"=>"refuse"}
+        options=put_in(options,["retrieval"],%{"words"=>%{"kind"=>"bm25","version"=>1},
+          "selected"=>Map.put(profile,"query_prefix",prefix)})
+        options=case store_kind do
+          "collection" -> put_in(options,["stores","notes"],%{"kind"=>"collection","scope"=>"project","partition"=>"notes"})
+          "mcp" -> put_in(options,["stores","notes"],%{"kind"=>"mcp_cas","binding"=>"storage","partition"=>"notes","contract"=>"ipse-cas-v3"})
+          "state" -> options
+        end
+        preset=store_kind<>"-dense"
+        {:ok,resolved}=Profiles.validate("corpus",preset,options)
+        candidate=%{state | resolved: resolved}
+        common=%{"store"=>"notes","retrieval"=>"selected","query"=>prefix<>"snow", "top_k"=>1,"as_of_ms"=>1}
+        {id,args}=if store_kind != "collection",do: {"query",Map.put(common,"rerank",nil)},else:
+          {"query_selected",Map.merge(common,%{"source_ids"=>["source"],"vector_selection"=>%{
+            "selection_sha256"=>String.duplicate("a",64),"profile"=>"encoder","model"=>"fixture",
+            "dimensions"=>1024,"encoding"=>"float32le"},
+            "fact_selection"=>%{"kind"=>"explicit","profile"=>nil,"version"=>1}})}
+        assert {:ok,%{"kind"=>"result","value"=>%{"status"=>"refused"}},_}=
+          Corpus.handle("invoke.command",%{"id"=>id,"arguments"=>args},candidate)
+        assert {:ok,%{"kind"=>"host_call","request"=>request},_}=
+          Corpus.handle("invoke.command",%{"id"=>id,"arguments"=>Map.put(args,"query","snow")},candidate)
+        expected_op=case store_kind do
+          "state" -> "state.scan"
+          "mcp" -> "mcp.call"
+          "collection" -> "collection.store"
+        end
+        assert request["op"]==expected_op
+        if store_kind=="mcp",do: assert(request["arguments"]["action"]=="snapshot")
+      end
+      options=put_in(state.resolved["options"],["retrieval","unwrapped"],
+        %{"kind"=>"dense","version"=>1,"embedding"=>"native"})
+      {:ok,resolved}=Profiles.validate("corpus","state-dense",options)
+      args=%{"store"=>"notes","retrieval"=>"unwrapped","rerank"=>nil,"query"=>prefix<>"snow","top_k"=>1,"as_of_ms"=>1}
+      assert {:ok,%{"kind"=>"host_call","request"=>%{"op"=>"state.scan"}},_}=
+        Corpus.handle("invoke.command",%{"id"=>"query","arguments"=>args},%{state|resolved: resolved})
+    end
     test "explicit query prefixes change only embedding query bytes on dense and hybrid routes" do
       alias IpseKnowledge.Corpus
       for route<-~w(dense hybrid),prefix<-[nil,"Instruct: Retrieve relevant passages.\nQuery:"] do

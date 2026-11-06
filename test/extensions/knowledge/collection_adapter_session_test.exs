@@ -1901,6 +1901,12 @@ defmodule Ipse.KnowledgeCollectionAdapterSessionTest do
       "top_k" => 10
     }
 
+    already_formatted =
+      Map.update!(args, "query", &("Instruct: Retrieve passages.\nQuery: " <> &1))
+
+    assert invoke(c, "query_selected", already_formatted)["status"] == "refused"
+    assert native_status(c) == before
+
     for retrieval <- ~w(similar hybrid) do
       result = invoke(c, "query_selected", %{args | "retrieval" => retrieval})
       assert result["status"] == "partial", inspect(result)

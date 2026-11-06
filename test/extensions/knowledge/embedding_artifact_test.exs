@@ -38,6 +38,9 @@ defmodule IpseKnowledge.EmbeddingArtifactTest do
     |> put_in(["embedding", "local"], %{"kind" => "embedding", "profile" => "host"})
   {:ok, corpus} = IpseKnowledge.Corpus.init(options)
   args = %{"store" => "notes", "retrieval" => "dense", "rerank" => nil, "query" => "snow 雪", "top_k" => 1, "as_of_ms" => 1}
+  wrapped = Map.put(args, "query", "Instruct: Retrieve passages.\nQuery:snow 雪")
+  assert {:ok, %{"kind" => "result", "value" => %{"status" => "refused"}}, _} =
+    IpseKnowledge.Corpus.handle("invoke.command", %{"id" => "query", "arguments" => wrapped}, corpus)
   assert {:ok, %{"request" => %{"op" => "state.scan"}}, corpus} =
     IpseKnowledge.Corpus.handle("invoke.command", %{"id" => "query", "arguments" => args}, corpus)
   expected = "Instruct: Retrieve passages.\nQuery:snow 雪"
@@ -75,6 +78,28 @@ defmodule IpseKnowledge.EmbeddingArtifactTest do
     [%{"code" => "document_current_check_unavailable"}]}}, _} =
     IpseKnowledge.Corpus.handle("host.actions", %{"outcome" => %{"status" => "ok", "value" => page}}, state)
   IO.puts("CORPUS_ARTIFACT_INPUT_BINDING_OK")
+  """
+
+  @collection_probe ~S"""
+  import ExUnit.Assertions
+  options = Map.new(~w(stores search fetch retrieval embedding rerank extraction), &{&1, %{}})
+    |> Map.put("version", 1)
+    |> put_in(["stores", "notes"], %{"kind" => "collection", "scope" => "project", "partition" => "notes"})
+    |> put_in(["retrieval", "dense"], %{"kind" => "dense", "version" => 1, "embedding" => "local",
+      "query_prefix" => "Instruct: Retrieve passages.\nQuery:"})
+    |> put_in(["embedding", "local"], %{"kind" => "embedding", "profile" => "host"})
+  {:ok, corpus} = IpseKnowledge.Corpus.init(options)
+  args = %{"store" => "notes", "retrieval" => "dense", "query" => "snow 雪", "top_k" => 1,
+    "as_of_ms" => 1, "source_ids" => ["source"],
+    "vector_selection" => %{"selection_sha256" => String.duplicate("a", 64), "profile" => "host",
+      "model" => "fixture", "dimensions" => 1024, "encoding" => "float32le"},
+    "fact_selection" => %{"kind" => "explicit", "profile" => nil, "version" => 1}}
+  wrapped = Map.put(args, "query", "Instruct: Retrieve passages.\nQuery:snow 雪")
+  assert {:ok, %{"kind" => "result", "value" => %{"status" => "refused"}}, _} =
+    IpseKnowledge.Corpus.handle("invoke.command", %{"id" => "query_selected", "arguments" => wrapped}, corpus)
+  assert {:ok, %{"kind" => "host_call", "request" => %{"op" => "collection.store"}}, _} =
+    IpseKnowledge.Corpus.handle("invoke.command", %{"id" => "query_selected", "arguments" => args}, corpus)
+  IO.puts("CORPUS_COLLECTION_PREFIX_OK")
   """
 
   test "built corpus artifact checks input binding with the minimal public SDK" do
@@ -135,5 +160,38 @@ defmodule IpseKnowledge.EmbeddingArtifactTest do
 
     assert status == 0, output
     assert output =~ "CORPUS_ARTIFACT_INPUT_BINDING_OK"
+
+    collection = Path.join(root, "collection-artifact")
+
+    {output, status} =
+      System.cmd(
+        elixir,
+        [
+          "-pa",
+          builder_support,
+          "extensions/knowledge/build.exs",
+          "--sdk",
+          sdk,
+          "--output",
+          collection,
+          "--package",
+          "corpus",
+          "--preset",
+          "collection-dense"
+        ],
+        stderr_to_stdout: true
+      )
+
+    assert status == 0, output
+
+    {output, status} =
+      System.cmd(
+        elixir,
+        paths ++ ["-pa", sdk, "-pa", Path.join(collection, "ebin"), "-e", @collection_probe],
+        stderr_to_stdout: true
+      )
+
+    assert status == 0, output
+    assert output =~ "CORPUS_COLLECTION_PREFIX_OK"
   end
 end

@@ -892,7 +892,7 @@ revised or forged page refuses; a compact header alone is not readable evidence.
 Selected Source version 2 holds the privately hydrated document plus compact
 origin; Source version 1 remains readable. State/MCP replies carry bounded
 individual records, preserving SDK strings/depth and result limits. Single-envelope
-State/MCP single-envelope import still refuses Source version 2. The bounded
+State/MCP import still refuses Source version 2. The bounded
 whole-Collection migration path instead retains its original packed records;
 it is a separate operation and does not give historical data current-use authority.
 
@@ -1360,9 +1360,39 @@ origin. Alias cannot shadow a raw fact entity, merge needs two distinct current
 entities and neither operation can create a cycle. Traversal/conflict comparison
 uses the map while preserving original fact objects, hashes, labels and citation
 bases. Queries retain the source-token revalidation, then read the exact identity
-row again, including its State operation identity. An active selection also
-requires the snapshot namespace generation unchanged. Reserve and count that
-extra read within the existing cumulative 512-read/16-effect limits.
+row again, including its State operation identity. Every State query requires
+that final read's scope generation to match the initial snapshot, even without an
+active selection. This catches roots and fetch selectors inserted after the
+snapshot, but also causes conflicts for unrelated writes in the same State scope.
+The fence applies to explicit as-of queries and empty snapshots; it adds no read
+and does not extend through result delivery. Reserve and count the identity read
+within the existing cumulative 512-read/16-effect limits. MCP queries compare
+the service-reported generation from token revalidation with the snapshot. When
+there are no tokens, a `get_many` of the known identity key supplies that check;
+the missing row and generation must both match. Preflight reserves one effect
+and 15 full-sized result pages for this probe, and counts each emitted call and
+page against the cumulative limits; fragmented pages can still exhaust the
+budget and refuse. Nonempty token revalidation adds no probe. The fence depends
+on the service's generation contract and ends at the final observation; it is
+not a lease through result delivery.
+
+For `as_of_ms: null`, calculate the next observation, expiry or fact-validity
+boundary over the captured snapshot, and check it after final State or MCP
+revalidation. Refuse with `query_time_changed` when that boundary is reached or
+the clock has moved behind the selected time. The bound includes unreturned
+captured records, so a fresh query may be needed even when the selected claims
+would not change. Explicit historical timestamps keep selected-time semantics.
+The time check cannot detect a source inserted outside the captured snapshot or
+a clock rollback and recovery between samples, and is not a lease through delivery.
+The State control also simulates a non-State final callback; it is not an
+end-to-end MCP transport test. A separate fixture exercises the MCP adapter,
+generation probe, paged-result accounting and refusal paths without an external
+MCP service. Exercise both controls with:
+
+```sh
+mix test test/extensions/knowledge/graph_capture_test.exs
+mix test test/extensions/knowledge/graph_mcp_generation_test.exs
+```
 
 Undo checks the exact current revision and latest operation ID, then removes
 only that step under namespace CAS. It needs no fresh authority from an expired
@@ -1514,9 +1544,14 @@ Changed/legacy selection yields missing-embedding refusal or explicitly partial 
 Query formatting belongs to the domain retrieval profile. `Profiles` accepts an
 optional `query_prefix` only on dense/hybrid entries, with 1..1024 valid UTF-8
 bytes and no NUL. `Corpus.rank_query/2` concatenates it with the already bounded
-original query before calling the existing embedding adapter. The resulting
-input remains within the adapter's 4096-byte per-input bound. The host receives
-the ordinary `embedding.create` request; no SDK or native protocol was added.
+original query before calling the existing embedding adapter. State, MCP and
+selected-Collection semantic queries refuse an original query beginning with the
+exact configured prefix, before the initial store read. This rejects a literal
+query with the same beginning as well as an already formatted query, and cannot
+identify altered or different wrappers; distinctive prefixes reduce ambiguity.
+The 1024-byte query and prefix limits keep the resulting input within the
+adapter's 4096-byte per-input bound. The host receives the ordinary
+`embedding.create` request; no SDK or native protocol was added.
 The complete dispatched string supplies the canonical input digest checked on
 every vector page. The original query remains in the query context for lexical
 ranking, reranking and source quotations. Indexing sends unchanged source chunks,
@@ -1528,7 +1563,9 @@ exact dispatched input when freezing an evaluation recipe.
 To exercise this boundary, run the profile, graph-population and built-artifact
 controls. The public Corpus driver indexes the same source and queries it through
 dense/hybrid entries with and without the prefix. It verifies raw passage input,
-exact query bytes, original citation and unchanged stored records. The profile
+exact query bytes, original citation and unchanged stored records. It also checks
+the same semantic query with and without a leading exact prefix for State, MCP
+and selected Collection, plus a State query without any configured prefix. The profile
 grid refuses empty, oversized, NUL and wrong-owner prefixes. These synthetic
 controls establish the request transformation, not a semantic quality benefit.
 

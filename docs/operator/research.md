@@ -49,12 +49,14 @@ and claims in the evidence ledger. Distinguish supported facts, inference,
 conflicts, and unanswered questions. Do not write a report file until I ask.
 ```
 
-This uses real model requests and approved external retrieval. For a local-only
-assessment, supply local sources and say so. Review each MCP query/URL, full
-arguments, and server identity. Native shell networking policy and configured
-HTTP MCP are separate boundaries. Headless `--yes` broadly authorizes configured
-calls. Prompt source counts guide the model; host request/context/ledger bounds
-remain authoritative. No silent service, model, or billing fallback occurs.
+This uses real model requests and approved external retrieval. To restrict the
+task to local source material, supply those sources and say so. That instruction
+does not confine the selected model or prove network isolation. Review each MCP
+query/URL, full arguments, and server identity. Native shell networking policy
+and configured HTTP MCP are separate boundaries. Headless `--yes` broadly
+authorizes configured calls. Prompt source counts guide the model; host request,
+context and ledger bounds remain authoritative. No silent service, model, or
+billing fallback occurs.
 
 ## Inspect and export the native ledger
 

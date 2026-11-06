@@ -436,6 +436,16 @@ defmodule GraphIdentityDriver do
           until(Graph.handle("host.actions", %{"outcome" => outcome}, graph), db, predicate)
         )
   end
+
+  def until_phase({:ok, %{"kind" => "host_call", "request" => request}, graph}, db, phase) do
+    if graph.phase === phase,
+      do: {request, graph, db},
+      else:
+        (
+          {outcome, db} = F.host(db, request)
+          until_phase(Graph.handle("host.actions", %{"outcome" => outcome}, graph), db, phase)
+        )
+  end
 end
 
 defmodule GraphIdentityTest do
@@ -591,6 +601,324 @@ defmodule GraphIdentityTest do
     {query, _, _} = I.query(graph, db, "Aspen", expiry)
     assert query["status"] === "refused"
     assert aliased["status"] === "ok"
+  end
+
+  test "current identity query refuses when its source or fact deadline passes during revalidation" do
+    now = System.system_time(:millisecond)
+
+    for {source_expiry, fact_expiry} <- [
+          {now + 60_000, now + 30_000},
+          {now + 30_000, now + 60_000}
+        ],
+        as_of <- [nil, now] do
+      {graph, db} = D.initial()
+      text = "Cedar uses Blue. Aspen is another name for Cedar."
+      {_, graph, db} = D.source(graph, db, text, 1, source_expiry)
+      relation = D.relation(%{"valid_to_ms" => fact_expiry})
+      {captured, graph, db} = D.invoke(graph, db, "capture", D.args([relation]))
+      assert captured["status"] === "ok"
+      {aliased, graph, db} = I.identity(graph, db, I.alias_args())
+      assert aliased["status"] === "ok"
+
+      invocation =
+        Graph.handle(
+          "invoke.tool",
+          %{
+            "id" => "query",
+            "arguments" => %{
+              "store" => "notes",
+              "entity" => "Aspen",
+              "depth" => 1,
+              "max_nodes" => 128,
+              "max_edges" => 256,
+              "top_k" => 10,
+              "as_of_ms" => as_of
+            }
+          },
+          graph
+        )
+
+      {request, pending, db} =
+        I.until(invocation, db, &(&1["op"] === "state.get" and &1["key"] === I.key()))
+
+      assert pending.phase === :query_identity_revalidate
+      assert pending.ctx.next_query_transition === min(source_expiry, fact_expiry)
+      {outcome, db} = F.host(db, request)
+      {on_time, _, _} = D.run(Graph.handle("host.actions", %{"outcome" => outcome}, pending), db)
+      assert on_time["status"] === "ok"
+
+      # Simulate the same final callback after the already-computed deadline,
+      # without an unreliable wall-clock sleep or another external effect.
+      late = put_in(pending.ctx.next_query_transition, 0)
+      {result, _, _} = D.run(Graph.handle("host.actions", %{"outcome" => outcome}, late), db)
+
+      if is_nil(as_of) do
+        assert result["status"] === "refused"
+        assert result["claims"] === [] and result["evidence"] === []
+        assert result["gaps"] === [%{"code" => "query_time_changed"}]
+      else
+        assert result["status"] === "ok"
+      end
+    end
+  end
+
+  test "source and fact expiry also withhold current queries without identity choices" do
+    now = System.system_time(:millisecond)
+
+    for field <- [:source, :fact], as_of <- [nil, now] do
+      expiry = now + 60_000
+      {graph, db} = D.initial()
+
+      {_, graph, db} =
+        D.source(graph, db, "Cedar uses Blue.", 1, if(field === :source, do: expiry))
+
+      fact = D.relation(%{"valid_to_ms" => if(field === :fact, do: expiry)})
+      {captured, graph, db} = D.invoke(graph, db, "capture", D.args([fact]))
+      assert captured["status"] === "ok"
+      original_records = db.records
+
+      args = %{
+        "store" => "notes",
+        "entity" => "Cedar",
+        "depth" => 1,
+        "max_nodes" => 128,
+        "max_edges" => 256,
+        "top_k" => 10,
+        "as_of_ms" => as_of
+      }
+
+      {request, pending, db} =
+        I.until(
+          Graph.handle("invoke.tool", %{"id" => "query", "arguments" => args}, graph),
+          db,
+          &(&1["op"] === "state.get" and &1["key"] === I.key())
+        )
+
+      assert pending.ctx.next_query_transition === expiry
+      {outcome, db} = F.host(db, request)
+      late = put_in(pending.ctx.next_query_transition, 0)
+
+      {result, _, after_db} =
+        D.run(Graph.handle("host.actions", %{"outcome" => outcome}, late), db)
+
+      assert after_db.records === original_records
+
+      if is_nil(as_of) do
+        assert result["status"] === "refused"
+        assert result["claims"] === [] and result["evidence"] === []
+        assert result["gaps"] === [%{"code" => "query_time_changed"}]
+      else
+        assert result["status"] === "ok"
+      end
+    end
+  end
+
+  test "the identity-universe deadline may include an unreturned unrelated fact" do
+    expiry = System.system_time(:millisecond) + 60_000
+    {graph, db} = D.initial()
+    text = "Cedar uses Blue. Birch uses Green. Aspen is another name for Cedar."
+    {_, graph, db} = D.source(graph, db, text)
+
+    birch =
+      D.relation(%{
+        "subject" => "Birch",
+        "object" => "Green",
+        "quote" => "Birch uses Green.",
+        "valid_to_ms" => expiry
+      })
+
+    {captured, graph, db} = D.invoke(graph, db, "capture", D.args([D.relation(), birch]))
+    assert captured["status"] === "ok"
+    {aliased, graph, db} = I.identity(graph, db, I.alias_args())
+    assert aliased["status"] === "ok"
+
+    args = %{
+      "store" => "notes",
+      "entity" => "Aspen",
+      "depth" => 1,
+      "max_nodes" => 128,
+      "max_edges" => 256,
+      "top_k" => 10,
+      "as_of_ms" => nil
+    }
+
+    {request, pending, db} =
+      I.until(
+        Graph.handle("invoke.tool", %{"id" => "query", "arguments" => args}, graph),
+        db,
+        &(&1["op"] === "state.get" and &1["key"] === I.key())
+      )
+
+    assert pending.ctx.next_query_transition === expiry
+    {outcome, db} = F.host(db, request)
+    {result, _, _} = D.run(Graph.handle("host.actions", %{"outcome" => outcome}, pending), db)
+    assert Enum.map(result["claims"], & &1["subject"]) === ["Cedar"]
+    late = put_in(pending.ctx.next_query_transition, 0)
+    {refused, _, _} = D.run(Graph.handle("host.actions", %{"outcome" => outcome}, late), db)
+    assert refused["status"] === "refused"
+  end
+
+  test "future fact activation and backward clock refuse a current query but not historical queries" do
+    now = System.system_time(:millisecond)
+    activation = now + 60_000
+    {graph, db} = D.initial()
+    text = "Cedar uses Blue. Aspen uses Gold. Aspen is another name for Cedar."
+    {_, graph, db} = D.source(graph, db, text)
+
+    future =
+      D.relation(%{
+        "subject" => "Aspen",
+        "object" => "Gold",
+        "quote" => "Aspen uses Gold.",
+        "valid_from_ms" => activation
+      })
+
+    {captured, graph, db} = D.invoke(graph, db, "capture", D.args([D.relation(), future]))
+    assert captured["status"] === "ok"
+
+    for identity? <- [false, true], as_of <- [nil, now] do
+      {graph, db} =
+        if identity? do
+          {alias_result, graph, db} = I.identity(graph, db, I.alias_args())
+          assert alias_result["status"] === "ok"
+          {graph, db}
+        else
+          {graph, db}
+        end
+
+      args = %{
+        "store" => "notes",
+        "entity" => if(identity?, do: "Aspen", else: "Cedar"),
+        "depth" => 1,
+        "max_nodes" => 128,
+        "max_edges" => 256,
+        "top_k" => 10,
+        "as_of_ms" => as_of
+      }
+
+      {request, pending, db} =
+        I.until(
+          Graph.handle("invoke.tool", %{"id" => "query", "arguments" => args}, graph),
+          db,
+          &(&1["op"] === "state.get" and &1["key"] === I.key())
+        )
+
+      assert pending.ctx.next_query_transition === activation
+      {outcome, db} = F.host(db, request)
+      {on_time, _, _} = D.run(Graph.handle("host.actions", %{"outcome" => outcome}, pending), db)
+      assert on_time["status"] === "ok"
+
+      for late <- [
+            put_in(pending.ctx.next_query_transition, 0),
+            put_in(pending.ctx.as_of_ms, now + 120_000)
+          ] do
+        {result, _, _} = D.run(Graph.handle("host.actions", %{"outcome" => outcome}, late), db)
+
+        if is_nil(as_of) do
+          assert result["status"] === "refused"
+          assert result["claims"] === [] and result["evidence"] === []
+          assert result["gaps"] === [%{"code" => "query_time_changed"}]
+        else
+          assert result["status"] === "ok"
+        end
+      end
+    end
+  end
+
+  test "a future-observed source also bounds current snapshot selection" do
+    now = System.system_time(:millisecond)
+    activation = now + 60_000
+    {graph, db} = I.seed()
+
+    args = %{
+      "store" => "notes",
+      "action" => "put",
+      "args" => %{
+        "source_id" => "future-source",
+        "generation" => 1,
+        "expected_revision" => 0,
+        "title" => "Future source",
+        "text" => "Future relation.",
+        "uri" => "provided:future",
+        "observed_at_ms" => activation,
+        "event_at_ms" => nil,
+        "expires_at_ms" => nil
+      }
+    }
+
+    {stored, graph, db} =
+      D.run(Graph.handle("invoke.command", %{"id" => "source", "arguments" => args}, graph), db)
+
+    assert stored["status"] === "ok"
+
+    query = %{
+      "store" => "notes",
+      "entity" => "Cedar",
+      "depth" => 1,
+      "max_nodes" => 128,
+      "max_edges" => 256,
+      "top_k" => 10,
+      "as_of_ms" => nil
+    }
+
+    {request, pending, db} =
+      I.until(
+        Graph.handle("invoke.tool", %{"id" => "query", "arguments" => query}, graph),
+        db,
+        &(&1["op"] === "state.get" and &1["key"] === I.key())
+      )
+
+    assert pending.ctx.next_query_transition === activation
+    {outcome, db} = F.host(db, request)
+    late = put_in(pending.ctx.next_query_transition, 0)
+    {refused, _, _} = D.run(Graph.handle("host.actions", %{"outcome" => outcome}, late), db)
+    assert refused["status"] === "refused"
+  end
+
+  test "non-State final callback checks the captured-snapshot boundary" do
+    activation = System.system_time(:millisecond) + 60_000
+    {graph, db} = D.initial()
+    {_, graph, db} = D.source(graph, db, "Cedar uses Blue. Aspen uses Gold.")
+
+    future =
+      D.relation(%{
+        "subject" => "Aspen",
+        "object" => "Gold",
+        "quote" => "Aspen uses Gold.",
+        "valid_from_ms" => activation
+      })
+
+    {captured, graph, db} = D.invoke(graph, db, "capture", D.args([D.relation(), future]))
+    assert captured["status"] === "ok"
+
+    args = %{
+      "store" => "notes",
+      "entity" => "Cedar",
+      "depth" => 1,
+      "max_nodes" => 128,
+      "max_edges" => 256,
+      "top_k" => 10,
+      "as_of_ms" => nil
+    }
+
+    {request, pending, db} =
+      I.until_phase(
+        Graph.handle("invoke.tool", %{"id" => "query", "arguments" => args}, graph),
+        db,
+        :query_revalidate
+      )
+
+    assert pending.ctx.next_query_transition === activation
+    # Simulate the non-State finish branch after the State fixture produced the
+    # existing validated snapshot. This does not exercise an MCP wire adapter.
+    pending = put_in(pending.ctx.profile["kind"], "mcp_cas")
+    {outcome, db} = F.host(db, request)
+    {on_time, _, _} = D.run(Graph.handle("host.actions", %{"outcome" => outcome}, pending), db)
+    assert on_time["status"] === "ok"
+    late = put_in(pending.ctx.next_query_transition, 0)
+    {refused, _, _} = D.run(Graph.handle("host.actions", %{"outcome" => outcome}, late), db)
+    assert refused["status"] === "refused" and refused["claims"] === []
+    assert refused["gaps"] === [%{"code" => "query_time_changed"}]
   end
 
   test "aliases cannot shadow existing entities and merges cannot make cycles or self selections" do
@@ -840,6 +1168,156 @@ defmodule GraphIdentityTest do
     {query, _, _} = I.query(graph, db, "Aspen")
     assert query["status"] === "ok"
     assert [%{"subject" => ^entity, "basis" => [%{"quote" => ^fact_quote}]}] = query["claims"]
+  end
+end
+
+defmodule GraphNamespaceRaceTest do
+  use ExUnit.Case, async: false
+  alias CaptureDriver, as: D
+  alias GraphIdentityDriver, as: I
+  alias IpseKnowledge.Graph
+  alias Ipse.Development.Fixtures.Knowledge, as: F
+
+  defp pending(graph, db) do
+    args = %{
+      "store" => "notes",
+      "entity" => "Cedar",
+      "depth" => 1,
+      "max_nodes" => 128,
+      "max_edges" => 256,
+      "top_k" => 10,
+      "as_of_ms" => nil
+    }
+
+    I.until(
+      Graph.handle("invoke.tool", %{"id" => "query", "arguments" => args}, graph),
+      db,
+      &(&1["op"] === "state.get")
+    )
+  end
+
+  test "namespace changes after selection refuse for empty, populated, and identity snapshots" do
+    for kind <- [:empty, :populated, :identity] do
+      {graph, db} = if kind == :empty, do: D.initial(), else: I.seed()
+
+      {graph, db} =
+        if kind == :identity do
+          {res, graph, db} = I.identity(graph, db, I.alias_args())
+          assert res["status"] == "ok"
+          {graph, db}
+        else
+          {graph, db}
+        end
+
+      {request, cont, db} = pending(graph, db)
+      {outcome, _} = F.host(db, request)
+      {ok, _, _} = D.run(Graph.handle("host.actions", %{"outcome" => outcome}, cont), db)
+      assert ok["status"] in ["ok", "abstain"]
+
+      args = %{
+        "store" => "notes",
+        "action" => "put",
+        "args" => %{
+          "source_id" => "new-source",
+          "generation" => 1,
+          "expected_revision" => 0,
+          "title" => "New",
+          "text" => "Cedar uses Red.",
+          "uri" => "provided:new",
+          "observed_at_ms" => 1,
+          "event_at_ms" => nil,
+          "expires_at_ms" => nil
+        }
+      }
+
+      {put, _, changed} =
+        D.run(Graph.handle("invoke.command", %{"id" => "source", "arguments" => args}, graph), db)
+
+      assert put["status"] == "ok"
+      before = changed.records
+      {outcome, changed} = F.host(changed, request)
+
+      {result, _, after_db} =
+        D.run(Graph.handle("host.actions", %{"outcome" => outcome}, cont), changed)
+
+      assert result["status"] == "conflict"
+      assert result["claims"] == [] and result["evidence"] == []
+      assert after_db.records == before
+    end
+  end
+
+  test "new selector or unrelated State write conflicts; unchanged snapshots still return" do
+    for kind <- [:selector, :unrelated], historical <- [false, true] do
+      {graph, db} = I.seed()
+
+      args = %{
+        "store" => "notes",
+        "entity" => "Cedar",
+        "depth" => 1,
+        "max_nodes" => 128,
+        "max_edges" => 256,
+        "top_k" => 10,
+        "as_of_ms" => if(historical, do: 1, else: nil)
+      }
+
+      {request, cont, db} =
+        I.until(
+          Graph.handle("invoke.tool", %{"id" => "query", "arguments" => args}, graph),
+          db,
+          &(&1["op"] === "state.get")
+        )
+
+      {outcome, _} = F.host(db, request)
+      {ok, _, _} = D.run(Graph.handle("host.actions", %{"outcome" => outcome}, cont), db)
+      assert ok["status"] in ["ok", "abstain"]
+
+      key =
+        if kind == :selector,
+          do: IpseKnowledge.Store.fetch_origin_key("notes", "web", "fixture:release"),
+          else: "unrelated-setting"
+
+      digest = IpseKnowledge.Evidence.sha256("body")
+
+      value =
+        if kind == :selector do
+          %{
+            "format" => 1,
+            "kind" => "fetch_origin",
+            "partition" => "notes",
+            "source_key" => key,
+            "source_id" => "research.provided:" <> digest,
+            "generation" => 1,
+            "state" => "active",
+            "content_sha256" => digest,
+            "binding" => "web",
+            "requested_uri" => "fixture:release",
+            "observed_uri" => "fixture:release",
+            "observed_at_ms" => 1,
+            "capture_sha256" => digest
+          }
+        else
+          %{"unrelated" => true}
+        end
+
+      {written, changed} =
+        F.host(db, %{
+          "op" => "state.put",
+          "scope" => "project",
+          "key" => key,
+          "expected_revision" => 0,
+          "value" => value
+        })
+
+      assert written["status"] == "ok"
+      before = changed.records
+      {outcome, changed} = F.host(changed, request)
+
+      {result, _, final} =
+        D.run(Graph.handle("host.actions", %{"outcome" => outcome}, cont), changed)
+
+      assert result["status"] == "conflict"
+      assert result["claims"] == [] and result["evidence"] == [] and final.records == before
+    end
   end
 end
 
