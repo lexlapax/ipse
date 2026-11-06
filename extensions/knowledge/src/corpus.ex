@@ -202,6 +202,7 @@ defmodule IpseKnowledge.Corpus do
         "fact_input" ->
           case outer["args"] do
             %{"input" => %{"mode" => "append"}} -> ["result_input"]
+            %{"input" => %{"mode" => "assemble"}} -> ["data_inputs"]
             _ -> []
           end
 
@@ -236,6 +237,38 @@ defmodule IpseKnowledge.Corpus do
               finish(state, refused(:result_too_large))
           end
 
+        "assemble" ->
+          refs = outer["data_inputs"]
+
+          with true <- is_list(refs) and length(refs) in 1..8,
+               true <- length(Enum.uniq(refs)) === length(refs),
+               true <-
+                 Enum.all?(refs, fn ref ->
+                   match?(
+                     {:call, _, _},
+                     CollectionStore.start(profile, :selected_fact_result, %{
+                       "result_input" => ref
+                     })
+                   )
+                 end),
+               true <-
+                 Enum.sum(Enum.map(refs, &div(&1["delivery"]["byte_count"] + 6143, 6144))) <= 512 do
+            fact_group_assembly_next(%{
+              state
+              | phase: :fact_group_assembly,
+                ctx: %{
+                  profile: profile,
+                  remaining: refs,
+                  reads: 0,
+                  reader_start: 0,
+                  owner: nil,
+                  sources: []
+                }
+            })
+          else
+            _ -> finish(state, refused(:invalid_fact_group_assembly))
+          end
+
         "begin" ->
           args = %{
             "action" => "begin",
@@ -266,6 +299,40 @@ defmodule IpseKnowledge.Corpus do
 
   defp collection_fact_input(state, _, _, _),
     do: finish(state, refused(:collection_lifecycle_unavailable))
+
+  defp fact_group_assembly_next(%{ctx: %{remaining: []} = ctx} = state) do
+    value = %{"version" => 1, "kind" => "explicit_fact_group", "sources" => ctx.sources}
+
+    case Ipse.Extension.ResultPublication.prepare_paged(value) do
+      {:ok, reply} -> {:ok, reply, %{state | phase: :idle, ctx: nil, cont: nil, pending: nil}}
+      _ -> finish(state, refused(:result_too_large))
+    end
+  end
+
+  defp fact_group_assembly_next(%{ctx: %{remaining: [ref | _]} = ctx} = state) do
+    advance(
+      CollectionStore.start(ctx.profile, :selected_fact_result, %{"result_input" => ref}),
+      %{state | ctx: %{ctx | reader_start: ctx.reads}}
+    )
+  end
+
+  defp merge_fact_group(existing, incoming) do
+    Enum.reduce_while(incoming, {:ok, existing}, fn source, {:ok, sources} ->
+      index = Enum.find_index(sources, &(&1["source_key"] === source["source_key"]))
+
+      rows =
+        if is_nil(index),
+          do: source["facts"],
+          else: Enum.at(sources, index)["facts"] ++ source["facts"]
+
+      cond do
+        length(rows) > 32 or length(Enum.uniq(rows)) !== length(rows) -> {:halt, :error}
+        is_nil(index) and length(sources) >= 8 -> {:halt, :error}
+        is_nil(index) -> {:cont, {:ok, sources ++ [source]}}
+        true -> {:cont, {:ok, List.update_at(sources, index, &Map.put(&1, "facts", rows))}}
+      end
+    end)
+  end
 
   defp collection_backup_source(state, profile, action, args, outer) do
     if profile["kind"] === "collection" do
@@ -1200,6 +1267,20 @@ defmodule IpseKnowledge.Corpus do
     end
   end
 
+  defp advance({:call, request, cont}, %{phase: :fact_group_assembly} = state) do
+    if CollectionStore.read_request?(request) and
+         get_in(request, ["request", "op"]) === "restore.input.read" and state.ctx.reads < 512 do
+      call(request, %{
+        state
+        | ctx: %{state.ctx | reads: state.ctx.reads + 1},
+          cont: cont,
+          pending: :collection
+      })
+    else
+      finish(state, refused(:collection_backup_read_budget))
+    end
+  end
+
   defp advance({:call, request, cont}, state) do
     request =
       if state.phase == :collection_source and state.ctx[:workspace_snapshot] == true and
@@ -1343,6 +1424,25 @@ defmodule IpseKnowledge.Corpus do
       ),
       %{state | phase: :fact_group_append}
     )
+  end
+
+  defp advance({:done, {:ok, selected}}, %{phase: :fact_group_assembly} = state) do
+    ctx = state.ctx
+    [ref | remaining] = ctx.remaining
+    value = selected["value"]
+
+    with true <- selected["result_input"] === ref,
+         true <- selected["reads_used"] === ctx.reads - ctx.reader_start,
+         true <- is_nil(ctx.owner) or ctx.owner === selected["owner"],
+         true <- fact_group_input?(%{"version" => 1, "mode" => "publish", "value" => value}),
+         {:ok, sources} <- merge_fact_group(ctx.sources, value["sources"]) do
+      fact_group_assembly_next(%{
+        state
+        | ctx: %{ctx | remaining: remaining, owner: selected["owner"], sources: sources}
+      })
+    else
+      _ -> finish(state, refused(:invalid_fact_group_assembly))
+    end
   end
 
   defp advance({:done, {:continue, value}}, %{phase: phase} = state)
@@ -2548,6 +2648,9 @@ defmodule IpseKnowledge.Corpus do
         input["fact_selection"] === %{"kind" => "explicit", "profile" => nil, "version" => 1} and
         (is_nil(input["continuation"]) or is_map(input["continuation"]))
 
+  defp fact_group_input?(%{"version" => 1, "mode" => "assemble"} = input),
+    do: exact?(input, ~w(version mode))
+
   defp fact_group_input?(%{"version" => 1, "mode" => "append"} = input) do
     producer = input["producer"]
 
@@ -2619,7 +2722,7 @@ defmodule IpseKnowledge.Corpus do
         "data_inputs" => %{
           "type" => "array",
           "minItems" => 1,
-          "maxItems" => 4,
+          "maxItems" => 8,
           "items" => %{"type" => "object"}
         },
         "args" => %{

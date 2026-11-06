@@ -68,7 +68,7 @@ lanes can proceed together; the arrows identify actual implementation dependenci
 | Order and owner lane | Current task and subtasks | Closure evidence still needed |
 | --- | --- | --- |
 | Documents 1 | Complete within bounded source-runtime scope: public saved-result publication, unbound Job creation, vector preparation, explicit input binding, append and finalization. The synthetic public Session journey, focused checks and manual review pass; the earlier fixture assertion failure is preserved | Larger groups, installed use and full capacity have separate gates below |
-| Documents 2 → 1 | Assemble larger fact groups from ordered saved results within the unchanged command frame. Reuse the selected-result reader, enforce one shared 512-read budget, preserve order and refuse duplicate rows | Implement and test the bounded assembly path; a small one-result journey does not establish the full 160-fact group |
+| Documents 2 → 1 | Complete within bounded source-runtime scope: ordered saved-result assembly, one shared 512-read budget and duplicate refusal. The [eight-source/160-fact public journey](archive/2026-10-26-p30-p31-implementation/document-fact-assembly-public-20261106.md) passes through append/finalization and six closed/idle Sessions | Full capacity, installed use and all maximum-value combinations retain separate gates |
 | Documents 3 → 2 | Execute the actual public recipe for the fixed full document target, declared replacement, retained history, cleanup and migration. Replace private assembly shortcuts in the existing accounting model | Complete request/response and operation accounting, then actual native journal/allocation peaks and lifecycle controls under unchanged limits |
 | Notes | Current recall, one complete populated day, then the declared annual workload with 10,000 mixed changes. The original retained check is declined; populated recall and integrated endurance remain unqualified | Authorized evidence for those gates; preserve all 2,100 original operations and unknown outcomes without replay or a substitute consumer |
 | Decisions | Finish local protocol/integration gaps and the frozen baseline/candidate assessment. The [separate reference/review contract](archive/2026-10-26-p30-p31-implementation/p30-selection-review-v2-20261106.md) passes its pure controls; actual revised paired lifecycle remains pending. Keep useful, rejected/no-benefit and unverified outcomes distinct | Current complete baseline and revised v2 row/freeze/review integration; independent quality labels and matched time/cost, or a completed supported negative disposition. Synthetic protocol success alone is insufficient |
@@ -1887,8 +1887,11 @@ a single Session hit the lineage producer limit. Host-level group-read interposi
 maximum-scale build and publication cost, wider public production and integrated qualification remain open.
 A separate [result-backed supplied-fact caller](archive/2026-10-26-p30-p31-implementation/document-fact-result-public-20261106.md)
 has a one-source, one-fact public Session check with a synthetic registered
-embedding, explicit result binding and same-owner continuation. Larger group
-assembly, installed qualification and the full P31 capacity target remain open.
+embedding, explicit result binding and same-owner continuation. The separate
+[bounded assembly journey](archive/2026-10-26-p30-p31-implementation/document-fact-assembly-public-20261106.md)
+now covers eight inputs, eight sources and 160 supplied facts through final
+selection, with actual catalog-order inspection and an unbound Session handoff.
+Installed qualification and the full P31 capacity target remain open.
 A separate [producer egress epoch increment](archive/2026-10-26-p30-p31-implementation/producer-egress-epoch-20261106.md)
 fences staged and inline claims against the held reader's current idle epoch.
 Synthetic Session controls cover both pre-approval fences, a fresh post-fence

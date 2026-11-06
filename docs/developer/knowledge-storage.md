@@ -684,6 +684,20 @@ authenticated pre-bind revision for ready-page provenance and the current native
 complete command retains the same result reference, rather than copying rows into
 each continuation.
 
+`fact_input assemble` can first merge one to eight explicitly selected result
+references into a new paged provided-data result. It checks the descriptor read
+lower bound before opening any input and enforces one 512-call counter before
+each actual read across all inputs. Each reader verifies its complete delivery
+and owner; the assembler also requires the same stable owner across references.
+It preserves first-seen Source order and row order, rejects duplicate references
+and exact duplicate rows, and caps the merged set at eight Sources and 32 rows
+per Source. It does not recursively follow referenced data, establish source
+eligibility or grant a later mutation. Append still validates the assembled
+rows against the actual current Source group in catalog-page order. Insertion
+order is not a substitute: Collection sorts the keys in each catalog page, and
+the assembler deliberately preserves the supplied order. The operator can
+inspect a bounded public catalog export before constructing the group.
+
 A bound Job can instead take an exact owner-bound reducing abort. It retains its
 opening epoch, cursor, summaries and facts, removes the binding, and returns to
 the corresponding legacy `aborted` format. This path may use the current idle
@@ -724,6 +738,7 @@ mix test test/extensions/knowledge/collection_split_append_native_test.exs --onl
 mix test test/extensions/knowledge/collection_adapter_session_test.exs --only generation_maintenance_session --max-cases 1
 mix test test/ipse/extension/collection_job_input_guard_test.exs
 mix test test/extensions/knowledge/producer_result_append_test.exs test/extensions/knowledge/collection_backup_test.exs
+mix test test/extensions/knowledge/fact_group_assembly_test.exs
 ```
 
 The Session controls prepare approved work, open/close the internal fence and

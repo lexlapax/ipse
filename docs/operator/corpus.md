@@ -978,8 +978,17 @@ The source key is the SHA-256 of the exact source ID. Each fact has one to eight
 `[chunk ordinal, start byte, end byte]` spans with an exclusive end. Include each
 source in the captured group in its actual order, with `facts:[]` for an explicit
 empty set. One publication accepts at most eight source keys and 32 facts per
-source, but the complete command must also fit the existing request frame; it
-does not assemble a maximum-size group from multiple commands.
+source, but the complete command must also fit the existing request frame.
+
+For a multi-source group, inspect the current catalog instead of assuming the
+order in which you added sources. The read-only `backup_status` and `backup_page`
+commands in the [Collection backup procedure](#back-up-a-small-document-collection)
+return packed catalog records at a pinned generation. Materialize the relevant
+`catalog.<partition>.<ordinal>` record, join its `value.parts` in order and
+decode that body as JSON. Use its `rows` source keys in their returned order for
+the corresponding group, including empty fact lists where needed. Reinspect if
+the catalog changes. The export and saved-result bounds still apply; if the
+catalog cannot be inspected within those bounds, do not guess its order.
 
 Even a small publication returns a `saved.result`. Materialize it with the
 [saved-result procedure](extensions.md#invoke-a-command-and-inspect-its-complete-result),
@@ -987,6 +996,26 @@ retain the producing Session ID and **complete** delivery descriptor, and close
 that Session before selecting the result elsewhere. A reference has the shape
 `{"version":1,"session_id":"ACTUAL_SESSION_ID","delivery":ACTUAL_DELIVERY_OBJECT}`;
 an output ID or copied JSON alone is not the selected reference.
+
+If the complete group does not fit one publication command, publish smaller
+fragments and retain their complete references. After the producing Sessions
+close, assemble one to eight distinct references in a separate Session:
+
+```text
+/ext ext__producer__source {"store":"notes","action":"fact_input","args":{"input":{"version":1,"mode":"assemble"}},"data_inputs":[FIRST_REFERENCE,SECOND_REFERENCE]}
+```
+
+Replace each placeholder with its complete actual reference. The assembler
+preserves the first-seen source order and each source's fact order across the
+selected fragments. A repeated source can contribute more rows; an empty list
+does not erase earlier rows. Exact duplicate rows, more than eight distinct
+sources or more than 32 facts for one source refuse rather than dropping data.
+The total input reads share the existing 512-read limit, and the assembled
+result must fit the existing saved-result limits. It is a new provided-data
+`saved.result`, not a claim that its inputs or assertions are current or true.
+Materialize and retain its complete reference and close the assembly Session
+before selecting it for append. The assembler reads only the references named in
+that command; it does not follow references inside their contents.
 
 In the Job-owning Session, obtain the exact vector selector as above, then begin
 the opt-in Job using that selector and the explicit fact selector:
@@ -1024,9 +1053,11 @@ When append reaches `manifests`, use its Job continuation with the guarded
 finalization procedure above. If it reaches `groups`, produce the next group's
 vectors while its binding is empty and explicitly select that group's result.
 No new inference is admitted while a group is bound. The
-[bounded public check](../archive/2026-10-26-p30-p31-implementation/document-fact-result-public-20261106.md)
-exercises one supplied source and fact; larger group construction and full
-capacity remain open.
+[one-fact public check](../archive/2026-10-26-p30-p31-implementation/document-fact-result-public-20261106.md)
+and [eight-source assembly check](../archive/2026-10-26-p30-p31-implementation/document-fact-assembly-public-20261106.md)
+exercise this procedure with synthetic data, including a 160-fact group. These
+source-runtime controls do not qualify installed use, every maximum-size input
+or full capacity.
 
 If a source changes or expires, inspect the Job with the same selectors. A known
 bound Job can be retired by its original owner using `generation_job abort` and
