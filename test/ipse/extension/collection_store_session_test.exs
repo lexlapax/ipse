@@ -418,6 +418,7 @@ defmodule Ipse.Extension.CollectionStoreSessionTest do
 
     fresh = %{
       "op" => "value.put_inline",
+      "maintenance_epoch" => 1,
       "key" => "fresh.document",
       "expected_revision" => 0,
       "byte_count" => byte_size(bytes),

@@ -20,6 +20,7 @@ defmodule IpseKnowledge.Store.Collection.Index do
         reads: 0,
         effects: 0,
         inner: nil,
+        maintenance_epoch: nil,
         native_generation: nil,
         job: nil,
         job_row: nil,
@@ -31,7 +32,7 @@ defmodule IpseKnowledge.Store.Collection.Index do
         plan: nil
       }
 
-      io(s, :value_read, %{"key" => catalog_key(s)}, :catalog)
+      io(s, :snapshot, %{}, :maintenance_snapshot)
     else
       _ -> error(:invalid_lexical_index_request)
     end
@@ -46,6 +47,8 @@ defmodule IpseKnowledge.Store.Collection.Index do
   defp valid_args?(:lexical_build, a) do
     exact?(a, ~w(action continuation)) and a["action"] in ~w(begin next inspect abort) and
       (is_nil(a["continuation"]) or token?(a["continuation"])) and
+      (not is_map(a["continuation"]) or a["continuation"]["version"] !== 4 or
+         a["action"] == "abort") and
       (a["action"] not in ~w(next abort) or is_map(a["continuation"]))
   end
 
@@ -55,7 +58,12 @@ defmodule IpseKnowledge.Store.Collection.Index do
   end
 
   defp io(s, op, args, phase) do
-    advance(C.start(s.profile, op, args), %{s | phase: phase})
+    result =
+      if is_nil(s.maintenance_epoch),
+        do: C.start(s.profile, op, args),
+        else: C.start_with_epoch(s.profile, op, args, s.maintenance_epoch)
+
+    advance(result, %{s | phase: phase})
   end
 
   defp advance({:call, request, inner}, s) do
@@ -106,6 +114,17 @@ defmodule IpseKnowledge.Store.Collection.Index do
 
   defp advance({:done, {:error, code, _}}, _) do
     error(code)
+  end
+
+  defp done(%{phase: :maintenance_snapshot} = s, value) do
+    with {:ok, epoch, status} <- C.snapshot_epoch(value),
+         true <-
+           s.operation == :lexical_query or s.args["action"] == "inspect" or status == "idle",
+         true <- continuation_epoch?(s.token, s.args["action"], epoch) do
+      io(%{s | maintenance_epoch: epoch}, :value_read, %{"key" => catalog_key(s)}, :catalog)
+    else
+      _ -> error(:lexical_maintenance_changed)
+    end
   end
 
   defp done(%{phase: :catalog} = s, value) do
@@ -163,11 +182,21 @@ defmodule IpseKnowledge.Store.Collection.Index do
           with true <-
                  row != nil and t["job_id"] == s.job["id"] and
                    t["job_revision"] == row["revision"],
+               true <- job_epoch(s.job) === token_epoch(t),
                true <- s.job["status"] == "building" do
             s = %{s | work: t["work"], stages: t["stages"]}
 
             if action == "abort" do
-              write_job(s, Map.put(s.job, "status", "aborted"), :aborted)
+              write_job(
+                %{
+                  s
+                  | work: "retire",
+                    token: if(t["version"] === 4, do: t, else: nil),
+                    stages: %{}
+                },
+                Map.put(s.job, "status", "aborted"),
+                :aborted
+              )
             else
               continue_job(s)
             end
@@ -489,7 +518,9 @@ defmodule IpseKnowledge.Store.Collection.Index do
   end
 
   defp begin_job(s) do
-    completed = s.job && s.root_row && s.root_row["value"]["job_id"] == s.job["id"]
+    completed =
+      not is_nil(s.job) and not is_nil(s.root_row) and
+        s.root_row["value"]["job_id"] == s.job["id"]
 
     cond do
       s.root_row &&
@@ -519,6 +550,11 @@ defmodule IpseKnowledge.Store.Collection.Index do
               1
             end
         }
+
+        job =
+          if s.maintenance_epoch == 0,
+            do: job,
+            else: Map.merge(job, %{"version" => 2, "maintenance_epoch" => s.maintenance_epoch})
 
         write_job(%{s | job: job, work: "job"}, job, :begun)
     end
@@ -712,10 +748,26 @@ defmodule IpseKnowledge.Store.Collection.Index do
       "stages" => s.stages
     }
 
+    token =
+      cond do
+        s.work == "retire" ->
+          Map.merge(token, %{
+            "version" => 4,
+            "maintenance_epoch" => job_epoch(s.job),
+            "retirement_epoch" => s.maintenance_epoch
+          })
+
+        s.maintenance_epoch == 0 ->
+          token
+
+        true ->
+          Map.merge(token, %{"version" => 3, "maintenance_epoch" => s.maintenance_epoch})
+      end
+
     {:done,
      {:continue,
       %{
-        "status" => "building",
+        "status" => if(s.work == "retire", do: "aborting", else: "building"),
         "continuation" => token,
         "source_cursor" => s.job["cursor"],
         "coverage" => coverage(s)
@@ -1221,10 +1273,13 @@ defmodule IpseKnowledge.Store.Collection.Index do
   end
 
   defp job?(j, s) do
+    epoch_fields = if j["version"] === 2, do: ["maintenance_epoch"], else: []
+
     exact?(
       j,
-      ~w(version kind id status catalog catalog_sha256 cursor unit groups root_revision index_generation)
-    ) and j["version"] === 1 and j["kind"] == "lexical_job" and id?(j["id"]) and
+      ~w(version kind id status catalog catalog_sha256 cursor unit groups root_revision index_generation) ++
+        epoch_fields
+    ) and job_epoch_valid?(j) and j["kind"] == "lexical_job" and id?(j["id"]) and
       j["status"] in ~w(building aborted) and C.valid_catalog?(j["catalog"], s.profile) and
       E.sha256?(j["catalog_sha256"]) and E.sha256(json(j["catalog"])) == j["catalog_sha256"] and
       E.safe_uint?(j["cursor"]) and j["cursor"] <= j["catalog"]["sources"] and
@@ -1242,13 +1297,57 @@ defmodule IpseKnowledge.Store.Collection.Index do
   end
 
   defp token?(t) do
-    exact?(t, ~w(version job_id job_revision work write stages unit)) and t["version"] === 2 and
+    epoch_fields =
+      case t["version"] do
+        3 -> ["maintenance_epoch"]
+        4 -> ~w(maintenance_epoch retirement_epoch)
+        _ -> []
+      end
+
+    exact?(t, ~w(version job_id job_revision work write stages unit) ++ epoch_fields) and
+      token_epoch_valid?(t) and
       E.safe_uint?(t["unit"]) and t["unit"] <= 128 and
       id?(t["job_id"]) and E.safe_positive?(t["job_revision"]) and
-      t["work"] in ~w(unit job root catalog publish) and
+      ((t["version"] in [2, 3] and t["work"] in ~w(unit job root catalog publish)) or
+         (t["version"] === 4 and t["work"] == "retire" and t["stages"] === %{} and
+            t["unit"] === 0 and is_map(t["write"]))) and
       (is_nil(t["write"]) or is_map(t["write"])) and is_map(t["stages"]) and
       Enum.all?(Map.keys(t["stages"]), &(&1 in ~w(root catalog)))
   end
+
+  defp job_epoch_valid?(%{"version" => 1}), do: true
+
+  defp job_epoch_valid?(%{"version" => 2, "maintenance_epoch" => epoch}),
+    do: E.safe_positive?(epoch)
+
+  defp job_epoch_valid?(_), do: false
+
+  defp token_epoch_valid?(%{"version" => 2}), do: true
+
+  defp token_epoch_valid?(%{"version" => 3, "maintenance_epoch" => epoch}),
+    do: E.safe_positive?(epoch)
+
+  defp token_epoch_valid?(%{
+         "version" => 4,
+         "maintenance_epoch" => epoch,
+         "retirement_epoch" => retirement
+       }),
+       do: E.safe_uint?(epoch) and E.safe_uint?(retirement) and retirement >= epoch
+
+  defp token_epoch_valid?(_), do: false
+
+  defp continuation_epoch?(nil, _, _), do: true
+
+  defp continuation_epoch?(%{"version" => 4} = token, "abort", epoch),
+    do: token["retirement_epoch"] === epoch
+
+  defp continuation_epoch?(%{"version" => 4}, _, _), do: false
+
+  defp continuation_epoch?(token, action, epoch),
+    do: token_epoch(token) === epoch or (action == "abort" and token_epoch(token) < epoch)
+
+  defp job_epoch(job), do: Map.get(job, "maintenance_epoch", 0)
+  defp token_epoch(token), do: Map.get(token, "maintenance_epoch", 0)
 
   defp coverage(s) do
     %{

@@ -233,6 +233,14 @@ defmodule Ipse.Extension.Collection do
     end
   end
 
+  @doc false
+  def admitted_document_status do
+    case Process.get(@document_epoch_key) do
+      %{status: status} -> status
+      nil -> nil
+    end
+  end
+
   @doc "Read only fixed-profile public document descriptors under the actual native owner."
   def document_index(root, project, request) do
     with false <- Process.get(@lock_key, false) != false,

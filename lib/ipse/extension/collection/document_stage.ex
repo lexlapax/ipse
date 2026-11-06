@@ -31,6 +31,14 @@ defmodule Ipse.Extension.Collection.DocumentStage do
     }
 
   def request?(r) when is_map(r) do
+    (not Map.has_key?(r, "maintenance_epoch") or
+       (mutating?(r) and JSON.safe_uint?(r["maintenance_epoch"]))) and
+      base_request?(Map.delete(r, "maintenance_epoch")) and Ipse.Extension.validate(r) == :ok
+  end
+
+  def request?(_), do: false
+
+  defp base_request?(r) do
     shape =
       case r["op"] do
         "value.write_parts" ->
@@ -104,8 +112,6 @@ defmodule Ipse.Extension.Collection.DocumentStage do
   rescue
     _ -> false
   end
-
-  def request?(_), do: false
 
   def mutating?(r),
     do:
@@ -274,8 +280,9 @@ defmodule Ipse.Extension.Collection.DocumentStage do
     with true <- request?(request) and owner?(owner) and id?(operation_id) do
       result =
         Collection.with_document_admission(root, namespace, owner, fn snapshot ->
-          if request["op"] in ~w(snapshot stage.list) or
-               request["generation"] == snapshot["generation"] do
+          if live_epoch?(request) and
+               (request["op"] in ~w(snapshot stage.list) or
+                  request["generation"] == snapshot["generation"]) do
             dispatch(root, namespace, request, operation_id, owner, snapshot)
           else
             @error
@@ -290,14 +297,31 @@ defmodule Ipse.Extension.Collection.DocumentStage do
     _ -> @error
   end
 
-  defp dispatch(_, _, %{"op" => "snapshot"}, _, _, snapshot),
-    do:
-      {:ok,
-       Map.put(snapshot, "document_store", %{
-         "version" => 2,
-         "inline_bytes" => @inline_bytes,
-         "write_parts" => 2
-       })}
+  defp live_epoch?(request) do
+    not mutating?(request) or
+      (Collection.admitted_document_status() === "idle" and
+         (request["op"] in ~w(value.abort value.reclaim) or
+            Map.get(request, "maintenance_epoch", 0) === Collection.admitted_document_epoch()))
+  end
+
+  defp dispatch(_, _, %{"op" => "snapshot"}, _, _, snapshot) do
+    descriptor = %{"version" => 2, "inline_bytes" => @inline_bytes, "write_parts" => 2}
+
+    descriptor =
+      case Collection.admitted_document_epoch() do
+        0 ->
+          descriptor
+
+        epoch ->
+          Map.merge(descriptor, %{
+            "version" => 3,
+            "maintenance_epoch" => epoch,
+            "maintenance_status" => Collection.admitted_document_status()
+          })
+      end
+
+    {:ok, Map.put(snapshot, "document_store", descriptor)}
+  end
 
   defp dispatch(root, ns, %{"op" => "value.index"} = r, _, _, _),
     do: Collection.document_index(root, ns, r)

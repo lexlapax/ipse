@@ -573,10 +573,7 @@ defmodule Ipse.Extension.CollectionStore do
         summary?(v) or
           (exact?(v, ~w(version project generation floor floor_anchor document_store)) and
              summary?(Map.delete(v, "document_store")) and
-             v["document_store"] in [
-               %{"version" => 1, "inline_bytes" => 8192},
-               %{"version" => 2, "inline_bytes" => 8192, "write_parts" => 2}
-             ])
+             document_descriptor?(v["document_store"]))
 
       r["op"] == "stage.list" ->
         exact?(v, ~w(version project generation floor floor_anchor stages)) and
@@ -732,6 +729,21 @@ defmodule Ipse.Extension.CollectionStore do
       is_map(identity) and identity["scope"] == "operator" and
         "host.collection.store" in (identity["capabilities"] || []) and
         operator_binding?(identity["collection_binding"])
+
+  defp document_descriptor?(descriptor) do
+    descriptor in [
+      %{"version" => 1, "inline_bytes" => 8192},
+      %{"version" => 2, "inline_bytes" => 8192, "write_parts" => 2}
+    ] or
+      (exact?(
+         descriptor,
+         ~w(version inline_bytes write_parts maintenance_epoch maintenance_status)
+       ) and
+         descriptor["version"] === 3 and descriptor["inline_bytes"] === 8192 and
+         descriptor["write_parts"] === 2 and JSON.safe_uint?(descriptor["maintenance_epoch"]) and
+         descriptor["maintenance_epoch"] > 0 and
+         descriptor["maintenance_status"] in ~w(idle active))
+  end
 
   defp project?(p),
     do:

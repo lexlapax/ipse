@@ -18,6 +18,453 @@ if System.get_env("IPSE_SPLIT_APPEND_CHILD") == "1" do
     }
     @facts %{"kind" => "explicit", "profile" => nil, "version" => 1}
 
+    @tag :lexical_retirement_public_pause
+    test "public Corpus resumes a real paused retirement with an abort continuation" do
+      # Metadata-only shape control: these 63 references are not populated sources.
+      # The valid large catalog makes the job too large for one inline write.
+      pages =
+        for n <- 1..63 do
+          %{
+            "key" => "p" <> String.pad_leading(Integer.to_string(n), 90, "x"),
+            "sha256" => JSON.sha256("metadata-only-page-#{n}")
+          }
+        end
+
+      catalog = %{
+        "version" => 1,
+        "kind" => "catalog",
+        "partition" => "notes",
+        "generation" => 1,
+        "floor" => 0,
+        "sources" => 1000,
+        "extracted_bytes" => 0,
+        "chunks" => 0,
+        "entities" => 0,
+        "assertions" => 0,
+        "pages" => pages
+      }
+
+      assert C.valid_catalog?(catalog, @profile)
+      assert byte_size(Jason.encode!(catalog)) > 8192
+
+      groups =
+        for n <- 1..12 do
+          sha = JSON.sha256("metadata-only-group-#{n}")
+          %{"key" => "lexr.notes." <> sha, "sha256" => sha, "byte_count" => 2}
+        end
+
+      # This is deliberately an unpopulated but shape-valid prior job, not an
+      # assertion that the catalog's sources or the group bodies were indexed.
+      job = %{
+        "version" => 1,
+        "kind" => "lexical_job",
+        "id" => Usage.id(),
+        "status" => "building",
+        "catalog" => catalog,
+        "catalog_sha256" => JSON.sha256(IO.iodata_to_binary(Elixir.JSON.encode!(catalog))),
+        "cursor" => 96,
+        "unit" => 0,
+        "groups" => groups,
+        "root_revision" => 0,
+        "index_generation" => 1
+      }
+
+      job_bytes = IO.iodata_to_binary(Elixir.JSON.encode!(job))
+      assert byte_size(job_bytes) > 2 * 6144
+      assert byte_size(job_bytes) <= 48 * 1024
+      ctx = index_context()
+
+      assert {:done, {:ok, _}} =
+               drive(
+                 C.start(@profile, :value_write, %{
+                   "key" => "catalog.notes",
+                   "value" => catalog,
+                   "expected_revision" => 0,
+                   "reuse" => false,
+                   "continuation" => nil
+                 }),
+                 ctx
+               )
+
+      assert read(ctx, "catalog.notes")["sha256"] === job["catalog_sha256"]
+
+      assert {:done, {:ok, _}} =
+               drive(
+                 C.start(@profile, :value_write, %{
+                   "key" => "lexjob.notes",
+                   "value" => job,
+                   "expected_revision" => 0,
+                   "reuse" => false,
+                   "continuation" => nil
+                 }),
+                 ctx
+               )
+
+      old_job = read(ctx, "lexjob.notes")
+      assert old_job["value"] === job
+
+      token = %{
+        "version" => 2,
+        "job_id" => job["id"],
+        "job_revision" => old_job["revision"],
+        "work" => "unit",
+        "write" => nil,
+        "stages" => %{},
+        "unit" => 0
+      }
+
+      fence = open_index_fence(ctx)
+      close_index_fence(ctx, fence)
+
+      options = Jason.decode!(File.read!("extensions/knowledge/options/corpus-collection.json"))
+      {:ok, corpus} = IpseKnowledge.Corpus.init(options)
+      refute Map.has_key?(corpus, :invalid)
+      args = %{"store" => "notes", "action" => "abort", "continuation" => token}
+
+      {paused, injected} =
+        corpus_drive(
+          IpseKnowledge.Corpus.handle(
+            "invoke.command",
+            %{"id" => "lexical_index", "arguments" => args},
+            corpus
+          ),
+          ctx,
+          true
+        )
+
+      assert injected, inspect(Map.take(paused, ~w(status gaps coverage)))
+      assert paused["status"] === "draft" and paused["coverage"]["status"] === "aborting"
+      continuation = paused["continuation"]
+      assert continuation["id"] === "lexical_index"
+      assert continuation["arguments"]["action"] === "abort"
+      retirement = continuation["arguments"]["continuation"]
+      assert retirement["version"] === 4 and retirement["maintenance_epoch"] === 0
+      assert retirement["retirement_epoch"] === 1 and retirement["work"] === "retire"
+      assert retirement["job_id"] === token["job_id"]
+      assert retirement["job_revision"] === token["job_revision"]
+      assert retirement["write"]["active"]["offset"] > 0
+      assert retirement["write"]["active"]["offset"] < retirement["write"]["active"]["byte_count"]
+      assert read(ctx, "lexjob.notes") === old_job
+
+      bad = put_in(continuation, ["arguments", "continuation", "retirement_epoch"], 2)
+      {refused, false} = corpus_invoke(corpus, bad, ctx)
+      assert refused["status"] === "refused"
+      assert read(ctx, "lexjob.notes") === old_job
+
+      # Resume the exact public command with a fresh invocation and the same Session owner identity.
+      resumed_ctx = put_in(ctx, [:owner, "invocation_id"], Usage.id())
+      {finished, false} = corpus_invoke(corpus, continuation, resumed_ctx)
+      assert finished["status"] === "ok" and finished["coverage"]["status"] === "aborted"
+      retired = read(ctx, "lexjob.notes")["value"]
+      assert retired["id"] === token["job_id"] and retired["status"] === "aborted"
+      refute Map.has_key?(retired, "maintenance_epoch")
+    end
+
+    defp corpus_invoke(corpus, continuation, ctx) do
+      corpus_drive(
+        IpseKnowledge.Corpus.handle("invoke.command", continuation, corpus),
+        ctx,
+        false
+      )
+    end
+
+    defp corpus_drive(
+           {:ok, %Ipse.Extension.ResultPublication.Output{bytes: bytes}, _},
+           _,
+           inject
+         ),
+         do: {Jason.decode!(bytes), inject == :injected}
+
+    defp corpus_drive({:ok, %{"kind" => "result", "value" => value}, _}, _, inject),
+      do: {value, inject == :injected}
+
+    defp corpus_drive({:ok, %{"kind" => "host_call", "request" => request}, state}, ctx, inject) do
+      assert :ok = Ipse.Extension.CollectionStore.validate(request)
+      operation = Usage.id()
+
+      assert {:ok, result} =
+               DocumentStage.execute(
+                 ctx.root,
+                 ctx.namespace,
+                 request["request"],
+                 operation,
+                 ctx.owner
+               )
+
+      wrapped = %{
+        "version" => 1,
+        "operation_id" => operation,
+        "request_sha256" => JSON.digest([request]),
+        "result" => result
+      }
+
+      assert Ipse.Extension.CollectionStore.valid_outcome?(request, "ok", wrapped, operation)
+
+      {state, inject} =
+        if inject === true and request["request"]["op"] === "value.write_parts" and
+             get_in(result, ["write", "state"]) === "open" do
+          # Controlled budget only: retain the real native request/result, then model
+          # a continuation whose earlier effects consumed this invocation's allowance.
+          {put_in(state, [:cont, :inner, :effects], 16), :injected}
+        else
+          {state, inject}
+        end
+
+      corpus_drive(
+        IpseKnowledge.Corpus.handle(
+          "host.actions",
+          %{"outcome" => %{"status" => "ok", "value" => wrapped}},
+          state
+        ),
+        ctx,
+        inject
+      )
+    end
+
+    @tag :lexical_maintenance_stale
+    test "a native maintenance fence cannot renew an old lexical job or edited continuation" do
+      ctx = index_context()
+      seed_index_source(ctx)
+      {:done, {:continue, opened}} = index(ctx, "begin", nil)
+      token = opened["continuation"]
+      assert token["version"] === 2
+      assert {:done, {:error, :lexical_build_exists, _}} = index(ctx, "begin", nil)
+      old_job = read(ctx, "lexjob.notes")
+      fence = open_index_fence(ctx)
+
+      assert {:done, {:error, :lexical_maintenance_changed, _}} = index(ctx, "next", token)
+      assert {:done, {:error, :lexical_maintenance_changed, _}} = index(ctx, "begin", nil)
+      close_index_fence(ctx, fence)
+      {:ok, before} = Collection.document_snapshot(ctx.root, ctx.namespace)
+
+      assert {:done, {:error, :lexical_maintenance_changed, _}} = index(ctx, "next", token)
+      edited = Map.merge(token, %{"version" => 3, "maintenance_epoch" => 1})
+      assert {:done, {:error, :lexical_continuation_conflict, _}} = index(ctx, "next", edited)
+      assert {:done, {:error, :lexical_build_exists, _}} = index(ctx, "begin", nil)
+
+      for changed <- [
+            Map.put(token, "job_id", Usage.id()),
+            Map.update!(token, "job_revision", &(&1 + 1)),
+            edited
+          ] do
+        assert {:done, {:error, :lexical_continuation_conflict, _}} = index(ctx, "abort", changed)
+      end
+
+      for bad <- [0, -1, 1.0, "1", nil] do
+        assert {:done, {:error, :invalid_lexical_index_request, _}} =
+                 index(ctx, "next", Map.put(edited, "maintenance_epoch", bad))
+      end
+
+      retirement =
+        Map.merge(token, %{
+          "version" => 4,
+          "maintenance_epoch" => 0,
+          "retirement_epoch" => 1,
+          "work" => "retire",
+          "write" => %{"invalid" => "checkpoint"}
+        })
+
+      for action <- ~w(begin next inspect) do
+        assert {:done, {:error, :invalid_lexical_index_request, _}} =
+                 index(ctx, action, retirement)
+      end
+
+      for changed <- [0, 2] do
+        assert {:done, {:error, :lexical_maintenance_changed, _}} =
+                 index(ctx, "abort", Map.put(retirement, "retirement_epoch", changed))
+      end
+
+      assert {:done, {:error, :invalid_collection_value, _}} = index(ctx, "abort", retirement)
+
+      assert {:done, {:ok, inspected}} = index(ctx, "inspect", nil)
+      assert inspected["status"] === "unbuilt"
+      assert read(ctx, "lexjob.notes") === old_job
+      assert {:ok, ^before} = Collection.document_snapshot(ctx.root, ctx.namespace)
+
+      # Only explicit retirement uses the old token, as an exact job selector.
+      old_write = %{token | "work" => "job", "write" => %{"must" => "be discarded"}}
+      assert {:done, {:ok, %{"status" => "aborted"}}} = index(ctx, "abort", old_write)
+      retired = read(ctx, "lexjob.notes")["value"]
+      assert retired["version"] === 1 and retired["id"] === token["job_id"]
+      assert retired["status"] === "aborted"
+      refute Map.has_key?(retired, "maintenance_epoch")
+      assert {:done, {:error, :lexical_continuation_conflict, _}} = index(ctx, "abort", token)
+
+      assert {:done, {:continue, fresh}} = index(ctx, "begin", nil)
+      assert fresh["continuation"]["maintenance_epoch"] === 1
+      refute fresh["continuation"]["job_id"] === token["job_id"]
+      assert {:done, {:error, :lexical_continuation_conflict, _}} = index(ctx, "abort", token)
+
+      assert {:done, {:ok, %{"status" => "aborted"}}} =
+               index(ctx, "abort", fresh["continuation"])
+
+      assert read(ctx, "lexical.notes") === nil
+    end
+
+    @tag :lexical_maintenance_fresh
+    test "a fresh lexical job after native maintenance publishes and retrieves exact source evidence" do
+      ctx = index_context()
+      seed_index_source(ctx)
+      fence = open_index_fence(ctx)
+      close_index_fence(ctx, fence)
+
+      {:done, {:continue, opened}} = index(ctx, "begin", nil)
+      assert opened["continuation"]["version"] === 3
+      assert opened["continuation"]["maintenance_epoch"] === 1
+      assert read(ctx, "lexjob.notes")["value"]["maintenance_epoch"] === 1
+
+      later_fence = open_index_fence(ctx)
+
+      assert {:done, {:error, :lexical_maintenance_changed, _}} =
+               index(ctx, "abort", opened["continuation"])
+
+      close_index_fence(ctx, later_fence)
+
+      assert {:done, {:error, :lexical_maintenance_changed, _}} =
+               index(ctx, "next", opened["continuation"])
+
+      assert {:done, {:ok, %{"status" => "aborted"}}} =
+               index(ctx, "abort", opened["continuation"])
+
+      assert read(ctx, "lexjob.notes")["value"]["maintenance_epoch"] === 1
+      assert {:done, {:continue, restarted}} = index(ctx, "begin", nil)
+      assert restarted["continuation"]["maintenance_epoch"] === 2
+      refute restarted["continuation"]["job_id"] === opened["continuation"]["job_id"]
+
+      result =
+        Enum.reduce_while(1..100, restarted, fn _, current ->
+          case index(ctx, "next", current["continuation"]) do
+            {:done, {:continue, next}} ->
+              assert next["continuation"]["maintenance_epoch"] === 2
+              {:cont, next}
+
+            {:done, {:ok, selected}} ->
+              {:halt, selected}
+
+            other ->
+              flunk("fresh lexical job failed: #{inspect(other)}")
+          end
+        end)
+
+      assert result["status"] === "indexed"
+
+      assert {:done, {:ok, queried}} =
+               drive(
+                 C.start(@profile, :lexical_query, %{
+                   "query" => "Orion",
+                   "top_k" => 1,
+                   "as_of_ms" => 20
+                 }),
+                 ctx
+               )
+
+      assert queried["coverage"]["namespace_complete"]
+      [evidence] = queried["evidence"]
+      assert evidence["citation"]["source_id"] === "fixture:index-epoch"
+      assert evidence["citation"]["quote"] === "Orion has one exact owner."
+    end
+
+    defp index_context do
+      parent = Path.join(System.tmp_dir!(), "ipse-index-epoch-" <> Usage.id())
+      File.mkdir!(parent)
+      File.chmod!(parent, 0o700)
+      on_exit(fn -> File.rm_rf!(parent) end)
+      project = JSON.sha256("synthetic index epoch project")
+
+      %{
+        root: Path.join(parent, "collections"),
+        namespace: Ipse.Extension.CollectionStore.namespace(project),
+        interpose: false,
+        owner: %{
+          "project_id" => project,
+          "identity_sha256" => JSON.sha256("synthetic index identity"),
+          "session_id" => Usage.id(),
+          "invocation_id" => Usage.id()
+        }
+      }
+    end
+
+    defp seed_index_source(ctx) do
+      source = %{
+        "source_id" => "fixture:index-epoch",
+        "partition" => "notes",
+        "generation" => 1,
+        "title" => "Synthetic",
+        "text" => "Orion has one exact owner.",
+        "uri" => "provided:index-epoch",
+        "observed_at_ms" => 10,
+        "event_at_ms" => nil,
+        "expires_at_ms" => nil,
+        "origin" => %{
+          "kind" => "provided",
+          "store_profile" => "local",
+          "partition_or_scope" => "notes",
+          "receipt" => nil,
+          "historical" => false
+        }
+      }
+
+      assert %{"status" => "stored"} =
+               put_source(ctx, %{
+                 "source" => source,
+                 "expected_revision" => 0,
+                 "continuation" => nil
+               })
+    end
+
+    defp index(ctx, action, token),
+      do:
+        drive(
+          C.start(@profile, :lexical_build, %{"action" => action, "continuation" => token}),
+          ctx
+        )
+
+    defp open_index_fence(ctx) do
+      {:ok, snapshot} = Collection.document_snapshot(ctx.root, ctx.namespace)
+
+      fence = %{
+        id: Usage.id(),
+        close: Usage.id(),
+        epoch: snapshot["document_maintenance"]["epoch"] + 1
+      }
+
+      assert {:ok, _} =
+               Collection.document_maintenance(
+                 ctx.root,
+                 ctx.namespace,
+                 %{
+                   "op" => "maintenance.open",
+                   "expected_generation" => snapshot["generation"],
+                   "expected_epoch" => fence.epoch - 1,
+                   "maintenance_id" => fence.id,
+                   "purpose" => "checkpoint_inspection",
+                   "close_operation_id" => fence.close
+                 },
+                 Usage.id(),
+                 ctx.owner
+               )
+
+      fence
+    end
+
+    defp close_index_fence(ctx, fence) do
+      {:ok, snapshot} = Collection.document_snapshot(ctx.root, ctx.namespace)
+
+      assert {:ok, _} =
+               Collection.document_maintenance(
+                 ctx.root,
+                 ctx.namespace,
+                 %{
+                   "op" => "maintenance.close",
+                   "expected_generation" => snapshot["generation"],
+                   "expected_epoch" => fence.epoch,
+                   "maintenance_id" => fence.id
+                 },
+                 fence.close,
+                 ctx.owner
+               )
+    end
+
     @tag :split_append_native
     @tag timeout: 180_000
     test "native append keeps both metadata stages until its final verified atomic switch" do
@@ -914,7 +1361,10 @@ else
           {:projection_commit_fact_native, "a populated fact projection authenticates natively"},
           {:fact_input_native, "a fact-input slot authenticates against its source and deadline"},
           {:split_append_empty_native, "empty facts survive native append and hydration"},
-          {:split_append_v1_selection, "original directory selection binds its staged Job"}
+          {:split_append_v1_selection, "original directory selection binds its staged Job"},
+          {:lexical_maintenance_stale, "maintenance cannot renew a stale lexical job"},
+          {:lexical_maintenance_fresh, "a fresh lexical job publishes after maintenance"},
+          {:lexical_retirement_public_pause, "public Corpus resumes a paused retirement"}
         ] do
       @tag tag
       @tag timeout: 180_000

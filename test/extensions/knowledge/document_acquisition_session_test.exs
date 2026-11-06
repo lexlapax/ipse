@@ -2113,6 +2113,149 @@ defmodule Ipse.KnowledgeDocumentAcquisitionSessionTest do
   end
 
   @tag :workspace_word_native
+  @tag :workspace_word_document_epoch
+  @tag timeout: 180_000
+  test "workspace Source after a maintenance fence preserves its content plan and epoch binding",
+       c do
+    run = open(c, "collection-documents")
+    home = run.opts[:config][:home]
+    id = Session.info(run.pid).id
+    [entry] = run.opts[:config][:extensions]
+    assert {:ok, project} = Ipse.Extension.ProjectIdentity.existing(home, run.cwd)
+    root = Ipse.Extension.CollectionStore.root(home)
+    namespace = Ipse.Extension.CollectionStore.namespace(project["project_id"])
+
+    owner = %{
+      "project_id" => project["project_id"],
+      "session_id" => id,
+      "identity_sha256" => JSON.digest([entry.identity]),
+      "invocation_id" => Ipse.Usage.id()
+    }
+
+    assert {:ok, before} = Ipse.Extension.Collection.document_snapshot(root, namespace)
+
+    opening = %{
+      "op" => "maintenance.open",
+      "expected_generation" => before["generation"],
+      "expected_epoch" => 0,
+      "maintenance_id" => Ipse.Usage.id(),
+      "purpose" => "checkpoint_inspection",
+      "close_operation_id" => Ipse.Usage.id()
+    }
+
+    # Trusted disposable setup; no public maintenance grant or adoption is implied.
+    assert {:ok, active} =
+             Ipse.Extension.Collection.document_maintenance(
+               root,
+               namespace,
+               opening,
+               Ipse.Usage.id(),
+               owner
+             )
+
+    assert {:ok, _} =
+             Ipse.Extension.Collection.document_maintenance(
+               root,
+               namespace,
+               %{
+                 "op" => "maintenance.close",
+                 "expected_generation" => active["generation"],
+                 "expected_epoch" => 1,
+                 "maintenance_id" => opening["maintenance_id"]
+               },
+               opening["close_operation_id"],
+               owner
+             )
+
+    bytes = document("Orion workspace epoch evidence remains exactly cited.")
+    path = Path.join(run.cwd, "source.docx")
+    File.write!(path, bytes)
+    opened = invoke(run, "source", args())
+
+    {finished, plans} =
+      Enum.reduce_while(1..40, {opened, []}, fn _, {current, plans} ->
+        if current["status"] === "draft" do
+          checkpoint = get_in(current, ["continuation", "arguments", "args", "collection_state"])
+          plans = if is_map(checkpoint), do: plans ++ [checkpoint], else: plans
+          {:cont, {continue(run, current["continuation"]), plans}}
+        else
+          {:halt, {current, plans}}
+        end
+      end)
+
+    assert finished["status"] === "ok", inspect(finished)
+    assert [_ | _] = plans
+    assert Enum.all?(plans, &(&1["version"] === 4 and &1["maintenance_epoch"] === 1))
+    [plan_hash] = Enum.uniq(Enum.map(plans, & &1["plan_sha256"]))
+    [epoch_binding] = Enum.uniq(Enum.map(plans, & &1["epoch_binding_sha256"]))
+    head = capacity_head(run)["value"]
+
+    assert {:ok, source_bytes} =
+             Ipse.Extension.Collection.with_document_read(root, namespace, fn _, read ->
+               {:ok,
+                Enum.map_join(head["blocks"], fn ref ->
+                  assert {:ok, block} =
+                           Ipse.Extension.Collection.DocumentStage.read_value(read, ref["key"])
+
+                  assert block["sha256"] === ref["sha256"]
+                  Enum.join(block["value"]["pieces"])
+                end)}
+             end)
+
+    bundle_hash = JSON.sha256(source_bytes)
+    assert bundle_hash === head["bundle_sha256"]
+    assert bundle_hash === plan_hash
+    refute bundle_hash === epoch_binding
+    assert {:ok, events} = Journal.load(run.dir, id)
+
+    [guarded] =
+      Enum.filter(
+        events,
+        &(&1["type"] === "extension_action_result" and
+            is_map(get_in(&1, ["request", "workspace_guard"])))
+      )
+
+    assert guarded["outcome"]["status"] === "ok"
+    assert get_in(guarded, ["request", "workspace_guard", "bundle_sha256"]) === bundle_hash
+    assert get_in(guarded, ["request", "request", "maintenance_epoch"]) === 1
+
+    result =
+      invoke(run, "query_selected", %{
+        "store" => "notes",
+        "retrieval" => "words",
+        "query" => "Orion",
+        "top_k" => 1,
+        "as_of_ms" => 20,
+        "source_ids" => ["workspace:source"]
+      })
+
+    assert result["status"] in ~w(ok partial), inspect(result)
+
+    assert Enum.any?(
+             result["evidence"],
+             &(get_in(&1, ["citation", "document", "original_sha256"]) === JSON.sha256(bytes))
+           )
+
+    assert :ok = Session.close_confirmed(run.pid)
+    assert {:ok, closed} = Journal.load(run.dir, id)
+    assert {:ok, _} = Session.Saved.restore(closed, id)
+    journal = Path.join(run.dir, id <> ".jsonl")
+    before_resume = File.read!(journal)
+
+    assert {:ok, resumed} =
+             DynamicSupervisor.start_child(
+               Ipse.Sessions,
+               {Session, Keyword.put(run.opts, :id, id)}
+             )
+
+    assert_idle_resume_journal(journal, before_resume, id)
+    assert :ok = Session.close_confirmed(resumed)
+    assert {:ok, after_idle} = Journal.load(run.dir, id)
+    assert {:ok, _} = Session.Saved.restore(after_idle, id)
+    assert File.read!(path) === bytes
+  end
+
+  @tag :workspace_word_native
   @tag :workspace_word_interpose
   @tag timeout: 180_000
   test "small workspace Word changed at publication is withheld", c do

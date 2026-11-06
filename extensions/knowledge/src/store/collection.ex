@@ -18,6 +18,94 @@ defmodule IpseKnowledge.Store.Collection do
   @reads 512
   @effects 16
 
+  @doc "Read-only epoch observation; this supplies no publication authority."
+  def snapshot_epoch(result) when is_map(result) do
+    descriptor = result["document_store"]
+
+    cond do
+      not Map.has_key?(result, "document_store") or
+          descriptor in [
+            %{"version" => 1, "inline_bytes" => 8192},
+            %{"version" => 2, "inline_bytes" => 8192, "write_parts" => 2}
+          ] ->
+        {:ok, 0, "idle"}
+
+      exact?(
+        descriptor,
+        ~w(version inline_bytes write_parts maintenance_epoch maintenance_status)
+      ) and
+        descriptor["version"] === 3 and descriptor["inline_bytes"] === 8192 and
+        descriptor["write_parts"] === 2 and E.safe_positive?(descriptor["maintenance_epoch"]) and
+          descriptor["maintenance_status"] in ~w(idle active) ->
+        {:ok, descriptor["maintenance_epoch"], descriptor["maintenance_status"]}
+
+      true ->
+        {:error, :document_epoch_changed}
+    end
+  end
+
+  def snapshot_epoch(_), do: {:error, :document_epoch_changed}
+
+  @doc "Primitive I/O with an explicitly frozen epoch condition, never a refreshed observation."
+  def start_with_epoch(profile, operation, args, epoch)
+      when operation in [
+             :snapshot,
+             :value_read,
+             :value_read_at,
+             :value_read_ref_at,
+             :value_put_inline_at,
+             :fact_input_put_at,
+             :value_write,
+             :value_prepare,
+             :object_read,
+             :value_commit_at,
+             :fact_commit_at,
+             :group_commit_at,
+             :selection_commit_at,
+             :value_commit,
+             :stage_inspect,
+             :value_stat,
+             :page_read,
+             :selected_keys,
+             :lexical_keys,
+             :source_keys
+           ] do
+    if E.safe_uint?(epoch) do
+      case start(profile, operation, args) do
+        {:call, request, %{request: _} = state} ->
+          request = epoch_request(request, epoch)
+
+          if host_frame_fits?(request),
+            do:
+              {:call, request,
+               state |> Map.put(:maintenance_epoch, epoch) |> Map.put(:request, request)},
+            else: error(:collection_budget)
+
+        {:call, _, _} ->
+          error(:invalid_collection_epoch_operation)
+
+        other ->
+          other
+      end
+    else
+      error(:invalid_collection_epoch)
+    end
+  end
+
+  def start_with_epoch(_, _, _, _), do: error(:invalid_collection_epoch_operation)
+
+  def start(profile, :snapshot, args) do
+    if profile?(profile) and args === %{} do
+      call(
+        %{operation: :snapshot, reads: 0, effects: 0, request: nil},
+        %{"op" => "snapshot"},
+        :snapshot
+      )
+    else
+      error(:invalid_collection_snapshot)
+    end
+  end
+
   def start(profile, :generation_selected, args),
     do: IpseKnowledge.Store.Collection.Selected.start(profile, args)
 
@@ -469,7 +557,9 @@ defmodule IpseKnowledge.Store.Collection do
         lexical_hash: lexical_hash,
         lexical_blocks: lexical_blocks,
         bytes: byte_size(bytes),
+        source_sha256: plan,
         checkpoint: checkpoint,
+        continuing: is_map(args["continuation"]),
         reads: Map.get(args, "reads_used", 0),
         effects: Map.get(args, "effects_used", 0),
         phase: :boot,
@@ -645,6 +735,41 @@ defmodule IpseKnowledge.Store.Collection do
       if Map.get(state, :pinned_inline, false),
         do: {:stop, :unknown_effect},
         else: error(:collection_response)
+  end
+
+  defp next(%{phase: :snapshot}, result) do
+    with {:ok, _, _} <- snapshot_epoch(result),
+         do: {:done, {:ok, result}},
+         else: (_ -> error(:document_epoch_changed))
+  end
+
+  defp next(%{phase: :boot, operation: :put} = s, result) do
+    with {:ok, epoch, "idle"} <- snapshot_epoch(result),
+         true <- not s.continuing or Map.get(s.checkpoint, "maintenance_epoch", 0) === epoch do
+      checkpoint =
+        if not s.continuing and epoch > 0,
+          do:
+            Map.merge(s.checkpoint, %{
+              "version" => 4,
+              "maintenance_epoch" => epoch,
+              "epoch_binding_sha256" => source_plan(s.source_sha256, epoch)
+            }),
+          else: s.checkpoint
+
+      fetch(
+        admitted_inline(
+          s
+          |> Map.put(:maintenance_epoch, epoch)
+          |> Map.put(:checkpoint, checkpoint)
+          |> Map.put(:generation, result["generation"]),
+          result
+        ),
+        catalog_key(s),
+        :catalog
+      )
+    else
+      _ -> error(:document_epoch_changed)
+    end
   end
 
   defp next(%{phase: :boot} = s, result) do
@@ -1519,7 +1644,7 @@ defmodule IpseKnowledge.Store.Collection do
       "text_bytes" => byte_size(s.source["text"]),
       "chunks" => s.chunks,
       "byte_count" => s.bytes,
-      "bundle_sha256" => s.checkpoint["plan_sha256"],
+      "bundle_sha256" => s.source_sha256,
       "blocks" =>
         Enum.map(s.blocks, fn body ->
           sha = E.sha256(json(body))
@@ -1705,8 +1830,11 @@ defmodule IpseKnowledge.Store.Collection do
     end
 
     r = request.(data)
-    r = if frame_fits?(r), do: r, else: request.([first])
-    if frame_fits?(r), do: call(s, r, :writing_parts), else: error(:collection_budget)
+    r = if frame_fits?(r, s[:maintenance_epoch]), do: r, else: request.([first])
+
+    if frame_fits?(r, s[:maintenance_epoch]),
+      do: call(s, r, :writing_parts),
+      else: error(:collection_budget)
   end
 
   defp unit_done(s, ref) do
@@ -1751,13 +1879,15 @@ defmodule IpseKnowledge.Store.Collection do
     request =
       if s[:source_guard], do: Map.put(request, "source_guard", s.source_guard), else: request
 
+    request = epoch_request(request, Map.get(s, :maintenance_epoch))
+
     cond do
       not read and effects > @effects and phase not in [:opened, :inline_prepared] and
         not (phase == :writing_parts and s.unit.offset == 0) and
           Map.has_key?(s, :unit) ->
         pause_unit(s)
 
-      reads <= @reads and effects <= @effects and Ipse.Extension.validate(request) == :ok ->
+      reads <= @reads and effects <= @effects and host_frame_fits?(request) ->
         {:call, request,
          Map.merge(s, %{phase: phase, reads: reads, effects: effects, request: request})}
 
@@ -1765,6 +1895,14 @@ defmodule IpseKnowledge.Store.Collection do
         error(:collection_budget)
     end
   end
+
+  defp epoch_request(request, epoch) when is_integer(epoch) and epoch > 0 do
+    if read_request?(request),
+      do: request,
+      else: put_in(request, ["request", "maintenance_epoch"], epoch)
+  end
+
+  defp epoch_request(request, _), do: request
 
   defp pause_unit(s) do
     u = s.unit
@@ -1791,15 +1929,19 @@ defmodule IpseKnowledge.Store.Collection do
       case result["document_store"] do
         %{"version" => 1, "inline_bytes" => 8192} -> 8192
         %{"version" => 2, "inline_bytes" => 8192, "write_parts" => 2} -> 8192
+        %{"version" => 3, "inline_bytes" => 8192, "write_parts" => 2} -> 8192
         _ -> 0
       end
 
     parts =
-      if result["document_store"] === %{
-           "version" => 2,
-           "inline_bytes" => 8192,
-           "write_parts" => 2
-         }, do: 2, else: 0
+      case result["document_store"] do
+        %{"version" => version, "inline_bytes" => 8192, "write_parts" => 2}
+        when version in [2, 3] ->
+          2
+
+        _ ->
+          0
+      end
 
     s |> Map.put(:inline_bytes, bytes) |> Map.put(:write_parts, parts)
   end
@@ -1820,16 +1962,22 @@ defmodule IpseKnowledge.Store.Collection do
 
   defp inline_fits?(s, request) do
     byte_size(request["data"]) <= Map.get(s, :inline_bytes, 0) and
-      frame_fits?(request)
+      frame_fits?(request, s[:maintenance_epoch])
   end
 
-  defp frame_fits?(request),
+  defp frame_fits?(request, epoch \\ nil),
     do:
-      Ipse.Extension.validate(%{
-        "api_version" => 1,
-        "kind" => "host_call",
-        "request" => %{"op" => "collection.store", "scope" => "project", "request" => request}
-      }) == :ok
+      host_frame_fits?(
+        epoch_request(
+          %{"op" => "collection.store", "scope" => "project", "request" => request},
+          epoch
+        )
+      )
+
+  defp host_frame_fits?(request),
+    do:
+      Ipse.Extension.validate(%{"api_version" => 1, "kind" => "host_call", "request" => request}) ==
+        :ok
 
   defp fetch(s, key, after_read),
     do:
@@ -1991,9 +2139,16 @@ defmodule IpseKnowledge.Store.Collection do
 
   defp checkpoint?(c, hash, rev),
     do:
-      exact?(c, ~w(version plan_sha256 expected_revision unit stages base active)) and
-        c["version"] === 3 and
-        c["plan_sha256"] == hash and c["expected_revision"] == rev and E.safe_uint?(c["unit"]) and
+      ((exact?(c, ~w(version plan_sha256 expected_revision unit stages base active)) and
+          c["version"] === 3) or
+         (exact?(
+            c,
+            ~w(version plan_sha256 expected_revision unit stages base active maintenance_epoch epoch_binding_sha256)
+          ) and
+            c["version"] === 4 and E.safe_positive?(c["maintenance_epoch"]) and
+            c["epoch_binding_sha256"] === source_plan(hash, c["maintenance_epoch"]))) and
+        c["plan_sha256"] == hash and
+        c["expected_revision"] == rev and E.safe_uint?(c["unit"]) and
         is_list(c["stages"]) and length(c["stages"]) <= 3 and
         (c["unit"] > 0 or is_map(c["active"])) and
         (is_nil(c["active"]) or
@@ -2009,6 +2164,11 @@ defmodule IpseKnowledge.Store.Collection do
           &(exact?(&1, ~w(slot epoch)) and &1["slot"] in 0..15 and is_binary(&1["epoch"]) and
               Regex.match?(~r/\A[0-9a-f]{32}\z/, &1["epoch"]))
         )
+
+  defp source_plan(hash, 0), do: hash
+
+  defp source_plan(hash, epoch),
+    do: E.sha256(json(%{"version" => 4, "source_sha256" => hash, "maintenance_epoch" => epoch}))
 
   defp stamp(nil), do: %{"revision" => 0, "sha256" => nil}
   defp stamp(row), do: Map.take(row, ~w(revision sha256))

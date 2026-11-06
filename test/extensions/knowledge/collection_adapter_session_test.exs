@@ -393,6 +393,151 @@ defmodule Ipse.KnowledgeCollectionAdapterSessionTest do
     end
   end
 
+  @tag :source_maintenance_epoch
+  @tag timeout: 120_000
+  test "Source continuation freezes its opening epoch while a fresh source succeeds after close",
+       c do
+    args = %{
+      "tiny" => true,
+      "source_id" => "fixture:source-epoch",
+      "text" => "Orion exact source evidence."
+    }
+
+    partial = invoke(c, "put", args)
+    assert partial["status"] === "staged"
+    token = partial["continuation"]
+    assert token["version"] === 3
+    refute Map.has_key?(token, "maintenance_epoch")
+    assert {:ok, events} = Journal.load(c.dir, c.id)
+    action = Enum.find(events, &(&1["type"] === "extension_action_intent"))
+    binding = action["effect_binding"]
+    root = Ipse.Extension.CollectionStore.root(c.home)
+    namespace = binding["namespace"]
+
+    owner = %{
+      "project_id" => binding["project"]["project_id"],
+      "identity_sha256" => binding["identity_sha256"],
+      "session_id" => c.id,
+      "invocation_id" => action["parent_invocation_id"]
+    }
+
+    assert {:ok, before} = Ipse.Extension.Collection.document_snapshot(root, namespace)
+
+    opening = %{
+      "op" => "maintenance.open",
+      "expected_generation" => before["generation"],
+      "expected_epoch" => 0,
+      "maintenance_id" => Usage.id(),
+      "purpose" => "checkpoint_inspection",
+      "close_operation_id" => Usage.id()
+    }
+
+    assert {:ok, opened} =
+             Ipse.Extension.Collection.document_maintenance(
+               root,
+               namespace,
+               opening,
+               Usage.id(),
+               owner
+             )
+
+    assert invoke(c, "put", Map.put(args, "continuation", token)) === %{
+             "status" => "refused",
+             "code" => "document_epoch_changed"
+           }
+
+    assert {:ok, _} =
+             Ipse.Extension.Collection.document_maintenance(
+               root,
+               namespace,
+               %{
+                 "op" => "maintenance.close",
+                 "expected_generation" => opened["generation"],
+                 "expected_epoch" => 1,
+                 "maintenance_id" => opening["maintenance_id"]
+               },
+               opening["close_operation_id"],
+               owner
+             )
+
+    before_refused = native_status(c)
+
+    assert invoke(c, "put", Map.put(args, "primitive_epoch", 0)) === %{
+             "status" => "refused",
+             "code" => "invalid_collection_epoch_operation"
+           }
+
+    assert invoke(c, "put", Map.put(args, "continuation", token)) === %{
+             "status" => "refused",
+             "code" => "document_epoch_changed"
+           }
+
+    edited = Map.merge(token, %{"version" => 4, "maintenance_epoch" => 1})
+
+    assert invoke(c, "put", Map.put(args, "continuation", edited)) === %{
+             "status" => "refused",
+             "code" => "invalid_collection_source"
+           }
+
+    assert native_status(c) === before_refused
+
+    current = invoke(c, "put", args)
+    assert current["status"] === "staged"
+    assert current["continuation"]["version"] === 4
+    assert current["continuation"]["maintenance_epoch"] === 1
+    assert current["continuation"]["plan_sha256"] === token["plan_sha256"]
+    refute current["continuation"]["epoch_binding_sha256"] === token["plan_sha256"]
+    before_tampering = native_status(c)
+
+    for bad <- [0, -1, 1.0, "1", nil, 2] do
+      assert invoke(
+               c,
+               "put",
+               Map.put(
+                 args,
+                 "continuation",
+                 Map.put(current["continuation"], "maintenance_epoch", bad)
+               )
+             ) === %{"status" => "refused", "code" => "invalid_collection_source"}
+    end
+
+    assert invoke(
+             c,
+             "put",
+             Map.put(
+               args,
+               "continuation",
+               Map.put(current["continuation"], "epoch_binding_sha256", String.duplicate("0", 64))
+             )
+           ) === %{"status" => "refused", "code" => "invalid_collection_source"}
+
+    assert native_status(c) === before_tampering
+
+    final =
+      finish(c, args, current, fn step ->
+        assert step["continuation"]["maintenance_epoch"] === 1
+
+        assert step["continuation"]["epoch_binding_sha256"] ===
+                 current["continuation"]["epoch_binding_sha256"]
+      end)
+
+    assert final["status"] === "stored"
+    result = invoke(c, "query", %{"source_ids" => [args["source_id"]], "query" => "Orion"})
+    assert hd(result["evidence"])["citation"]["source_id"] === args["source_id"]
+    assert :ok = Session.close_confirmed(c.pid)
+    assert {:ok, closed} = Journal.load(c.dir, c.id)
+    assert {:ok, _} = Session.Saved.restore(closed, c.id)
+
+    assert {:ok, resumed} =
+             DynamicSupervisor.start_child(
+               Ipse.Sessions,
+               {Session, Keyword.put(c.opts, :id, c.id)}
+             )
+
+    assert :ok = Session.close_confirmed(resumed)
+    assert_inert_resume(c, closed)
+  end
+
   defp finish(c, args, result, between \\ fn _ -> :ok end) do
     Enum.reduce_while(1..40, result, fn _, result ->
       if result["status"] == "staged" do

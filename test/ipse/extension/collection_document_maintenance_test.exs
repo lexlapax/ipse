@@ -1,5 +1,6 @@
 defmodule Ipse.Extension.Collection.DocumentMaintenanceTest do
   use ExUnit.Case, async: false
+  @moduletag :document_maintenance
   alias Ipse.{JSON, Usage}
   alias Ipse.Extension.{Collection, CollectionStore}
 
@@ -74,10 +75,18 @@ defmodule Ipse.Extension.Collection.DocumentMaintenanceTest do
   end
 
   defp call(c, request, id \\ Usage.id()) do
+    snapshot = snapshot(c)
+
     request =
       if request["op"] in ~w(snapshot stage.list),
         do: request,
-        else: Map.put(request, "generation", snapshot(c)["generation"])
+        else: Map.put(request, "generation", snapshot["generation"])
+
+    request =
+      if DocumentStage.mutating?(request) and request["op"] not in ~w(value.abort value.reclaim) and
+           snapshot["document_maintenance"]["epoch"] > 0,
+         do: Map.put(request, "maintenance_epoch", snapshot["document_maintenance"]["epoch"]),
+         else: request
 
     DocumentStage.execute(c.root, c.ns, request, id, c.owner)
   end
@@ -186,7 +195,7 @@ defmodule Ipse.Extension.Collection.DocumentMaintenanceTest do
   test "active fence and reserved close identity refuse ordinary writers and foreign close", c do
     {request, _, _} = open(c)
     generation = snapshot(c)["generation"]
-    assert {:failed, %{"code" => "collection_writer_fenced"}} = put(c, "blocked")
+    assert {:error, :document_store_refused} = put(c, "blocked")
 
     assert {:failed, %{"code" => "collection_operation_identity"}} =
              raw(c, commit(generation, "steal-reserved-id"), request["close_operation_id"])
@@ -202,6 +211,119 @@ defmodule Ipse.Extension.Collection.DocumentMaintenanceTest do
 
     assert {:failed, %{"code" => "collection_document_epoch"}} =
              raw(c, commit(snapshot(c)["generation"], "plain-after-fence"))
+  end
+
+  test "SDK epochs preserve history while live requests require the exact idle condition", c do
+    assert {:ok, legacy_snapshot} = call(c, %{"op" => "snapshot"})
+
+    assert legacy_snapshot["document_store"] === %{
+             "version" => 2,
+             "inline_bytes" => 8192,
+             "write_parts" => 2
+           }
+
+    bytes = Jason.encode!(%{"text" => "epoch-bound"})
+
+    legacy = %{
+      "op" => "value.put_inline",
+      "key" => "legacy.history",
+      "expected_revision" => 0,
+      "generation" => 0,
+      "byte_count" => byte_size(bytes),
+      "sha256" => JSON.sha256(bytes),
+      "data" => bytes
+    }
+
+    id = Usage.id()
+    assert {:ok, legacy_result} = DocumentStage.execute(c.root, c.ns, legacy, id, c.owner)
+    envelope = %{"op" => "collection.store", "scope" => "project", "request" => legacy}
+
+    historical = %{
+      "version" => 1,
+      "operation_id" => id,
+      "request_sha256" => JSON.digest([envelope]),
+      "result" => legacy_result
+    }
+
+    assert CollectionStore.valid_outcome?(envelope, "ok", historical, id)
+    {opening, _, _} = open(c)
+    assert {:ok, active} = call(c, %{"op" => "snapshot"})
+
+    descriptor = %{
+      "version" => 3,
+      "inline_bytes" => 8192,
+      "write_parts" => 2,
+      "maintenance_epoch" => 1,
+      "maintenance_status" => "active"
+    }
+
+    assert active["document_store"] === descriptor
+
+    fresh =
+      legacy
+      |> Map.put("key", "fresh.condition")
+      |> Map.put("generation", active["generation"])
+      |> Map.put("maintenance_epoch", 1)
+
+    assert {:error, :document_store_refused} =
+             DocumentStage.execute(c.root, c.ns, fresh, Usage.id(), c.owner)
+
+    assert {:ok, _} = close(c, opening)
+    assert {:ok, idle} = call(c, %{"op" => "snapshot"})
+    assert idle["document_store"] === Map.put(descriptor, "maintenance_status", "idle")
+
+    snapshot_request = %{
+      "op" => "collection.store",
+      "scope" => "project",
+      "request" => %{"op" => "snapshot"}
+    }
+
+    snapshot_id = Usage.id()
+
+    valid_snapshot = fn result ->
+      CollectionStore.valid_outcome?(
+        snapshot_request,
+        "ok",
+        %{
+          "version" => 1,
+          "operation_id" => snapshot_id,
+          "request_sha256" => JSON.digest([snapshot_request]),
+          "result" => result
+        },
+        snapshot_id
+      )
+    end
+
+    assert valid_snapshot.(legacy_snapshot)
+    assert valid_snapshot.(active)
+    assert valid_snapshot.(idle)
+
+    for bad <- [0, -1, 1.0, "1", nil] do
+      refute valid_snapshot.(put_in(idle, ["document_store", "maintenance_epoch"], bad))
+    end
+
+    refute valid_snapshot.(put_in(idle, ["document_store", "maintenance_status"], "unknown"))
+    refute valid_snapshot.(put_in(idle, ["document_store", "unexpected"], 1))
+    before = snapshot(c)
+    fresh = Map.put(fresh, "generation", before["generation"])
+
+    for old <- [Map.delete(fresh, "maintenance_epoch"), Map.put(fresh, "maintenance_epoch", 0)] do
+      assert DocumentStage.request?(old)
+
+      assert {:error, :document_store_refused} =
+               DocumentStage.execute(c.root, c.ns, old, Usage.id(), c.owner)
+
+      assert snapshot(c) === before
+    end
+
+    for bad <- [-1, 1.0, "1", nil] do
+      refute DocumentStage.request?(Map.put(fresh, "maintenance_epoch", bad))
+    end
+
+    refute DocumentStage.request?(Map.put(fresh, "unexpected_epoch", 1))
+    refute DocumentStage.request?(%{"op" => "snapshot", "maintenance_epoch" => 1})
+    assert CollectionStore.valid_outcome?(envelope, "ok", historical, id)
+    assert {:ok, _} = DocumentStage.execute(c.root, c.ns, fresh, Usage.id(), c.owner)
   end
 
   test "actual old host admission cannot publish after open and close with refreshed generation",
@@ -309,7 +431,8 @@ defmodule Ipse.Extension.Collection.DocumentMaintenanceTest do
     envelope = %{
       "op" => "collection.store",
       "scope" => "project",
-      "request" => Map.put(new_prepare, "generation", generation)
+      "request" =>
+        new_prepare |> Map.put("generation", generation) |> Map.put("maintenance_epoch", 1)
     }
 
     assert CollectionStore.valid_outcome?(

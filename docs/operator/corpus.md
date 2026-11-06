@@ -494,6 +494,22 @@ returns `lexical_namespace_index_unavailable`; a changed catalog makes the index
 stale and requires an explicit rebuild. Index construction uses storage writes,
 with separate ordinary approvals, and calls no model.
 
+If a build reports `lexical_maintenance_changed`, inspect its current state:
+
+```text
+/ext ext__corpus__lexical_index {"store":"notes","action":"inspect","continuation":null}
+```
+
+If no job was created, wait for maintenance to close and issue a fresh `begin`.
+For a known unfinished build, use its last known ordinary build draft: after
+maintenance closes, change only its `action` to `abort`, preserving the
+continuation object exactly. Approve that explicit retirement. Follow any
+returned abort command unchanged until `ok` reports `aborted`, then issue a fresh
+`begin`. Inspection reports job metadata; it does not create a replacement token.
+An active fence can still refuse retirement, and retained stages can exhaust
+storage. If an abort continuation itself becomes stale, or an outcome is unknown,
+inspect and follow the recovery guidance below instead of replaying it.
+
 An explicit `query_selected` takes `store`, `retrieval`,
 `query`, `top_k`, `as_of_ms` and one to eight exact `source_ids`; it omits `rerank`.
 Inspect citations, `status`, `coverage.complete`, `namespace_complete` and gaps.

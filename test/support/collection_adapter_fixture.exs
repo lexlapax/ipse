@@ -161,14 +161,18 @@ defmodule IpseTest.CollectionAdapter do
                 if(args["large_blocks"], do: 6500, else: 1600)
               )
 
-        drive(
-          Collection.start(profile, :put, %{
-            "source" => source,
-            "expected_revision" => args["expected_revision"] || 0,
-            "continuation" => args["continuation"]
-          }),
-          state
-        )
+        request = %{
+          "source" => source,
+          "expected_revision" => args["expected_revision"] || 0,
+          "continuation" => args["continuation"]
+        }
+
+        result =
+          if Map.has_key?(args, "primitive_epoch"),
+            do: Collection.start_with_epoch(profile, :put, request, args["primitive_epoch"]),
+            else: Collection.start(profile, :put, request)
+
+        drive(result, state)
 
       "query" ->
         drive(

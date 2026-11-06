@@ -1079,7 +1079,7 @@ defmodule IpseKnowledge.Corpus do
           "opening_operation_id" => opening["operation_id"],
           "source_id" => args["source_id"],
           "generation" => args["generation"],
-          "bundle_sha256" => cont.checkpoint["plan_sha256"]
+          "bundle_sha256" => cont.source_sha256
         })
       else
         request
@@ -1559,7 +1559,7 @@ defmodule IpseKnowledge.Corpus do
         "id" => "lexical_index",
         "arguments" => %{
           "store" => state.ctx.args["store"],
-          "action" => "next",
+          "action" => if(state.ctx.args["action"] == "abort", do: "abort", else: "next"),
           "continuation" => value["continuation"]
         }
       }

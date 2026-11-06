@@ -549,14 +549,42 @@ across a newly created effect peer, narrows it against the requested deadline,
 and refuses nested publication guards. Do not copy arbitrary process dictionary
 state or make a callback depend on running in its caller's process.
 
-Stored stage headers bind the opening maintenance epoch internally. Public stage
-requests/results keep their existing closed fields; callers cannot supply an
-epoch to renew a stale stage. After a fence, a legacy or older stage cannot append,
-seal or publish. Exact owner-bound abort and expiry-bound reclaim remain reducing
-operations, subject to the current native fence. Source, Index, Job and Projection
-continuations still require their own epoch integration before a general
-maintenance or GC workflow can be exposed. Checkpoint rollback does not reset
-the persisted epoch.
+Stored stage headers bind the opening maintenance epoch internally. After a
+fence, a legacy or older stage cannot append, seal or publish. Exact owner-bound
+abort and expiry-bound reclaim remain reducing operations, subject to the current
+native fence. Supplying a newer counter cannot renew an older stored stage.
+Checkpoint rollback does not reset the persisted epoch.
+
+The document snapshot exposes this consistency condition separately from
+authority. At epoch zero it retains the version-two `document_store` descriptor;
+after a fence, version three adds `maintenance_epoch` and `maintenance_status`.
+New mutations carry the captured `maintenance_epoch` in their inner SDK request.
+Missing means exactly zero, not the current epoch. Before any effect the host
+requires the actual idle epoch to match, then repeats its trusted root, namespace,
+owner and epoch checks at the native CAS. Historical legacy action validation
+remains available without granting a current write. See the
+[SDK contract](collection-sdk.md#stage-ordinary-documents-under-their-own-grant).
+
+The Source adapter captures the snapshot epoch once for each logical put. Epoch
+zero retains its version-three continuation and original plan hash. A later
+epoch uses version four with a separate `epoch_binding_sha256` that binds the
+complete source hash and that counter; all subsequent units retain it. The
+existing `plan_sha256` remains the actual source-body hash used by acquisition
+and workspace guards. An old continuation refuses even after
+the ordinary generation is refreshed. Begin an explicitly new put to obtain a
+fresh plan; do not edit a token or replay an unknown effect. The lexical Index
+adapter likewise binds its continuation to the stored job's epoch, so changing
+the token alone cannot adopt an older job. Its read-only inspection and query
+remain available. After close, an explicit Index `abort` can mark the exact
+older job aborted under the current idle epoch, retaining its old job identity
+and discarding its earlier publication checkpoint. A bounded partial retirement
+returns `aborting` with a version-four continuation: use it only for `abort`,
+at its frozen retirement epoch. It cannot resume indexing or adopt old stages.
+Only a confirmed `aborted` result permits an explicitly new `begin`; old staged
+values still consume capacity, so this promises no unconditional progress or
+stage-pool reclamation. Generic Job and Projection continuations have no such current
+epoch integration: their legacy mutation requests refuse after the first fence.
+A general maintenance, adoption or garbage-collection workflow remains closed.
 
 Exercise the internal lifecycle and the real SDK boundary with disposable native
 storage on a supported profile:
@@ -565,11 +593,14 @@ storage on a supported profile:
 mix test test/ipse/extension/collection_document_maintenance_test.exs --trace
 mix test test/ipse/extension/collection_document_stage_test.exs
 mix test test/ipse/extension/collection_store_session_test.exs --only document_maintenance_session
+mix test test/extensions/knowledge/collection_adapter_session_test.exs --only source_maintenance_epoch
+mix test test/extensions/knowledge/collection_split_append_native_test.exs --only lexical_maintenance_stale --only lexical_maintenance_fresh
 ```
 
-The Session control prepares an approved stage, opens/closes the internal fence,
-refuses publication from that old stage and then approves a fresh publication.
-It reconstructs the closed journal without invoking a model. These are lifecycle
+The Session controls prepare approved work, open/close the internal fence,
+refuse publication from old stages and logical Source continuations, then approve
+fresh publication. They reconstruct closed journals without invoking a model.
+The Index controls exercise actual native jobs and retrieval. These are lifecycle
 checks, not destructive GC, migration or full-capacity qualification.
 
 ## Claim a draft before writing immutable pages

@@ -387,6 +387,34 @@ until their consuming CAS. Fused packet transport does not increase value,
 string, request, stage, namespace or approval limits. `document_store` capability
 metadata is a negotiation result, never permission to invent a larger packet.
 
+Retain the snapshot's document maintenance condition with the logical operation.
+At the original epoch zero, `document_store` keeps its version-one or version-two
+shape. After an internal host maintenance fence it is exactly:
+
+```elixir
+%{"version" => 3, "inline_bytes" => 8192, "write_parts" => 2,
+  "maintenance_epoch" => observed_epoch, "maintenance_status" => "idle"}
+```
+
+`observed_epoch` is a positive safe integer; status is `idle` or `active`. An
+active snapshot permits inspection, not publication. A new mutating inner
+request includes `"maintenance_epoch" => observed_epoch` alongside its existing
+fields. Capture that condition once, preserve it across every continuation and
+include its encoded bytes when choosing packet sizes. Missing means exactly
+legacy epoch zero; it never asks the host to adopt the current epoch. Read-only
+requests retain their existing shapes and reject an added epoch field.
+
+This counter is a consistency condition, not a grant or a substitute for the
+actual project/session/artifact and ordinary full-argument approval. The host
+checks the current idle epoch before dispatch and retains the trusted native
+final CAS fence. It separately checks stored stage opening epochs, so a current
+request condition cannot upgrade an old stage. Exact owner-bound abort and
+expired reclaim can reduce old staged work after close. Legacy request/result
+shapes remain valid historical records; their validation confers no new write.
+Internal maintenance has no public SDK command. The
+[storage walkthrough](knowledge-storage.md#fence-document-stages-before-metadata-maintenance)
+shows how Source and lexical Index continuations preserve this condition.
+
 For a metadata inventory, the same document read grant accepts `value.index`.
 Start at a checked snapshot generation with a null cursor:
 
