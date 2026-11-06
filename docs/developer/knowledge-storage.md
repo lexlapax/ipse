@@ -570,10 +570,14 @@ zero retains its version-three continuation and original plan hash. A later
 epoch uses version four with a separate `epoch_binding_sha256` that binds the
 complete source hash and that counter; all subsequent units retain it. The
 existing `plan_sha256` remains the actual source-body hash used by acquisition
-and workspace guards. An old continuation refuses even after
-the ordinary generation is refreshed. Begin an explicitly new put to obtain a
-fresh plan; do not edit a token or replay an unknown effect. The lexical Index
-adapter likewise binds its continuation to the stored job's epoch, so changing
+and workspace guards. An unchanged old continuation refuses even after the
+ordinary generation is refreshed, but that public digest is not an authenticated
+opening record. A caller can rewrite the counter and recompute the digest after
+an immutable unit has completed. Source does not yet have a durable opening
+claim that independently fences that prefix. Do not treat the limited token
+tamper controls as complete Source epoch authentication or edit tokens to resume
+work. The lexical Index
+adapter instead binds its continuation to the stored job's epoch, so changing
 the token alone cannot adopt an older job. Its read-only inspection and query
 remain available. After close, an explicit Index `abort` can mark the exact
 older job aborted under the current idle epoch, retaining its old job identity
@@ -582,9 +586,26 @@ returns `aborting` with a version-four continuation: use it only for `abort`,
 at its frozen retirement epoch. It cannot resume indexing or adopt old stages.
 Only a confirmed `aborted` result permits an explicitly new `begin`; old staged
 values still consume capacity, so this promises no unconditional progress or
-stage-pool reclamation. Generic Job and Projection continuations have no such current
-epoch integration: their legacy mutation requests refuse after the first fence.
-A general maintenance, adoption or garbage-collection workflow remains closed.
+stage-pool reclamation.
+
+Generic shared-generation Jobs retain a native job record that supplies that
+independent epoch anchor. Legacy Job1/2/3 and token1 keep their epoch-zero shapes;
+Job4/5/6 add a positive epoch to the corresponding group, ordinary reduction and
+paged reduction schemas. Normal token2 retains that same epoch. Append and
+finalization require the exact stored job ID, physical revision and epoch to
+match the token and current idle snapshot. Inspection preserves the old stored
+epoch rather than refreshing it. An explicit new begin resets progress; it does
+not adopt an older immutable prefix or metadata stage.
+
+Explicit Job abort retains the exact older job's ID and epoch while staging only
+new reducing metadata under the current idle epoch. A bounded partial abort
+returns token3 with the old job epoch and a separately frozen `retirement_epoch`;
+only abort can consume it. Its plan digest includes that retirement epoch, and
+native stage headers retain their actual opening epoch. A known same-epoch
+continuation resumes its exact stage and offset; after another fence it refuses.
+Unknown work supplies no safe replay token. Existing producer claims, in-flight
+model egress and Projection still require their own epoch integration. General
+maintenance, adoption and garbage collection remain closed.
 
 Exercise the internal lifecycle and the real SDK boundary with disposable native
 storage on a supported profile:
@@ -595,13 +616,16 @@ mix test test/ipse/extension/collection_document_stage_test.exs
 mix test test/ipse/extension/collection_store_session_test.exs --only document_maintenance_session
 mix test test/extensions/knowledge/collection_adapter_session_test.exs --only source_maintenance_epoch
 mix test test/extensions/knowledge/collection_split_append_native_test.exs --only lexical_maintenance_stale --only lexical_maintenance_fresh
+mix test test/extensions/knowledge/collection_adapter_session_test.exs --only generation_maintenance_session --max-cases 1
 ```
 
-The Session controls prepare approved work, open/close the internal fence,
-refuse publication from old stages and logical Source continuations, then approve
-fresh publication. They reconstruct closed journals without invoking a model.
-The Index controls exercise actual native jobs and retrieval. These are lifecycle
-checks, not destructive GC, migration or full-capacity qualification.
+The Session controls prepare approved work, open/close the internal fence and
+check old-stage and stored-Job refusal, fresh guarded publication and exact
+retirement. They reconstruct closed journals without invoking a model. The
+Source token case covers unchanged or incompletely edited tokens, not a
+recomputed public binding. Index controls exercise actual native jobs and
+retrieval. These are lifecycle checks, not destructive GC, migration or
+full-capacity qualification.
 
 ## Claim a draft before writing immutable pages
 

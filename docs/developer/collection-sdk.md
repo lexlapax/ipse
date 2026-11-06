@@ -571,6 +571,19 @@ continuation verifies both stages, the captured selected root and all immutable
 prerequisites at one native generation before the atomic switch. A continuation with live stages is not a
 fresh-Session handoff or authority to replay an unknown effect.
 
+After an internal document maintenance fence, the job controller captures one
+idle snapshot epoch and conditions every mutating primitive on it. The native
+job is the durable anchor: append and finalization require its exact identity,
+physical revision and epoch, plus the matching continuation and actual snapshot.
+Legacy Job1/2/3 and token1 retain epoch-zero bytes. At a positive epoch, closed
+Job4/5/6 carry `maintenance_epoch` alongside the respective group/reduction/paged
+schemas; normal token2 carries that same counter. The finalization adapter uses
+base versions only for logical planning. Stored job maps, their body digests,
+source anchors and directory/recipe bytes are not rewritten to those versions.
+Host source guards accept only the closed corresponding new schema and require
+the stored job epoch to match the actual mutation request condition. The final
+native root/namespace/owner/epoch fence remains independent.
+
 For repeated public steps, select `response: "compact_v1"` explicitly. The
 default `full` response keeps the complete Job in `coverage.job`. Compact output
 instead puts a versioned `shared_generation_progress` object in
@@ -589,6 +602,8 @@ most sixteen captured group summaries per batch and merges at most eight runs;
 entity pages contain at most 64 rows. It requests exact missing immutable inputs
 instead of hydrating the whole namespace. Finalization preserves version-one job
 inspection and existing directory formats.
+The corresponding positive-epoch durable reduction is Job5; its directory remains
+version one.
 
 Choose `finalize_paged` explicitly from a complete captured version-one job in
 its `manifests` phase, before starting the older reduction. This creates Job3
@@ -601,6 +616,7 @@ metadata position reconstructs its semantic input before staging. Root2 readers
 validate global page order, canonical IDs and memberships; older readers refuse
 the new root version. Both paths retain the existing source-head digest and
 manifest/group/source formats.
+At a positive epoch these are Job4→Job6 transitions, retaining Root2.
 
 Continuation tokens bind job ID, physical job/root revisions, captured catalog,
 complete plan digest, unit position and exact stage progress. They are inspected
@@ -608,6 +624,15 @@ data, not capabilities. Resuming at a later position still verifies every requir
 immutable predecessor. Each invocation retains 512 reads and sixteen effects;
 known partial progress yields an explicit next command, and unknown stops without
 one. Do not edit a token to skip work or automatically replay a failed phase.
+
+An explicit abort may reduce an exact older job after maintenance closes. It
+keeps that job's identity and epoch, discards its normal publication checkpoint
+and prepares only new abort metadata under the current epoch. A partial abort
+returns token3 with a frozen `retirement_epoch`, an abort-plan digest and its own
+actual write checkpoint; use it only for abort at that same epoch. It cannot
+resume append or finalization. A later fence refuses that continuation instead
+of adopting its stage. Neither known retirement nor a fresh begin reclaims old
+stages, refunds effects or guarantees space for the next job.
 
 Before final selection, the controller checks complete manifest/entity-page hashes
 and sizes, prepares exactly job/catalog/selected-root stages, rechecks prerequisites
@@ -636,6 +661,9 @@ selection digest and `reported_model: nil` without inference or a Usage charge.
 Producer calls propagate that digest as `expected_selection_sha256`;
 legacy unpinned adapter requests retain their exact shape. A pin prevents a
 changed configured route from reaching inference but supplies no source authority.
+Job epoch checks do not qualify existing producer claims or in-flight model
+egress across maintenance. Those owners need their own epoch integration; keep
+their unknown outcomes and liabilities separate from a known Job abort.
 Version-1 public `page` uses the same bounded v3 first-page producer qualified through the
 private fixture artifact. It durably commits a claim before inference, then sends
 `source_guard` with version 1, exact `claim_key`, `claim_revision`, `claim_sha256`

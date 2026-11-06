@@ -247,8 +247,22 @@ defmodule IpseTest.CollectionAdapter do
   def handle("host.actions", %{"outcome" => outcome}, %{mode: "inspect"} = state),
     do: finish(outcome, state)
 
-  def handle("host.actions", %{"outcome" => outcome}, state),
-    do: drive(Collection.resume(state.continuation, outcome), state)
+  def handle("host.actions", %{"outcome" => outcome}, state) do
+    continuation =
+      if state.mode == "group_job" and state.args["action"] == "abort" and
+           state.args["force_retirement_pause"] == true and
+           get_in(state.continuation, [:inner, :request, "request", "op"]) == "value.write_parts" and
+           get_in(outcome, ["value", "result", "write", "state"]) == "open" do
+        # Controlled budget after a real successful native write; no outcome is fabricated.
+        state.continuation
+        |> put_in([:generation_job, :effects], 16)
+        |> put_in([:inner, :effects], 16)
+      else
+        state.continuation
+      end
+
+    drive(Collection.resume(continuation, outcome), state)
+  end
 
   defp drive({:call, request, continuation}, state) do
     request =

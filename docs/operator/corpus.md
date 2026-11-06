@@ -579,6 +579,18 @@ requires the exact inspected continuation and does not constitute general garbag
 collection. Timeout/unknown means inspect, never automatically repeat or edit a
 continuation to skip work.
 
+If a shared job reports `generation_maintenance_changed`, inspect it with the
+same selectors and a null continuation. The stored job and its old epoch remain
+visible; inspection does not renew it. While the internal fence is active,
+publication and retirement refuse. After close, a known unfinished job can be
+retired with `generation_job` action `abort` and that exact inspected token.
+Keep the returned complete abort commands unchanged, including any partial
+retirement token, until the result reports `aborted`. Then issue an explicit
+new `begin` with a null continuation. Do not change a counter, digest, offset or
+stage reference to make old work fit the current store. A later fence or unknown
+outcome requires inspection again, not replay. Retirement retains old data and
+stages; it is not garbage collection or a promise that a new build will fit.
+
 For repeated `generation_job` steps, add `"response":"compact_v1"` to its arguments. It returns
 `coverage.job_progress` with the complete logical Job digest, size and bounded
 progress instead of repeating the whole Job. The exact continuation and limits
@@ -861,6 +873,11 @@ then makes one final locked admission for that batch. Expired, historical,
 future-observed or changed sources refuse. Already admitted bytes may remain
 in flight after a later change. Selection pinning separately refuses a changed
 configured route; returned model/input/vector checks still apply.
+The shared Job's epoch checks do not qualify producer claims or already in-flight
+model requests across internal maintenance. Do not infer that a job refusal
+cancelled a provider request, erased an unknown result or refunded its budget.
+Cross-fence Source/Projection work also lacks complete durable-opening
+authentication; no general document maintenance or adoption command is exposed.
 
 `inspect` is read-only. A pending or unknown claim offers no retry/adoption token,
 including across Sessions. An unsupported v1 binding can approve an inert claim

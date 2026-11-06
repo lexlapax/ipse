@@ -24,6 +24,8 @@ defmodule Ipse.Extension.Collection.DocumentSourceUse do
   @max_reads 269
   @max_logical_bytes 18 * 1024 * 1024
   @max_bundle_bytes 1024 * 1024
+  @job_fields ~w(version kind id partition status catalog catalog_sha256 generation root_revision root_sha256 vector_selection fact_selection cursor summaries facts)
+  @job_reduction ~w(phase batch manifests runs positions entity_pages entities text_bytes chunks facts heads_sha256 entities_sha256)
 
   def guard?(g) do
     exact?(g, ~w(version claim_key claim_revision claim_sha256 batch_index)) and
@@ -429,7 +431,9 @@ defmodule Ipse.Extension.Collection.DocumentSourceUse do
          old = old_row["value"],
          new = job_stage["value"],
          true <-
-           is_map(old) and old["version"] in [2, 3] and old["kind"] === "shared_generation_job" and
+           is_map(old) and job_version(old) in [2, 3] and
+             job_epoch(old) === Map.get(request, "maintenance_epoch", 0) and
+             old["kind"] === "shared_generation_job" and
              old["partition"] === partition and old["status"] === "reducing" and
              old["catalog_sha256"] === catalog["sha256"] and old["catalog"] === catalog["value"] and
              is_map(old["reduction"]) and old["reduction"]["phase"] === "select" and
@@ -444,12 +448,12 @@ defmodule Ipse.Extension.Collection.DocumentSourceUse do
            ~w(version kind recipe partition generation catalog_sha256 catalog_generation floor sources extracted_bytes chunks vectors facts entities groups vector_selection fact_selection source_heads_sha256 manifests entity_pages),
          root_keys =
            root_keys ++
-             if(old["version"] === 3,
+             if(job_version(old) === 3,
                do: ~w(entity_pages_sha256 entity_page_rows),
                else: ~w(entity_rows_sha256)
              ),
          true <-
-           exact?(root, root_keys) and root["version"] === old["version"] - 1 and
+           exact?(root, root_keys) and root["version"] === job_version(old) - 1 and
              root["kind"] === "shared_generation_directory" and root["partition"] === partition and
              root["recipe"] === "ipse.evidence.shared_directory.v#{root["version"]}" and
              root["generation"] === old["generation"] and
@@ -467,7 +471,7 @@ defmodule Ipse.Extension.Collection.DocumentSourceUse do
              root["entity_pages"] === reduction["entity_pages"] and
              root["source_heads_sha256"] === reduction["heads_sha256"] and
              root["facts"] === reduction["facts"] and root["entities"] === reduction["entities"] and
-             if(old["version"] === 3,
+             if(job_version(old) === 3,
                do:
                  root["entity_page_rows"] === 32 and
                    root["entity_pages_sha256"] === reduction["entity_pages_sha256"],
@@ -617,7 +621,9 @@ defmodule Ipse.Extension.Collection.DocumentSourceUse do
          old = old_row["value"],
          new = job_stage["value"],
          true <-
-           is_map(old) and is_map(new) and old["version"] in [1, 2, 3] and
+           is_map(old) and is_map(new) and job_version(old) in [1, 2, 3] and
+             job_version(new) === job_version(old) and
+             job_epoch(old) === Map.get(request, "maintenance_epoch", 0) and
              old["kind"] === "shared_generation_job" and old["partition"] === partition and
              old["status"] === "groups" and old["catalog_sha256"] === catalog["sha256"] and
              old["catalog"] === catalog["value"] and id?(old["id"]),
@@ -1038,7 +1044,7 @@ defmodule Ipse.Extension.Collection.DocumentSourceUse do
       is_integer(catalog["sources"]) and catalog["sources"] in 1..1000 and
       c["cursor"] < catalog["sources"] and
       stamp(root) === %{revision: c["root_revision"], sha256: c["root_sha256"]} and
-      job_row["revision"] === c["job_revision"] and job["version"] in [1, 2, 3] and
+      job_row["revision"] === c["job_revision"] and job_version(job) in [1, 2, 3] and
       job["kind"] == "shared_generation_job" and job["status"] == "groups" and
       job["partition"] === c["partition"] and job["id"] === c["job_id"] and
       job["catalog"] === catalog and
@@ -1362,6 +1368,36 @@ defmodule Ipse.Extension.Collection.DocumentSourceUse do
       text === binary_part(Enum.at(sources, si)["text"], start, finish - start) and
       J.sha256(text) === raw and J.digest([text]) === canonical
   end
+
+  # Only logical schema dispatch is normalized. Stored maps and their hashes remain raw.
+  defp job_version(%{"version" => version} = job) when version in [4, 5, 6] do
+    base = version - 3
+    fields = @job_fields ++ ["maintenance_epoch"] ++ if(base == 1, do: [], else: ["reduction"])
+
+    reduction_fields =
+      if base == 3,
+        do:
+          (@job_reduction -- ["entities_sha256"]) ++
+            ~w(recipe entity_pages_sha256 digest_cursor verified_entities last_entity_id),
+        else: @job_reduction
+
+    if exact?(job, fields) and positive?(job["maintenance_epoch"]) and
+         ((base == 1 and job["status"] in ~w(groups manifests aborted selected)) or
+            (base in [2, 3] and job["status"] in ~w(reducing aborted selected) and
+               exact?(job["reduction"], reduction_fields) and
+               job["reduction"]["phase"] in ~w(manifests entities heads entity_digest select selected) and
+               (base != 3 or job["reduction"]["recipe"] === "ipse.evidence.shared_directory.v2"))),
+       do: base,
+       else: nil
+  end
+
+  defp job_version(%{"version" => version}) when version in [1, 2, 3], do: version
+  defp job_version(_), do: nil
+
+  defp job_epoch(%{"version" => version} = job) when version in [4, 5, 6],
+    do: job["maintenance_epoch"]
+
+  defp job_epoch(_), do: 0
 
   defp stamp(nil), do: %{revision: 0, sha256: nil}
   defp stamp(row), do: %{revision: row["revision"], sha256: row["sha256"]}

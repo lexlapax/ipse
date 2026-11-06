@@ -1,5 +1,10 @@
 # Document Source and lexical Index epoch conditions — 2026-11-06
 
+Later [progress-provenance review](document-progress-provenance-gap-20261106.md)
+found that recomputing Source's public digest can relabel earlier immutable
+progress. The tests below retain their actual outcomes; they do not qualify
+Source against that stronger case. Lexical Index has a separate durable job join.
+
 Historical engineering checkpoint. This P31C1b increment extends the [internal maintenance fence](document-maintenance-epoch-20261105.md)
 to Source and lexical Index continuations. Current contracts are taught in the
 [Collection SDK](../../developer/collection-sdk.md#stage-ordinary-documents-under-their-own-grant)

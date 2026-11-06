@@ -378,6 +378,8 @@ nor resource/offline qualification. No daemon configuration or existing model wa
 - [Document storage profile, protected staged blocks and legacy draft expiry repairs](document-store-boundary.md).
 - [Internal document maintenance epoch, native admission fence and stale-stage refusal](document-maintenance-epoch-20261105.md).
 - [Document Source and lexical Index continuation epoch conditions](document-continuation-epoch-20261106.md), with focused native/Session and explicit retirement controls; general maintenance and GC remain open.
+- [Shared-generation Job epoch fencing](shared-job-epoch-20261106.md) adds durable predecessor checks and explicit partial retirement; five ordinary Session controls pass. Producer egress and other controllers remain separate.
+- [Document progress provenance gap](document-progress-provenance-gap-20261106.md) records the later Source counter-plus-digest rewrite trace and the unimplemented native-claim prerequisite. Earlier limited tests remain distinct.
 - [Packed document adapter, paged catalog and selected-source Session controls](document-store-adapter.md), with [public Corpus Collection routes](corpus-collection-documents.md), [lossless per-source lexical runs](source-lexical-runs.md) and [namespace lexical indexing](namespace-lexical-index.md); full populated capacity qualification remains open.
 - [Versioned Collection chunking with legacy-reader and citation controls](collection-chunking.md); populated capacity still requires further storage and projection work.
 - [Private project-domain keys, namespace preparation and bounded page authenticators](project-domain-auth-component.md), with its [independent public-API and native adversarial audit](project-domain-auth-audit.md).

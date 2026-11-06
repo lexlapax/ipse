@@ -41,10 +41,11 @@ defmodule IpseKnowledge.Store.Collection.Job do
         effects: 0,
         stages: [],
         unit: 0,
-        write: nil
+        write: nil,
+        maintenance_epoch: nil
       }
 
-      io(s, :value_read, %{"key" => catalog_key(profile)}, :catalog)
+      io(s, :snapshot, %{}, :maintenance_snapshot)
     else
       _ -> error(:invalid_generation_job_request)
     end
@@ -168,8 +169,14 @@ defmodule IpseKnowledge.Store.Collection.Job do
     _ -> {:error, :invalid_generation_group}
   end
 
-  defp io(s, op, args, phase),
-    do: advance(C.start(s.profile, op, args), Map.put(s, :phase, phase))
+  defp io(s, op, args, phase) do
+    result =
+      if is_nil(s.maintenance_epoch),
+        do: C.start(s.profile, op, args),
+        else: C.start_with_epoch(s.profile, op, args, s.maintenance_epoch)
+
+    advance(result, Map.put(s, :phase, phase))
+  end
 
   defp advance({:call, request, inner}, s) do
     read = C.read_request?(request)
@@ -192,6 +199,21 @@ defmodule IpseKnowledge.Store.Collection.Job do
   defp advance({:done, {:continue, value}}, s), do: pause(%{s | write: value["continuation"]})
   defp advance({:done, {:error, code, _}}, _), do: error(code)
   defp advance({:stop, :unknown_effect}, _), do: {:stop, :unknown_effect}
+
+  defp done(%{phase: :maintenance_snapshot} = s, value) do
+    with {:ok, epoch, status} <- C.snapshot_epoch(value),
+         true <- s.args["action"] == "inspect" or status == "idle",
+         true <- continuation_epoch?(s.args["continuation"], s.args["action"], epoch) do
+      io(
+        %{s | maintenance_epoch: epoch},
+        :value_read,
+        %{"key" => catalog_key(s.profile)},
+        :catalog
+      )
+    else
+      _ -> error(:generation_maintenance_changed)
+    end
+  end
 
   defp done(%{phase: :catalog} = s, value) do
     row = value["record"]
@@ -238,7 +260,8 @@ defmodule IpseKnowledge.Store.Collection.Job do
             if(row, do: inspection_token(row["value"], row["revision"]), else: nil),
           "stale" =>
             row != nil and
-              (row["value"]["catalog_sha256"] != s.catalog_row["sha256"] or
+              (job_epoch(row["value"]) !== s.maintenance_epoch or
+                 row["value"]["catalog_sha256"] != s.catalog_row["sha256"] or
                  not current_root?(row["value"], s.root_row)),
           "coverage" => coverage(s)
         }}}
@@ -354,6 +377,10 @@ defmodule IpseKnowledge.Store.Collection.Job do
         token["job_revision"] === revision(row)
 
     true =
+      job_epoch(row["value"]) === token_epoch(token) and
+        job_epoch(row["value"]) === s.maintenance_epoch
+
+    true =
       token["root_revision"] === row["value"]["root_revision"] and
         token["catalog_sha256"] === row["value"]["catalog_sha256"]
 
@@ -429,12 +456,15 @@ defmodule IpseKnowledge.Store.Collection.Job do
             "facts" => 0
           }
 
-          {job, []}
+          {with_job_epoch(job, s.maintenance_epoch), []}
 
         action in ~w(append abort) ->
           true =
             is_map(row) and token["id"] == row["value"]["id"] and
               token["job_revision"] == revision(row)
+
+          true = job_epoch(row["value"]) === token_epoch(token)
+          true = action == "abort" or job_epoch(row["value"]) === s.maintenance_epoch
 
           true =
             token["root_revision"] === row["value"]["root_revision"] and
@@ -506,6 +536,11 @@ defmodule IpseKnowledge.Store.Collection.Job do
             )
           )
 
+    plan_body =
+      if action == "abort" and s.maintenance_epoch > 0,
+        do: Map.put(plan_body, "retirement_epoch", s.maintenance_epoch),
+        else: plan_body
+
     plan_sha =
       E.sha256(json(plan_body))
 
@@ -521,7 +556,8 @@ defmodule IpseKnowledge.Store.Collection.Job do
       })
 
     if token && token["plan_sha256"] != nil &&
-         (action != "abort" or token["plan_sha256"] === plan_sha) do
+         (action != "abort" or token["version"] === 3 or
+            (s.maintenance_epoch === 0 and token["plan_sha256"] === plan_sha)) do
       true =
         token["plan_sha256"] === plan_sha and token["root_revision"] === next["root_revision"] and
           token["catalog_sha256"] === s.catalog_row["sha256"]
@@ -641,8 +677,8 @@ defmodule IpseKnowledge.Store.Collection.Job do
           "coverage" => coverage(s)
         }}}
 
-  defp base_token(s, revision, unit, write, stages),
-    do: %{
+  defp base_token(s, revision, unit, write, stages) do
+    token = %{
       "version" => 1,
       "id" => s.next_job["id"],
       "plan_sha256" => if(revision == s.job_revision, do: s.plan_sha, else: nil),
@@ -654,8 +690,24 @@ defmodule IpseKnowledge.Store.Collection.Job do
       "stages" => stages
     }
 
-  defp inspection_token(job, revision),
-    do: %{
+    cond do
+      s.args["action"] == "abort" and revision === s.job_revision and s.maintenance_epoch > 0 ->
+        Map.merge(token, %{
+          "version" => 3,
+          "maintenance_epoch" => job_epoch(s.next_job),
+          "retirement_epoch" => s.maintenance_epoch
+        })
+
+      job_epoch(s.next_job) > 0 ->
+        Map.merge(token, %{"version" => 2, "maintenance_epoch" => job_epoch(s.next_job)})
+
+      true ->
+        token
+    end
+  end
+
+  defp inspection_token(job, revision) do
+    token = %{
       "version" => 1,
       "id" => job["id"],
       "plan_sha256" => nil,
@@ -667,7 +719,23 @@ defmodule IpseKnowledge.Store.Collection.Job do
       "stages" => []
     }
 
+    if job_epoch(job) == 0,
+      do: token,
+      else: Map.merge(token, %{"version" => 2, "maintenance_epoch" => job_epoch(job)})
+  end
+
   def valid?(job, profile) do
+    if is_map(job) and job["version"] in [4, 5, 6] do
+      E.safe_positive?(job["maintenance_epoch"]) and
+        valid_base?(base_job(job), profile) and byte_size(json(job)) <= 48 * 1024
+    else
+      valid_base?(job, profile)
+    end
+  rescue
+    _ -> false
+  end
+
+  defp valid_base?(job, profile) do
     ((exact?(job, @fields) and job["version"] === 1) or
        (exact?(job, @fields ++ ["reduction"]) and job["version"] in [2, 3] and
           Finalization.valid?(job["reduction"], job["version"] === 3))) and
@@ -698,15 +766,59 @@ defmodule IpseKnowledge.Store.Collection.Job do
     _ -> false
   end
 
-  defp token?(t),
-    do:
-      exact?(t, @token) and t["version"] === 1 and is_binary(t["id"]) and
-        Regex.match?(~r/\A[0-9a-f]{32}\z/, t["id"]) and
-        (is_nil(t["plan_sha256"]) or E.sha256?(t["plan_sha256"])) and
-        E.sha256?(t["catalog_sha256"]) and
-        Enum.all?(~w(job_revision root_revision unit), &E.safe_uint?(t[&1])) and
-        is_list(t["stages"]) and length(t["stages"]) <= 3 and
-        (is_nil(t["write"]) or is_map(t["write"]))
+  defp token?(t) do
+    epoch_fields =
+      case t["version"] do
+        2 -> ["maintenance_epoch"]
+        3 -> ~w(maintenance_epoch retirement_epoch)
+        _ -> []
+      end
+
+    exact?(t, @token ++ epoch_fields) and token_epoch_valid?(t) and is_binary(t["id"]) and
+      Regex.match?(~r/\A[0-9a-f]{32}\z/, t["id"]) and
+      (is_nil(t["plan_sha256"]) or E.sha256?(t["plan_sha256"])) and
+      E.sha256?(t["catalog_sha256"]) and
+      Enum.all?(~w(job_revision root_revision unit), &E.safe_uint?(t[&1])) and
+      is_list(t["stages"]) and length(t["stages"]) <= 3 and
+      (is_nil(t["write"]) or is_map(t["write"]))
+  end
+
+  defp token_epoch_valid?(%{"version" => 1}), do: true
+
+  defp token_epoch_valid?(%{"version" => 2, "maintenance_epoch" => epoch}),
+    do: E.safe_positive?(epoch)
+
+  defp token_epoch_valid?(
+         %{"version" => 3, "maintenance_epoch" => epoch, "retirement_epoch" => retirement} = token
+       ),
+       do:
+         E.safe_uint?(epoch) and E.safe_positive?(retirement) and retirement >= epoch and
+           E.sha256?(token["plan_sha256"]) and is_map(token["write"])
+
+  defp token_epoch_valid?(_), do: false
+
+  defp continuation_epoch?(nil, _, _), do: true
+
+  defp continuation_epoch?(%{"version" => 3} = token, "abort", epoch),
+    do: token["retirement_epoch"] === epoch
+
+  defp continuation_epoch?(%{"version" => 3}, _, _), do: false
+
+  defp continuation_epoch?(token, action, epoch),
+    do: token_epoch(token) === epoch or (action == "abort" and token_epoch(token) < epoch)
+
+  defp job_epoch(job), do: Map.get(job, "maintenance_epoch", 0)
+  defp token_epoch(token), do: Map.get(token, "maintenance_epoch", 0)
+
+  defp base_job(%{"version" => version} = job) when version in [4, 5, 6],
+    do: job |> Map.delete("maintenance_epoch") |> Map.put("version", version - 3)
+
+  defp base_job(job), do: job
+
+  defp with_job_epoch(job, 0), do: job
+
+  defp with_job_epoch(job, epoch),
+    do: Map.merge(job, %{"version" => job["version"] + 3, "maintenance_epoch" => epoch})
 
   defp reference?(r),
     do:
@@ -747,6 +859,9 @@ defmodule IpseKnowledge.Store.Collection.Job do
             r["chunks"] == job["catalog"]["chunks"] and r["facts"] == job["facts"])) and
       (job["status"] == "aborted" or job["status"] == "selected" == (r["phase"] == "selected"))
   end
+
+  defp current_root?(%{"version" => version} = job, row) when version in [4, 5, 6],
+    do: current_root?(base_job(job), row)
 
   defp current_root?(%{"version" => version, "status" => "selected"} = job, row)
        when version in [2, 3] do

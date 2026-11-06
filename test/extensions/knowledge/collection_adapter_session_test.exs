@@ -343,7 +343,9 @@ defmodule Ipse.KnowledgeCollectionAdapterSessionTest do
         assert :ok = Ipse.Extension.CollectionStore.validate(proposed["request"])
 
         if get_in(proposed, ["request", "source_guard"]) == "explicit_fact_group_v1" do
-          if hook = c[:group_approval_hook], do: hook.()
+          if hook = c[:group_approval_hook] do
+            if is_function(hook, 1), do: hook.(proposed), else: hook.()
+          end
         end
 
         if get_in(proposed, ["request", "source_guard"]) == "explicit_generation_selection_v1" do
@@ -570,6 +572,447 @@ defmodule Ipse.KnowledgeCollectionAdapterSessionTest do
         {:halt, current}
       end
     end)
+  end
+
+  defp job_epoch_context(c) do
+    assert {:ok, events} = Journal.load(c.dir, c.id)
+
+    action =
+      Enum.find(
+        Enum.reverse(events),
+        &(&1["type"] === "extension_action_intent" and
+            get_in(&1, ["request", "op"]) === "collection.store")
+      )
+
+    binding = action["effect_binding"]
+
+    %{
+      root: Ipse.Extension.CollectionStore.root(c.home),
+      namespace: binding["namespace"],
+      owner: %{
+        "project_id" => binding["project"]["project_id"],
+        "session_id" => c.id,
+        "identity_sha256" => binding["identity_sha256"],
+        "invocation_id" => action["parent_invocation_id"]
+      }
+    }
+  end
+
+  defp job_open_fence(c) do
+    ctx = job_epoch_context(c)
+    assert {:ok, snapshot} = Ipse.Extension.Collection.document_snapshot(ctx.root, ctx.namespace)
+
+    request = %{
+      "op" => "maintenance.open",
+      "expected_generation" => snapshot["generation"],
+      "expected_epoch" => snapshot["document_maintenance"]["epoch"],
+      "maintenance_id" => Usage.id(),
+      "purpose" => "checkpoint_inspection",
+      "close_operation_id" => Usage.id()
+    }
+
+    assert {:ok, _} =
+             Ipse.Extension.Collection.document_maintenance(
+               ctx.root,
+               ctx.namespace,
+               request,
+               Usage.id(),
+               ctx.owner
+             )
+
+    {ctx, request}
+  end
+
+  defp job_close_fence({ctx, opening}) do
+    assert {:ok, snapshot} = Ipse.Extension.Collection.document_snapshot(ctx.root, ctx.namespace)
+
+    assert {:ok, _} =
+             Ipse.Extension.Collection.document_maintenance(
+               ctx.root,
+               ctx.namespace,
+               %{
+                 "op" => "maintenance.close",
+                 "expected_generation" => snapshot["generation"],
+                 "expected_epoch" => snapshot["document_maintenance"]["epoch"],
+                 "maintenance_id" => opening["maintenance_id"]
+               },
+               opening["close_operation_id"],
+               ctx.owner
+             )
+  end
+
+  defp job_finish(c, args) do
+    Enum.reduce_while(1..100, args, fn _, input ->
+      value = invoke(c, "vectors", input)
+
+      if value["status"] === "staged_generation" or
+           (input["action"] in ~w(finalize finalize_paged) and value["status"] === "reducing"),
+         do: {:cont, Map.put(input, "continuation", value["continuation"])},
+         else: {:halt, value}
+    end)
+  end
+
+  @tag :generation_maintenance_session
+  @tag :guarded_group_session
+  @tag timeout: 180_000
+  test "shared Job keeps old work fenced and explicitly retires its exact old identity", c do
+    seed_index_sources(c, [{"fixture:job-epoch-old", "Orion preserved source.", nil}])
+
+    args = %{
+      "group_mode" => "group_job",
+      "action" => "begin",
+      "continuation" => nil,
+      "dimensions" => 8
+    }
+
+    old = job_finish(c, args)
+    assert old["status"] === "groups" and old["job"]["version"] === 1
+    token = old["continuation"]
+    assert token["version"] === 1
+    fence = job_open_fence(c)
+    active = native_status(c)
+
+    assert job_finish(c, %{args | "action" => "begin"})["code"] ===
+             "generation_maintenance_changed"
+
+    assert job_finish(c, %{args | "action" => "abort", "continuation" => token})["code"] ===
+             "generation_maintenance_changed"
+
+    assert native_status(c) === active
+    job_close_fence(fence)
+    before = native_status(c)
+
+    assert job_finish(c, %{args | "action" => "finalize", "continuation" => token})["code"] ===
+             "generation_maintenance_changed"
+
+    edited = Map.merge(token, %{"version" => 2, "maintenance_epoch" => 1})
+
+    assert job_finish(c, %{args | "action" => "finalize", "continuation" => edited})["status"] ===
+             "refused"
+
+    assert native_status(c) === before
+    inspected = job_finish(c, %{args | "action" => "inspect"})
+    assert inspected["job"] === old["job"] and inspected["continuation"] === token
+    assert inspected["stale"]
+    retired = job_finish(c, %{args | "action" => "abort", "continuation" => token})
+    assert retired["status"] === "aborted"
+    assert retired["job"]["id"] === old["job"]["id"]
+    refute Map.has_key?(retired["job"], "maintenance_epoch")
+    fresh = job_finish(c, args)
+    assert fresh["job"]["version"] === 4 and fresh["job"]["maintenance_epoch"] === 1
+    refute fresh["job"]["id"] === old["job"]["id"]
+    assert physical(c, "generation.notes") === nil
+    assert :ok = Session.close_confirmed(c.pid)
+    assert {:ok, events} = Journal.load(c.dir, c.id)
+    assert {:ok, _} = Session.Saved.restore(events, c.id)
+  end
+
+  for {action, version, root_version} <- [{"finalize", 5, 1}, {"finalize_paged", 6, 2}] do
+    @tag :generation_maintenance_session
+    @tag :guarded_group_session
+    @tag timeout: 240_000
+    test "fresh epoch shared Job appends and selects #{action} through real guarded Session actions",
+         c do
+      source = "fixture:job-epoch-fresh"
+      seed_index_sources(c, [{source, "Orion guarded generation evidence.", nil}])
+
+      args = %{
+        "group_mode" => "group_job",
+        "action" => "begin",
+        "continuation" => nil,
+        "dimensions" => 8
+      }
+
+      legacy = job_finish(c, args)
+
+      assert job_finish(c, %{args | "action" => "abort", "continuation" => legacy["continuation"]})[
+               "status"
+             ] === "aborted"
+
+      fence = job_open_fence(c)
+      job_close_fence(fence)
+      begun = job_finish(c, args)
+      assert begun["job"]["version"] === 4 and begun["job"]["maintenance_epoch"] === 1
+
+      append = %{
+        "group_mode" => "group_append",
+        "source_id" => source,
+        "dimensions" => 8,
+        "continuation" => begun["continuation"]
+      }
+
+      checked =
+        Map.put(c, :group_approval_hook, fn proposed ->
+          ctx = job_epoch_context(c)
+          request = proposed["request"]["request"]
+          assert request["maintenance_epoch"] === 1
+
+          assert {:ok, :checked} =
+                   Ipse.Extension.Collection.with_document_read(
+                     ctx.root,
+                     ctx.namespace,
+                     fn witness, read ->
+                       assert {:ok, _} =
+                                Ipse.Extension.Collection.DocumentSourceUse.authenticate_group_commit(
+                                  read,
+                                  witness,
+                                  request,
+                                  ctx.owner,
+                                  System.system_time(:millisecond)
+                                )
+
+                       assert {:error, :document_source_use_refused} =
+                                Ipse.Extension.Collection.DocumentSourceUse.authenticate_group_commit(
+                                  read,
+                                  witness,
+                                  Map.put(request, "maintenance_epoch", 2),
+                                  ctx.owner,
+                                  System.system_time(:millisecond)
+                                )
+
+                       # Alter only the supplied validator observation; no native state is changed.
+                       extra_field = fn key ->
+                         case read.(key) do
+                           {:ok, row} when key == "genjob.notes" ->
+                             {:ok,
+                              Map.put(
+                                row,
+                                "value",
+                                packed(Map.put(body(row), "unexpected_epoch", 1))
+                              )}
+
+                           other ->
+                             other
+                         end
+                       end
+
+                       assert {:error, :document_source_use_refused} =
+                                Ipse.Extension.Collection.DocumentSourceUse.authenticate_group_commit(
+                                  extra_field,
+                                  witness,
+                                  request,
+                                  ctx.owner,
+                                  System.system_time(:millisecond)
+                                )
+
+                       {:ok, :checked}
+                     end
+                   )
+        end)
+
+      grouped = job_finish(checked, append)
+      assert grouped["status"] === "manifests"
+
+      selected =
+        job_finish(
+          c,
+          args
+          |> Map.put("action", unquote(action))
+          |> Map.put("guarded_selection", true)
+          |> Map.put("continuation", grouped["continuation"])
+        )
+
+      assert selected["status"] === "selected", inspect(selected)
+      assert selected["job"]["version"] === unquote(version)
+      assert selected["job"]["maintenance_epoch"] === 1
+      assert body(physical(c, "generation.notes"))["version"] === unquote(root_version)
+      query = invoke(c, "query", %{"source_ids" => [source], "query" => "Orion"})
+      assert hd(query["evidence"])["citation"]["source_id"] === source
+      assert :ok = Session.close_confirmed(c.pid)
+      assert {:ok, events} = Journal.load(c.dir, c.id)
+      assert {:ok, _} = Session.Saved.restore(events, c.id)
+
+      assert {:ok, resumed} =
+               DynamicSupervisor.start_child(
+                 Ipse.Sessions,
+                 {Session, Keyword.put(c.opts, :id, c.id)}
+               )
+
+      assert :ok = Session.close_confirmed(resumed)
+      assert_inert_resume(c, events)
+    end
+  end
+
+  defp large_job_retirement_fixture(c) do
+    # Shape-valid metadata only, not a populated thousand-source catalog.
+    catalog = %{
+      "version" => 1,
+      "kind" => "catalog",
+      "partition" => "notes",
+      "generation" => 1,
+      "floor" => 0,
+      "sources" => 1000,
+      "extracted_bytes" => 0,
+      "chunks" => 0,
+      "entities" => 0,
+      "assertions" => 0,
+      "pages" =>
+        for(
+          n <- 1..63,
+          do: %{
+            "key" => "p" <> String.pad_leading(Integer.to_string(n), 90, "x"),
+            "sha256" => JSON.sha256("metadata-page-#{n}")
+          }
+        )
+    }
+
+    selection = %{
+      "selection_sha256" => JSON.sha256("fixture-vector-8"),
+      "profile" => "fixture-vector",
+      "model" => "fixture-float32",
+      "dimensions" => 8,
+      "encoding" => "float32le"
+    }
+
+    job = %{
+      "version" => 1,
+      "kind" => "shared_generation_job",
+      "id" => Usage.id(),
+      "partition" => "notes",
+      "status" => "groups",
+      "catalog" => catalog,
+      "catalog_sha256" => JSON.sha256(IO.iodata_to_binary(Elixir.JSON.encode!(catalog))),
+      "generation" => 1,
+      "root_revision" => 0,
+      "root_sha256" => nil,
+      "vector_selection" => selection,
+      "fact_selection" => %{"kind" => "explicit", "profile" => nil, "version" => 1},
+      "cursor" => 96,
+      "summaries" =>
+        for(
+          n <- 1..12,
+          do: %{
+            "key" => "gensum.notes." <> JSON.sha256("metadata-summary-#{n}"),
+            "sha256" => JSON.sha256("metadata-summary-#{n}"),
+            "byte_count" => 2
+          }
+        ),
+      "facts" => 0
+    }
+
+    assert byte_size(IO.iodata_to_binary(Elixir.JSON.encode!(job))) > 2 * 6144
+
+    replace(c, [{"catalog.notes", packed(catalog)}, {"genjob.notes", packed(job)}])
+
+    args = %{
+      "group_mode" => "group_job",
+      "action" => "inspect",
+      "continuation" => nil,
+      "dimensions" => 8
+    }
+
+    inspected = invoke(c, "vectors", args)
+    assert inspected["job"] === job
+    token = inspected["continuation"]
+    {job, args, token}
+  end
+
+  @tag :generation_maintenance_session
+  @tag timeout: 180_000
+  test "partial shared Job retirement freezes its own epoch and cannot adopt old stages", c do
+    {job, args, token} = large_job_retirement_fixture(c)
+    fence = job_open_fence(c)
+    job_close_fence(fence)
+
+    paused =
+      invoke(
+        c,
+        "vectors",
+        args
+        |> Map.put("action", "abort")
+        |> Map.put("continuation", token)
+        |> Map.put("force_retirement_pause", true)
+      )
+
+    assert paused["status"] === "staged_generation"
+    retirement = paused["continuation"]
+
+    assert retirement["version"] === 3 and retirement["maintenance_epoch"] === 0 and
+             retirement["retirement_epoch"] === 1
+
+    assert retirement["write"]["active"]["offset"] > 0
+    assert body(physical(c, "genjob.notes")) === job
+
+    for malformed <- [
+          Map.put(retirement, "plan_sha256", nil),
+          Map.put(retirement, "write", nil),
+          Map.put(retirement, "retirement_epoch", 1.0),
+          Map.put(retirement, "unknown", 1)
+        ] do
+      assert invoke(c, "vectors", %{args | "action" => "abort", "continuation" => malformed})[
+               "code"
+             ] === "invalid_generation_job_request"
+    end
+
+    for action <- ~w(begin inspect finalize finalize_paged) do
+      assert invoke(c, "vectors", %{args | "action" => action, "continuation" => retirement})[
+               "code"
+             ] === "generation_maintenance_changed"
+    end
+
+    fence2 = job_open_fence(c)
+    job_close_fence(fence2)
+    before = native_status(c)
+
+    assert invoke(c, "vectors", %{args | "action" => "abort", "continuation" => retirement})[
+             "code"
+           ] === "generation_maintenance_changed"
+
+    changed = Map.put(retirement, "retirement_epoch", 2)
+
+    assert invoke(c, "vectors", %{args | "action" => "abort", "continuation" => changed})["code"] ===
+             "generation_job_changed"
+
+    assert native_status(c) === before
+    retired = job_finish(c, %{args | "action" => "abort", "continuation" => token})
+    assert retired["status"] === "aborted" and retired["job"]["id"] === job["id"]
+    refute Map.has_key?(retired["job"], "maintenance_epoch")
+    assert :ok = Session.close_confirmed(c.pid)
+    assert {:ok, events} = Journal.load(c.dir, c.id)
+    assert {:ok, _} = Session.Saved.restore(events, c.id)
+  end
+
+  @tag :generation_maintenance_session
+  @tag timeout: 180_000
+  test "the exact returned shared Job retirement continues its real stage at the same epoch", c do
+    {job, args, token} = large_job_retirement_fixture(c)
+    fence = job_open_fence(c)
+    job_close_fence(fence)
+
+    paused =
+      invoke(
+        c,
+        "vectors",
+        args
+        |> Map.put("action", "abort")
+        |> Map.put("continuation", token)
+        |> Map.put("force_retirement_pause", true)
+      )
+
+    assert paused["status"] === "staged_generation"
+    returned = paused["continuation"]
+    assert returned["version"] === 3 and returned["retirement_epoch"] === 1
+    active = returned["write"]["active"]
+    assert active["offset"] > 0 and active["offset"] < active["byte_count"]
+    assert {:ok, before} = Journal.load(c.dir, c.id)
+    finished = job_finish(c, %{args | "action" => "abort", "continuation" => returned})
+    assert finished["status"] === "aborted"
+    assert finished["job"]["id"] === job["id"]
+    assert {:ok, after_events} = Journal.load(c.dir, c.id)
+
+    [first_write | _] =
+      Enum.filter(
+        Enum.drop(after_events, length(before)),
+        &(&1["type"] === "extension_action_intent" and
+            get_in(&1, ["request", "request", "op"]) === "value.write_parts")
+      )
+
+    request = first_write["request"]["request"]
+    assert Map.take(request, ~w(slot epoch offset)) === Map.take(active, ~w(slot epoch offset))
+    assert request["maintenance_epoch"] === 1
+    assert :ok = Session.close_confirmed(c.pid)
+    assert {:ok, closed} = Journal.load(c.dir, c.id)
+    assert {:ok, _} = Session.Saved.restore(closed, c.id)
   end
 
   @tag :public_shared_selected

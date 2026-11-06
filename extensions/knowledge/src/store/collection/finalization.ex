@@ -16,6 +16,29 @@ defmodule IpseKnowledge.Store.Collection.Finalization do
 
   def plan(job, values), do: plan(job, values, false)
 
+  def plan(%{"version" => version, "maintenance_epoch" => epoch} = job, values, paged)
+      when version in [4, 5, 6] do
+    profile = %{"partition" => job["partition"]}
+    true = IpseKnowledge.Store.Collection.Job.valid?(job, profile)
+    base = job |> Map.delete("maintenance_epoch") |> Map.put("version", version - 3)
+
+    case plan(base, values, paged) do
+      {:ok, result} ->
+        next =
+          Map.merge(result.job, %{
+            "version" => result.job["version"] + 3,
+            "maintenance_epoch" => epoch
+          })
+
+        {:ok, %{result | job: next}}
+
+      other ->
+        other
+    end
+  rescue
+    _ -> {:error, :invalid_generation_finalization}
+  end
+
   def plan(job, values, paged) do
     job = initialize(job, paged)
     reduction = job["reduction"]
@@ -247,6 +270,14 @@ defmodule IpseKnowledge.Store.Collection.Finalization do
     _ -> {:error, :invalid_generation_finalization}
   catch
     {:need, ref} -> {:need, ref}
+  end
+
+  def selected_root(%{"version" => version, "maintenance_epoch" => _} = job)
+      when version in [4, 5, 6] do
+    true = IpseKnowledge.Store.Collection.Job.valid?(job, %{"partition" => job["partition"]})
+    selected_root(job |> Map.delete("maintenance_epoch") |> Map.put("version", version - 3))
+  rescue
+    _ -> {:error, :invalid_generation_finalization}
   end
 
   def selected_root(job) do
