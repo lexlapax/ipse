@@ -1391,6 +1391,11 @@ integration evidence; consumer selection, live engines and quality remain open.
 
 ## P31: usable knowledge and prompt assistance
 
+The [v18 document verifier repair](archive/2026-10-26-p30-p31-implementation/document-verifier-v18-20261106.md)
+passes fresh synthetic source and installed `fff77fbe` DOCX/PDF proofs after a
+stale v16 expectation failed CI. The later planning runtime still needs its own
+final package qualification.
+
 The [initial document controller model](archive/2026-10-26-p30-p31-implementation/document-initial-public-model-20261106.md)
 returns a selected synthetic generation for 1,000 sources and 10,000 chunks,
 with an independently reconciled trace and approximately 3.59 GB of minimum

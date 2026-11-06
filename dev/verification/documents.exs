@@ -87,7 +87,7 @@ defmodule Ipse.Development.Verification.Documents do
 
     {:ok,
      %{
-       "extraction_version" => "ipse-documents-v16",
+       "extraction_version" => "ipse-documents-v18",
        "status" => "complete",
        "segments" => [%{"text" => "visible inserted"}]
      }} = extract.(styled_document.(styles), "styles.docx")
@@ -95,13 +95,24 @@ defmodule Ipse.Development.Verification.Documents do
     {:error, :unsupported_docx_style_visibility} =
       extract.(styled_document.(String.replace(styles, "Normal", "Other")), "mismatch.docx")
 
-    for {part, item, reference} <- [
-          {"footnotes", "footnote", "footnoteReference"},
-          {"endnotes", "endnote", "endnoteReference"},
-          {"comments", "comment", "commentReference"}
+    for {part, item, reference, with_layout} <- [
+          {"footnotes", "footnote", "footnoteReference", false},
+          {"footnotes", "footnote", "footnoteReference", true},
+          {"endnotes", "endnote", "endnoteReference", false},
+          {"endnotes", "endnote", "endnoteReference", true},
+          {"comments", "comment", "commentReference", false}
         ] do
+      layout =
+        if with_layout do
+          "<w:#{item} w:id=\"-1\" w:type=\"separator\"><w:p><w:r><w:t>layout only</w:t></w:r><w:r><w:separator/></w:r></w:p></w:#{item}>"
+        else
+          ""
+        end
+
       annotation =
-        "<w:#{part} xmlns:w=\"http://schemas.openxmlformats.org/wordprocessingml/2006/main\"><w:#{item} w:id=\"+07\"><w:p><w:r><w:t>linked café</w:t></w:r></w:p></w:#{item}></w:#{part}>"
+        "<w:#{part} xmlns:w=\"http://schemas.openxmlformats.org/wordprocessingml/2006/main\">" <>
+          layout <>
+          "<w:#{item} w:id=\"+07\"><w:p><w:r><w:t>linked café</w:t></w:r></w:p></w:#{item}></w:#{part}>"
 
       types =
         String.replace(
@@ -135,6 +146,8 @@ defmodule Ipse.Development.Verification.Documents do
         {:ok, result} = extract.(bytes, "annotations.docx")
         [_, %{"text" => "linked café", "locator" => locator}] = result["segments"]
         "+07" = locator["annotation_id"]
+        expected_paragraph = if layout == "", do: 1, else: 2
+        ^expected_paragraph = locator["paragraph"]
 
         if linked do
           "complete" = result["status"]
