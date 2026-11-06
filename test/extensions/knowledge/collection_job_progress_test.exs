@@ -20,7 +20,7 @@ defmodule Ipse.KnowledgeCollectionJobProgressIsolationTest do
         "Code.require_file(\"test/support/collection_job_progress.exs\"); " <>
         "result = ExUnit.run(); " <>
         "if Map.take(result, [:total, :failures, :skipped, :excluded]) != " <>
-        "%{total: 3, failures: 0, skipped: 0, excluded: 0}, do: System.halt(1); " <>
+        "%{total: 4, failures: 0, skipped: 0, excluded: 0}, do: System.halt(1); " <>
         "IO.puts(\"COLLECTION_JOB_PROGRESS_CONTROL_PASS\")"
 
     paths =

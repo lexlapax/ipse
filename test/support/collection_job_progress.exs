@@ -64,6 +64,64 @@ defmodule Ipse.KnowledgeCollectionJobProgressTest do
       "byte_count" => 49_152
     }
 
+  test "opt-in jobs retain a closed binding without reinterpreting legacy formats" do
+    legacy =
+      maximum_job()
+      |> Map.merge(%{"status" => "groups", "cursor" => 0, "facts" => 0, "summaries" => []})
+
+    owner = %{
+      "project_id" => E.sha256("project"),
+      "session_id" => String.duplicate("a", 32),
+      "identity_sha256" => E.sha256("identity")
+    }
+
+    binding = %{
+      "version" => 1,
+      "ref_sha256" => E.sha256("reference"),
+      "raw_sha256" => E.sha256("body"),
+      "source_set_sha256" => E.sha256("sources"),
+      "cursor" => 0,
+      "vector_job_revision" => 1,
+      "owner" => owner
+    }
+
+    profile = %{"partition" => legacy["partition"]}
+    assert Job.valid?(legacy, profile)
+    assert Job.valid?(Map.merge(legacy, %{"version" => 4, "maintenance_epoch" => 2}), profile)
+    assert Job.valid_binding?(binding)
+
+    for {version, epoch} <- [{7, nil}, {8, 2}] do
+      job = Map.merge(legacy, %{"version" => version, "input_binding" => nil})
+      job = if epoch, do: Map.put(job, "maintenance_epoch", epoch), else: job
+      assert Job.valid?(job, profile)
+      assert Job.valid?(Map.put(job, "input_binding", binding), profile)
+      refute Job.valid?(put_in(job, ["input_binding"], %{binding | "cursor" => 8}), profile)
+      refute Job.valid?(Map.put(job, "extra", true), profile)
+      refute Job.valid?(Map.put(job, "status", "manifests"), profile)
+    end
+
+    refute Job.valid?(
+             Map.merge(legacy, %{"version" => 7, "input_binding" => nil, "maintenance_epoch" => 0}),
+             profile
+           )
+
+    refute Job.valid?(
+             Map.merge(legacy, %{"version" => 8, "input_binding" => nil, "maintenance_epoch" => 0}),
+             profile
+           )
+
+    for invalid <- [
+          Map.put(binding, "extra", true),
+          Map.put(binding, "cursor", 1),
+          Map.put(binding, "vector_job_revision", 0),
+          Map.put(binding, "ref_sha256", "invalid"),
+          put_in(binding, ["owner", "session_id"], "invalid"),
+          put_in(binding, ["owner", "invocation_id"], String.duplicate("a", 32))
+        ] do
+      refute Job.valid_binding?(invalid)
+    end
+  end
+
   test "compact representation preserves exact continuations and absent or paused job state" do
     token = %{
       "version" => 1,

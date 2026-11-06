@@ -17,22 +17,34 @@ defmodule IpseKnowledge.Store.Collection.Job do
   @fields ~w(version kind id partition status catalog catalog_sha256 generation root_revision root_sha256 vector_selection fact_selection cursor summaries facts)
   @token ~w(version id plan_sha256 job_revision root_revision catalog_sha256 unit write stages)
 
+  @doc false
+  def start_bound(profile, args), do: start(profile, args, :begin_bound)
+
+  @doc false
+  def bind_input(profile, args), do: start(profile, args, :binding)
+
   def start(profile, args, guarded \\ false) do
     with true <- exact?(args, ~w(action vector_selection fact_selection continuation group)),
          true <-
-           guarded in [true, false, :selection] and
+           guarded in [true, false, :selection, :begin_bound, :binding] and
              (guarded !== true or args["action"] == "append") and
-             (guarded !== :selection or args["action"] in ~w(finalize finalize_paged)),
-         true <- args["action"] in ~w(begin inspect append abort finalize finalize_paged),
+             (guarded !== :selection or args["action"] in ~w(finalize finalize_paged)) and
+             (guarded !== :begin_bound or args["action"] == "begin") and
+             (guarded !== :binding or args["action"] == "bind") and
+             (args["action"] != "bind" or guarded === :binding),
+         true <- args["action"] in ~w(begin inspect append abort bind finalize finalize_paged),
          true <-
            IpseKnowledge.Store.Collection.Projection.valid_selection?(args["vector_selection"]) and
              IpseKnowledge.Store.Collection.Projection.valid_extraction?(args["fact_selection"]),
          true <- is_nil(args["continuation"]) or token?(args["continuation"]),
          true <-
-           args["action"] not in ~w(append abort finalize finalize_paged) or
+           args["action"] not in ~w(append abort bind finalize finalize_paged) or
              is_map(args["continuation"]),
          true <-
-           if(args["action"] == "append", do: is_map(args["group"]), else: is_nil(args["group"])) do
+           if(args["action"] in ~w(append bind),
+             do: is_map(args["group"]),
+             else: is_nil(args["group"])
+           ) do
       s = %{
         profile: profile,
         args: args,
@@ -126,6 +138,7 @@ defmodule IpseKnowledge.Store.Collection.Job do
            "fact_selection" => job["fact_selection"]
          },
          {:ok, summary} <- Directory.capture(job["partition"], plan, bundles, expected),
+         true <- binding_sources?(job, summary["sources"]),
          true <- summary["header"]["sources"] == min(8, job["catalog"]["sources"] - cursor),
          page_no = div(cursor, 16),
          true <-
@@ -156,6 +169,7 @@ defmodule IpseKnowledge.Store.Collection.Job do
              do: Map.put(next, "status", "manifests"),
              else: next
            ),
+         next = clear_binding(next),
          true <- valid?(next, profile) do
       values =
         Enum.map(plan.values ++ [plan.header_unit], &%{key: &1.key, value: &1.value}) ++
@@ -456,9 +470,20 @@ defmodule IpseKnowledge.Store.Collection.Job do
             "facts" => 0
           }
 
-          {with_job_epoch(job, s.maintenance_epoch), []}
+          job = with_job_epoch(job, s.maintenance_epoch)
 
-        action in ~w(append abort) ->
+          job =
+            if s.guarded === :begin_bound do
+              job
+              |> Map.put("version", if(s.maintenance_epoch == 0, do: 7, else: 8))
+              |> Map.put("input_binding", nil)
+            else
+              job
+            end
+
+          {job, []}
+
+        action in ~w(append abort bind) ->
           true =
             is_map(row) and token["id"] == row["value"]["id"] and
               token["job_revision"] == revision(row)
@@ -476,7 +501,7 @@ defmodule IpseKnowledge.Store.Collection.Job do
 
           if action == "abort" do
             true = row["value"]["status"] not in ~w(aborted selected)
-            {Map.put(row["value"], "status", "aborted"), []}
+            {row["value"] |> legacy_job() |> Map.put("status", "aborted"), []}
           else
             true = row["value"]["catalog_sha256"] === s.catalog_row["sha256"]
 
@@ -486,14 +511,36 @@ defmodule IpseKnowledge.Store.Collection.Job do
                   if(s.root_row, do: s.root_row["sha256"], else: nil)
 
             group = s.args["group"]
-            true = exact?(group, ~w(plan bundles catalog_page))
 
-            {:ok, planned} =
-              append_plan(row["value"], group["plan"], group["bundles"], group["catalog_page"])
+            if action == "bind" do
+              binding = group["input_binding"]
+              true = exact?(group, ~w(input_binding input_owner))
+              true = row["value"]["version"] in [7, 8] and is_nil(row["value"]["input_binding"])
+              true = valid_binding?(binding) and group["input_owner"] === binding["owner"]
+              true = binding["cursor"] === row["value"]["cursor"]
+              true = binding["vector_job_revision"] === row["revision"]
 
-            {planned.job, planned.values}
+              true =
+                token["plan_sha256"] != nil or
+                  (token["unit"] === 0 and token["write"] == nil and token["stages"] === [])
+
+              {Map.put(row["value"], "input_binding", binding), []}
+            else
+              true = append_group?(row["value"], group, s.guarded)
+
+              {:ok, planned} =
+                append_plan(row["value"], group["plan"], group["bundles"], group["catalog_page"])
+
+              {planned.job, planned.values}
+            end
           end
       end
+
+    s =
+      if action == "abort" and row["value"]["version"] in [7, 8] and
+           not is_nil(row["value"]["input_binding"]),
+         do: %{s | guarded: :binding},
+         else: s
 
     finish_plan(s, next, immutable, [], [])
   end
@@ -659,7 +706,7 @@ defmodule IpseKnowledge.Store.Collection.Job do
       io(
         s,
         cond do
-          s.guarded === true -> :group_commit_at
+          s.guarded in [true, :binding] -> :group_commit_at
           s.guarded === :selection and length(s.stages) === 3 -> :selection_commit_at
           true -> :value_commit_at
         end,
@@ -725,11 +772,26 @@ defmodule IpseKnowledge.Store.Collection.Job do
   end
 
   def valid?(job, profile) do
-    if is_map(job) and job["version"] in [4, 5, 6] do
-      E.safe_positive?(job["maintenance_epoch"]) and
-        valid_base?(base_job(job), profile) and byte_size(json(job)) <= 48 * 1024
-    else
-      valid_base?(job, profile)
+    cond do
+      is_map(job) and job["version"] in [7, 8] ->
+        fields =
+          @fields ++
+            ["input_binding"] ++ if(job["version"] == 8, do: ["maintenance_epoch"], else: [])
+
+        exact?(job, fields) and
+          (job["version"] == 7 or E.safe_positive?(job["maintenance_epoch"])) and
+          job["status"] == "groups" and job["cursor"] < job["catalog"]["sources"] and
+          (is_nil(job["input_binding"]) or
+             (valid_binding?(job["input_binding"]) and
+                job["input_binding"]["cursor"] === job["cursor"])) and
+          valid_base?(base_job(job), profile) and byte_size(json(job)) <= 48 * 1024
+
+      is_map(job) and job["version"] in [4, 5, 6] ->
+        E.safe_positive?(job["maintenance_epoch"]) and
+          valid_base?(base_job(job), profile) and byte_size(json(job)) <= 48 * 1024
+
+      true ->
+        valid_base?(job, profile)
     end
   rescue
     _ -> false
@@ -818,7 +880,61 @@ defmodule IpseKnowledge.Store.Collection.Job do
   defp base_job(%{"version" => version} = job) when version in [4, 5, 6],
     do: job |> Map.delete("maintenance_epoch") |> Map.put("version", version - 3)
 
+  defp base_job(%{"version" => version} = job) when version in [7, 8],
+    do:
+      job
+      |> Map.delete("input_binding")
+      |> Map.delete("maintenance_epoch")
+      |> Map.put("version", 1)
+
   defp base_job(job), do: job
+
+  @doc false
+  def valid_binding?(binding) do
+    exact?(
+      binding,
+      ~w(version ref_sha256 raw_sha256 source_set_sha256 cursor vector_job_revision owner)
+    ) and
+      binding["version"] === 1 and
+      Enum.all?(~w(ref_sha256 raw_sha256 source_set_sha256), &E.sha256?(binding[&1])) and
+      E.safe_uint?(binding["cursor"]) and rem(binding["cursor"], 8) == 0 and
+      E.safe_positive?(binding["vector_job_revision"]) and
+      exact?(binding["owner"], ~w(project_id session_id identity_sha256)) and
+      E.sha256?(binding["owner"]["project_id"]) and
+      is_binary(binding["owner"]["session_id"]) and
+      Regex.match?(~r/\A[0-9a-f]{32}\z/, binding["owner"]["session_id"]) and
+      E.sha256?(binding["owner"]["identity_sha256"])
+  rescue
+    _ -> false
+  end
+
+  defp binding_sources?(%{"version" => version, "input_binding" => binding}, sources)
+       when version in [7, 8] do
+    is_map(binding) and
+      Ipse.Extension.canonical_digest([sources]) === {:ok, binding["source_set_sha256"]}
+  end
+
+  defp binding_sources?(_, _), do: true
+
+  defp append_group?(%{"version" => version, "input_binding" => binding}, group, guarded)
+       when version in [7, 8] do
+    guarded === true and is_map(binding) and
+      exact?(group, ~w(plan bundles catalog_page input_binding input_owner)) and
+      group["input_binding"] === binding and group["input_owner"] === binding["owner"]
+  end
+
+  defp append_group?(_, group, _), do: exact?(group, ~w(plan bundles catalog_page))
+
+  defp clear_binding(%{"version" => version} = job) when version in [7, 8] do
+    if job["status"] == "manifests", do: legacy_job(job), else: Map.put(job, "input_binding", nil)
+  end
+
+  defp clear_binding(job), do: job
+
+  defp legacy_job(%{"version" => version} = job) when version in [7, 8],
+    do: job |> Map.delete("input_binding") |> Map.put("version", if(version == 7, do: 1, else: 4))
+
+  defp legacy_job(job), do: job
 
   defp with_job_epoch(job, 0), do: job
 

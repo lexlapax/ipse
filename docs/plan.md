@@ -379,6 +379,11 @@ following limits until the end-to-end paths are qualified:
    sets, cleanup or full populated capacity. Those remain the document critical
    path; the next capacity gap is public supplied-fact input without duplicated
    per-source projection storage, followed by a refreshed exact recipe ledger.
+   Its [authoritative Job input-binding component](archive/2026-10-26-p30-p31-implementation/document-job-input-binding-20261106.md)
+   now has closed opt-in formats, actual owner/source/revision guards and a
+   native staged bind/append/abort check. Caller-editable continuation hashes
+   alone do not freeze a chosen input. Public supplied-result creation and
+   append integration remain the next task; the component is not that journey.
 4. **Planning and prompt assistance — P31I.** Finish and qualify the existing
    planning and draft operator paths, including crash/resource boundaries and
    cancelled-draft carryover. Implement deferred accepted plan decisions and an

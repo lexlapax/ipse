@@ -14,7 +14,7 @@ defmodule Ipse.Extension.Collection.DocumentSourceUse do
   authenticating bytes does not certify those claims or an author's truth.
   """
   alias Ipse.JSON, as: J
-  alias Ipse.Extension.Collection.DocumentStage
+  alias Ipse.Extension.Collection.{DocumentDraft, DocumentStage}
   @error {:error, :document_source_use_refused}
   @claim ~w(version kind recipe partition job_id job_revision catalog_sha256 catalog_floor root_revision root_sha256 cursor embedding vector_selection fact_selection source_set_sha256 source_bindings inputs status page receipts)
   @claim_v4 @claim ++ ~w(vector_cursor vector_count previous_ready)
@@ -341,6 +341,7 @@ defmodule Ipse.Extension.Collection.DocumentSourceUse do
          {:ok, proof} <- authenticate_group_sources(read, group) do
       {:ok,
        proof
+       |> Map.put(:group, group)
        |> Map.put(:catalog_rows, rows)
        |> Map.put(:catalog_source_count, catalog["sources"])
        |> Map.update!(:reads, &(&1 + state.reads))
@@ -607,7 +608,10 @@ defmodule Ipse.Extension.Collection.DocumentSourceUse do
   def authenticate_selection_sources_with(_, _), do: @error
 
   @doc "Bind a staged group Job advance to its exact current catalog and sources; not a live write grant."
-  def authenticate_group_commit(read, witness, request, owner, now) when is_function(read, 1) do
+  def authenticate_group_commit(read, witness, request, owner, now, selected_input \\ nil)
+
+  def authenticate_group_commit(read, witness, request, owner, now, selected_input)
+      when is_function(read, 1) do
     with true <-
            is_map(witness) and is_map(witness["root"]) and
              witness["root"]["generation"] === request["generation"],
@@ -626,7 +630,61 @@ defmodule Ipse.Extension.Collection.DocumentSourceUse do
            DocumentStage.read_value(read, "genjob." <> partition),
          old = old_row["value"],
          new = job_stage["value"],
-         true <-
+         true <- job_stage["expected_revision"] === old_row["revision"],
+         {:ok, facts} <-
+           authenticate_job_change(
+             read,
+             partition,
+             catalog,
+             old_row,
+             old,
+             new,
+             request,
+             owner,
+             selected_input
+           ),
+         true <- facts[:purpose] === :bound_job_abort or current?(facts, now) do
+      deadlines =
+        Enum.map(values, & &1["expires_at_ms"]) ++ Enum.map(facts.sources, & &1["expires_at_ms"])
+
+      proof = %{
+        generation: request["generation"],
+        source: Map.delete(facts, :group),
+        publish_before_ms: deadlines |> Enum.reject(&is_nil/1) |> Enum.min(fn -> nil end)
+      }
+
+      {:ok, if(facts[:purpose], do: Map.put(proof, :purpose, facts.purpose), else: proof)}
+    else
+      _ -> @error
+    end
+  rescue
+    _ -> @error
+  catch
+    _, _ -> @error
+  end
+
+  def authenticate_group_commit(_, _, _, _, _, _), do: @error
+
+  defp authenticate_job_change(read, partition, catalog, old_row, old, new, request, owner, input) do
+    if is_map(old) and old["version"] in [7, 8] do
+      authenticate_bound_job_change(
+        read,
+        partition,
+        catalog,
+        old_row,
+        old,
+        new,
+        request,
+        owner,
+        input
+      )
+    else
+      authenticate_ordinary_job_change(read, partition, catalog, old, new, request)
+    end
+  end
+
+  defp authenticate_ordinary_job_change(read, partition, catalog, old, new, request) do
+    with true <-
            is_map(old) and is_map(new) and job_version(old) in [1, 2, 3] and
              job_version(new) === job_version(old) and
              job_epoch(old) === Map.get(request, "maintenance_epoch", 0) and
@@ -686,17 +744,8 @@ defmodule Ipse.Extension.Collection.DocumentSourceUse do
            "cursor" => old["cursor"],
            "sources" => summary["sources"]
          },
-         {:ok, facts} <- authenticate_group_sources(read, group),
-         true <- current?(facts, now) do
-      deadlines =
-        Enum.map(values, & &1["expires_at_ms"]) ++ Enum.map(facts.sources, & &1["expires_at_ms"])
-
-      {:ok,
-       %{
-         generation: request["generation"],
-         source: facts,
-         publish_before_ms: deadlines |> Enum.reject(&is_nil/1) |> Enum.min()
-       }}
+         {:ok, facts} <- authenticate_group_sources(read, group) do
+      {:ok, Map.put(facts, :group, group)}
     else
       _ -> @error
     end
@@ -706,7 +755,133 @@ defmodule Ipse.Extension.Collection.DocumentSourceUse do
     _, _ -> @error
   end
 
-  def authenticate_group_commit(_, _, _, _, _), do: @error
+  defp authenticate_bound_job_change(
+         read,
+         partition,
+         catalog,
+         row,
+         old,
+         new,
+         request,
+         owner,
+         input
+       ) do
+    stable_owner = DocumentDraft.owner(owner)
+    epoch = Map.get(request, "maintenance_epoch", 0)
+
+    with true <- job_version(old) === 1 and old["status"] === "groups",
+         true <-
+           old["partition"] === partition and old["kind"] === "shared_generation_job" and
+             id?(old["id"]),
+         true <- is_map(new) and J.safe_uint?(epoch) do
+      binding = old["input_binding"]
+
+      cond do
+        new["status"] === "aborted" ->
+          expected = old |> unbound_job() |> Map.put("status", "aborted")
+
+          if not is_nil(binding) and new === expected and binding["owner"] === stable_owner and
+               job_epoch(old) <= epoch,
+             do: {:ok, %{sources: [], purpose: :bound_job_abort}},
+             else: @error
+
+        job_epoch(old) !== epoch or old["catalog"] !== catalog["value"] or
+            old["catalog_sha256"] !== catalog["sha256"] ->
+          @error
+
+        is_nil(binding) ->
+          proposed = new["input_binding"]
+
+          with true <- job_version(new) === 1 and bound_input?(proposed),
+               true <- Map.delete(new, "input_binding") === Map.delete(old, "input_binding"),
+               true <- proposed["owner"] === stable_owner,
+               true <- selected_binding_matches?(proposed, input),
+               true <- proposed["cursor"] === old["cursor"],
+               true <- proposed["vector_job_revision"] === row["revision"],
+               {:ok, root} <- DocumentStage.read_value(read, "generation." <> partition),
+               true <-
+                 stamp(root) === %{revision: old["root_revision"], sha256: old["root_sha256"]},
+               {:ok, facts} <-
+                 authenticate_catalog_group(read, partition, catalog["sha256"], old["cursor"]),
+               true <- proposed["source_set_sha256"] === J.digest([facts.group["sources"]]) do
+            {:ok, facts}
+          else
+            _ -> @error
+          end
+
+        true ->
+          with true <-
+                 binding["owner"] === stable_owner and selected_binding_matches?(binding, input),
+               true <- binding["cursor"] === old["cursor"],
+               true <-
+                 (new["version"] === old["version"] and new["input_binding"] === nil and
+                    job_version(new) === 1) or
+                   (new === unbound_job(new) and new["version"] === unbound_job(old)["version"] and
+                      new["status"] === "manifests" and
+                      new["cursor"] === catalog["value"]["sources"]),
+               {:ok, facts} <-
+                 authenticate_ordinary_job_change(
+                   read,
+                   partition,
+                   catalog,
+                   unbound_job(old),
+                   unbound_job(new),
+                   request
+                 ),
+               true <- binding["source_set_sha256"] === J.digest([facts.group["sources"]]) do
+            {:ok, facts}
+          else
+            _ -> @error
+          end
+      end
+    else
+      _ -> @error
+    end
+  end
+
+  defp unbound_job(%{"version" => version} = job) when version in [7, 8],
+    do:
+      job |> Map.delete("input_binding") |> Map.put("version", if(version === 7, do: 1, else: 4))
+
+  defp unbound_job(job), do: job
+
+  @doc false
+  def unbound_job?(job, epoch) do
+    is_map(job) and job["version"] in [7, 8] and job_version(job) === 1 and
+      is_nil(job["input_binding"]) and job_epoch(job) === epoch and
+      job["kind"] === "shared_generation_job" and id?(job["id"])
+  rescue
+    _ -> false
+  end
+
+  @doc false
+  def unbound_job_abort?(old, new, epoch) do
+    J.safe_uint?(epoch) and is_map(old) and unbound_job?(old, job_epoch(old)) and
+      job_epoch(old) <= epoch and new === old |> unbound_job() |> Map.put("status", "aborted")
+  rescue
+    _ -> false
+  end
+
+  defp selected_binding_matches?(binding, input),
+    do:
+      exact?(input, ~w(ref_sha256 raw_sha256)) and
+        Map.take(binding, ~w(ref_sha256 raw_sha256)) === input
+
+  defp bound_input?(input) do
+    exact?(
+      input,
+      ~w(version ref_sha256 raw_sha256 source_set_sha256 cursor vector_job_revision owner)
+    ) and
+      input["version"] === 1 and
+      Enum.all?(~w(ref_sha256 raw_sha256 source_set_sha256), &J.sha256?(input[&1])) and
+      is_integer(input["cursor"]) and input["cursor"] in 0..992 and rem(input["cursor"], 8) === 0 and
+      positive?(input["vector_job_revision"]) and
+      exact?(input["owner"], ~w(project_id session_id identity_sha256)) and
+      J.sha256?(input["owner"]["project_id"]) and J.sha256?(input["owner"]["identity_sha256"]) and
+      id?(input["owner"]["session_id"])
+  rescue
+    _ -> false
+  end
 
   @doc "Authenticate one fixed fact-input slot against its current stored source, not a publication grant."
   def authenticate_fact_input(read, witness, request, now) when is_function(read, 1) do
@@ -1053,6 +1228,7 @@ defmodule Ipse.Extension.Collection.DocumentSourceUse do
       stamp(root) === %{revision: c["root_revision"], sha256: c["root_sha256"]} and
       job_row["revision"] === c["job_revision"] and job_version(job) in [1, 2, 3] and
       job_epoch(job) === epoch and
+      (job["version"] not in [7, 8] or is_nil(job["input_binding"])) and
       job["kind"] == "shared_generation_job" and job["status"] == "groups" and
       job["partition"] === c["partition"] and job["id"] === c["job_id"] and
       job["catalog"] === catalog and
@@ -1378,6 +1554,17 @@ defmodule Ipse.Extension.Collection.DocumentSourceUse do
   end
 
   # Only logical schema dispatch is normalized. Stored maps and their hashes remain raw.
+  defp job_version(%{"version" => version} = job) when version in [7, 8] do
+    fields =
+      @job_fields ++ ["input_binding"] ++ if(version === 8, do: ["maintenance_epoch"], else: [])
+
+    if exact?(job, fields) and (version === 7 or positive?(job["maintenance_epoch"])) and
+         (is_nil(job["input_binding"]) or bound_input?(job["input_binding"])) and
+         job["status"] === "groups",
+       do: 1,
+       else: nil
+  end
+
   defp job_version(%{"version" => version} = job) when version in [4, 5, 6] do
     base = version - 3
     fields = @job_fields ++ ["maintenance_epoch"] ++ if(base == 1, do: [], else: ["reduction"])
@@ -1402,7 +1589,7 @@ defmodule Ipse.Extension.Collection.DocumentSourceUse do
   defp job_version(%{"version" => version}) when version in [1, 2, 3], do: version
   defp job_version(_), do: nil
 
-  defp job_epoch(%{"version" => version} = job) when version in [4, 5, 6],
+  defp job_epoch(%{"version" => version} = job) when version in [4, 5, 6, 8],
     do: job["maintenance_epoch"]
 
   defp job_epoch(_), do: 0

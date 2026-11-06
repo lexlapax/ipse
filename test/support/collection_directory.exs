@@ -279,6 +279,66 @@ assert first_progress.job["cursor"] == 8 and first_progress.job["facts"] == 8 an
 
 assert Job.valid?(first_progress.job, profile)
 
+# The bound format commits the exact source group, then removes the binding
+# atomically with cursor advancement. The host separately authenticates the
+# selected result and owner at the native commit boundary.
+source_owner = %{
+  "project_id" => E.sha256("project"),
+  "session_id" => String.duplicate("a", 32),
+  "identity_sha256" => E.sha256("identity")
+}
+
+{:ok, group_sha} = Ipse.Extension.canonical_digest([hd(summaries)["sources"]])
+
+input_binding = %{
+  "version" => 1,
+  "ref_sha256" => E.sha256("selected reference"),
+  "raw_sha256" => E.sha256("selected bytes"),
+  "source_set_sha256" => group_sha,
+  "cursor" => 0,
+  "vector_job_revision" => 1,
+  "owner" => source_owner
+}
+
+for {version, epoch} <- [{7, nil}, {8, 1}] do
+  bound = Map.merge(job, %{"version" => version, "input_binding" => input_binding})
+  bound = if epoch, do: Map.put(bound, "maintenance_epoch", epoch), else: bound
+  assert Job.valid?(bound, profile)
+  assert {:ok, progressed} = Job.append_plan(bound, first_plan, first_bundles, hd(catalog_pages))
+  assert progressed.job["version"] == version and progressed.job["input_binding"] == nil
+  assert progressed.job["cursor"] == 8
+
+  assert {:error, _} =
+           Job.append_plan(progressed.job, first_plan, first_bundles, hd(catalog_pages))
+
+  wrong_sources = put_in(bound, ["input_binding", "source_set_sha256"], E.sha256("other"))
+
+  assert {:error, _} =
+           Job.append_plan(wrong_sources, first_plan, first_bundles, hd(catalog_pages))
+
+  {last_bundles, last_data} = inputs |> Enum.drop(128) |> Enum.unzip()
+  {:ok, last_plan} = G.pack_group("notes", 128, last_bundles, last_data, selection, extraction)
+  {:ok, last_sha} = Ipse.Extension.canonical_digest([List.last(summaries)["sources"]])
+
+  last_job =
+    bound
+    |> Map.merge(%{
+      "cursor" => 128,
+      "facts" => 128,
+      "summaries" => Enum.map(Enum.take(summaries, 16), & &1["ref"]),
+      "input_binding" =>
+        Map.merge(input_binding, %{"cursor" => 128, "source_set_sha256" => last_sha})
+    })
+
+  assert {:ok, completed} =
+           Job.append_plan(last_job, last_plan, last_bundles, Enum.at(catalog_pages, 8))
+
+  assert completed.job["version"] == if(version == 7, do: 1, else: 4)
+  assert completed.job["status"] == "manifests"
+  refute Map.has_key?(completed.job, "input_binding")
+  assert Job.valid?(completed.job, profile)
+end
+
 assert {:error, _} =
          Job.append_plan(first_progress.job, first_plan, first_bundles, hd(catalog_pages))
 

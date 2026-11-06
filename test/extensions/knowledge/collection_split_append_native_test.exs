@@ -465,6 +465,176 @@ if System.get_env("IPSE_SPLIT_APPEND_CHILD") == "1" do
                )
     end
 
+    @tag :job_input_binding_native
+    @tag timeout: 180_000
+    test "native Job binding authenticates its selected input and clears it on final append" do
+      ctx = index_context()
+      seed_index_source(ctx)
+      alias IpseKnowledge.Store.Collection.Directory
+
+      started = bound_job(ctx, :begin, job_args("begin", nil, nil))
+      assert started["job"]["version"] == 7
+      assert started["job"]["input_binding"] == nil
+      original_job = read(ctx, "genjob.notes")
+      assert original_job["value"] === started["job"]
+
+      {:done, {:ok, snapshot}} =
+        drive(
+          C.start(@profile, :source_bundles, %{
+            "source_keys" => [Evidence.sha256("fixture:index-epoch")],
+            "as_of_ms" => 20
+          }),
+          ctx
+        )
+
+      [bundle] = snapshot["bundles"]
+      source = bundle["source"]
+      {:ok, [chunk]} = Evidence.chunks(source)
+      {:ok, input_hash} = Ipse.Extension.canonical_digest([chunk["text"]])
+
+      {:ok, vector} =
+        Evidence.vector(
+          Map.merge(Map.delete(@vector, "encoding"), %{
+            "chunk_id" => chunk["chunk_id"],
+            "input_sha256" => input_hash,
+            "values" => List.duplicate(1.0, 1024)
+          })
+        )
+
+      supplied = [
+        %{
+          "source_key" => source["source_key"],
+          "source_bundle_sha256" =>
+            Evidence.sha256(IO.iodata_to_binary(Elixir.JSON.encode!(source))),
+          "vectors" => [vector],
+          "facts" => []
+        }
+      ]
+
+      {:ok, plan} = Generation.pack_group("notes", 0, [bundle], supplied, @vector, @facts)
+
+      {:ok, summary} =
+        Directory.capture("notes", plan, [bundle], %{
+          "cursor" => 0,
+          "vector_selection" => @vector,
+          "fact_selection" => @facts
+        })
+
+      {:ok, source_hash} = Ipse.Extension.canonical_digest([summary["sources"]])
+
+      selected = %{
+        "ref_sha256" => JSON.sha256("synthetic selected ref"),
+        "raw_sha256" => JSON.sha256("synthetic selected bytes")
+      }
+
+      binding =
+        Map.merge(selected, %{
+          "version" => 1,
+          "source_set_sha256" => source_hash,
+          "cursor" => 0,
+          "vector_job_revision" => original_job["revision"],
+          "owner" => Map.delete(ctx.owner, "invocation_id")
+        })
+
+      ctx = Map.put(ctx, :binding_input, selected)
+
+      bind_args =
+        job_args("bind", started["continuation"], %{
+          "input_binding" => binding,
+          "input_owner" => binding["owner"]
+        })
+
+      bound = bound_job(ctx, :bind, bind_args)
+      assert bound["job"]["input_binding"] === binding
+      assert read(ctx, "genjob.notes")["revision"] > original_job["revision"]
+      assert Process.get(:binding_guard_positive) == 1
+
+      {:done, {:ok, page}} =
+        drive(C.start(@profile, :value_read, %{"key" => "catalog.notes.0"}), ctx)
+
+      group = %{
+        "plan" => plan,
+        "bundles" => [bundle],
+        "catalog_page" => page["record"]["value"],
+        "input_binding" => binding,
+        "input_owner" => binding["owner"]
+      }
+
+      done = bound_job(ctx, :append, job_args("append", bound["continuation"], group))
+      assert done["status"] == "manifests" and done["job"]["version"] == 1
+      refute Map.has_key?(done["job"], "input_binding")
+      assert read(ctx, "genjob.notes")["value"] === done["job"]
+      assert Process.get(:binding_guard_positive) == 2
+
+      # A separate fresh job is born at E1. Its exact old binding can be
+      # retired by the same owner after the catalog changes and E advances.
+      ctx2 = index_context()
+      seed_index_source(ctx2)
+      close_index_fence(ctx2, open_index_fence(ctx2))
+      started2 = bound_job(ctx2, :begin, job_args("begin", nil, nil))
+      assert started2["job"]["version"] == 8 and started2["job"]["maintenance_epoch"] == 1
+
+      binding2 =
+        Map.merge(binding, %{
+          "vector_job_revision" => read(ctx2, "genjob.notes")["revision"],
+          "owner" => Map.delete(ctx2.owner, "invocation_id")
+        })
+
+      ctx2 = Map.put(ctx2, :binding_input, selected)
+
+      bound2 =
+        bound_job(
+          ctx2,
+          :bind,
+          job_args("bind", started2["continuation"], %{
+            "input_binding" => binding2,
+            "input_owner" => binding2["owner"]
+          })
+        )
+
+      source2 = %{
+        "source_id" => "fixture:second",
+        "partition" => "notes",
+        "generation" => 1,
+        "title" => "Synthetic second",
+        "text" => "A different source.",
+        "uri" => "provided:second",
+        "observed_at_ms" => 10,
+        "event_at_ms" => nil,
+        "expires_at_ms" => nil,
+        "origin" => %{
+          "kind" => "provided",
+          "store_profile" => "local",
+          "partition_or_scope" => "notes",
+          "receipt" => nil,
+          "historical" => false
+        }
+      }
+
+      assert %{"status" => "stored"} =
+               put_source(ctx2, %{
+                 "source" => source2,
+                 "expected_revision" => 0,
+                 "continuation" => nil
+               })
+
+      close_index_fence(ctx2, open_index_fence(ctx2))
+      {:ok, before_stale} = Collection.document_snapshot(ctx2.root, ctx2.namespace)
+
+      old_group =
+        Map.merge(group, %{"input_binding" => binding2, "input_owner" => binding2["owner"]})
+
+      assert {:error, :generation_maintenance_changed} =
+               bound_job(ctx2, :append, job_args("append", bound2["continuation"], old_group))
+
+      assert {:ok, ^before_stale} = Collection.document_snapshot(ctx2.root, ctx2.namespace)
+      retired = bound_job(ctx2, :abort, job_args("abort", bound2["continuation"], nil))
+      assert retired["job"]["version"] == 4 and retired["status"] == "aborted"
+      assert retired["job"]["maintenance_epoch"] == 1
+      refute Map.has_key?(retired["job"], "input_binding")
+      assert Process.get(:binding_guard_positive) == 4
+    end
+
     @tag :split_append_native
     @tag timeout: 180_000
     test "native append keeps both metadata stages until its final verified atomic switch" do
@@ -988,6 +1158,29 @@ if System.get_env("IPSE_SPLIT_APPEND_CHILD") == "1" do
       end
     end
 
+    defp bound_job(ctx, mode, args) do
+      job = IpseKnowledge.Store.Collection.Job
+
+      result =
+        case mode do
+          :begin -> job.start_bound(@profile, args)
+          :bind -> job.bind_input(@profile, args)
+          :append -> job.start(@profile, args, true)
+          :abort -> job.start(@profile, args)
+        end
+
+      case drive(result, ctx) do
+        {:done, {:continue, value}} ->
+          bound_job(ctx, mode, %{args | "continuation" => value["continuation"]})
+
+        {:done, {:ok, value}} ->
+          value
+
+        {:done, {:error, code, _}} ->
+          {:error, code}
+      end
+    end
+
     defp finalize(ctx, args) do
       result = job(Map.put(ctx, :selection_proof, true), args)
 
@@ -1020,17 +1213,33 @@ if System.get_env("IPSE_SPLIT_APPEND_CHILD") == "1" do
       maybe_check_projection(ctx, request["request"])
       maybe_check_group(ctx, request["request"])
       maybe_check_selection(ctx, request["request"])
+      maybe_check_binding(ctx, request)
 
-      case DocumentStage.execute(ctx.root, ctx.namespace, request["request"], id, ctx.owner) do
+      case DocumentStage.execute(ctx.root, ctx.namespace, request["request"], id, ctx.owner,
+             sdk_request_sha256: JSON.digest([request])
+           ) do
         {:ok, result} ->
           interpose_root(ctx, request["request"], result)
 
-          wrapped = %{
-            "version" => 1,
-            "operation_id" => id,
-            "request_sha256" => JSON.digest([request]),
-            "result" => result
-          }
+          wrapped =
+            case Map.pop(result, "document_progress") do
+              {nil, ordinary} ->
+                %{
+                  "version" => 1,
+                  "operation_id" => id,
+                  "request_sha256" => JSON.digest([request]),
+                  "result" => ordinary
+                }
+
+              {progress, ordinary} ->
+                %{
+                  "version" => 2,
+                  "operation_id" => id,
+                  "request_sha256" => JSON.digest([request]),
+                  "result" => ordinary,
+                  "progress" => progress
+                }
+            end
 
           assert Ipse.Extension.CollectionStore.valid_outcome?(request, "ok", wrapped, id)
           drive(C.resume(continuation, %{"status" => "ok", "value" => wrapped}), ctx)
@@ -1047,6 +1256,90 @@ if System.get_env("IPSE_SPLIT_APPEND_CHILD") == "1" do
     end
 
     defp drive(done, _ctx), do: done
+
+    defp maybe_check_binding(%{binding_input: selected} = ctx, %{
+           "source_guard" => "explicit_fact_group_v1",
+           "request" => request
+         }) do
+      {:ok, before} = Collection.document_snapshot(ctx.root, ctx.namespace)
+      now = System.system_time(:millisecond)
+
+      assert {:ok, :checked} =
+               Collection.with_document_read(ctx.root, ctx.namespace, fn witness, read ->
+                 guard = Ipse.Extension.Collection.DocumentSourceUse
+
+                 assert {:ok, proof} =
+                          guard.authenticate_group_commit(
+                            read,
+                            witness,
+                            request,
+                            ctx.owner,
+                            now,
+                            selected
+                          )
+
+                 wrong_ref = Map.put(selected, "ref_sha256", JSON.sha256("wrong ref"))
+                 wrong_body = Map.put(selected, "raw_sha256", JSON.sha256("wrong body"))
+                 wrong_owner = Map.put(ctx.owner, "identity_sha256", JSON.sha256("wrong owner"))
+
+                 stale_read = fn key ->
+                   case read.(key) do
+                     {:ok, row} when key == "genjob.notes" and is_map(row) ->
+                       {:ok, Map.update!(row, "revision", &(&1 + 1))}
+
+                     result ->
+                       result
+                   end
+                 end
+
+                 negatives = [
+                   {request, wrong_owner, selected, read},
+                   {Map.update!(request, "generation", &(&1 + 1)), ctx.owner, selected, read},
+                   {request, ctx.owner, selected, stale_read}
+                 ]
+
+                 negatives =
+                   if proof[:purpose] == :bound_job_abort,
+                     do: negatives,
+                     else:
+                       negatives ++
+                         [
+                           {request, ctx.owner, wrong_ref, read},
+                           {request, ctx.owner, wrong_body, read},
+                           {Map.put(
+                              request,
+                              "maintenance_epoch",
+                              Map.get(request, "maintenance_epoch", 0) + 1
+                            ), ctx.owner, selected, read},
+                           {request, ctx.owner, selected,
+                            fn key ->
+                              if String.starts_with?(key, "source.notes."),
+                                do: {:ok, nil},
+                                else: read.(key)
+                            end}
+                         ]
+
+                 for {req, owner, input, reader} <- negatives do
+                   assert {:error, :document_source_use_refused} =
+                            guard.authenticate_group_commit(
+                              reader,
+                              witness,
+                              req,
+                              owner,
+                              now,
+                              input
+                            )
+                 end
+
+                 {:ok, :checked}
+               end)
+
+      assert {:ok, ^before} = Collection.document_snapshot(ctx.root, ctx.namespace)
+      Process.put(:binding_guard_positive, Process.get(:binding_guard_positive, 0) + 1)
+      :ok
+    end
+
+    defp maybe_check_binding(_, _), do: :ok
 
     defp maybe_check_selection(
            %{selection_proof: true} = ctx,
@@ -1364,7 +1657,8 @@ else
           {:split_append_v1_selection, "original directory selection binds its staged Job"},
           {:lexical_maintenance_stale, "maintenance cannot renew a stale lexical job"},
           {:lexical_maintenance_fresh, "a fresh lexical job publishes after maintenance"},
-          {:lexical_retirement_public_pause, "public Corpus resumes a paused retirement"}
+          {:lexical_retirement_public_pause, "public Corpus resumes a paused retirement"},
+          {:job_input_binding_native, "native Job binding protects its selected input"}
         ] do
       @tag tag
       @tag timeout: 180_000
@@ -1383,7 +1677,7 @@ else
             "Code.require_file(#{inspect(Path.expand(__ENV__.file))}); " <>
             "result = ExUnit.run(); " <>
             "if Map.take(result, [:total, :failures, :excluded, :skipped]) != " <>
-            "%{total: 11, failures: 0, excluded: 10, skipped: 0}, do: System.halt(1); " <>
+            "%{total: 12, failures: 0, excluded: 11, skipped: 0}, do: System.halt(1); " <>
             "IO.puts(\"SPLIT_APPEND_CONTROL_PASS #{tag}\")"
 
         {output, status} =

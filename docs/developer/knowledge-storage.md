@@ -637,6 +637,49 @@ match the token and current idle snapshot. Inspection preserves the old stored
 epoch rather than refreshing it. An explicit new begin resets progress; it does
 not adopt an older immutable prefix or metadata stage.
 
+When a caller needs to freeze a selected result before appending a group, use
+the internal `Job.start_bound/2` and `Job.bind_input/2` contracts. They are not
+public Corpus command actions. Opt-in Job7 (epoch zero) and Job8 (positive
+epoch) start with `input_binding: null`; existing Job1–6 formats and default
+creation remain unchanged. An older reader refuses these new closed formats.
+Ordinary writes cannot create a prebound Job or convert an older Job into one.
+
+Follow one known, stage-free group through these transitions:
+
+1. Prepare its vector pages while the Job is unbound. The checked producer
+   path still requires the actual stored Job revision and current idle epoch.
+2. Capture the selected reference from the actual parent `invoke.command`
+   arguments under the current version-three operator binding. Bind its
+   reference digest and declared raw-body digest, the current catalog group's
+   source-set digest and cursor, and the actual physical Job revision **before**
+   this binding write. The stored owner fixes project, Session and extension
+   identity; a worker-supplied reference or owner cannot replace that context.
+3. Append using that exact persisted binding and owner. The host retains the
+   existing current-source, summary, revision and epoch checks. Successful
+   append clears the binding for the next group. The final group converts Job7
+   to Job1 or Job8 to Job4 at `manifests`, preserving the existing finalization
+   formats and raw hash joins.
+
+Reference capture proves which reference the operator selected and which digest
+it declares. It does not prove that the original result exists, authenticate its
+bytes or classify its contents. A caller must separately establish the
+[original-result lease and producing-action provenance](extensions.md#consume-an-explicitly-selected-historical-result)
+before using those bytes. The binding adds no read permission or publication
+authority. Once bound, the checked producer egress path refuses another model
+request; it cannot keep producing against the earlier unbound revision.
+
+A bound Job can instead take an exact owner-bound reducing abort. It retains its
+opening epoch, cursor, summaries and facts, removes the binding, and returns to
+the corresponding legacy `aborted` format. This path may use the current idle
+epoch after a fence without requiring the old Sources to remain current. Only
+the host-derived bound-abort purpose bypasses that source-current check;
+Registry/current-intent, stage expiry and native owner/root/epoch CAS checks
+remain. An unbound abort follows its separate ordinary transition. Neither path
+adopts another Session's binding, transfers active stages or supplies a token
+for unknown work. Keep this private integration bounded to known, stage-free
+progress; the legacy handoff procedure is not a cross-Session adoption route
+for bound Jobs.
+
 Explicit Job abort retains the exact older job's ID and epoch while staging only
 new reducing metadata under the current idle epoch. A bounded partial abort
 returns token3 with the old job epoch and a separately frozen `retirement_epoch`;
@@ -662,6 +705,7 @@ mix test test/extensions/knowledge/collection_draft_abort_test.exs
 mix test test/extensions/knowledge/collection_adapter_session_test.exs --only document_draft_abort --only document_draft_abort_three_slots
 mix test test/extensions/knowledge/collection_split_append_native_test.exs --only lexical_maintenance_stale --only lexical_maintenance_fresh
 mix test test/extensions/knowledge/collection_adapter_session_test.exs --only generation_maintenance_session --max-cases 1
+mix test test/ipse/extension/collection_job_input_guard_test.exs
 ```
 
 The Session controls prepare approved work, open/close the internal fence and
@@ -673,6 +717,15 @@ tampering. Projection controls exercise both vector and fact publication.
 Index controls exercise actual native jobs and
 retrieval. These are lifecycle checks, not destructive GC, migration or
 full-capacity qualification.
+
+For the private input-binding contract, also exercise direct prebound creation,
+ordinary rebinding and abort attempts against the actual Host predicates. The
+[component record](../archive/2026-10-26-p30-p31-implementation/document-job-input-binding-20261106.md)
+separates 21 no-application checks (seven new and 14 legacy, with five native
+cases excluded) from one selected native component case. The latter uses actual
+DocumentStage operations and a retained-reader source precheck with trusted
+synthetic inputs. It does not qualify a public Session caller, operator approval,
+original-result materialization or whole-capacity behavior.
 
 ## Claim a draft before writing immutable pages
 

@@ -92,6 +92,7 @@ nor resource/offline qualification. No daemon configuration or existing model wa
 
 ## Regression closure and fixture qualification — 2026-11-06
 
+- [Document Job input-binding component](document-job-input-binding-20261106.md) binds selected-reference/body digests to an actual stored Job, source group, owner and pre-bind revision. Twenty-one pure controls and one selected native component pass; public caller, consent/read-provenance integration and capacity remain open.
 - [Safe memory-verifier failure diagnostics](ci-memory-failure-diagnostic-20261106.md) preserves fixed phase/event/status fields and allowlisted Core codes before fixture cleanup. Two pure redaction/bounds controls pass; the macOS failure's cause and a current installed run remain open.
 - [Frozen full default regression](full-source-2a56-regression-20261106.md) completes the unchanged 497-file run at `2a56c60b`: 4,184/4,188 passed, four failures, 136 skipped and 124 excluded. Integrity and cleanup checks pass; separate focused fixture repairs do not turn that failed historical result into a current-source pass.
 - [Version-independent child-result counters](ci-child-result-counters-20261106.md) replaces prose parsing with exact ExUnit counters, zero child exit and one control marker. Separate representative checks cover both assigned source groups; unsupported or unrun native/terminal scopes remain explicit.

@@ -907,6 +907,7 @@ end
 
 defmodule Ipse.Extension.CollectionDocumentSourceUseNativeTest do
   use ExUnit.Case, async: false
+  @idle0 %{"version" => 1, "epoch" => 0, "status" => "idle"}
   alias Ipse.{JSON, Usage}
   alias Ipse.Extension.Collection
   alias Ipse.Extension.Collection.{DocumentSourceUse, DocumentStage, Profile}

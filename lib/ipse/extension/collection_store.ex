@@ -347,7 +347,8 @@ defmodule Ipse.Extension.CollectionStore do
                   witness,
                   request["request"],
                   owner,
-                  System.system_time(:millisecond)
+                  System.system_time(:millisecond),
+                  selected_job_input(context, intent)
                 )
 
               "explicit_fact_input_v1" ->
@@ -366,7 +367,10 @@ defmodule Ipse.Extension.CollectionStore do
                    {:extension_document_current, context.job_ref, intent}
                  ),
                now = System.system_time(:millisecond),
-               true <- DocumentSourceUse.current?(proof.source, now),
+               true <-
+                 (request["source_guard"] === "explicit_fact_group_v1" and
+                    proof[:purpose] === :bound_job_abort) or
+                   DocumentSourceUse.current?(proof.source, now),
                true <- Registry.live?(context.identity, div(now, 1000)),
                true <- is_nil(proof.publish_before_ms) or now < proof.publish_before_ms do
             {:ok,
@@ -389,6 +393,16 @@ defmodule Ipse.Extension.CollectionStore do
     end
   rescue
     _ -> @error
+  end
+
+  defp selected_job_input(context, intent) do
+    ref = get_in(context.parent, ["payload", "arguments", "result_input"])
+
+    if get_in(intent, ["effect_binding", "operator_binding", "version"]) === 3 and
+         get_in(context.parent, ["descriptor", "stage"]) === "invoke.command" and
+         Restore.selected?(ref) and ref["session_id"] !== context.session_id do
+      %{"ref_sha256" => JSON.digest([ref]), "raw_sha256" => ref["delivery"]["sha256"]}
+    end
   end
 
   defp unguarded_projection_deadline(context, intent, deadline) do
@@ -431,7 +445,8 @@ defmodule Ipse.Extension.CollectionStore do
                      &(not protected_fact_key?(&1["key"]) and
                          not protected_generation_key?(&1["key"]))
                    ),
-                 true <- Enum.all?(values, &unguarded_group_job?(read, &1)) do
+                 epoch = get_in(witness, ["document_maintenance", "epoch"]),
+                 true <- Enum.all?(values, &unguarded_group_job?(read, &1, epoch)) do
               {:ok, deadline}
             else
               _ -> @error
@@ -454,15 +469,20 @@ defmodule Ipse.Extension.CollectionStore do
 
   # A selected producer may initialize or abort a Job without publishing a
   # group. Advancing a group requires the separate source-authenticated guard.
-  defp unguarded_group_job?(read, %{"key" => key, "value" => value}) do
+  @doc false
+  def unguarded_group_job?(read, %{"key" => key, "value" => value}, epoch) do
     if protected_group_job_key?(key) do
       with {:ok, row} <- DocumentStage.read_value(read, key),
            true <- is_map(value),
            old = if(is_nil(row), do: nil, else: row["value"]) do
         cond do
+          is_map(old) and old["version"] in [7, 8] ->
+            DocumentSourceUse.unbound_job_abort?(old, value, epoch)
+
           is_nil(old) or (is_map(old) and old["status"] in ~w(aborted selected)) ->
             value["kind"] === "shared_generation_job" and value["status"] === "groups" and
-              value["cursor"] === 0 and value["summaries"] === [] and value["facts"] === 0
+              value["cursor"] === 0 and value["summaries"] === [] and value["facts"] === 0 and
+              (value["version"] not in [7, 8] or DocumentSourceUse.unbound_job?(value, epoch))
 
           is_map(old) and old["status"] === "groups" ->
             value === Map.put(old, "status", "aborted")
