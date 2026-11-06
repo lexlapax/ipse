@@ -15,6 +15,7 @@ defmodule IpseKnowledge.Store.Collection.Producer.Progress do
   @ready @common ++ ~w(claim input_count input_refs_sha256)
   @args ~w(version action embedding job_id job_revision vector_selection fact_selection vector_cursor previous_ready)
   @bound ~w(job_id job_revision catalog_sha256 catalog_floor root_revision root_sha256 cursor embedding vector_selection fact_selection source_set_sha256 vector_count)
+  @result_token ~w(version kind maintenance_epoch phase input_binding job)
   def start(resolved, profile, args) do
     init(resolved, profile, args, :page, nil, nil)
   end
@@ -34,6 +35,21 @@ defmodule IpseKnowledge.Store.Collection.Producer.Progress do
     if args["fact_selection"] === %{"kind" => "explicit", "profile" => nil, "version" => 1},
       do: init(resolved, profile, args, :append_selected, nil, continuation),
       else: error(:invalid_shared_producer_request)
+  rescue
+    _ -> error(:invalid_shared_producer_request)
+  end
+
+  @doc "Append an explicitly selected fact result through a separately committed Job binding."
+  def append_result(resolved, profile, args, selected, continuation) do
+    with true <- selected_result?(selected),
+         true <- args["action"] === "page",
+         true <-
+           args["fact_selection"] === %{"kind" => "explicit", "profile" => nil, "version" => 1},
+         true <- is_nil(continuation) or result_token?(continuation) do
+      init(resolved, profile, args, :append_result, selected, continuation)
+    else
+      _ -> error(:invalid_shared_producer_request)
+    end
   rescue
     _ -> error(:invalid_shared_producer_request)
   end
@@ -65,8 +81,10 @@ defmodule IpseKnowledge.Store.Collection.Producer.Progress do
         args: args,
         mode: mode,
         facts: facts,
+        selected: if(mode === :append_result, do: facts, else: nil),
+        binding: nil,
         token: token,
-        reads: 0,
+        reads: if(mode === :append_result, do: facts["reads_used"], else: 0),
         effects: 0,
         rows: %{},
         boot: nil,
@@ -154,7 +172,16 @@ defmodule IpseKnowledge.Store.Collection.Producer.Progress do
   end
 
   defp advance({:done, {:continue, value}}, %{phase: :append_unit} = s) do
-    {:done, {:continue, Map.put(value, "producer_coverage", coverage(s))}}
+    value =
+      if s.mode === :append_result,
+        do: result_continue(s, value, "append", value["status"]),
+        else: Map.put(value, "producer_coverage", coverage(s))
+
+    {:done, {:continue, value}}
+  end
+
+  defp advance({:done, {:continue, value}}, %{phase: :bind_unit} = s) do
+    {:done, {:continue, result_continue(s, value, "bind", value["status"])}}
   end
 
   defp advance({:stop, :unknown_effect}, _) do
@@ -192,11 +219,36 @@ defmodule IpseKnowledge.Store.Collection.Producer.Progress do
     true = is_map(row) and Job.valid?(row["value"], s.profile)
     job = row["value"]
 
+    if s.mode === :page and not args_inspect?(s) and job["version"] in [7, 8] do
+      true = is_nil(job["input_binding"])
+    end
+
+    if s.mode === :append_result do
+      true = job["version"] in [7, 8]
+      binding = job["input_binding"]
+
+      if s.token == nil do
+        true = is_nil(binding)
+        true = row["revision"] === s.args["job_revision"]
+      else
+        true = s.token["job"]["job_revision"] === row["revision"]
+        true = s.token["input_binding"]["vector_job_revision"] === s.args["job_revision"]
+
+        true =
+          if s.token["phase"] === "bind",
+            do: is_nil(binding) and row["revision"] === s.args["job_revision"],
+            else: binding === s.token["input_binding"]
+      end
+    end
+
     true =
       (s.mode === :page and args_inspect?(s)) or
         Job.validated_epoch(job, s.profile) === {:ok, s.maintenance_epoch}
 
-    true = job["id"] === s.args["job_id"] and row["revision"] === s.args["job_revision"]
+    true =
+      job["id"] === s.args["job_id"] and
+        (s.mode === :append_result or row["revision"] === s.args["job_revision"])
+
     true = job["status"] == "groups" and job["cursor"] < job["catalog"]["sources"]
     true = job["catalog_sha256"] === catalog["sha256"] and job["catalog"] === catalog["value"]
     true = job["root_revision"] === revision(root) and job["root_sha256"] === sha(root)
@@ -573,6 +625,18 @@ defmodule IpseKnowledge.Store.Collection.Producer.Progress do
     {:done, {:ok, Map.put(value, "producer_coverage", coverage(s))}}
   end
 
+  defp done(%{phase: :bind_inspect} = s, value) do
+    token = value["continuation"]
+    true = value["job"] === s.job and stage_free?(token)
+    bind_result(s, token)
+  end
+
+  defp done(%{phase: :bind_unit} = s, value) do
+    true = value["job"]["input_binding"] === s.binding
+    true = stage_free?(value["continuation"])
+    {:done, {:continue, result_continue(s, value, "append", "input_bound")}}
+  end
+
   defp source_next(%{source_pending: [bundle | _], source_stamps: [stamp | _]} = s) do
     row = Map.put(stamp, "value", bundle["head"])
     true = exact?(stamp, ~w(revision sha256 byte_count))
@@ -596,6 +660,21 @@ defmodule IpseKnowledge.Store.Collection.Producer.Progress do
       })
 
     cond do
+      s.mode === :append_result ->
+        selected = s.facts
+        true = length(selected["value"]["sources"]) === length(s.bundles)
+
+        facts =
+          Enum.zip(s.bundles, selected["value"]["sources"])
+          |> Enum.map(fn {bundle, supplied} ->
+            true = exact?(supplied, ~w(source_key facts))
+            true = supplied["source_key"] === bundle["source"]["source_key"]
+            {:ok, facts} = Projection.facts_from_spans(bundle["source"], supplied["facts"])
+            %{"source_key" => supplied["source_key"], "facts" => facts}
+          end)
+
+        collect_slots(Map.merge(s, %{selected: selected, facts: facts}))
+
       s.mode == :append_selected ->
         selected_facts(Map.merge(s, %{fact_pending: s.bundles, facts: []}))
 
@@ -921,13 +1000,179 @@ defmodule IpseKnowledge.Store.Collection.Producer.Progress do
       if s.reads + reserve > 512 or s.effects + 8 > 16 do
         error(:shared_producer_budget)
       else
-        if s.token == nil do
-          io(s, :generation_job, job_args(s, "inspect", nil), :append_inspect)
+        if s.mode === :append_result do
+          append_bound_result(s)
         else
-          io(s, :guarded_generation_append, job_args(s, "append", s.token), :append_unit)
+          if s.token == nil do
+            io(s, :generation_job, job_args(s, "inspect", nil), :append_inspect)
+          else
+            io(s, :guarded_generation_append, job_args(s, "append", s.token), :append_unit)
+          end
         end
       end
     end
+  end
+
+  defp append_bound_result(s) do
+    {:ok, summary} =
+      Directory.capture(s.profile["partition"], s.group["plan"], s.bundles, %{
+        "cursor" => s.job["cursor"],
+        "vector_selection" => s.args["vector_selection"],
+        "fact_selection" => s.args["fact_selection"]
+      })
+
+    {:ok, ref_sha} = Ipse.Extension.canonical_digest([s.selected["result_input"]])
+    {:ok, source_sha} = Ipse.Extension.canonical_digest([summary["sources"]])
+
+    binding = %{
+      "version" => 1,
+      "ref_sha256" => ref_sha,
+      "raw_sha256" => s.selected["raw_sha256"],
+      "source_set_sha256" => source_sha,
+      "cursor" => s.job["cursor"],
+      "vector_job_revision" => s.args["job_revision"],
+      "owner" => s.selected["owner"]
+    }
+
+    true = Job.valid_binding?(binding)
+    s = Map.put(s, :binding, binding)
+
+    if s.token do
+      true = s.token["input_binding"] === binding
+    end
+
+    if s.token == nil or s.token["phase"] === "bind" do
+      true = is_nil(s.job["input_binding"])
+      reserve = 32 + anchor_read_extra(Enum.map(~w(catalog generation genjob), &s.rows[&1]), true)
+
+      {:ok, effects} =
+        binding_reservation(
+          Map.put(s.job, "input_binding", binding),
+          s.rows["catalog"]["value"],
+          s.maintenance_epoch
+        )
+
+      if s.reads + reserve > 512 or s.effects + effects > 16 do
+        error(:shared_producer_budget)
+      else
+        if s.token == nil do
+          io(s, :generation_job, job_args(s, "inspect", nil), :bind_inspect)
+        else
+          bind_result(s, s.token["job"])
+        end
+      end
+    else
+      true = s.job["input_binding"] === binding
+      io(s, :guarded_generation_append, job_args(s, "append", s.token["job"]), :append_unit)
+    end
+  end
+
+  @doc false
+  def binding_reservation(job, catalog, epoch) do
+    profile = %{"partition" => job["partition"]}
+
+    with true <- Evidence.safe_uint?(epoch),
+         true <- Job.valid?(job, profile) and C.valid_catalog?(catalog, profile),
+         true <- job["catalog"] === catalog,
+         true <- Map.get(job, "maintenance_epoch", 0) === epoch do
+      {:call, commit, _} =
+        C.start_with_epoch(
+          %{"kind" => "collection", "scope" => "project", "partition" => job["partition"]},
+          :group_commit_at,
+          %{
+            "generation" => Evidence.safe_integer_max(),
+            "stages" => [
+              %{"slot" => 14, "epoch" => String.duplicate("f", 32)},
+              %{"slot" => 15, "epoch" => String.duplicate("f", 32)}
+            ]
+          },
+          epoch
+        )
+
+      :ok =
+        Ipse.Extension.validate(%{"api_version" => 1, "kind" => "host_call", "request" => commit})
+
+      # The real staged writer can fuse two pieces or use a small inline stage.
+      # A single-piece write plus open/seal per value is a conservative bound.
+      # Include the final commit; frame checks use the actual writer's fields.
+      effects =
+        1 + binding_write_effects("genjob." <> job["partition"], job, epoch) +
+          binding_write_effects("catalog." <> job["partition"], catalog, epoch)
+
+      if effects <= 16, do: {:ok, effects}, else: {:error, :shared_producer_budget}
+    else
+      _ -> {:error, :shared_producer_budget}
+    end
+  rescue
+    _ -> {:error, :shared_producer_budget}
+  end
+
+  defp binding_write_effects(key, value, epoch) do
+    bytes = json(value)
+    true = byte_size(bytes) in 2..61_440
+    parts = binding_write_parts(bytes, [])
+
+    Enum.reduce(parts, 0, fn data, offset ->
+      request = %{
+        "op" => "value.write_parts",
+        "slot" => 15,
+        "epoch" => String.duplicate("f", 32),
+        "key" => key,
+        "expected_revision" => Evidence.safe_integer_max(),
+        "byte_count" => byte_size(bytes),
+        "sha256" => Evidence.sha256(bytes),
+        "offset" => offset,
+        "publish" => false,
+        "data" => [data],
+        "generation" => Evidence.safe_integer_max()
+      }
+
+      request = if epoch > 0, do: Map.put(request, "maintenance_epoch", epoch), else: request
+
+      true =
+        Ipse.Extension.validate(%{
+          "api_version" => 1,
+          "kind" => "host_call",
+          "request" => %{"op" => "collection.store", "scope" => "project", "request" => request}
+        }) === :ok
+
+      offset + byte_size(data)
+    end)
+
+    length(parts) + 2
+  end
+
+  defp binding_write_parts("", parts), do: Enum.reverse(parts)
+
+  defp binding_write_parts(bytes, parts) do
+    {part, rest} = Evidence.utf8_prefix(bytes, 6144)
+    binding_write_parts(rest, [part | parts])
+  end
+
+  defp bind_result(s, token) do
+    args = job_args(s, "bind", token)
+
+    args =
+      Map.put(args, "group", %{"input_binding" => s.binding, "input_owner" => s.binding["owner"]})
+
+    advance(
+      Job.bind_input(s.profile, args),
+      Map.merge(s, %{phase: :bind_unit, child: :collection})
+    )
+  end
+
+  defp result_continue(s, value, phase, status) do
+    value
+    |> Map.put("status", status)
+    |> Map.put("continuation", %{
+      "version" => 1,
+      "kind" => "explicit_fact_group_append",
+      "maintenance_epoch" => s.maintenance_epoch,
+      "phase" => phase,
+      "input_binding" => s.binding,
+      "job" => value["continuation"]
+    })
+    |> Map.put("producer_coverage", coverage(s))
   end
 
   defp job_args(s, action, token) do
@@ -938,7 +1183,14 @@ defmodule IpseKnowledge.Store.Collection.Producer.Progress do
       "continuation" => token,
       "group" =>
         if action == "append" do
-          s.group
+          if s.mode === :append_result do
+            Map.merge(s.group, %{
+              "input_binding" => s.binding,
+              "input_owner" => s.binding["owner"]
+            })
+          else
+            s.group
+          end
         else
           nil
         end
@@ -1014,7 +1266,11 @@ defmodule IpseKnowledge.Store.Collection.Producer.Progress do
       "recipe" => @recipe,
       "partition" => s.profile["partition"],
       "job_id" => s.job["id"],
-      "job_revision" => s.rows["genjob"]["revision"],
+      "job_revision" =>
+        if(s.mode === :append_result and is_map(s.job["input_binding"]),
+          do: s.job["input_binding"]["vector_job_revision"],
+          else: s.rows["genjob"]["revision"]
+        ),
       "catalog_sha256" => s.job["catalog_sha256"],
       "catalog_floor" => s.job["catalog"]["floor"],
       "root_revision" => s.job["root_revision"],
@@ -1287,6 +1543,53 @@ defmodule IpseKnowledge.Store.Collection.Producer.Progress do
 
   defp exact?(r, fields) do
     is_map(r) and Enum.sort(Map.keys(r)) === Enum.sort(fields)
+  end
+
+  defp selected_result?(selected) do
+    with true <- exact?(selected, ~w(result_input value raw_sha256 byte_count owner reads_used)),
+         ref = selected["result_input"],
+         true <- exact?(ref, ~w(version session_id delivery)),
+         true <- ref["version"] === 1 and id?(ref["session_id"]),
+         delivery = ref["delivery"],
+         true <-
+           exact?(delivery, ~w(version kind output_id byte_count sha256 historical_receipt)),
+         true <- delivery["version"] === 1 and delivery["kind"] === "saved.result",
+         true <- delivery["historical_receipt"] === true,
+         true <- Evidence.sha256?(delivery["output_id"]) and Evidence.sha256?(delivery["sha256"]),
+         true <- selected["raw_sha256"] === delivery["sha256"],
+         true <-
+           is_integer(selected["byte_count"]) and selected["byte_count"] in 1..(4 * 1024 * 1024),
+         true <- selected["byte_count"] === delivery["byte_count"],
+         true <- is_integer(selected["reads_used"]) and selected["reads_used"] in 1..512,
+         true <- selected["reads_used"] >= div(selected["byte_count"] + 6143, 6144),
+         owner = selected["owner"],
+         true <- exact?(owner, ~w(project_id session_id identity_sha256)),
+         true <-
+           Evidence.sha256?(owner["project_id"]) and Evidence.sha256?(owner["identity_sha256"]),
+         true <- id?(owner["session_id"]) and owner["session_id"] !== ref["session_id"],
+         value = selected["value"],
+         true <- exact?(value, ~w(version kind sources)),
+         true <- value["version"] === 1 and value["kind"] === "explicit_fact_group",
+         true <- is_list(value["sources"]) and length(value["sources"]) in 1..8 do
+      true
+    else
+      _ -> false
+    end
+  rescue
+    _ -> false
+  end
+
+  defp result_token?(token) do
+    exact?(token, @result_token) and token["version"] === 1 and
+      token["kind"] === "explicit_fact_group_append" and
+      token["phase"] in ~w(bind append) and Evidence.safe_uint?(token["maintenance_epoch"]) and
+      Job.valid_binding?(token["input_binding"]) and is_map(token["job"]) and
+      Map.get(token["job"], "maintenance_epoch", 0) === token["maintenance_epoch"]
+  end
+
+  defp stage_free?(token) do
+    is_map(token) and token["unit"] === 0 and token["write"] === nil and
+      token["stages"] === [] and token["plan_sha256"] === nil
   end
 
   defp json(v) do

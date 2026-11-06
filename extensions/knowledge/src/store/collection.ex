@@ -294,6 +294,25 @@ defmodule IpseKnowledge.Store.Collection do
   end
 
   @doc false
+  def start(profile, :selected_fact_result, args) do
+    if profile?(profile) and exact?(args, ~w(result_input)) and
+         backup_result_ref?(args["result_input"]) do
+      backup_read_input(%{
+        profile: profile,
+        result_input: args["result_input"],
+        plan_input: nil,
+        bytes: "",
+        origin: :unset,
+        owner: :unset,
+        kind: :fact,
+        reads: 0
+      })
+    else
+      error(:invalid_collection_result_input)
+    end
+  end
+
+  @doc false
   def start(profile, :validate_backup_page, args) do
     if profile?(profile) and exact?(args, ~w(result_input plan_input)) and
          backup_result_ref?(args["result_input"]) and backup_result_ref?(args["plan_input"]) do
@@ -781,6 +800,14 @@ defmodule IpseKnowledge.Store.Collection do
   end
 
   @doc false
+  def start(profile, :fact_result_input_read, args) do
+    case start(profile, :result_input_read, args) do
+      {:call, request, state} -> {:call, request, Map.put(state, :owner_result, true)}
+      other -> other
+    end
+  end
+
+  @doc false
   def start(profile, :restore_mutation, args) do
     with true <- profile?(profile) and exact?(args, ~w(request result_input plan_input)),
          inner when is_map(inner) <- args["request"],
@@ -1179,16 +1206,17 @@ defmodule IpseKnowledge.Store.Collection do
          next = state.offset + byte_size(bytes),
          total = state.ref["delivery"]["byte_count"],
          true <- next <= total and result["next"] === if(next < total, do: next, else: nil) do
-      {:done,
-       {:ok,
-        %{
-          "delivery" => result["delivery"],
-          "offset" => state.offset,
-          "next" => result["next"],
-          "origin" => result["origin"],
-          "data" => bytes,
-          "coverage" => coverage(state, false)
-        }}}
+      value = %{
+        "delivery" => result["delivery"],
+        "offset" => state.offset,
+        "next" => result["next"],
+        "origin" => result["origin"],
+        "data" => bytes,
+        "coverage" => coverage(state, false)
+      }
+
+      value = if state[:owner_result], do: Map.put(value, "owner", wrapped["owner"]), else: value
+      {:done, {:ok, value}}
     else
       _ -> error(:collection_result_input_corrupt)
     end
@@ -3516,7 +3544,8 @@ defmodule IpseKnowledge.Store.Collection do
       "offset" => byte_size(state.bytes)
     }
 
-    backup_input_advance(start(state.profile, :result_input_read, request), state)
+    operation = if state[:kind] === :fact, do: :fact_result_input_read, else: :result_input_read
+    backup_input_advance(start(state.profile, operation, request), state)
   end
 
   defp backup_input_advance({:call, request, inner}, state) do
@@ -3530,8 +3559,12 @@ defmodule IpseKnowledge.Store.Collection do
     bytes = state.bytes <> result["data"]
     delivery = state.result_input["delivery"]
     origin = result["origin"]
+    owner = if state[:kind] === :fact, do: result["owner"], else: nil
 
     cond do
+      state[:kind] === :fact and state.owner !== :unset and state.owner !== owner ->
+        backup_error(:collection_result_input_corrupt)
+
       state.origin !== :unset and state.origin !== origin ->
         backup_error(:collection_result_input_corrupt)
 
@@ -3539,21 +3572,33 @@ defmodule IpseKnowledge.Store.Collection do
         backup_error(:collection_result_input_corrupt)
 
       is_integer(result["next"]) and result["next"] === byte_size(bytes) ->
-        backup_read_input(%{state | bytes: bytes, origin: origin})
+        state = %{state | bytes: bytes, origin: origin}
+        state = if state[:kind] === :fact, do: %{state | owner: owner}, else: state
+        backup_read_input(state)
 
       is_nil(result["next"]) and byte_size(bytes) === delivery["byte_count"] and
           E.sha256(bytes) === delivery["sha256"] ->
         case ResultDocument.decode(bytes, %{"type" => "object"}) do
           {:ok, value} ->
-            {:done,
-             {:ok,
-              %{
-                "result_input" => state.result_input,
-                "value" => value,
-                "raw_sha256" => delivery["sha256"],
-                "byte_count" => byte_size(bytes),
-                "origin" => origin
-              }}}
+            value = %{
+              "result_input" => state.result_input,
+              "value" => value,
+              "raw_sha256" => delivery["sha256"],
+              "byte_count" => byte_size(bytes),
+              "origin" => origin
+            }
+
+            value =
+              if state[:kind] === :fact do
+                value
+                |> Map.delete("origin")
+                |> Map.put("owner", Map.delete(owner, "invocation_id"))
+                |> Map.put("reads_used", state.reads)
+              else
+                value
+              end
+
+            {:done, {:ok, value}}
 
           _ ->
             backup_error(:collection_result_input_corrupt)

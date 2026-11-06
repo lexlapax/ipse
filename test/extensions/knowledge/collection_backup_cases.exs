@@ -368,6 +368,214 @@ defmodule IpseKnowledge.CollectionBackupCases do
              drive_input(bad, bytes, bad_ref["delivery"], 0)
   end
 
+  test "fact result assembly binds the full host owner across every input chunk" do
+    profile = %{"kind" => "collection", "scope" => "project", "partition" => "docs"}
+    text = String.duplicate("x", 7000)
+    bytes = ~s({"text":") <> text <> ~s("})
+
+    delivery = %{
+      "version" => 1,
+      "kind" => "saved.result",
+      "output_id" => E.sha256("output"),
+      "byte_count" => byte_size(bytes),
+      "sha256" => E.sha256(bytes),
+      "historical_receipt" => true
+    }
+
+    ref = %{"version" => 1, "session_id" => String.duplicate("a", 32), "delivery" => delivery}
+
+    owner = %{
+      "project_id" => E.sha256("project"),
+      "session_id" => String.duplicate("c", 32),
+      "identity_sha256" => E.sha256("identity"),
+      "invocation_id" => String.duplicate("d", 32)
+    }
+
+    initial = C.start(profile, :selected_fact_result, %{"result_input" => ref})
+
+    assert {:done, {:ok, selected}, 2} =
+             drive_fact_input(initial, bytes, delivery, 0, fn _ -> owner end)
+
+    assert selected === %{
+             "result_input" => ref,
+             "value" => %{"text" => text},
+             "raw_sha256" => E.sha256(bytes),
+             "byte_count" => byte_size(bytes),
+             "owner" => Map.delete(owner, "invocation_id"),
+             "reads_used" => 2
+           }
+
+    for key <- ~w(project_id session_id identity_sha256 invocation_id) do
+      altered =
+        if key in ~w(session_id invocation_id),
+          do: String.duplicate("b", 32),
+          else: E.sha256("other")
+
+      owner_at = fn offset -> if offset == 0, do: owner, else: Map.put(owner, key, altered) end
+
+      assert {:done, {:error, :collection_result_input_corrupt, _}, 2} =
+               drive_fact_input(initial, bytes, delivery, 0, owner_at)
+    end
+  end
+
+  test "fact input constructor is command-only and publishes a closed paged group" do
+    profile = %{"kind" => "collection", "scope" => "project", "partition" => "docs"}
+
+    state = %{
+      resolved: %{
+        "preset" => "collection-dense",
+        "options" => %{"stores" => %{"docs" => profile}}
+      },
+      phase: :idle,
+      ctx: nil,
+      cont: nil,
+      pending: nil
+    }
+
+    row = %{
+      "subject" => "A",
+      "predicate" => "supports",
+      "object" => "B",
+      "polarity" => "positive",
+      "inferred" => false,
+      "valid_from_ms" => nil,
+      "valid_to_ms" => nil,
+      "spans" => [[0, 0, 1]]
+    }
+
+    group = %{
+      "version" => 1,
+      "kind" => "explicit_fact_group",
+      "sources" => [
+        %{"source_key" => E.sha256("source"), "facts" => [row]}
+      ]
+    }
+
+    args = %{
+      "store" => "docs",
+      "action" => "fact_input",
+      "args" => %{
+        "input" => %{"version" => 1, "mode" => "publish", "value" => group}
+      }
+    }
+
+    invoke = %{"id" => "source", "arguments" => args}
+
+    assert {:ok, %Ipse.Extension.ResultPublication.Output{} = output, _} =
+             Corpus.handle("invoke.command", invoke, state)
+
+    assert {:ok, ^group} =
+             Ipse.Extension.ResultDocument.decode(output.bytes, %{"type" => "object"})
+
+    assert {:ok, %{"kind" => "result", "value" => %{"status" => "refused"}}, _} =
+             Corpus.handle("invoke.tool", invoke, state)
+
+    for invalid <- [
+          put_in(args, ["args", "input", "value", "sources"], []),
+          put_in(
+            args,
+            ["args", "input", "value", "sources", Access.at(0), "facts", Access.at(0), "spans"],
+            [[0, 1, 1]]
+          ),
+          put_in(args, ["args", "input", "value", "extra"], true),
+          Map.put(args, "result_input", %{})
+        ] do
+      assert {:ok, %{"kind" => "result", "value" => %{"status" => "refused"}}, _} =
+               Corpus.handle("invoke.command", %{"id" => "source", "arguments" => invalid}, state)
+    end
+
+    selection = %{
+      "selection_sha256" => E.sha256("selection"),
+      "profile" => "encoder",
+      "model" => "fixture",
+      "dimensions" => 1024,
+      "encoding" => "float32le"
+    }
+
+    extraction = %{"version" => 1, "kind" => "explicit", "profile" => nil}
+
+    begin_input = %{
+      "version" => 1,
+      "mode" => "begin",
+      "vector_selection" => selection,
+      "fact_selection" => extraction,
+      "continuation" => nil
+    }
+
+    begin_args = put_in(args, ["args", "input"], begin_input)
+
+    assert {:ok, %{"kind" => "host_call", "request" => %{"request" => %{"op" => "snapshot"}}}, _} =
+             Corpus.handle(
+               "invoke.command",
+               %{"id" => "source", "arguments" => begin_args},
+               state
+             )
+
+    invalid_begin = put_in(begin_args, ["args", "input", "vector_selection", "dimensions"], 1)
+
+    assert {:ok, %{"kind" => "result", "value" => %{"status" => "refused"}}, _} =
+             Corpus.handle(
+               "invoke.command",
+               %{"id" => "source", "arguments" => invalid_begin},
+               state
+             )
+
+    delivery = %{
+      "version" => 1,
+      "kind" => "saved.result",
+      "output_id" => E.sha256("output"),
+      "byte_count" => 10,
+      "sha256" => E.sha256("raw"),
+      "historical_receipt" => true
+    }
+
+    ref = %{"version" => 1, "session_id" => String.duplicate("a", 32), "delivery" => delivery}
+
+    producer = %{
+      "version" => 2,
+      "action" => "page",
+      "embedding" => "encoder",
+      "job_id" => String.duplicate("b", 32),
+      "job_revision" => 1,
+      "vector_selection" => selection,
+      "fact_selection" => extraction,
+      "vector_cursor" => 0,
+      "previous_ready" => nil
+    }
+
+    append_args =
+      args
+      |> put_in(["args", "input"], %{
+        "version" => 1,
+        "mode" => "append",
+        "producer" => producer,
+        "continuation" => nil
+      })
+      |> Map.put("result_input", ref)
+
+    assert {:ok,
+            %{
+              "kind" => "host_call",
+              "request" => %{
+                "result_input" => ^ref,
+                "request" => %{"op" => "restore.input.read", "offset" => 0}
+              }
+            },
+            _} =
+             Corpus.handle(
+               "invoke.command",
+               %{"id" => "source", "arguments" => append_args},
+               state
+             )
+
+    assert {:ok, %{"kind" => "result", "value" => %{"status" => "refused"}}, _} =
+             Corpus.handle(
+               "invoke.command",
+               %{"id" => "source", "arguments" => Map.delete(append_args, "result_input")},
+               state
+             )
+  end
+
   test "bounded plan matches the native document migration parser and rejects altered membership" do
     body = ~s({"text":"public"})
 
@@ -1072,6 +1280,36 @@ defmodule IpseKnowledge.CollectionBackupCases do
   end
 
   defp drive_input({:done, value}, _, _, count, _), do: {:done, value, count}
+
+  defp drive_fact_input({:call, request, continuation}, bytes, delivery, count, owner_at) do
+    offset = request["request"]["offset"]
+    size = min(6144, byte_size(bytes) - offset)
+    chunk = binary_part(bytes, offset, size)
+    next = if offset + size < byte_size(bytes), do: offset + size, else: nil
+    {:ok, hash} = Ipse.Extension.canonical_digest([request])
+
+    reply = %{
+      "status" => "ok",
+      "value" => %{
+        "version" => 3,
+        "owner" => owner_at.(offset),
+        "operation_id" => String.duplicate("e", 32),
+        "request_sha256" => hash,
+        "result" => %{
+          "delivery" => delivery,
+          "offset" => offset,
+          "next" => next,
+          "data_base64" => Base.encode64(chunk),
+          "sha256" => E.sha256(chunk),
+          "origin" => nil
+        }
+      }
+    }
+
+    drive_fact_input(C.resume(continuation, reply), bytes, delivery, count + 1, owner_at)
+  end
+
+  defp drive_fact_input({:done, value}, _, _, count, _), do: {:done, value, count}
 
   defp drive_plan({:call, request, continuation}, responses, count) do
     assert C.read_request?(request)

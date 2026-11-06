@@ -629,13 +629,14 @@ remain unchanged, and returned commands carry that option. Omit it or select
 `"response":"full"` for the complete Job value. A progress digest is not a
 backup, read permission or proof that interrupted work did not happen.
 
-For a known committed Job step, a stage-free continuation has `unit: 0`,
+For a known committed legacy Job step, a stage-free continuation has `unit: 0`,
 `write: null` and `stages: []`. After confirmed closure of that Session, a fresh
 Session in the same admitted project with the same explicitly trusted artifact
 can inspect the retained job using its exact selectors and a null continuation,
 then use the newly returned token. This does not authorize transferring active
 stages or automatically continuing an unknown effect. A token's empty fields
-alone do not prove that the preceding operation completed.
+alone do not prove that the preceding operation completed. The result-backed Job
+procedure below keeps its bound work in the original Session instead.
 
 For a complete captured job still at its `manifests` phase, choose
 `finalize_paged` before starting the older `finalize` reduction. It uses smaller
@@ -925,6 +926,113 @@ also used a synthetic endpoint and an initially empty selected root.
 The [public-entry adoption review](../archive/2026-10-26-p30-p31-implementation/shared-producer-public-adoption-independent-review.md)
 separately checks the canonical build and exact delegation/configuration; it does
 not relabel the private artifact's native execution as a canonical-artifact run.
+
+### Append an explicitly supplied fact result
+
+This alternative `collection-dense` path uses a saved result for the supplied
+facts instead of first publishing a separate fact projection for each source.
+Choose it before starting the Job. It records your assertions and source-local
+spans; it does not call an extraction model or certify that the assertions are
+true. Corpus rechecks source eligibility and reconstructs citations during append.
+
+Use the artifact, options and inference files from the preceding producer setup,
+but create a fresh configuration with **both** explicit Collection options:
+
+```sh
+elixir extensions/knowledge/config.exs \
+  --artifact "$IPSE_CORPUS_ARTIFACTS/corpus-producer" \
+  --package corpus --preset collection-dense --instance producer \
+  --options "$IPSE_CORPUS_ARTIFACTS/producer-options.json" \
+  --inference-config "$IPSE_CORPUS_ARTIFACTS/producer-inference.json" \
+  --collection-source-use shared_producer_v1 \
+  --collection-input-validation document_completed_v1 \
+  --output "$IPSE_CORPUS_ARTIFACTS/operator-producer-result.json"
+```
+
+Review the disabled selection, exact artifact, v3 Collection binding, model,
+service and budget; import and inspect the artifact as above. Validate and start
+a new chat in the same admitted home and workspace:
+
+```sh
+IPSE_HOME="$IPSE_CORPUS_COLLECTION_HOME" ./bin/ipse config \
+  --config "$IPSE_CORPUS_ARTIFACTS/operator-producer-result.json" --no-project-config \
+  --extension producer
+IPSE_HOME="$IPSE_CORPUS_COLLECTION_HOME" ./bin/ipse chat --provider demo \
+  --config "$IPSE_CORPUS_ARTIFACTS/operator-producer-result.json" --no-project-config \
+  --extension producer --cwd "$IPSE_CORPUS_COLLECTION_WORKSPACE"
+```
+
+The prior v2-only producer configuration does not select this result-backed
+path. These flags do not change the provider, ordinary approvals or
+protected-note permissions. Exit that chat before changing its selection.
+
+In a separate producing Session, publish one complete group. For the earlier
+`provided:example` source whose text begins `Source`, this example supplies one
+fact and cites bytes 0 through 5 of its first chunk:
+
+```text
+/ext ext__producer__source {"store":"notes","action":"fact_input","args":{"input":{"version":1,"mode":"publish","value":{"version":1,"kind":"explicit_fact_group","sources":[{"source_key":"ed96c0ca007f48497d77e9b05ae141f18b6962efc1f8f92fc231978612b869c7","facts":[{"subject":"Source","predicate":"supports","object":"review","polarity":"positive","inferred":false,"valid_from_ms":null,"valid_to_ms":null,"spans":[[0,0,6]]}]}]}}}}
+```
+
+The source key is the SHA-256 of the exact source ID. Each fact has one to eight
+`[chunk ordinal, start byte, end byte]` spans with an exclusive end. Include each
+source in the captured group in its actual order, with `facts:[]` for an explicit
+empty set. One publication accepts at most eight source keys and 32 facts per
+source, but the complete command must also fit the existing request frame; it
+does not assemble a maximum-size group from multiple commands.
+
+Even a small publication returns a `saved.result`. Materialize it with the
+[saved-result procedure](extensions.md#invoke-a-command-and-inspect-its-complete-result),
+retain the producing Session ID and **complete** delivery descriptor, and close
+that Session before selecting the result elsewhere. A reference has the shape
+`{"version":1,"session_id":"ACTUAL_SESSION_ID","delivery":ACTUAL_DELIVERY_OBJECT}`;
+an output ID or copied JSON alone is not the selected reference.
+
+In the Job-owning Session, obtain the exact vector selector as above, then begin
+the opt-in Job using that selector and the explicit fact selector:
+
+```text
+/ext ext__producer__source {"store":"notes","action":"fact_input","args":{"input":{"version":1,"mode":"begin","vector_selection":VECTOR_SELECTION,"fact_selection":{"kind":"explicit","profile":null,"version":1},"continuation":null}}}
+```
+
+Replace `VECTOR_SELECTION` with the complete actual JSON object. Follow any
+returned begin commands until the result is `ok`; retain its Job ID and revision
+from `coverage.job_progress` and `coverage.continuation`. Produce every version-2
+vector page for the captured group while its binding is empty, using the exact
+Job ID, revision and selectors as in the preceding procedure. Wait for known
+completion and a null vector-page continuation.
+
+Then submit the result-backed append. Replace both placeholders with actual
+complete JSON objects: `PRODUCER_PAGE_ARGUMENTS` is the original version-2 page
+arguments without `store`, and `SELECTED_REFERENCE` is the saved result reference.
+
+```text
+/ext ext__producer__source {"store":"notes","action":"fact_input","args":{"input":{"version":1,"mode":"append","producer":PRODUCER_PAGE_ARGUMENTS,"continuation":null}},"result_input":SELECTED_REFERENCE}
+```
+
+The producer object includes `version`, `action: "page"`, `embedding`, Job ID
+and **pre-binding** revision, both selectors, `vector_cursor` and
+`previous_ready`. Keep those values and the exact selected reference in each
+returned Source command. The first known `input_bound` result is an outer
+`draft` **after** the binding committed; it is not a no-effect result. Continue
+the returned commands in the same Session and with the same selected artifact.
+Each command rereads the selected bytes and current sources. Read its complete
+operation counts under `coverage.producer_coverage`; nested Job counts cover
+only that part of the work.
+
+When append reaches `manifests`, use its Job continuation with the guarded
+finalization procedure above. If it reaches `groups`, produce the next group's
+vectors while its binding is empty and explicitly select that group's result.
+No new inference is admitted while a group is bound. The
+[bounded public check](../archive/2026-10-26-p30-p31-implementation/document-fact-result-public-20261106.md)
+exercises one supplied source and fact; larger group construction and full
+capacity remain open.
+
+If a source changes or expires, inspect the Job with the same selectors. A known
+bound Job can be retired by its original owner using `generation_job abort` and
+the exact inspected Job token; do not unwrap or edit the outer append continuation
+yourself. Abort retains old data and receipts and is not garbage collection. An
+unknown effect supplies no safe replay or cross-Session adoption token.
 
 ### Query selected shared vectors
 

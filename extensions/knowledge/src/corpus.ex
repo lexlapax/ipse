@@ -13,6 +13,7 @@ defmodule IpseKnowledge.Corpus do
     "continue_collection_document" => :append,
     "continue_collection_source" => :put,
     "abort_collection_draft" => :progress_abort,
+    "fact_input" => :fact_input,
     "backup_status" => :backup_status,
     "backup_page" => :backup_page,
     "backup_plan" => :backup_plan,
@@ -43,11 +44,11 @@ defmodule IpseKnowledge.Corpus do
         "services" => [],
         "commands" =>
           [
-            entry("source", "Source lifecycle", source_schema()),
-            entry("query", "Cited evidence", query_schema()),
-            entry("index", "Embedding projection", index_schema())
+            entry("source", "Source", source_schema()),
+            entry("query", "Evidence", query_schema()),
+            entry("index", "Embeddings", index_schema())
           ] ++ collection_entries(),
-        "tools" => [entry("query", "Cited evidence", query_schema())] ++ collection_entries()
+        "tools" => [entry("query", "Evidence", query_schema())] ++ collection_entries()
       }
     }
   end
@@ -138,6 +139,9 @@ defmodule IpseKnowledge.Corpus do
              profile["kind"] == "collection",
          true <- profile["kind"] != "collection" or action != "continue_document" do
       cond do
+        action == "fact_input" ->
+          collection_fact_input(state, profile, source_args["input"], outer)
+
         action in ~w(backup_status backup_page backup_plan restore_validate_page restore_open restore_page restore_commit restore_abort restore_rollback restore_checkpoint_drop) ->
           collection_backup_source(state, profile, action, source_args["backup"], outer)
 
@@ -195,15 +199,73 @@ defmodule IpseKnowledge.Corpus do
   defp source_outer?(outer, action) do
     extra =
       case action do
-        "backup_plan" -> ["data_inputs"]
-        op when op in ~w(restore_validate_page restore_page) -> ~w(result_input plan_input)
-        "restore_open" -> ["result_input"]
-        op when op in ~w(restore_commit restore_rollback) -> ["plan_input"]
-        _ -> []
+        "fact_input" ->
+          case outer["args"] do
+            %{"input" => %{"mode" => "append"}} -> ["result_input"]
+            _ -> []
+          end
+
+        "backup_plan" ->
+          ["data_inputs"]
+
+        op when op in ~w(restore_validate_page restore_page) ->
+          ~w(result_input plan_input)
+
+        "restore_open" ->
+          ["result_input"]
+
+        op when op in ~w(restore_commit restore_rollback) ->
+          ["plan_input"]
+
+        _ ->
+          []
       end
 
     exact?(outer, ~w(store action args) ++ extra)
   end
+
+  defp collection_fact_input(state, %{"kind" => "collection"} = profile, input, outer) do
+    if state.resolved["preset"] === "collection-dense" do
+      case input["mode"] do
+        "publish" ->
+          case Ipse.Extension.ResultPublication.prepare_paged(input["value"]) do
+            {:ok, reply} ->
+              {:ok, reply, %{state | phase: :idle, ctx: nil, cont: nil, pending: nil}}
+
+            _ ->
+              finish(state, refused(:result_too_large))
+          end
+
+        "begin" ->
+          args = %{
+            "action" => "begin",
+            "vector_selection" => input["vector_selection"],
+            "fact_selection" => input["fact_selection"],
+            "continuation" => input["continuation"],
+            "group" => nil
+          }
+
+          advance(IpseKnowledge.Store.Collection.Job.start_bound(profile, args), %{
+            state
+            | phase: :fact_group_begin,
+              ctx: %{args: outer}
+          })
+
+        "append" ->
+          advance(
+            CollectionStore.start(profile, :selected_fact_result, %{
+              "result_input" => outer["result_input"]
+            }),
+            %{state | phase: :fact_group_read, ctx: %{args: outer, profile: profile}}
+          )
+      end
+    else
+      finish(state, refused(:collection_lifecycle_unavailable))
+    end
+  end
+
+  defp collection_fact_input(state, _, _, _),
+    do: finish(state, refused(:collection_lifecycle_unavailable))
 
   defp collection_backup_source(state, profile, action, args, outer) do
     if profile["kind"] === "collection" do
@@ -1181,6 +1243,8 @@ defmodule IpseKnowledge.Corpus do
            :collection_backup_plan,
            :collection_backup_validate,
            :collection_restore,
+           :fact_group_begin,
+           :fact_group_read,
            :collection_query,
            :collection_projection,
            :collection_semantic_snapshot,
@@ -1218,7 +1282,7 @@ defmodule IpseKnowledge.Corpus do
       end
 
     pending =
-      if state.phase in [:collection_producer, :collection_producer_append],
+      if state.phase in [:collection_producer, :collection_producer_append, :fact_group_append],
         do: :producer,
         else: pending
 
@@ -1265,6 +1329,40 @@ defmodule IpseKnowledge.Corpus do
 
   defp advance({:done, {:ok, value}}, %{phase: :collection_restore} = state),
     do: finish(state, output("ok", [], [], [], value, nil))
+
+  defp advance({:done, {:ok, selected}}, %{phase: :fact_group_read} = state) do
+    input = state.ctx.args["args"]["input"]
+
+    advance(
+      IpseKnowledge.Store.Collection.Producer.Progress.append_result(
+        state.resolved,
+        state.ctx.profile,
+        input["producer"],
+        selected,
+        input["continuation"]
+      ),
+      %{state | phase: :fact_group_append}
+    )
+  end
+
+  defp advance({:done, {:continue, value}}, %{phase: phase} = state)
+       when phase in [:fact_group_begin, :fact_group_append] do
+    args = put_in(state.ctx.args, ["args", "input", "continuation"], value["continuation"])
+    continuation = %{"id" => "source", "arguments" => args}
+
+    compact =
+      if is_map(value["job"]),
+        do: IpseKnowledge.Store.Collection.Job.compact_result(value),
+        else: value
+
+    finish(state, output("draft", [], [], [], Map.delete(compact, "continuation"), continuation))
+  end
+
+  defp advance({:done, {:ok, value}}, %{phase: phase} = state)
+       when phase in [:fact_group_begin, :fact_group_append] do
+    compact = IpseKnowledge.Store.Collection.Job.compact_result(value)
+    finish(state, output("ok", [], [], [], compact, nil))
+  end
 
   defp advance(
          {:done, {:ok, %{"native_generation" => generation}}},
@@ -2385,6 +2483,9 @@ defmodule IpseKnowledge.Corpus do
         "abort_collection_draft" ->
           ~w(head_id kind)
 
+        "fact_input" ->
+          ~w(input)
+
         op
         when op in ~w(backup_status backup_page backup_plan restore_validate_page restore_open restore_page restore_commit restore_abort restore_rollback restore_checkpoint_drop) ->
           ~w(backup)
@@ -2421,9 +2522,56 @@ defmodule IpseKnowledge.Corpus do
       end
 
     (exact?(args, keys) and
-       (keys != ["backup"] or backup_args?(action, args["backup"]))) or
+       (keys != ["backup"] or backup_args?(action, args["backup"])) and
+       (keys != ["input"] or fact_group_input?(args["input"]))) or
       (action == "open" and exact?(args, keys ++ ["historical_import"])) or
       (action == "continue_document" and exact?(args, keys ++ ["metadata_offset"]))
+  end
+
+  defp fact_group_input?(%{"version" => 1, "mode" => "publish", "value" => value} = input) do
+    exact?(input, ~w(version mode value)) and exact?(value, ~w(version kind sources)) and
+      value["version"] === 1 and value["kind"] === "explicit_fact_group" and
+      is_list(value["sources"]) and length(value["sources"]) in 1..8 and
+      Enum.all?(value["sources"], fn source ->
+        exact?(source, ~w(source_key facts)) and Evidence.sha256?(source["source_key"]) and
+          is_list(source["facts"]) and length(source["facts"]) <= 32 and
+          Enum.all?(source["facts"], &fact_group_row?/1)
+      end) and
+      length(Enum.uniq_by(value["sources"], & &1["source_key"])) === length(value["sources"])
+  end
+
+  defp fact_group_input?(%{"version" => 1, "mode" => "begin"} = input),
+    do:
+      exact?(input, ~w(version mode vector_selection fact_selection continuation)) and
+        IpseKnowledge.Store.Collection.Projection.valid_selection?(input["vector_selection"]) and
+        input["vector_selection"]["dimensions"] === 1024 and
+        input["fact_selection"] === %{"kind" => "explicit", "profile" => nil, "version" => 1} and
+        (is_nil(input["continuation"]) or is_map(input["continuation"]))
+
+  defp fact_group_input?(%{"version" => 1, "mode" => "append"} = input) do
+    producer = input["producer"]
+
+    exact?(input, ~w(version mode producer continuation)) and
+      exact?(
+        producer,
+        ~w(version action embedding job_id job_revision vector_selection fact_selection vector_cursor previous_ready)
+      ) and
+      producer["version"] === 2 and producer["action"] === "page" and
+      (is_nil(input["continuation"]) or is_map(input["continuation"]))
+  end
+
+  defp fact_group_input?(_), do: false
+
+  defp fact_group_row?(row) do
+    exact?(row, ~w(subject predicate object polarity inferred valid_from_ms valid_to_ms spans)) and
+      is_list(row["spans"]) and length(row["spans"]) in 1..8 and
+      Enum.all?(row["spans"], fn
+        [ordinal, start, finish] ->
+          Enum.all?([ordinal, start, finish], &Evidence.safe_uint?/1) and start < finish
+
+        _ ->
+          false
+      end)
   end
 
   defp backup_args?("backup_status", args), do: args === %{}
@@ -2485,6 +2633,7 @@ defmodule IpseKnowledge.Corpus do
 
   defp source_properties do
     %{
+      "input" => %{"type" => "object"},
       "source_id" => string(256),
       "generation" => integer(1, 1_000_000_000),
       "expected_revision" => integer(0, 1_000_000_000),
@@ -2574,7 +2723,7 @@ defmodule IpseKnowledge.Corpus do
         end
 
       [
-        entry("query_selected", "Selected evidence", schema),
+        entry("query_selected", "Evidence", schema),
         entry(
           "generation_job",
           "Projection jobs",
@@ -2598,7 +2747,7 @@ defmodule IpseKnowledge.Corpus do
         ),
         entry(
           "projection_selected",
-          "Cited projections",
+          "Projections",
           %{
             "type" => "object",
             "additionalProperties" => false,
@@ -2690,7 +2839,7 @@ defmodule IpseKnowledge.Corpus do
       [
         entry(
           "generation_produce",
-          "Facts, guarded vectors",
+          "Facts and vectors",
           schema
         )
       ]

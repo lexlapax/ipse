@@ -54,12 +54,26 @@ must exist before an integrated result is possible; an unrun test or review is a
 open evidence gate, not a reason to defer unrelated implementation. Finish a
 lane's observable journey and its stated checks before calling that lane done.
 
-The immediate priority is the notes journey. In parallel, assign one owner to
-document storage and faithful ingestion, and one to the reviewed decision-engine
-setup and consumer. Keep other work queued unless its owner can make a complete,
-independent change without competing for the same files or verification resources.
-Do not continue the annual storage-only calendar as a substitute for the integrated
-workload: first add its missing Session turns and freeze the intake/mix evidence.
+The notes journey remains a required acceptance gate, but the operator declined
+the proposed retained-notebook recall check. That check and equivalent replacement
+consumers remain off limits, as detailed in the notes lane below. Continue the
+independent document, decision-consumer and verification work without treating
+that refusal as a completed notes test. Do not continue the annual storage-only
+calendar as a substitute for the integrated workload: its missing Session turns
+and intake/mix evidence remain required.
+
+Close the following concrete results in order within each lane. Independent
+lanes can proceed together; the arrows identify actual implementation dependencies.
+
+| Order and owner lane | Current task and subtasks | Closure evidence still needed |
+| --- | --- | --- |
+| Documents 1 | Complete within bounded source-runtime scope: public saved-result publication, unbound Job creation, vector preparation, explicit input binding, append and finalization. The synthetic public Session journey, focused checks and manual review pass; the earlier fixture assertion failure is preserved | Larger groups, installed use and full capacity have separate gates below |
+| Documents 2 → 1 | Assemble larger fact groups from ordered saved results within the unchanged command frame. Reuse the selected-result reader, enforce one shared 512-read budget, preserve order and refuse duplicate rows | Implement and test the bounded assembly path; a small one-result journey does not establish the full 160-fact group |
+| Documents 3 → 2 | Execute the actual public recipe for the fixed full document target, declared replacement, retained history, cleanup and migration. Replace private assembly shortcuts in the existing accounting model | Complete request/response and operation accounting, then actual native journal/allocation peaks and lifecycle controls under unchanged limits |
+| Notes | Current recall, one complete populated day, then the declared annual workload with 10,000 mixed changes. The original retained check is declined; populated recall and integrated endurance remain unqualified | Authorized evidence for those gates; preserve all 2,100 original operations and unknown outcomes without replay or a substitute consumer |
+| Decisions | Finish local protocol/integration gaps and the frozen baseline/candidate assessment. Keep useful, rejected/no-benefit and unverified outcomes distinct | Independent quality labels and matched time/cost, or a completed supported negative disposition; synthetic protocol success alone is insufficient |
+| Verification | Repair specific hosted/source/installed failures. Draft child counters now have a separate local pass; native filesystem admission and macOS/installed outcomes remain open | A current complete source baseline, supported platform checks, fresh package and installed journeys; no blanket skips or widened native profile |
+| Final → all required gates | Reconcile remaining P31 integration/lifecycle/qualification items, whole operator/developer manuals, adversarial audit and reviewer handoff | Exact candidate checks and an explicit disposition for every remaining acceptance item; no milestone completion from component passes |
 
 The earlier [combined source regression](archive/2026-10-26-p30-p31-implementation/combined-source-regression-20261104.md)
 passed all six bounded chat controls but finished with 26 failures and 52 invalid
@@ -1871,6 +1885,10 @@ journeys reach guarded selection for six sources across two vector pages and
 nine sources across two groups, with confirmed stage-free Session handoffs;
 a single Session hit the lineage producer limit. Host-level group-read interposition,
 maximum-scale build and publication cost, wider public production and integrated qualification remain open.
+A separate [result-backed supplied-fact caller](archive/2026-10-26-p30-p31-implementation/document-fact-result-public-20261106.md)
+has a one-source, one-fact public Session check with a synthetic registered
+embedding, explicit result binding and same-owner continuation. Larger group
+assembly, installed qualification and the full P31 capacity target remain open.
 A separate [producer egress epoch increment](archive/2026-10-26-p30-p31-implementation/producer-egress-epoch-20261106.md)
 fences staged and inline claims against the held reader's current idle epoch.
 Synthetic Session controls cover both pre-approval fences, a fresh post-fence

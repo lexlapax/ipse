@@ -637,12 +637,14 @@ match the token and current idle snapshot. Inspection preserves the old stored
 epoch rather than refreshing it. An explicit new begin resets progress; it does
 not adopt an older immutable prefix or metadata stage.
 
-When a caller needs to freeze a selected result before appending a group, use
-the internal `Job.start_bound/2` and `Job.bind_input/2` contracts. They are not
-public Corpus command actions. Opt-in Job7 (epoch zero) and Job8 (positive
-epoch) start with `input_binding: null`; existing Job1–6 formats and default
-creation remain unchanged. An older reader refuses these new closed formats.
-Ordinary writes cannot create a prebound Job or convert an older Job into one.
+Corpus `source` action `fact_input` offers a bounded supplied-data caller for
+`collection-dense`: `publish` creates a paged result, `begin` opts into Job7/8,
+and `append` reopens the explicitly selected result. It uses `Job.start_bound/2`,
+`Job.bind_input/2` and `Producer.Progress.append_result/5` internally; these helpers
+do not grant independent SDK authority. Opt-in Job7 (epoch zero) and Job8
+(positive epoch) start with `input_binding: null`; existing Job1–6 formats and
+default creation remain unchanged. An older reader refuses these new closed
+formats. Ordinary writes cannot create a prebound Job or convert an older Job.
 
 Follow one known, stage-free group through these transitions:
 
@@ -668,6 +670,20 @@ before using those bytes. The binding adds no read permission or publication
 authority. Once bound, the checked producer egress path refuses another model
 request; it cannot keep producing against the earlier unbound revision.
 
+The `fact_input` caller captures top-level `result_input` under the selected v3
+operator binding. `Collection.selected_fact_result` checks the original chunks,
+raw digest and actual owner through the leased Host reader. On every invocation
+Progress reconstructs supplied spans against the ordered current Source bundles;
+an empty supplied fact set remains explicit. The input, Source, ready-page and
+Job reads share the 512-read limit. Before binding, staged request frames and a
+conservative allowance for per-piece writes, per-value open/seal and the final
+commit must fit the 16-effect limit. The complete Job need not fit one inline
+frame. A known `input_bound` result is an outer `draft` after binding has committed,
+with a stage-free Job continuation before any group unit. Later calls retain the
+authenticated pre-bind revision for ready-page provenance and the current native revision for CAS. The
+complete command retains the same result reference, rather than copying rows into
+each continuation.
+
 A bound Job can instead take an exact owner-bound reducing abort. It retains its
 opening epoch, cursor, summaries and facts, removes the binding, and returns to
 the corresponding legacy `aborted` format. This path may use the current idle
@@ -676,9 +692,10 @@ the host-derived bound-abort purpose bypasses that source-current check;
 Registry/current-intent, stage expiry and native owner/root/epoch CAS checks
 remain. An unbound abort follows its separate ordinary transition. Neither path
 adopts another Session's binding, transfers active stages or supplies a token
-for unknown work. Keep this private integration bounded to known, stage-free
-progress; the legacy handoff procedure is not a cross-Session adoption route
-for bound Jobs.
+for unknown work. Keep the bound portion in the same owning Session and selected
+artifact. The legacy stage-free handoff does not adopt a bound Job across Sessions;
+an exact abort is reducing cleanup, not recovery of an unknown append or
+reclamation of immutable data.
 
 Explicit Job abort retains the exact older job's ID and epoch while staging only
 new reducing metadata under the current idle epoch. A bounded partial abort
@@ -706,6 +723,7 @@ mix test test/extensions/knowledge/collection_adapter_session_test.exs --only do
 mix test test/extensions/knowledge/collection_split_append_native_test.exs --only lexical_maintenance_stale --only lexical_maintenance_fresh
 mix test test/extensions/knowledge/collection_adapter_session_test.exs --only generation_maintenance_session --max-cases 1
 mix test test/ipse/extension/collection_job_input_guard_test.exs
+mix test test/extensions/knowledge/producer_result_append_test.exs test/extensions/knowledge/collection_backup_test.exs
 ```
 
 The Session controls prepare approved work, open/close the internal fence and
@@ -724,8 +742,10 @@ ordinary rebinding and abort attempts against the actual Host predicates. The
 separates 21 no-application checks (seven new and 14 legacy, with five native
 cases excluded) from one selected native component case. The latter uses actual
 DocumentStage operations and a retained-reader source precheck with trusted
-synthetic inputs. It does not qualify a public Session caller, operator approval,
-original-result materialization or whole-capacity behavior.
+synthetic inputs. A separate [bounded public caller record](../archive/2026-10-26-p30-p31-implementation/document-fact-result-public-20261106.md)
+uses one supplied source and fact, a synthetic registered embedding service and
+ordinary Session approvals. Neither check qualifies installed runtime or the full
+capacity workload.
 
 ## Claim a draft before writing immutable pages
 

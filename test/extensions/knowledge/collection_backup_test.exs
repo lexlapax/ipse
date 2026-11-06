@@ -12,7 +12,7 @@ defmodule IpseKnowledge.CollectionBackupIsolationTest do
   Code.require_file(__CLASSIFIER_FILE__)
   Code.require_file(__TEST_FILE__)
   result = ExUnit.run()
-  if result.failures != 0 or result.skipped != 0 or result.excluded != 0 or result.total != 24,
+  if result.failures != 0 or result.skipped != 0 or result.excluded != 0 or result.total != 26,
     do: System.halt(1)
   IO.puts("COLLECTION_BACKUP_ISOLATED_PASS")
   """
