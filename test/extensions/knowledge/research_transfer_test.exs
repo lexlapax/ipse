@@ -44,6 +44,11 @@ defmodule Ipse.KnowledgeResearchTransferTest do
   @tag :exunit_output_contract
   test "provided-only transfer validates independent Store boundaries and Corpus suppression",
        c do
+    paths =
+      for module <- [Ipse.Extension, Jason, JSONSchex, ExJSONPointer],
+          path = module |> :code.which() |> to_string() |> Path.dirname(),
+          do: ["-pa", path]
+
     script = """
     ExUnit.start(autorun: false)
     ExUnit.after_suite(fn result ->
@@ -58,7 +63,7 @@ defmodule Ipse.KnowledgeResearchTransferTest do
     {output, status} =
       System.cmd(
         System.find_executable("elixir"),
-        paths() ++
+        List.flatten(paths) ++
           [
             "-pa",
             Path.join(c.artifact, "ebin"),
@@ -70,6 +75,7 @@ defmodule Ipse.KnowledgeResearchTransferTest do
       )
 
     assert status == 0, output
+    refute output =~ "redefining module Ipse.Development.Fixtures.Knowledge"
 
     assert Enum.count(String.split(output, ~r/\r?\n/), &(&1 === "RESEARCH_TRANSFER_CONTROL_PASS")) ===
              1
