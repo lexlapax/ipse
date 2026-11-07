@@ -101,14 +101,23 @@ defmodule Ipse.KnowledgeDomainRegressionsTest do
         "input_sha256"=>Evidence.sha256(JSON.encode!([text])),"profile"=>"encoder","model"=>"fixture",
         "dimensions"=>1,"values"=>[1.0]})
       {cont,page}=embedding()
-      snapshot=%{"sources"=>[source],"tokens"=>[],"gaps"=>[],"coverage"=>%{},
+      snapshot=%{"sources"=>[source],"tokens"=>[],"gaps"=>[],"coverage"=>%{"generation"=>7},
         "projections"=>%{source["source_key"]=>%{"vectors"=>[vector],"facts"=>[excluded|facts]}}}
       state=%{phase: :query_embed,pending: :adapter,cont: cont,
         resolved: %{"options"=>%{"retrieval"=>%{"links"=>%{"kind"=>"graph","depth"=>2,"max_nodes"=>8,"max_edges"=>8}}}},
-        ctx: %{snapshot: snapshot,as_of_ms: 20,store_profile: %{"kind"=>"state","scope"=>"project","partition"=>"notes"},
-          args: %{"query"=>"A Release","top_k"=>1,"store"=>"notes","rerank"=>nil},
+        ctx: %{snapshot: snapshot,as_of_ms: 20,query_time_scope: :full,query_time_transition: nil,
+          store_profile: %{"kind"=>"state","scope"=>"project","partition"=>"notes"},
+          args: %{"query"=>"A Release","top_k"=>1,"store"=>"notes","rerank"=>nil,"as_of_ms"=>20},
           retrieval: %{"kind"=>"hybrid","missing_embedding"=>"refuse","graph"=>"links"}}}
-      assert {:ok,%{"value"=>result},_}=Corpus.handle("host.actions",%{"outcome"=>%{"status"=>"ok","value"=>page}},state)
+      assert {:ok,%{"kind"=>"host_call","request"=>request},pending}=
+        Corpus.handle("host.actions",%{"outcome"=>%{"status"=>"ok","value"=>page}},state)
+      assert request==%{"op"=>"state.get","scope"=>"project",
+        "key"=>Evidence.id("namespace-generation-probe",["notes"])}
+      missing=%{"key"=>request["key"],"revision"=>0,"deleted"=>true,"value"=>nil,"operation_id"=>nil}
+      answer=fn generation -> %{"outcome"=>%{"status"=>"ok","value"=>%{"generation"=>generation,"record"=>missing}}} end
+      assert {:ok,%{"value"=>%{"status"=>"conflict","evidence"=>[],"claims"=>[]}},_}=
+        Corpus.handle("host.actions",answer.(8),pending)
+      assert {:ok,%{"value"=>result},_}=Corpus.handle("host.actions",answer.(7),pending)
       assert result["status"]=="ok"
       assert [candidate]=result["evidence"]
       assert candidate["score"]==3/61
@@ -279,7 +288,7 @@ defmodule Ipse.KnowledgeDomainRegressionsTest do
     end
   end
   result=ExUnit.run()
-  System.halt(if(result.failures==0,do: 0,else: 1))
+  System.halt(if(result.failures==0 and result.total==9 and result.skipped==0 and result.excluded==0,do: 0,else: 1))
   """
 
   test "domain regressions execute in the isolated extension VM" do

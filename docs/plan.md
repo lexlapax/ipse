@@ -1362,8 +1362,10 @@ The earlier [complete frozen-source baseline](archive/2026-10-26-p30-p31-impleme
 at `546869c8` exited 0: 4,288 passed, 136 skipped and 124 excluded, with
 matching source, build and toolchain inventories and independently confirmed
 cleanup. The later [98267afd regression](archive/2026-10-26-p30-p31-implementation/full-regression-98267afd-20261106.md)
-passed 4,294 tests with 136 skipped and 124 excluded. Neither run covers the
-later uncommitted candidate. The earlier
+passed 4,294 tests with 136 skipped and 124 excluded. Neither run covers later
+commits. The active `0cdc36fa` regression has reported a hybrid-fixture failure;
+its [separately repaired nine-case control](archive/2026-10-26-p30-p31-implementation/domain-hybrid-regression-repair-20261106.md)
+passes without changing the active run's result. The earlier
 [complete `9f1707c` baseline](archive/2026-10-26-p30-p31-implementation/full-suite-cancel-repair-20261102.md)
 followed the [controlled cancellation repair](archive/2026-10-26-p30-p31-implementation/worker-input-cancel-20261102.md).
 The earlier [failed `39c8043` execution](archive/2026-10-26-p30-p31-implementation/full-suite-20261102.md)
