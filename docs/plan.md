@@ -1478,6 +1478,11 @@ passes 51 focused extraction/citation tests and a synthetic Collection Session
 journey using the newly built artifact. General Word fidelity, installed use,
 PDF verification and the final integrated baseline remain open.
 
+The [public backup identity control](archive/2026-10-26-p30-p31-implementation/public-backup-identity-20261107.md)
+now exercises origin-pinned page and plan results across inactive Sessions and
+refuses a rehashed catalog/head mismatch in a seeded synthetic Collection. Its
+initial same-Session attempt remains failed; broader backup and migration remain open.
+
 The [v18 document verifier repair](archive/2026-10-26-p30-p31-implementation/document-verifier-v18-20261106.md)
 passes fresh synthetic source and installed `fff77fbe` DOCX/PDF proofs after a
 stale v16 expectation failed CI. The later planning runtime still needs its own

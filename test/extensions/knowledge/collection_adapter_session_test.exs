@@ -118,12 +118,19 @@ defmodule Ipse.KnowledgeCollectionAdapterSessionTest do
     File.mkdir_p!(home)
     File.mkdir!(cwd)
     File.chmod!(home, 0o700)
-    on_exit(fn -> File.rm_rf!(root) end)
+
+    if c[:public_backup_identity],
+      do: IO.puts("PUBLIC_BACKUP_IDENTITY_FIXTURE #{root}"),
+      else: on_exit(fn -> File.rm_rf!(root) end)
 
     selected_artifact =
       if c[:public_shared_selected] do
         output = Path.expand("_build/shared-selected-corpus-" <> Usage.id())
-        on_exit(fn -> File.rm_rf!(output) end)
+
+        if c[:public_backup_identity],
+          do: IO.puts("PUBLIC_BACKUP_IDENTITY_ARTIFACT #{output}"),
+          else: on_exit(fn -> File.rm_rf!(output) end)
+
         sdk = Path.dirname(List.to_string(:code.which(Ipse.Extension)))
 
         preset =
@@ -225,6 +232,21 @@ defmodule Ipse.KnowledgeCollectionAdapterSessionTest do
            c[:public_guarded_finalization] || c[:public_guarded_finalization_stale],
          do: binding |> Map.put("version", 2) |> Map.put("source_use", "shared_producer_v1"),
          else: binding
+
+    binding =
+      if c[:public_backup_identity] do
+        binding
+        |> Map.put("version", 3)
+        |> Map.put("source_use", nil)
+        |> Map.put("input_validation", %{
+          "command_id" => "source",
+          "action" => "restore_validate_page",
+          "export_action" => "backup_page",
+          "plan_action" => "backup_plan"
+        })
+      else
+        binding
+      end
 
     data = %{
       "extensions" => [
@@ -5017,6 +5039,175 @@ defmodule Ipse.KnowledgeCollectionAdapterSessionTest do
            )
 
     assert {:ok, _} = Session.Saved.restore(after_events, c.id)
+  end
+
+  @tag :public_shared_selected
+  @tag :public_backup_identity
+  @tag timeout: 120_000
+  test "public backup validation refuses a rehashed catalog and source identity mismatch", c do
+    [source] = seed_index_sources(c, [{"backup:one", "Synthetic backup identity evidence.", nil}])
+    original = source["source_key"]
+    different = JSON.sha256("different synthetic backup source")
+    refute original === different
+    head = physical(c, "source.notes." <> original)
+    page = physical(c, "catalog.notes.0")
+    catalog = physical(c, "catalog.notes")
+    assert head && page && catalog
+    changed_page = put_in(body(page), ["rows", Access.at(0), "source_key"], different)
+    changed_page_packed = packed(changed_page)
+
+    changed_catalog =
+      put_in(body(catalog), ["pages", Access.at(0), "sha256"], changed_page_packed["sha256"])
+
+    source_command = fn action, args, extra ->
+      Map.merge(%{"store" => "local", "action" => action, "args" => %{"backup" => args}}, extra)
+    end
+
+    handoff = fn current ->
+      assert :ok = Session.close_confirmed(current.pid)
+      assert {:ok, events} = Journal.load(current.dir, current.id)
+      assert {:ok, _} = Session.Saved.restore(events, current.id)
+      assert {:ok, pid} = DynamicSupervisor.start_child(Ipse.Sessions, {Session, current.opts})
+      on_exit(fn -> if Process.alive?(pid), do: Session.close_confirmed(pid) end)
+      next = %{current | pid: pid, id: Session.info(pid).id}
+      refute next.id == current.id
+      next
+    end
+
+    capture = fn current, args ->
+      value = invoke(current, "source", args)
+      assert %{"delivery" => delivery} = Session.info(current.pid).extension_result
+      {value, %{"version" => 1, "session_id" => current.id, "delivery" => delivery}}
+    end
+
+    export = fn current ->
+      generation = native_status(current)["generation"]
+
+      {pages, descriptor, count, completed} =
+        Enum.reduce_while(1..4, {[], nil, 0, false}, fn _, {pages, descriptor, offset, _} ->
+          {page, ref} =
+            capture.(
+              current,
+              source_command.(
+                "backup_page",
+                %{"generation" => generation, "offset" => offset, "limit" => 8},
+                %{}
+              )
+            )
+
+          assert is_nil(descriptor) or descriptor === page["descriptor"]
+          assert is_list(page["records"]) and page["records"] != []
+          done = is_nil(page["next"])
+          next = {pages ++ [ref], page["descriptor"], offset + length(page["records"]), done}
+          if done, do: {:halt, next}, else: {:cont, next}
+        end)
+
+      assert completed and descriptor["records"] === count
+      assert descriptor["generation"] === generation
+
+      planner = handoff.(current)
+
+      {_, plan} =
+        capture.(
+          planner,
+          source_command.("backup_plan", %{"generation" => generation}, %{"data_inputs" => pages})
+        )
+
+      {handoff.(planner), pages, plan}
+    end
+
+    {c, valid_pages, valid_plan} = export.(c)
+
+    {valid, _} =
+      capture.(
+        c,
+        source_command.("restore_validate_page", %{}, %{
+          "result_input" => hd(valid_pages),
+          "plan_input" => valid_plan
+        })
+      )
+
+    assert is_map(valid["descriptor"])
+
+    # Deliberately seed inconsistent but fully rehashed records in this private
+    # synthetic native store. The public export below creates the actual origins.
+    replace(c, [
+      {"source.notes." <> original, nil},
+      {"source.notes." <> different, head["value"]},
+      {"catalog.notes.0", changed_page_packed},
+      {"catalog.notes", packed(changed_catalog)}
+    ])
+
+    assert is_nil(physical(c, "source.notes." <> original))
+    assert body(physical(c, "source.notes." <> different)) === body(head)
+
+    assert put_in(
+             body(physical(c, "catalog.notes.0")),
+             ["rows", Access.at(0), "source_key"],
+             original
+           ) === body(page)
+
+    assert put_in(
+             body(physical(c, "catalog.notes")),
+             ["pages", Access.at(0), "sha256"],
+             page["value"]["sha256"]
+           ) === body(catalog)
+
+    {c, pages, plan} = export.(c)
+    before = native_status(c)
+    {:ok, binding} = ProjectIdentity.existing(c.home, c.opts[:cwd])
+    namespace = Ipse.Extension.CollectionStore.namespace(binding["project_id"])
+    root_path = Path.join([Ipse.Extension.CollectionStore.root(c.home), namespace, "root.json"])
+    before_root = File.read!(root_path)
+    {:ok, before_events} = Journal.load(c.dir, c.id)
+
+    result =
+      invoke(
+        c,
+        "source",
+        source_command.("restore_validate_page", %{}, %{
+          "result_input" => hd(pages),
+          "plan_input" => plan
+        })
+      )
+
+    assert result["status"] === "refused"
+    assert Enum.any?(result["gaps"], &(&1["code"] === "collection_backup_incomplete_domain"))
+    assert native_status(c) === before
+    assert File.read!(root_path) === before_root
+    {:ok, after_events} = Journal.load(c.dir, c.id)
+    tail = Enum.drop(after_events, length(before_events))
+
+    origins =
+      for event <- tail,
+          event["type"] === "extension_action_result",
+          get_in(event, ["request", "request", "op"]) === "restore.input.read",
+          origin = get_in(event, ["outcome", "value", "result", "origin"]),
+          is_map(origin),
+          do: origin
+
+    assert Enum.any?(origins, &(&1["action"] === "backup_page"))
+    assert Enum.any?(origins, &(&1["action"] === "backup_plan"))
+
+    refute Enum.any?(tail, fn event ->
+             event["type"] === "extension_action_intent" and
+               Ipse.Extension.CollectionStore.mutating?(event["request"])
+           end)
+
+    assert {:ok, _} = Session.Saved.restore(after_events, c.id)
+    assert :ok = Session.close_confirmed(c.pid)
+    assert {:ok, closed} = Journal.load(c.dir, c.id)
+
+    assert {:ok, resumed} =
+             DynamicSupervisor.start_child(
+               Ipse.Sessions,
+               {Session, Keyword.put(c.opts, :id, c.id)}
+             )
+
+    assert :ok = Session.close_confirmed(resumed)
+    assert_inert_resume(c, closed)
+    assert native_status(c) === before
+    assert File.read!(root_path) === before_root
   end
 
   defp native_status(c) do
