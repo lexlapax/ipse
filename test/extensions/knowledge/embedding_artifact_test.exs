@@ -71,7 +71,8 @@ defmodule IpseKnowledge.EmbeddingArtifactTest do
   {:ok, [chunk]} = Evidence.chunks(source)
   stored = Map.put(vector, "chunk_id", chunk["chunk_id"])
   state = %{initial | phase: :query_embed, pending: :adapter, cont: reading,
-    ctx: %{args: %{"query" => text, "top_k" => 1, "rerank" => "judge"}, as_of_ms: 1,
+    ctx: %{args: %{"query" => text, "top_k" => 1, "rerank" => "judge", "as_of_ms" => 1}, as_of_ms: 1,
+      query_time_scope: :full, query_time_transition: nil,
       retrieval: %{"kind" => "dense"}, snapshot: %{"sources" => [source],
         "projections" => %{source["source_key"] => %{"vectors" => [stored], "facts" => []}}}}}
   assert {:ok, %{"kind" => "result", "value" => %{"status" => "refused", "gaps" =>
