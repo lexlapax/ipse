@@ -469,13 +469,14 @@ defmodule IpseKnowledge.PackagesIsolationTest do
           host_profile: "encoder", inputs: [input], raw_hashes: [Evidence.sha256("query")], vector_index: 0,
           offset: 0, bytes: <<>>, input_hash: nil, vector_hash: nil, vectors: [], reads: 0, effects: 1}
         snapshot=%{"sources"=>[source], "projections"=>%{source["source_key"]=>%{"vectors"=>if(indexed==:missing,do: [],else: [vector])}},
-          "tokens"=>[], "gaps"=>[], "coverage"=>%{}}
-        ctx=%{snapshot: snapshot, args: %{"query"=>"query", "top_k"=>1, "store"=>"notes", "rerank"=>nil},
+          "tokens"=>[], "gaps"=>[], "coverage"=>%{"generation"=>7}}
+        ctx=%{snapshot: snapshot, args: %{"query"=>"query", "top_k"=>1, "store"=>"notes", "rerank"=>nil,"as_of_ms"=>2},
           retrieval: %{"kind"=>kind, "missing_embedding"=>"refuse"}, rerank_profile: nil,
-          store_profile: %{"kind"=>"state", "scope"=>"project", "partition"=>"notes"}, as_of_ms: 2}
+          store_profile: %{"kind"=>"state", "scope"=>"project", "partition"=>"notes"}, as_of_ms: 2,
+          query_time_scope: :full, query_time_transition: nil}
         state=%{resolved: %{}, phase: :query_embed, pending: :adapter, cont: cont, ctx: ctx}
-        assert {:ok,%{"kind"=>"result", "value"=>result},_}=
-          Corpus.handle("host.actions",%{"outcome"=>%{"status"=>"ok", "value"=>page}},state)
+        result=Corpus.handle("host.actions",%{"outcome"=>%{"status"=>"ok", "value"=>page}},state)
+          |> finish_corpus_query()
         if indexed==:valid do
           assert result["status"]=="ok" and result["gaps"]==[]
           assert result["coverage"]["revalidated"]
@@ -505,8 +506,8 @@ defmodule IpseKnowledge.PackagesIsolationTest do
           assert result["gaps"]==[%{"code"=>"missing_embedding"}]
           if indexed==:wrong_input and kind=="hybrid" do
             fallback=put_in(state,[:ctx,:retrieval,"missing_embedding"],"lexical_with_gap")
-            assert {:ok,%{"kind"=>"result","value"=>partial},_}=
-              Corpus.handle("host.actions",%{"outcome"=>%{"status"=>"ok","value"=>page}},fallback)
+            partial=Corpus.handle("host.actions",%{"outcome"=>%{"status"=>"ok","value"=>page}},fallback)
+              |> finish_corpus_query()
             assert partial["status"]=="partial"
             assert Enum.any?(partial["gaps"],&(&1["code"]=="missing_embedding" and &1["count"]==1))
           end
@@ -535,10 +536,10 @@ defmodule IpseKnowledge.PackagesIsolationTest do
         assert original["citation"]["quote"]==text
       end
       outcome=%{"status"=>"ok","value"=>%{"profile"=>"host_rank","text"=>JSON.encode!(%{"order"=>~w(e2 e1)}),"usage"=>%{}}}
-      snapshot=%{"tokens"=>[],"coverage"=>%{"fixture"=>"captured snapshot", "effects_used"=>0, "reads_used"=>0},"gaps"=>[],"sources"=>sources}
-      ctx=%{args: %{"store"=>"notes","query"=>"release", "rerank"=>"ordered"},store_profile: %{"kind"=>"state","scope"=>"project","partition"=>"notes"},rerank_profile: resolved["options"]["rerank"]["ordered"],snapshot: snapshot,rank: rank,as_of_ms: 20}
+      snapshot=%{"tokens"=>[],"coverage"=>%{"fixture"=>"captured snapshot", "effects_used"=>0, "reads_used"=>0,"generation"=>7},"gaps"=>[],"sources"=>sources}
+      ctx=%{args: %{"store"=>"notes","query"=>"release", "rerank"=>"ordered","as_of_ms"=>20},store_profile: %{"kind"=>"state","scope"=>"project","partition"=>"notes"},rerank_profile: resolved["options"]["rerank"]["ordered"],snapshot: snapshot,rank: rank,as_of_ms: 20,query_time_scope: :full,query_time_transition: nil}
       state=%{resolved: resolved,phase: :query_rerank,pending: :adapter,cont: cont,ctx: ctx}
-      assert {:ok,%{"kind"=>"result","value"=>result},_}=Corpus.handle("host.actions",%{"outcome"=>outcome},state)
+      result=Corpus.handle("host.actions",%{"outcome"=>outcome},state) |> finish_corpus_query()
       assert result["status"]=="ok" and result["coverage"]["revalidated"]
       assert result["coverage"]["store"]==snapshot["coverage"]
       assert Enum.map(result["evidence"], &Evidence.candidate_id/1)==ids
@@ -1014,6 +1015,19 @@ defmodule IpseKnowledge.PackagesIsolationTest do
       graph_drive(IpseKnowledge.Graph.handle("host.actions",%{"outcome"=>outcome},state),db)
     end
 
+    defp finish_corpus_query({:ok,%{"kind"=>"result","value"=>%{"status"=>"refused","gaps"=>[%{"code"=>"missing_embedding"}]}=value},_}),do: value
+    defp finish_corpus_query({:ok,%{"kind"=>"host_call","request"=>request},pending}) do
+      alias IpseKnowledge.{Corpus,Evidence}
+      assert request==%{"op"=>"state.get","scope"=>"project",
+        "key"=>Evidence.id("namespace-generation-probe",["notes"])}
+      missing=%{"key"=>request["key"],"revision"=>0,"deleted"=>true,"value"=>nil,"operation_id"=>nil}
+      answer=fn generation -> %{"outcome"=>%{"status"=>"ok","value"=>%{"generation"=>generation,"record"=>missing}}} end
+      assert {:ok,%{"kind"=>"result","value"=>%{"status"=>"conflict","evidence"=>[],"claims"=>[]}},_}=
+        Corpus.handle("host.actions",answer.(8),pending)
+      assert {:ok,%{"kind"=>"result","value"=>value},_}=Corpus.handle("host.actions",answer.(7),pending)
+      value
+    end
+
     defp graph_drive({:ok,%{"kind"=>"result","value"=>value},state},db),do: {value,state,db}
 
     defp offline_options do
@@ -1033,7 +1047,7 @@ defmodule IpseKnowledge.PackagesIsolationTest do
   end
 
   result = ExUnit.run()
-  System.halt(if(result.failures == 0, do: 0, else: 1))
+  System.halt(if(result.failures == 0 and result.total == 33 and result.skipped == 0 and result.excluded == 0, do: 0, else: 1))
   """
 
   test "packages run in a separate VM without loading domain modules into host" do
