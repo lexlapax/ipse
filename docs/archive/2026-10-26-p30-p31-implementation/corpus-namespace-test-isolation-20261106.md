@@ -101,3 +101,40 @@ SHA-256 is `ef53d1a52cc35a55b5af8c3eb64c4164032bc6666effffbb6847f2d98c26b6af`,
 and `status.txt` SHA-256 is
 `def680c6e4c65dc77e54d67f43606ab9c0ede9027a45820fd9fce8ade356277b`.
 This check covers formatting, not compilation, tests or installed use.
+
+## Package fixture and strict compile
+
+The still-running `0cdc36fa` full regression reported a third outer failure in
+the package isolation wrapper. Two nested Corpus fixtures expected an immediate
+result rather than the new namespace-generation probe. Commit `d5e760fa` updates
+those fixtures to assert the probe, a changed-generation conflict and a matching
+generation result, retaining the original citation and reranking assertions.
+The direct-result path accepts only the expected missing-embedding refusal.
+Independent static review found no further blocker in that scope.
+
+A separate isolated run passed one outer wrapper requiring exactly 33 nested
+cases and no failures, skips or exclusions. The source and SDK inventories
+matched after the run. Its packet is
+`_build/verification/packages-focused-0cdc36fa-20261106-02/`; `fixture.log`
+SHA-256 is `0a21a615d5069262bd155e6b5d4332c4361c54b45383f5a70c5dc33831434430`
+and `status.txt` SHA-256 is
+`db8bf9a67ac9e30c546f9712fa799918b86c4289093efc096c42d74fb07642b0`.
+This separate pass does not change the live full regression's failure.
+
+An isolated `mix compile --warnings-as-errors` at `8d372cea` passed after the
+required native helper was built from the pinned source. Independent postchecks
+matched the recorded source, dependencies, selected toolchain, archives and
+helper; they do not establish the full dynamic-library closure or all metadata.
+The compiler emitted a deprecation warning in the `elixir_uuid` dependency,
+but no Ipse application warning. Its packet is
+`_build/verification/compile-head-8d372cea-20261106-03/`; `compile.log` SHA-256
+is `6ba839a85a48bd0a8ffae5f3424fd6b8a813634f853919f1e5c1c68526f57b24`,
+and `run-status.txt` SHA-256 is
+`a891486aae54573495b9daa62f6343c7b08a5be25216ec33d1d5b8d62793d45d`.
+This proves compilation for that commit, not execution or a current full suite.
+
+The two prior attempts are retained separately: packet `-01` was denied Mix's
+local TCP lock by the sandbox before compilation; packet `-02` reached compile
+but failed on warnings caused by its missing generated native helper. Neither
+failed attempt is reclassified as a pass. Only the fresh `-03` attempt built
+the helper before compiling.
