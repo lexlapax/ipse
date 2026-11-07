@@ -4,14 +4,14 @@ defmodule Ipse.KnowledgeGraphMCPGenerationTest do
 
   test "MCP graph generation fences account for bounded probe calls" do
     paths =
-      :code.get_path()
-      |> Enum.reject(&(&1 == ~c"."))
-      |> Enum.flat_map(&["-pa", List.to_string(&1)])
+      for module <- [Ipse.Extension, Jason, JSONSchex, ExJSONPointer],
+          path = module |> :code.which() |> to_string() |> Path.dirname(),
+          do: ["-pa", path]
 
     {output, status} =
       System.cmd(
         System.find_executable("elixir"),
-        paths ++ [Path.join(@root, "test/support/graph_mcp_generation.exs")],
+        List.flatten(paths) ++ [Path.join(@root, "test/support/graph_mcp_generation.exs")],
         cd: @root,
         stderr_to_stdout: true,
         env: [{"ERL_FLAGS", "+S 1:1 +A 1"}]
@@ -19,5 +19,6 @@ defmodule Ipse.KnowledgeGraphMCPGenerationTest do
 
     assert status == 0, output
     assert output =~ "graph_mcp_generation=pass"
+    refute output =~ "redefining module Ipse.Development.Fixtures.Knowledge"
   end
 end
