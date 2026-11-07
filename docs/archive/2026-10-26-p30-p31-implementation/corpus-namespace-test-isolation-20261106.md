@@ -65,3 +65,19 @@ The same contaminated-parent wrapper then passed once with exit 0; its source
 hash matched before and after the run. The before and after logs and status are
 retained in `_build/verification/doc-inherited-fixture-20261106-01/`. This
 focused control does not qualify the full document or installed journey.
+
+The same inherited-path collision was reproduced for paragraph packing and a
+selected fidelity test. Commits `c4bccf6b` and `12ff331e` isolate their child
+paths; separate contaminated-parent checks passed with the original warning and
+semantic assertions. After the fidelity repair, the entire fidelity file ran
+at `12ff331e` with a contaminated parent: 38 passed, zero skipped or excluded.
+Listed source, SDK and fixture hashes matched after the run; the postchecks do
+not cover added files, links or file modes. No native Input or TCP test ran.
+
+The full-file packet is
+`_build/verification/document-fidelity-all-12ff331e-20261106-01/`. Its `run.log`
+SHA-256 is `d6fa99549303225175a566a4492a9ea639079148b67940e4cced52eb29a87887`,
+and `status.txt` SHA-256 is
+`eb6ba8ffbbfae35702e014fd9ab71a536114ca209194503acb5a81c409049faf`.
+This synthetic file-level result does not establish independent Word fidelity,
+installed behavior or complete P31F acceptance.
