@@ -2657,6 +2657,24 @@ defmodule Ipse.KnowledgeDocumentAcquisitionSessionTest do
     %{"physical_record" => record, "value" => value}
   end
 
+  defp collection_record(run, key) do
+    home = Path.dirname(run.dir)
+    {:ok, binding} = Ipse.Extension.ProjectIdentity.existing(home, run.cwd)
+    namespace = Ipse.Extension.CollectionStore.namespace(binding["project_id"])
+
+    assert {:ok, %{"record" => record}} =
+             Ipse.Extension.Collection.execute_profile(
+               Ipse.Extension.CollectionStore.root(home),
+               namespace,
+               %{"op" => "get", "key" => key},
+               Ipse.Usage.id(),
+               Ipse.Extension.Collection.Profile.documents()
+             )
+
+    assert is_map(record)
+    record
+  end
+
   defp finish_capacity(run, result) do
     Enum.reduce_while(1..40, result, fn _, current ->
       if current["status"] === "draft",
@@ -2724,6 +2742,104 @@ defmodule Ipse.KnowledgeDocumentAcquisitionSessionTest do
 
     assert result["status"] === "refused"
     assert result["evidence"] === [] and result["claims"] === []
+  end
+
+  defp capacity_query(run, words) do
+    invoke(run, "query_selected", %{
+      "store" => "notes",
+      "retrieval" => "words",
+      "query" => words,
+      "top_k" => 1,
+      "as_of_ms" => 20,
+      "source_ids" => ["workspace:source"]
+    })
+  end
+
+  @tag :workspace_word_native
+  @tag :workspace_word_replacement_history
+  @tag timeout: 180_000
+  test "public Collection Word replacement preserves old blocks and selects only the completed generation",
+       c do
+    run = open(c, "collection-documents")
+    path = Path.join(run.cwd, "source.docx")
+
+    old =
+      document("Old generation vegaoriginal. " <> String.duplicate("original detail ", 700), [
+        {:compress, []}
+      ])
+
+    new =
+      document(
+        "New generation orionreplacement. " <> String.duplicate("replacement detail ", 700),
+        [{:compress, []}]
+      )
+
+    File.write!(path, old)
+    assert (run |> invoke("source", args()) |> then(&finish_capacity(run, &1)))["status"] === "ok"
+    old_head = capacity_head(run)
+    old_refs = old_head["value"]["blocks"] ++ old_head["value"]["lexical"]["blocks"]
+    assert old_refs != []
+
+    old_records =
+      Map.new(old_refs, fn ref -> {ref["key"], collection_record(run, ref["key"])} end)
+
+    assert capacity_query(run, "vegaoriginal")["evidence"] != []
+
+    File.write!(path, new)
+
+    command =
+      args()
+      |> put_in(["args", "generation"], 2)
+      |> put_in(["args", "expected_revision"], old_head["value"]["revision"])
+      |> put_in(["args", "expected_sha256"], JSON.sha256(new))
+
+    opened = invoke(run, "source", command)
+    assert opened["status"] === "draft", inspect(opened)
+    first = opened["continuation"]
+    assert capacity_head(run) === old_head
+    capacity_refused(run, "vegaoriginal")
+
+    try do
+      File.write!(path, old)
+      assert capacity_query(run, "vegaoriginal")["evidence"] != []
+    after
+      File.write!(path, new)
+    end
+
+    assert (run |> finish_capacity(opened))["status"] === "ok"
+    new_head = capacity_head(run)
+    assert new_head["value"]["generation"] === 2
+    assert new_head["value"]["revision"] === old_head["value"]["revision"] + 1
+    assert new_head["value"]["bundle_sha256"] !== old_head["value"]["bundle_sha256"]
+    for {key, record} <- old_records, do: assert(collection_record(run, key) === record)
+    result = capacity_query(run, "orionreplacement")
+    assert result["status"] in ~w(ok partial), inspect(result)
+
+    assert Enum.any?(result["evidence"], fn hit ->
+             get_in(hit, ["citation", "generation"]) === 2 and
+               get_in(hit, ["citation", "document", "original_sha256"]) === JSON.sha256(new)
+           end)
+
+    assert capacity_query(run, "vegaoriginal")["evidence"] === []
+    assert continue(run, first)["status"] === "refused"
+
+    id = Session.info(run.pid).id
+    assert {:ok, events} = Journal.load(run.dir, id)
+    assert {:ok, _} = Session.Saved.restore(events, id)
+    assert :ok = Session.close_confirmed(run.pid)
+    journal = Path.join(run.dir, id <> ".jsonl")
+    before = File.read!(journal)
+
+    assert {:ok, resumed} =
+             DynamicSupervisor.start_child(
+               Ipse.Sessions,
+               {Session, Keyword.put(run.opts, :id, id)}
+             )
+
+    on_exit(fn -> if Process.alive?(resumed), do: Session.close_confirmed(resumed) end)
+    assert_idle_resume_journal(journal, before, id)
+    assert capacity_head(%{run | pid: resumed}) === new_head
+    assert :ok = Session.close_confirmed(resumed)
   end
 
   @tag :workspace_word_native

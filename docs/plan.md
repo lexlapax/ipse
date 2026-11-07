@@ -427,6 +427,8 @@ following limits until the end-to-end paths are qualified:
    controller model completed its fixed initial target with modeled replies.
    A [one-source replacement model](archive/2026-10-26-p30-p31-implementation/document-replacement-model-20261106.md)
    passes focused selection, checkpoint and stop controls with modeled replies.
+   A separate [synthetic Word Session check](archive/2026-10-26-p30-p31-implementation/document-replacement-session-20261107.md)
+   covers one actual replacement, retained old blocks and idle reconstruction.
    The full replacement/history recipe, native journals, physical peaks, cleanup
    and migration remain open.
    Its [authoritative Job input-binding component](archive/2026-10-26-p30-p31-implementation/document-job-input-binding-20261106.md)
