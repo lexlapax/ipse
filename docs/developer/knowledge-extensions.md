@@ -702,7 +702,8 @@ The separate `state-retained` and `state-fetched` presets share a store only
 through explicit operator-selected State bindings, scope and partition.
 
 Inspect actual namespace-relative filenames/hashes: Research+Memory has one State
-file; Corpus/Graph+Memory have two. Empty inventory proves no inert-resume claim.
+file; Corpus/Graph+Memory have two. An empty inventory does not establish that
+idle resume was inert.
 Counters use arity-only OTP trace instrumentation, without arguments/payloads, and
 require every target to be instrumented. Confinement needs separate OS evidence.
 The artifacts selected by this exercise, plus Memory, exceed the existing
@@ -1145,7 +1146,7 @@ Future indexing must explicitly rebuild or requalify older extraction results.
 The optional PDF backend requires a separately host-admitted protected parser;
 its installation does not activate PDF acquisition. The
 [parser contract](../../native/ipse-pdf/README.md) describes its lifetime and
-limits. The Corpus paths above provide bounded ingestion and cited retrieval.
+limits. The DOCX Corpus paths above provide bounded ingestion and cited retrieval.
 Extraction alone supplies neither current-source authorization nor retrieval
 quality qualification. Larger originals, full document capacity and migration
 beyond the bounded completed-Collection path require separate storage work.
@@ -1326,8 +1327,11 @@ control establishes neither a live model's relationship quality nor final-fact
 commitment for the interrupted write. It needs no Input channel or model service.
 
 Keep the boundary narrow. Currentness here means the selected retained State
-source, not an original file lock or durable Session-source authority. Public
-read/quote proofs remain evidence JSON that needs its consuming host adapter to
+source. Graph does not recheck an acquired workspace document's original bytes
+before sending stored text to an extractor, publishing facts or using stored
+facts and citations; the stored receipt is not current file authority. Graph
+holds neither a lock on the original file nor durable Session-source authority.
+Public read/quote proofs remain evidence JSON that needs its consuming host adapter to
 authenticate current use. `Session.Invocation` still refuses State.put/delete
 and generic Collection.store when managed notes or other managed dependencies
 are inherited. Do not copy a managed receipt into State or remove those guards

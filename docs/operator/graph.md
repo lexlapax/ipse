@@ -267,6 +267,11 @@ As-of queries filter retained generations; they do not reconstruct replaced
 source generations or deleted graph history. A past timestamp cannot recover
 facts whose source generation has been replaced or forgotten.
 
+These checks apply to the stored source, not the original workspace file.
+Graph does not check whether an acquired document was replaced or deleted
+before it uses stored document facts or returns their citations. Verify the
+original file separately before relying on those results.
+
 For `as_of_ms: null`, Graph checks the captured snapshot's next source or fact
 time boundary again after store revalidation. If that boundary passed, or the
 clock is earlier than the selected time, it refuses with `query_time_changed`;
@@ -667,7 +672,10 @@ you to review whether the quotation supports the proposed relationship.
 
 First review the State writes that claim the extraction draft. Then review the
 separate full model-egress approval and the State writes that publish its result.
-Its supporting quote must match exactly once in the selected source chunk;
+For an acquired document shared from another store, Graph does not recheck the
+original workspace file before sending stored text to the extractor or
+publishing facts. Verify the original independently before approving either step.
+Each extracted fact's supporting quote must match exactly once in the selected source chunk;
 malformed JSON, invented chunk IDs, or invalid attribution refuse. This establishes byte
 attribution, not that the relationship accurately interprets the quotation.
 The model receives the explicit `max_facts` bound. In the structured mode selected

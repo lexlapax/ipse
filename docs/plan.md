@@ -466,8 +466,10 @@ following limits until the end-to-end paths are qualified:
    evidence transfer with attribution and invalidation. Integrated relationship
    acceptance follows E and uses C1b where graph storage is selected; transfer
    must qualify each store it actually uses rather than assume an optional backend
-   is available. Do not create placeholder implementations while those contracts
-   are unsettled.
+   is available. Graph currently revalidates stored sources but does not recheck
+   acquired workspace files before using their facts or returning citations;
+   that current-use path remains open. Do not create placeholder implementations
+   while those contracts are unsettled.
 7. **Final acceptance — P31J and the goal handoff.** On the final integrated
    source, serialize the required native/Mix/PTY verification, full source suite,
    demo, package and installed checks; complete the platform, quality, safety,
