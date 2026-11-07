@@ -251,6 +251,37 @@ directory or older helper refuses rather than falling back to those paths.
 Preserve a header-only journal as an incomplete startup record, not a successful
 action. Read-only operation inspection remains available and does not repair it.
 
+## Recover a Corpus query or document operation
+
+A completed Corpus query can return `conflict` with `snapshot_changed` when the
+selected store changed during its checks, even if an unrelated source changed.
+`query_time_changed` means a captured time boundary passed or a clock rollback
+was detected. Review the result and coverage, wait for concurrent writes to
+settle, and issue a fresh query if its checks and any provider usage are known.
+An explicit `as_of_ms` filters currently retained sources and facts by that
+time; it does not recover a replaced version. A server-selected MCP query covers
+only the sources the server selected, not every source in its namespace. See the
+[Corpus query guidance](corpus.md#query-a-document-collection) and
+[remote-store procedure](corpus.md#select-a-remote-store).
+
+`document_source_changed_or_unavailable` withholds acquired-file evidence and
+claims. Check the recorded relative path and file bytes in the current workspace;
+restore the original file or explicitly acquire the replacement as a new
+generation. The same refusal can follow a denied, failed or unknown workspace
+check. Inspect the Session action outcome, the recorded acquisition path and the
+file before deciding on new work. Do not assume an unknown read or another
+previously approved action did not happen. These checks do not hold the file
+through later use.
+
+For an interrupted document build or restore, preserve its Session, draft,
+operation IDs and saved result references. Inspect the current Collection
+status and the exact draft before choosing an available continuation or abort.
+An unknown write is not a continuation or permission to replay; if its actual
+outcome cannot be established, preserve it for inspection. The
+[document Collection procedure](corpus.md#query-a-document-collection) and
+[small-Collection backup procedure](corpus.md#back-up-a-small-document-collection)
+give the applicable commands and ownership limits.
+
 ## Reconcile an unresolved inference reservation
 
 Use this procedure when an explicitly registered inference service remains
@@ -298,7 +329,7 @@ reconciliation neither marks it completed nor refunds its liability.
 Inspect status again before continuing ordinary work.
 If the outcome is unknown, preserve the first result and inspect the current
 active/recent records; do not replay the command automatically. Recent outcomes
-are bounded to32 entries and are not a complete request-history archive.
+are bounded to 32 entries and are not a complete request-history archive.
 
 ## Resume compatible work
 

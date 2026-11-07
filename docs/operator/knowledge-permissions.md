@@ -14,10 +14,12 @@ client can save an eligible typed host outcome under the knowledge-only grant.
 
 Review, editing, retention and forgetting have standalone management procedures
 below. Interactive chat also supports reviewed correction of an ordinary native
-note and replacement of a current statement or preference. All protected writes
-need the supported Linux storage profile and their current source and permission
-checks. Full capture readiness remains false; these bounded paths do not qualify
-automatic extraction quality, every source combination or installed use.
+note and replacement of a current statement or preference. Protected capture and
+later use need the supported Linux storage profile and their applicable current
+source and permission checks. Reducing management and elapsed-policy reclamation
+have the separate rules below. Full capture readiness remains false; these bounded
+paths do not qualify automatic extraction quality, every source combination or
+installed use.
 
 As a temporary containment, a generic managed worker read cannot return a stored
 value unless the selected current-literal recipe authenticates it. This includes
