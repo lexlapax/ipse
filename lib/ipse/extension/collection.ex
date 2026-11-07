@@ -2515,7 +2515,7 @@ defmodule Ipse.Extension.Collection do
                  do: DocumentDraft.first_head(s, tag, id, owner, request["slot"]),
                  else: DocumentDraft.authorize(s, tag, owner)
                ) do
-          {:ok, %{head: head, tag: tag, request: request, request_sha256: sha256}}
+          {:ok, %{head: head, tag: tag, request: request, request_sha256: sha256, owner: owner}}
         else
           _ -> {:error, :invalid_document_progress}
         end
@@ -2570,7 +2570,7 @@ defmodule Ipse.Extension.Collection do
 
   defp prepare_with_document_draft(path, uid, s, r, id, {:ok, plan}) when is_map(plan) do
     with {:ok, next, values, extra} <- prepare(s, r, id),
-         {:ok, head} <- document_draft_step(s, r, plan),
+         {:ok, head} <- document_draft_step(s, r, id, plan),
          next = put_document_draft(next, plan.head["id"], head),
          read = fn key -> changed_or_existing(path, uid, s, r["changes"], key) end,
          true <- DocumentDraft.physical?(next, read) do
@@ -2581,18 +2581,21 @@ defmodule Ipse.Extension.Collection do
     end
   end
 
-  defp document_draft_step(s, r, plan) do
+  defp document_draft_step(s, r, id, plan) do
     generation = s["generation"] + 1
 
     if plan.tag["action"] === "retire" do
-      DocumentDraft.retire(
-        plan.head,
-        plan.tag,
-        plan.request,
-        r["changes"],
-        generation,
-        DocumentMaintenance.metadata(s)["epoch"]
-      )
+      with {:ok, head} <-
+             DocumentDraft.retire(
+               plan.head,
+               plan.tag,
+               plan.request,
+               r["changes"],
+               generation,
+               DocumentMaintenance.metadata(s)["epoch"]
+             ) do
+        DocumentDraft.bind_retirement(head, id, plan.owner["invocation_id"])
+      end
     else
       DocumentDraft.step(plan.head, plan.tag, plan.request, r["changes"], generation)
     end

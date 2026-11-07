@@ -585,7 +585,11 @@ fence can stop partially completed cleanup; no command renews that old cleanup.
 If it refuses or becomes unknown, retain the journal for reviewed recovery.
 Unknown results offer no replay continuation, and a missing head is not proof
 that publication never happened. Repeated fresh drafts do not repair retained
-work. State and MCP retain their existing `abort` command and arguments.
+work. Keep the host version that created a new document draft until that draft is
+finished or retired: older hosts cannot read its newer progress metadata, even
+before retirement. Existing older-format drafts remain readable by the current
+host. Installed upgrade and downgrade journeys are not yet qualified. State and
+MCP retain their existing `abort` command and arguments.
 
 Managed-derived document mutations refuse before approval/intent, with a second
 execution check for an already queued action. Its document grant supplies no

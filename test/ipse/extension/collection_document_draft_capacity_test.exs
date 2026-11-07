@@ -122,6 +122,65 @@ defmodule Ipse.Extension.Collection.DocumentDraftCapacityTest do
     end
   end
 
+  test "two heads reserve a retained partial-retirement join at block boundaries" do
+    for generation <- [255, 256, 511, 512] do
+      original = state(generation)
+      first = original["document_drafts"][id(1)]
+      prepared = %{"slot" => 1, "epoch" => id(100_006)}
+
+      first =
+        first
+        |> Map.put("prepared", [prepared])
+        |> Map.put("retirement_operation", nil)
+
+      second =
+        first
+        |> Map.put("id", id(2))
+        |> Map.put("slots", [2, 3])
+        |> Map.put("prepared", [])
+        |> put_in(["active", "slot"], 2)
+        |> put_in(["active", "epoch"], id(100_007))
+
+      original =
+        original
+        |> put_in(["document_drafts", id(1)], first)
+        |> put_in(["document_drafts", id(2)], second)
+
+      assert DocumentDraft.valid?(original)
+      {reserved, old_blocks} = reserve(original)
+      next_generation = generation + 1
+
+      {:ok, retired} =
+        first
+        |> Map.put("active", nil)
+        |> Map.put("revision", next_generation)
+        |> Map.put("retirement_epoch", 1)
+        |> DocumentDraft.bind_retirement(id(next_generation), id(100_008))
+
+      partial =
+        original
+        |> Map.put("generation", next_generation)
+        |> Map.put("floor", next_generation)
+        |> Map.put("floor_anchor", id(next_generation))
+        |> Map.update!("floor_lineage", &(&1 ++ [id(next_generation)]))
+        |> Map.update!("operations", &Map.put(&1, id(next_generation), receipt(next_generation)))
+        |> put_in(["document_drafts", id(1)], retired)
+        |> Map.put("records", %{})
+
+      assert DocumentDraft.valid?(partial)
+      {next_root, next_blocks} = encode(partial)
+      new_blocks = Map.drop(next_blocks, Map.keys(old_blocks))
+
+      actual = [
+        byte_size(next_root),
+        1 | Enum.map(new_blocks, fn {_, bytes} -> byte_size(bytes) end)
+      ]
+
+      assert dominated?(reserved, actual),
+             "partial cleanup vector does not dominate #{generation}"
+    end
+  end
+
   test "active maintenance reserves its close before the same stage can be cleaned" do
     original = state(255)
     {idle_sizes, _} = reserve(original)

@@ -225,6 +225,10 @@ defmodule Ipse.Extension.Collection.DocumentDraftNativeCapacityTest do
           "prepared" => [prepared]
         }
 
+        # Model a collection opened across an upgrade: half the heads were
+        # admitted before receipt reservation, and half use the new format.
+        head = if rem(index, 2) == 1, do: Map.put(head, "retirement_operation", nil), else: head
+
         expiry = System.system_time(:millisecond) + 3_600_000
 
         common = %{
@@ -360,7 +364,7 @@ defmodule Ipse.Extension.Collection.DocumentDraftNativeCapacityTest do
     assert File.read!(root) == root_before
     assert snapshot(c)["generation"] == before["generation"]
 
-    head = seeded["document_drafts"] |> Map.values() |> Enum.find(&(&1["active"]["slot"] == 0))
+    head = seeded["document_drafts"] |> Map.values() |> Enum.find(&(&1["active"]["slot"] == 2))
     active = head["active"]
 
     tag = %{
@@ -379,10 +383,58 @@ defmodule Ipse.Extension.Collection.DocumentDraftNativeCapacityTest do
       "progress" => tag
     }
 
-    assert {:ok, %{"document_progress" => %{"status" => "retiring", "retirement_epoch" => 1}}} =
-             DocumentStage.execute(c.root, c.ns, abort, Usage.id(), c.owner)
+    marked_id = Usage.id()
 
-    assert snapshot(c)["generation"] == before["generation"] + 1
+    assert {:ok, %{"document_progress" => %{"status" => "retiring", "retirement_epoch" => 1}}} =
+             DocumentStage.execute(c.root, c.ns, abort, marked_id, c.owner)
+
+    after_marked = snapshot(c)
+    marked_head = after_marked["document_drafts"][head["id"]]
+    assert after_marked["generation"] == before["generation"] + 1
+
+    assert marked_head["retirement_operation"] === %{
+             "operation_id" => marked_id,
+             "invocation_id" => c.owner["invocation_id"]
+           }
+
+    assert length(marked_head["prepared"]) == 1
+
+    assert {:ok, %{"operation" => %{"generation" => revision}}} =
+             Collection.execute_profile(
+               c.root,
+               c.ns,
+               %{"op" => "inspect", "operation_id" => marked_id},
+               Usage.id(),
+               Profile.documents()
+             )
+
+    assert revision == marked_head["revision"]
+
+    legacy =
+      after_marked["document_drafts"]
+      |> Map.values()
+      |> Enum.find(&(&1["active"]["slot"] == 0))
+
+    legacy_abort = %{
+      "op" => "value.abort",
+      "slot" => legacy["active"]["slot"],
+      "epoch" => legacy["active"]["epoch"],
+      "generation" => after_marked["generation"],
+      "maintenance_epoch" => 1,
+      "progress" => %{
+        "version" => 1,
+        "action" => "retire",
+        "head_id" => legacy["id"],
+        "revision" => legacy["revision"]
+      }
+    }
+
+    assert {:ok, %{"document_progress" => %{"status" => "retiring"}}} =
+             DocumentStage.execute(c.root, c.ns, legacy_abort, Usage.id(), c.owner)
+
+    after_legacy = snapshot(c)
+    assert after_legacy["generation"] == after_marked["generation"] + 1
+    refute Map.has_key?(after_legacy["document_drafts"][legacy["id"]], "retirement_operation")
 
     heads = Map.values(seeded["document_drafts"])
 
@@ -405,6 +457,7 @@ defmodule Ipse.Extension.Collection.DocumentDraftNativeCapacityTest do
       "reserved_file_bytes" => Enum.sum(reserved),
       "adjacent_native_write_refused" => true,
       "root_and_generation_unchanged" => true,
+      "marked_cleanup_first" => true,
       "owned_cleanup_confirmed" => true
     }
 

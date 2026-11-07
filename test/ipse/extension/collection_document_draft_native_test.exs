@@ -229,12 +229,40 @@ defmodule Ipse.Extension.Collection.DocumentDraftNativeTest do
 
     [first_ref, second_ref] = p2["prepared"]
 
-    {{:ok, one_removed}, _, _} =
+    {{:ok, one_removed}, retirement_request, retirement_id} =
       call(c, Map.merge(first_ref, %{"op" => "value.abort", "progress" => retire.(p2)}))
 
     retiring = one_removed["document_progress"]
     assert retiring["status"] == "retiring"
     assert retiring["retirement_epoch"] == 2
+    retired_state = snapshot(c)
+    head = retired_state["document_drafts"][p2["head_id"]]
+
+    assert head["retirement_operation"] === %{
+             "operation_id" => retirement_id,
+             "invocation_id" => c.owner["invocation_id"]
+           }
+
+    assert {:ok, %{"operation" => operation}} =
+             Collection.execute_profile(
+               c.root,
+               c.ns,
+               %{"op" => "inspect", "operation_id" => retirement_id},
+               Usage.id(),
+               Ipse.Extension.Collection.Profile.documents()
+             )
+
+    assert operation["generation"] == head["revision"]
+
+    assert operation["request_sha256"] ===
+             JSON.digest([
+               %{
+                 "op" => "collection.store",
+                 "scope" => "project",
+                 "request" => retirement_request
+               }
+             ])
+
     fence(c)
 
     {{:error, _}, _, _} =

@@ -94,6 +94,76 @@ defmodule Ipse.Extension.Collection.DocumentDraftSchemaTest do
     refute DocumentDraft.valid?(put_in(state, ["document_drafts", id, "active", "slot"], 0))
   end
 
+  test "partial retirement joins the exact ledger generation and rejects tampering" do
+    state = state()
+    [{head_id, head}] = Map.to_list(state["document_drafts"])
+    operation_id = Usage.id()
+    invocation_id = Usage.id()
+
+    assert {:ok, joined} =
+             head
+             |> Map.put("retirement_operation", nil)
+             |> Map.put("retirement_epoch", 1)
+             |> Map.put("revision", 2)
+             |> DocumentDraft.bind_retirement(operation_id, invocation_id)
+
+    receipt = %{"generation" => 2, "floor" => 0, "request_sha256" => JSON.sha256("cleanup")}
+
+    state =
+      state
+      |> Map.put("generation", 2)
+      |> put_in(["operations", operation_id], receipt)
+      |> put_in(["document_drafts", head_id], joined)
+
+    assert DocumentDraft.valid?(state)
+
+    imported_only =
+      state
+      |> update_in(["operations"], &Map.delete(&1, operation_id))
+      |> put_in(["imported_operations", operation_id], receipt)
+
+    refute DocumentDraft.valid?(imported_only)
+    refute DocumentDraft.valid?(put_in(state, ["operations", operation_id, "generation"], 1))
+    refute DocumentDraft.valid?(put_in(state, ["document_drafts", head_id, "revision"], 1))
+
+    refute DocumentDraft.valid?(
+             put_in(state, ["document_drafts", head_id, "retirement_epoch"], nil)
+           )
+
+    refute DocumentDraft.valid?(
+             put_in(
+               state,
+               ["document_drafts", head_id, "retirement_operation", "operation_id"],
+               Usage.id()
+             )
+           )
+
+    refute DocumentDraft.valid?(
+             put_in(
+               state,
+               ["document_drafts", head_id, "retirement_operation", "invocation_id"],
+               "invalid"
+             )
+           )
+
+    # Existing heads remain readable; their missing join grants no new recovery authority.
+    assert DocumentDraft.valid?(
+             update_in(
+               state,
+               ["document_drafts", head_id],
+               &Map.delete(&1, "retirement_operation")
+             )
+           )
+
+    assert {:ok, legacy} =
+             head
+             |> Map.put("retirement_epoch", 1)
+             |> Map.put("revision", 2)
+             |> DocumentDraft.bind_retirement(operation_id, invocation_id)
+
+    refute Map.has_key?(legacy, "retirement_operation")
+  end
+
   test "the operation ledger retains the head's reducing cleanup capacity" do
     state = state()
 

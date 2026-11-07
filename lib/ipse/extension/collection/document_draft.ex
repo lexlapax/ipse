@@ -190,6 +190,7 @@ defmodule Ipse.Extension.Collection.DocumentDraft do
     }
 
     wire
+    |> reserve_retirement_receipts()
     |> Map.update!("operations", &(&1 ++ [local]))
     |> Map.update!("floor_lineage", &(&1 ++ [lineage]))
     |> inflate_bound()
@@ -203,11 +204,34 @@ defmodule Ipse.Extension.Collection.DocumentDraft do
     lineage_id = String.duplicate("f", 32)
 
     flat
+    |> reserve_retirement_receipts()
     |> Map.update!("operations", &(&1 ++ List.duplicate(operation, count)))
     |> Map.update!("floor_lineage", &(&1 ++ List.duplicate(lineage_id, count)))
     |> inflate_bound()
     |> Migration.encode()
     |> byte_size()
+  end
+
+  # A new head reserves room for the full native-owned join before admission.
+  # Legacy heads do not gain this field or need unreserved cleanup space.
+  defp reserve_retirement_receipts(state) do
+    if is_map(state["document_drafts"]) do
+      update_in(state, ["document_drafts"], fn heads ->
+        Map.new(heads, fn {id, head} ->
+          if Map.has_key?(head, "retirement_operation") do
+            {id,
+             Map.put(head, "retirement_operation", %{
+               "operation_id" => String.duplicate("f", 32),
+               "invocation_id" => String.duplicate("f", 32)
+             })}
+          else
+            {id, head}
+          end
+        end)
+      end)
+    else
+      state
+    end
   end
 
   defp pointer_bound(state) do
@@ -397,6 +421,7 @@ defmodule Ipse.Extension.Collection.DocumentDraft do
          "body_sha256" => tag["body_sha256"],
          "maintenance_epoch" => maintenance["epoch"],
          "retirement_epoch" => nil,
+         "retirement_operation" => nil,
          "unit_limit" => tag["unit_limit"],
          "unit" => 0,
          "revision" => state["generation"] + 1,
@@ -538,6 +563,26 @@ defmodule Ipse.Extension.Collection.DocumentDraft do
     _ -> {:error, :document_draft_refused}
   end
 
+  @doc "Bind a partial retirement to its actual native operation and Session invocation."
+  def bind_retirement(nil, _, _), do: {:ok, nil}
+
+  def bind_retirement(head, operation_id, invocation_id) do
+    if is_map(head) and not is_nil(head["retirement_epoch"]) and id?(operation_id) and
+         id?(invocation_id) do
+      if Map.has_key?(head, "retirement_operation") do
+        {:ok,
+         Map.put(head, "retirement_operation", %{
+           "operation_id" => operation_id,
+           "invocation_id" => invocation_id
+         })}
+      else
+        {:ok, head}
+      end
+    else
+      {:error, :document_draft_refused}
+    end
+  end
+
   defp retire_stage(head, %{"op" => "progress.retire"}, []) do
     if is_nil(head["active"]) and head["prepared"] === [],
       do: {:ok, nil},
@@ -661,7 +706,8 @@ defmodule Ipse.Extension.Collection.DocumentDraft do
     known = Migration.known_operations(state)
     initial = known[id]
 
-    exact?(h, @head_fields) and byte_size(Jason.encode!(h)) <= @head_bytes and
+    (exact?(h, @head_fields) or exact?(h, @head_fields ++ ~w(retirement_operation))) and
+      byte_size(Jason.encode!(h)) <= @head_bytes and
       id?(id) and h["id"] === id and
       h["kind"] in ~w(source projection) and owner?(h["owner"], state["project"]) and
       JSON.sha256?(h["plan_sha256"]) and JSON.sha256?(h["body_sha256"]) and
@@ -674,8 +720,26 @@ defmodule Ipse.Extension.Collection.DocumentDraft do
       JSON.safe_uint?(h["unit"]) and h["unit"] <= h["unit_limit"] and
       JSON.safe_uint?(h["revision"]) and h["revision"] in 1..state["generation"] and
       is_map(initial) and initial["generation"] <= h["revision"] and
+      retirement_operation?(h, state["operations"]) and
       slots?(h["slots"], h["kind"]) and active?(h["active"], h["slots"]) and
       prepared?(h["prepared"], h["slots"], h["active"])
+  end
+
+  defp retirement_operation?(head, known) do
+    case Map.fetch(head, "retirement_operation") do
+      :error ->
+        true
+
+      {:ok, nil} ->
+        is_nil(head["retirement_epoch"])
+
+      {:ok, operation} ->
+        is_map(operation) and exact?(operation, ~w(operation_id invocation_id)) and
+          not is_nil(head["retirement_epoch"]) and id?(operation["operation_id"]) and
+          id?(operation["invocation_id"]) and
+          match?(%{"generation" => _}, known[operation["operation_id"]]) and
+          known[operation["operation_id"]]["generation"] === head["revision"]
+    end
   end
 
   defp owner?(owner, namespace) do

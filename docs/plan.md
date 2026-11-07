@@ -401,6 +401,10 @@ following limits until the end-to-end paths are qualified:
    Btrfs. Installed backup remains unqualified and the attempt is preserved.
    Descriptor validation also rejects a rehashed nonempty lineage at floor zero,
    matching the existing restore-plan rule; eleven focused restore tests pass.
+   [Partial retirement operation binding](archive/2026-10-26-p30-p31-implementation/document-retirement-operation-20261106.md)
+   records a native operation/invocation join on newly admitted heads, with
+   legacy-head compatibility and scoped controls. It does not establish the
+   prior Session action or owner quiescence, so interrupted recovery still refuses.
    Ten host provenance controls, 24 domain/controller cases and the separate
    eight-test native migration file pass. This closes the bounded same-project
    increment, not changed-target recovery, installed migration, larger segmented

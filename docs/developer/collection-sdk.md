@@ -484,6 +484,17 @@ foreign-owner heads refuse rather than proving nonpublication. See the
 [operator cleanup workflow](../operator/corpus.md#query-a-document-collection).
 General garbage collection, adoption and recovery remain separate work.
 
+New heads reserve room for `retirement_operation` when admitted. The field is
+initially null; a partial retirement atomically records its operation and
+invocation IDs alongside the head. Validation requires the operation to appear
+in the local ledger at the head's revision. This is a potential join for later
+inspection, not proof that the action's journal matches or its previous owners
+have stopped, and it grants no takeover or replay authority. Heads created by an
+older host retain their old encoding through cleanup and do not acquire the
+field. Conversely, older hosts reject newly marked heads, including active ones;
+finish or retire those heads with the newer host. Physical near-quota cleanup
+and installed upgrade/downgrade qualification remain separate.
+
 For a metadata inventory, the same document read grant accepts `value.index`.
 Start at a checked snapshot generation with a null cursor:
 
