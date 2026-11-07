@@ -10,10 +10,9 @@ defmodule Ipse.KnowledgeDocumentsFidelityTest do
       Enum.flat_map(files, &["-r", Path.join(@root, "extensions/knowledge/src/#{&1}.ex")])
 
     paths =
-      :code.get_path()
-      |> Enum.reject(&(&1 == ~c"."))
-      |> Enum.reverse()
-      |> Enum.flat_map(&["-pa", to_string(&1)])
+      for module <- [Ipse.Extension, Jason, JSONSchex, ExJSONPointer],
+          path = module |> :code.which() |> to_string() |> Path.dirname(),
+          do: ["-pa", path]
 
     bootstrap = ~S'''
     import ExUnit.Assertions
@@ -47,7 +46,7 @@ defmodule Ipse.KnowledgeDocumentsFidelityTest do
     {output, status} =
       System.cmd(
         System.find_executable("elixir"),
-        paths ++ arguments ++ ["-e", bootstrap <> body],
+        List.flatten(paths) ++ arguments ++ ["-e", bootstrap <> body],
         stderr_to_stdout: true
       )
 
