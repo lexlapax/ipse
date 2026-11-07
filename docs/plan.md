@@ -118,6 +118,11 @@ restores the canonical Elixir 1.18 formatting check and replaces the retired
 macOS runner image. Its local formatter and policy checks pass; a new hosted
 baseline, package and installed checks remain unqualified.
 
+The [hosted Azure diagnosis](archive/2026-10-26-p30-p31-implementation/ci-azure-storage-diagnosis-20261106.md)
+records an actual `7.0.0-1017-azure` Linux runner rejected by the current native
+kernel profile. Filesystem qualification, separate terminal/MCP failures and
+the macOS unknown installed Memory action remain open; no profile was widened.
+
 The [hosted source-test partition change](archive/2026-10-26-p30-p31-implementation/ci-source-partitions-20261106.md)
 assigns every default test file to one of four jobs per OS after an unpartitioned
 job reached its existing time limit. Platform and installed checks retain their
