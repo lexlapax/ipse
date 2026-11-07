@@ -346,9 +346,10 @@ read evidence. With Ollama, the complete no-tool draft interval can be withheld
 even when its native assistant messages contain thinking. That draft-only thinking
 remains in the private journal and is not sent on later turns. Anthropic supports
 withholding a no-tool draft whose native content contains matching plain-text
-blocks and bounded thinking blocks with a nonempty signature. The complete
-draft-only thinking and signature stay in the private journal. Redacted thinking,
-tool exchanges and unknown native fields remain unsupported for draft withdrawal.
+blocks, bounded thinking blocks with a nonempty signature, and bounded opaque
+redacted-thinking blocks. The complete draft-only native content stays in the
+private journal and is withheld from later model input. Tool exchanges and
+unknown native fields remain unsupported for draft withdrawal.
 A draft can still
 complete or be cancelled if it contains unsupported continuation, but acceptance
 or later work can refuse when the draft cannot be safely withheld. Follow the

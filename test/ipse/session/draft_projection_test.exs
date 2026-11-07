@@ -285,6 +285,7 @@ defmodule Ipse.Session.DraftProjectionTest do
             "thinking" => "private reasoning canary",
             "signature" => "private signature canary"
           },
+          %{"type" => "redacted_thinking", "data" => "private opaque canary"},
           %{"type" => "text", "text" => "visible proposal"}
         ]
       }
@@ -294,6 +295,7 @@ defmodule Ipse.Session.DraftProjectionTest do
 
     prior_blocks = [
       %{"type" => "thinking", "thinking" => "prior reasoning", "signature" => "prior signature"},
+      %{"type" => "redacted_thinking", "data" => "prior opaque"},
       %{"type" => "text", "text" => "prior"}
     ]
 
@@ -327,6 +329,7 @@ defmodule Ipse.Session.DraftProjectionTest do
       wire = Ipse.Provider.Anthropic.request_body(%{model: "fixture"}, [prior, intent, next], [])
       refute Jason.encode!(wire) =~ "private reasoning canary"
       refute Jason.encode!(wire) =~ "private signature canary"
+      refute Jason.encode!(wire) =~ "private opaque canary"
       refute Jason.encode!(wire) =~ "visible proposal"
 
       assert wire["messages"] == [
@@ -337,7 +340,26 @@ defmodule Ipse.Session.DraftProjectionTest do
     end
   end
 
-  test "Anthropic opaque, changed and tool-bearing drafts refuse instead of stripping fields" do
+  test "Anthropic redacted-thinking draft with text is withdrawn as a complete interval" do
+    native = %{
+      "role" => "assistant",
+      "content" => "private",
+      "provider_data" => %{
+        "provider" => "anthropic",
+        "content" => [
+          %{"type" => "redacted_thinking", "data" => "opaque canary"},
+          %{"type" => "text", "text" => "private"}
+        ]
+      }
+    }
+
+    {draft, history} = projection([%{"role" => "user", "content" => "secret"}, native])
+    assert {:ok, projected} = Draft.project(draft, history, MapSet.new(), :anthropic)
+    refute Jason.encode!(projected) =~ "opaque canary"
+    refute Jason.encode!(projected) =~ "secret"
+  end
+
+  test "Anthropic malformed, changed and tool-bearing drafts refuse instead of stripping fields" do
     native = %{
       "role" => "assistant",
       "content" => "private",
@@ -358,6 +380,27 @@ defmodule Ipse.Session.DraftProjectionTest do
       ]),
       put_in(native, ["provider_data", "content"], [
         %{"type" => "redacted_thinking", "data" => "opaque"}
+      ]),
+      put_in(native, ["provider_data", "content"], [
+        %{"type" => "redacted_thinking", "data" => "opaque", "extra" => 1},
+        %{"type" => "text", "text" => "private"}
+      ]),
+      put_in(native, ["provider_data", "content"], [
+        %{"type" => "redacted_thinking", "data" => ""},
+        %{"type" => "text", "text" => "private"}
+      ]),
+      put_in(native, ["provider_data", "content"], [
+        %{"type" => "redacted_thinking", "data" => 1},
+        %{"type" => "text", "text" => "private"}
+      ]),
+      put_in(native, ["provider_data", "content"], [
+        %{"type" => "redacted_thinking", "data" => "opaque"},
+        %{"type" => "text", "text" => "different"}
+      ]),
+      put_in(native, ["provider_data", "content"], [
+        %{"type" => "redacted_thinking", "data" => "opaque"},
+        %{"type" => "text", "text" => "private"},
+        %{"type" => "tool_use", "id" => "call", "name" => "read", "input" => %{}}
       ]),
       put_in(native, ["provider_data", "content"], [%{"type" => "text", "text" => "different"}]),
       put_in(native, ["provider_data", "content"], [
@@ -386,6 +429,44 @@ defmodule Ipse.Session.DraftProjectionTest do
       ])
 
     refute Ipse.Session.DraftNative.anthropic_draft_without_tools?(invalid_utf8)
+
+    for data <- [<<255>>, String.duplicate("x", 8_388_609)] do
+      malformed =
+        put_in(native, ["provider_data", "content"], [
+          %{"type" => "redacted_thinking", "data" => data},
+          %{"type" => "text", "text" => "private"}
+        ])
+
+      refute Ipse.Session.DraftNative.anthropic_draft_without_tools?(malformed)
+    end
+
+    without_text = %{
+      native
+      | "content" => "",
+        "provider_data" => %{
+          "provider" => "anthropic",
+          "content" => [%{"type" => "redacted_thinking", "data" => "opaque"}]
+        }
+    }
+
+    refute Ipse.Session.DraftNative.anthropic_draft_without_tools?(without_text)
+
+    redacted = %{"type" => "redacted_thinking", "data" => "opaque"}
+
+    boundary =
+      put_in(
+        native,
+        ["provider_data", "content"],
+        List.duplicate(redacted, 255) ++ [%{"type" => "text", "text" => "private"}]
+      )
+
+    assert Ipse.Session.DraftNative.anthropic_draft_without_tools?(boundary)
+
+    refute Ipse.Session.DraftNative.anthropic_draft_without_tools?(
+             put_in(boundary, ["provider_data", "content"], [
+               redacted | boundary["provider_data"]["content"]
+             ])
+           )
   end
 
   test "Anthropic validator rejects invalid UTF-8 before JSON history encoding" do

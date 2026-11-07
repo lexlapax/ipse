@@ -901,6 +901,11 @@ defmodule Ipse.Session.DraftVerticalTest do
               "type" => "content_block_delta",
               "index" => 0,
               "delta" => %{"type" => "signature_delta", "signature" => signature}
+            },
+            %{
+              "type" => "content_block_start",
+              "index" => 2,
+              "content_block" => %{"type" => "redacted_thinking", "data" => thinking <> " opaque"}
             }
           ]
         else
@@ -987,6 +992,7 @@ defmodule Ipse.Session.DraftVerticalTest do
     end
 
     assert Enum.any?(resumed_events, retained_thinking?)
+    assert Jason.encode!(resumed_events) =~ "draft reasoning canary opaque"
 
     accepted_context = %{c | dir: Path.join(c.root, "anthropic-signed-accepted")}
     {draft_session, _} = start(accepted_context, cfg)
@@ -1039,12 +1045,14 @@ defmodule Ipse.Session.DraftVerticalTest do
     for body <- [ordinary, resumed_body, accepted_body, later_body] do
       assert Jason.encode!(body) =~ "prior reasoning"
       assert Jason.encode!(body) =~ "prior signature"
+      assert Jason.encode!(body) =~ "prior reasoning opaque"
 
       for canary <- [
             "private draft input",
             "private proposal",
             "draft reasoning canary",
-            "draft signature canary"
+            "draft signature canary",
+            "draft reasoning canary opaque"
           ] do
         refute Jason.encode!(body) =~ canary
       end

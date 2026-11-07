@@ -277,11 +277,13 @@ are preserved unchanged. The separate `plain_text_only?/1` predicate remains
 stricter for managed lineage and reference checks. Anthropic uses
 `DraftNative.anthropic_draft_without_tools?/1` for exact native text blocks whose
 concatenation matches the visible UTF-8 content, optionally interleaved with
-bounded thinking blocks with a nonempty, structurally checked signature. The
-signature is not authenticated here. Its ordinary Stream item bound still applies.
-Redacted thinking, tools, unknown fields, unsigned thinking and mismatched text
-refuse; the validator never strips a native field to fit. Signed thinking is
-withheld with the whole draft interval and remains in the private journal.
+bounded thinking blocks with a nonempty, structurally checked signature or
+bounded opaque redacted-thinking blocks. Redacted blocks require a text block in
+the same native message. Neither signatures nor opaque data are authenticated
+here. The ordinary Stream item bound still applies. Tools, unknown fields,
+unsigned thinking and mismatched text refuse; the validator never strips a native
+field to fit. The whole draft interval remains in the private journal but is
+withheld from later requests.
 Each policy requires complete tool grouping in the prefix, removed interval and
 tail. Native messages outside the interval stay unchanged.
 

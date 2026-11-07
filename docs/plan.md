@@ -468,8 +468,9 @@ following limits until the end-to-end paths are qualified:
    adapter. It preserves native history outside the withdrawn interval. The
    current signed-thinking extension passes 11 synthetic projection and request-body
    controls and a [synthetic Session/Saved test](archive/2026-10-26-p30-p31-implementation/anthropic-signed-draft-20261106.md)
-   with a synthetic acceptance witness. It checks the signature's
-   structure, not authenticity. Redacted or tool-bearing drafts, broader provider
+   with a synthetic acceptance witness. A follow-up covers bounded opaque
+   redacted-thinking blocks in the same no-tool path. It checks shape, not
+   signature or opaque-data authenticity. Tool-bearing drafts, broader provider
    coverage, installed/native-terminal
    qualification and integrated clarification remain open.
 5. **Decision engines — P30A–E.** Complete the host protocol and protected
