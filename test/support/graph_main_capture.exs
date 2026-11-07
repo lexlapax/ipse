@@ -1322,6 +1322,9 @@ defmodule GraphNamespaceRaceTest do
 end
 
 result = ExUnit.run()
-passed = result.total == 34 and result.failures == 0 and result.skipped == 0 and result.excluded == 0
+
+passed =
+  result.total == 34 and result.failures == 0 and result.skipped == 0 and result.excluded == 0
+
 if passed, do: IO.puts("graph_identity_protocol=pass")
 System.halt(if(passed, do: 0, else: 1))
