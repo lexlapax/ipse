@@ -23,6 +23,11 @@ history. An initial sandboxed Mix attempt failed because Mix could not open its
 local locking socket; the recorded passing runs used host loopback access.
 The offline build also passed. A subsequent attempt to run the entire draft
 Session test file did not start because the host stayed below its memory gate.
+A later run at commit `1358beb8` passed the complete synthetic draft Session
+file: **24 passed**, with no exclusions reported beyond the configured default
+tags. The only other worktree change was an unrelated, unused terminal driver
+trace; the Session test file does not compile that driver. The shared input lock
+and test port were free after the run.
 An independent source-only review found no concrete cross-boundary association
 or provider mismatch in the examined paths; it did not execute tests or
 exhaustively prove malformed or mixed-provider histories.
@@ -30,3 +35,8 @@ exhaustively prove malformed or mixed-provider histories.
 These checks do not qualify arbitrary native shapes, live Ollama models,
 installed terminal use, general P31I clarification or the final integrated
 candidate. Unsupported continuation remains a refusal, not a provider switch.
+
+The separate proposed terminal trace was not used: review confirmed it changes
+`operator_pty.rs`, while the hosted draft-acceptance failures use
+`operator_cli_pty.rs`. Its limited observations do not diagnose those failures.
+The untested patch was set aside locally; hosted failures remain unresolved.
