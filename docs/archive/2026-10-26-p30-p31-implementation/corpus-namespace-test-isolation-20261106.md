@@ -157,4 +157,22 @@ and both packets report matching recorded source and SDK postchecks. Their
 The retained packets are
 `_build/verification/embedding-artifact-context-65c5a567-20261106-01/` and
 `_build/verification/embedding-artifact-context-65c5a567-20261106-02/`. This
-focused pass does not change the outcome of any full regression.
+focused pass does not change the outcome of any full regression. The `0cdc36fa`
+full regression subsequently reported the same `query_time_changed` failure as
+its fourth outer failure.
+
+## Full regression terminal result
+
+The `0cdc36faeee16bb5134e9933baaa996bd954e3d8` full regression completed in
+9,911.0 seconds with exit 2: 4,305 of 4,309 tests passed, four failed, 136 were
+skipped and 124 excluded. Its 517-file source copy, launch inputs and recorded
+toolchain postchecks matched. Independent host inspection found the owned process
+group absent and the Input lock and TCP port 39657 free. The result remains
+failed; the later focused fixture passes above do not change it.
+
+The retained packet is
+`_build/verification/p31-final-regression-0cdc36fa-20261106-01/run-01/`.
+`status.txt` SHA-256 is
+`ee1f45d6aabd290847d06b2c9c3532690ef2ee92375832a084a3c42b888e081c`, and the
+raw log SHA-256 is
+`da18a30baf780ae0685d51cc4190311ef26c187f49f3ea0730662140c59896ed`.

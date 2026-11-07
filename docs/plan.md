@@ -1363,10 +1363,11 @@ at `546869c8` exited 0: 4,288 passed, 136 skipped and 124 excluded, with
 matching source, build and toolchain inventories and independently confirmed
 cleanup. The later [98267afd regression](archive/2026-10-26-p30-p31-implementation/full-regression-98267afd-20261106.md)
 passed 4,294 tests with 136 skipped and 124 excluded. Neither run covers later
-commits. The active `0cdc36fa` regression has reported hybrid-fixture, Corpus
-wrapper isolation and package-fixture failures. Their separately repaired
+commits. The `0cdc36fa` regression completed with 4,305 of 4,309 tests passing,
+four failures, 136 skipped and 124 excluded. The failures were hybrid-fixture,
+Corpus wrapper isolation, package-fixture and artifact-time-context failures. Their separately repaired
 [nine-case](archive/2026-10-26-p30-p31-implementation/domain-hybrid-regression-repair-20261106.md),
-[16-case and 33-case](archive/2026-10-26-p30-p31-implementation/corpus-namespace-test-isolation-20261106.md)
+[16-case, 33-case and artifact](archive/2026-10-26-p30-p31-implementation/corpus-namespace-test-isolation-20261106.md)
 controls pass without changing the active run's result. The earlier
 [complete `9f1707c` baseline](archive/2026-10-26-p30-p31-implementation/full-suite-cancel-repair-20261102.md)
 followed the [controlled cancellation repair](archive/2026-10-26-p30-p31-implementation/worker-input-cancel-20261102.md).
