@@ -513,7 +513,9 @@ following limits until the end-to-end paths are qualified:
    must qualify each store it actually uses rather than assume an optional backend
    is available. Graph currently revalidates stored sources but does not recheck
    acquired workspace files before using their facts or returning citations;
-   that current-use path remains open. Do not create placeholder implementations
+   that current-use path remains open. The [source investigation](archive/2026-10-26-p30-p31-implementation/graph-workspace-and-retirement-boundaries-20261107.md)
+   identifies the missing durable Corpus-to-Graph authority and the separate
+   extraction and publication decisions. Do not create placeholder implementations
    while those contracts are unsettled.
 7. **Final acceptance — P31J and the goal handoff.** On the final integrated
    source, serialize the required native/Mix/PTY verification, full source suite,
