@@ -799,6 +799,23 @@ unchanged configuration and no home creation, then checks unsupported flags and
 an absent-reservation reconciliation. These offline CLI checks do not establish
 native confirmation or actual remote-service quiescence; those require separate
 terminal and service controls.
+
+To check assistant-authored planning decisions in a selected package, use its
+matching Elixir/OTP and ExUnit, the archive and adjacent checksum sidecar, the
+archive SHA-256 and full source commit. The verifier also needs `rustc`, `tar`,
+loopback sockets, a PTY and a supported native filesystem. Set a private result
+path that does not yet exist, then run:
+
+```sh
+elixir dev/verification/assistant_planning_decision_installed.exs \
+  "$IPSE_ARCHIVE" "$IPSE_RESULT_ROOT" "$IPSE_ARCHIVE_SHA256" "$IPSE_COMMIT"
+```
+
+It checks package identity and integrity, runs six serial synthetic PTY journeys
+with a loopback provider, and retains synthetic inputs and logs. Inspect its
+report and independently check process, listener and input-lock cleanup. This
+does not qualify a live provider, a human interaction, or other platforms.
+
 Each hosted source-test partition has a 60-minute build/test budget. The separate
 platform job has its own 60-minute build, native, package and independent-proof
 budget. These finite orchestration budgets are separate from

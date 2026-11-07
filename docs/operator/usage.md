@@ -271,8 +271,9 @@ outcome is unavailable, inspect the Session journal and stored state. The ID is
 bound to this Session. If an enclosing ceiling prevents saving, keep its journal;
 a fresh ordinary Session can review the text as a new assertion, but does not
 transfer the old decision or its provenance.
-This development-source path
-has not yet been qualified for installed or independent human use.
+Synthetic terminal checks cover selected operator- and assistant-authored
+decisions in one PDF-free installed package. Broader installed configurations,
+live-provider behavior and independent human use remain unqualified.
 
 ## Refine a request before submitting it
 

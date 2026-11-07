@@ -502,8 +502,9 @@ following limits until the end-to-end paths are qualified:
    signature or opaque-data authenticity. OpenAI API draft withdrawal uses the
    existing stateless Responses isolation and historical selector; focused
    synthetic projection, transport and reconstruction controls pass.
-   Anthropic tool-bearing drafts, broader provider coverage, installed/native-terminal
-   qualification and integrated clarification remain open.
+   Anthropic tool-bearing drafts have subsequent synthetic source controls;
+   broader provider coverage, installed/native-terminal qualification and
+   integrated clarification remain open.
    A [synthetic Ollama tool-assisted control](archive/2026-10-26-p30-p31-implementation/ollama-tool-draft-20261107.md)
    also covers isolated native tool calls and results across cancellation and
    acceptance; live and installed qualification remain open.
@@ -1666,11 +1667,13 @@ provenance. Its synthetic verification passed 11 native journeys and 95 focused
 regressions. A later [assistant-proposed increment](archive/2026-10-26-p30-p31-implementation/assistant-planning-decision-20261106.md)
 adds exact-quote acceptance, post-exit staging and independent review, with scoped
 native stale/source/permission/unknown controls. Wider source combinations,
-installed and independent-human qualification, and the rest of P31I remain open.
+independent-human qualification, and the rest of P31I remain open.
 
 An [installed synthetic operator-decision check](archive/2026-10-26-p30-p31-implementation/planning-decision-installed-20261107.md)
-passes save and revoked-consent scenarios against a pinned PDF-free package.
-Assistant-authored decisions, independent-human use, other platforms and the
+passes save and revoked-consent scenarios against a pinned PDF-free package. A
+separate [installed assistant-decision check](archive/2026-10-26-p30-p31-implementation/assistant-planning-installed-20261107.md)
+passes six synthetic positive and failure journeys against that same package.
+Broader source combinations, independent-human use, other platforms and the
 default package remain unqualified.
 
 The [Anthropic tool-assisted draft increment](archive/2026-10-26-p30-p31-implementation/anthropic-tool-draft-20261107.md)
