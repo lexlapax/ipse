@@ -81,3 +81,23 @@ and `status.txt` SHA-256 is
 `eb6ba8ffbbfae35702e014fd9ab71a536114ca209194503acb5a81c409049faf`.
 This synthetic file-level result does not establish independent Word fidelity,
 installed behavior or complete P31F acceptance.
+
+## Minimum-version formatting check
+
+A full Elixir 1.18.5 formatter check after the Graph changes failed on the two
+new test-result markers. That attempt also emitted a Latin-1 locale warning and
+an incompatible Hex archive error; its output remains in
+`_build/verification/minimum-formatter-full-check-20261106-01/` with `check.log`
+SHA-256 `3701057429f7417eaefc48844915272b9986e75e23cae66d3f8afc1196d62669`.
+
+Commit `2626b361` applies the reported whitespace and line wrapping. The full
+`mix format --check-formatted` then passed with Elixir 1.18.5/OTP 27.3.4 in a
+fresh UTF-8, offline environment with empty private Mix archives. A separate
+syntax-tree comparison against the committed preimages matched after metadata
+removal; the changed inputs and formatter configuration matched their post-run
+hashes. The packet is
+`_build/verification/minimum-formatter-full-check-20261106-02/`; `ast.log`
+SHA-256 is `ef53d1a52cc35a55b5af8c3eb64c4164032bc6666effffbb6847f2d98c26b6af`,
+and `status.txt` SHA-256 is
+`def680c6e4c65dc77e54d67f43606ab9c0ede9027a45820fd9fce8ade356277b`.
+This check covers formatting, not compilation, tests or installed use.
