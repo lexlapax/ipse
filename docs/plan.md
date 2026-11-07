@@ -1473,6 +1473,11 @@ integration evidence; consumer selection, live engines and quality remain open.
 
 ## P31: usable knowledge and prompt assistance
 
+The [v19 literal-bullet increment](archive/2026-10-26-p30-p31-implementation/word-bullet-v19-20261107.md)
+passes 51 focused extraction/citation tests and a synthetic Collection Session
+journey using the newly built artifact. General Word fidelity, installed use,
+PDF verification and the final integrated baseline remain open.
+
 The [v18 document verifier repair](archive/2026-10-26-p30-p31-implementation/document-verifier-v18-20261106.md)
 passes fresh synthetic source and installed `fff77fbe` DOCX/PDF proofs after a
 stale v16 expectation failed CI. The later planning runtime still needs its own

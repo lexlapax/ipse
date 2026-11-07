@@ -14,8 +14,8 @@ defmodule IpseKnowledge.Evidence do
   @collection_chunking %{"version" => 2, "max_bytes" => 4096}
   @document_span_fields ~w(paragraph start_byte end_byte quote_start_byte quote_end_byte table row cell)
   @numbered_document_span_fields @document_span_fields ++ ~w(numbering)
-  @document_block_recipes ~w(ipse-documents-v14 ipse-documents-v15 ipse-documents-v16 ipse-documents-v17 ipse-documents-v18)
-  @numbered_document_recipes ~w(ipse-documents-v16 ipse-documents-v17 ipse-documents-v18)
+  @document_block_recipes ~w(ipse-documents-v14 ipse-documents-v15 ipse-documents-v16 ipse-documents-v17 ipse-documents-v18 ipse-documents-v19)
+  @numbered_document_recipes ~w(ipse-documents-v16 ipse-documents-v17 ipse-documents-v18 ipse-documents-v19)
 
   def safe_integer_max, do: @safe
   def safe_uint?(value), do: is_integer(value) and value in 0..@safe
@@ -1879,14 +1879,21 @@ defmodule IpseKnowledge.Evidence do
       (not Map.has_key?(locator, "region") or locator["region"] in ~w(header footer)) and
       (not Map.has_key?(locator, "annotation_id") or identifier?(locator["annotation_id"], 64)) and
       (not Map.has_key?(locator, "numbering") or
-         (recipe in @numbered_document_recipes and numbering?(locator["numbering"]))) and
+         (recipe in @numbered_document_recipes and numbering?(locator["numbering"], recipe))) and
       (not Map.has_key?(locator, "reference_site") or
          reference_locator?(locator["reference_site"], ~w(byte_offset), recipe)) and
       (not Map.has_key?(locator, "reference_range") or
          reference_locator?(locator["reference_range"], ~w(start_byte end_byte), recipe))
   end
 
-  defp numbering?(numbering) do
+  defp numbering?(%{"version" => 2} = numbering, "ipse-documents-v19") do
+    exact?(numbering, ~w(version num_id level label suffix)) and
+      numbering["level"] === 0 and
+      is_integer(numbering["num_id"]) and numbering["num_id"] in 1..2_147_483_647 and
+      numbering["label"] === "•" and numbering["suffix"] in ~w(tab space nothing)
+  end
+
+  defp numbering?(numbering, _) do
     exact?(numbering, ~w(version num_id level ordinal template label suffix)) and
       numbering["version"] === 1 and numbering["level"] === 0 and
       is_integer(numbering["num_id"]) and numbering["num_id"] in 1..2_147_483_647 and

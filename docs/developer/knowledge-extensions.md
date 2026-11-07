@@ -906,11 +906,11 @@ compact receipt version 4, retaining exact manifest hash/byte count, segment and
 warning counts, origin and one immutable manifest-head reference. Storage paging
 does not change the extraction recipe.
 
-For recipes v14 through v18, an extraction with more than 32 blocks can pack adjacent
+For recipes v14 through v19, an extraction with more than 32 blocks can pack adjacent
 plain paragraphs and table cells from one part into groups. Each group contains at most
 64 original blocks and fits the selected chunk-byte bound. Its `block_group`
 locator stores compact rows `[paragraph, text_bytes]` or
-`[paragraph, text_bytes, table, row, cell]`. V16 through v18 rows may append a `numbering` map
+`[paragraph, text_bytes, table, row, cell]`. V16 through v19 rows may append a `numbering` map
 after the optional table coordinates. Original paragraph numbers may have
 gaps; they must increase within the group. Other locator fields, such as annotation
 anchors or header regions, prevent grouping. The complete text keeps the same
@@ -963,7 +963,7 @@ retains the original single locator and local byte range. A quotation crossing
 packed blocks uses version 2, one `part` and compact `spans` rows. `span_fields`
 names their columns: paragraph, local start/end, quotation start/end, then
 table/row/cell coordinates. V14 and v15 rows contain five values for paragraphs
-and eight for table cells. V16 through v18 rows have nine fixed positions: the first five,
+and eight for table cells. V16 through v19 rows have nine fixed positions: the first five,
 nullable table/row/cell coordinates and nullable numbering metadata. Quotation
 offsets retain the newline gaps between original blocks.
 
@@ -1091,7 +1091,7 @@ duplicate references and references after row content. Each table tracks its
 own selection, while its cell locators retain their original table/row/cell
 identity. Ambiguous visibility remains outside the supported subset.
 
-For directly numbered body paragraphs, v16 through v18 derive list locators from
+For directly numbered body paragraphs, v16 through v19 derive list locators from
 the internal `numbering.xml` relationship and matching content type. The supported
 graph has explicit `singleLevel`, level zero, decimal format, start and a bounded
 template containing one `%1`; an optional level-zero start override sets the
@@ -1104,9 +1104,18 @@ append the map after any table coordinates. V2 multi-block citation spans instea
 use fixed table, row, cell and numbering positions, with `null` for absent fields;
 the `span_fields` list names each position. Evidence validates its shape and
 the label's derivation, then reconstructs the citation from the authenticated source
-record rather than trusting a submitted map.
+record rather than trusting a submitted map. V19 additionally accepts a
+single-level literal `•` bullet with no numbering-level font override or start
+override. Its version-two numbering map records the declared character and
+suffix separately from quoted text. Evidence accepts this map only for v19;
+version-one decimal maps remain valid for v16 through v19. The declared
+character does not prove rendered glyph appearance under inherited fonts.
+For the interpretation of the declared text and numbering-specific formatting,
+see Microsoft's [numbering level text](https://learn.microsoft.com/en-us/dotnet/api/documentformat.openxml.wordprocessing.leveltext?view=openxml-3.0.1),
+[Word bullet behavior](https://learn.microsoft.com/en-us/openspecs/office_standards/ms-oe376/bb605c29-854f-48bf-95fb-d14394e84bb6)
+and [numbering run properties](https://learn.microsoft.com/en-us/dotnet/api/documentformat.openxml.wordprocessing.runproperties?view=openxml-3.0.1).
 
-The reader refuses style-inherited numbering, nested levels, bullets, other formats,
+The reader refuses style-inherited numbering, nested levels, other bullet glyphs and formats,
 unrecognized numbering definitions or overrides, and revision-affected numbered
 paragraphs. A numbered paragraph with an ambiguous hidden paragraph marker or no
 visible text also refuses, so it cannot silently move later counters. Excluded
@@ -1169,14 +1178,15 @@ relationship still refuses; this does not implement general Word text effects.
 Both parts count toward the aggregate expanded-byte bound.
 
 Recipes are format-specific: `Documents.version("docx")` is
-`ipse-documents-v18`, while text, Markdown and PDF use `ipse-documents-v2`.
+`ipse-documents-v19`, while text, Markdown and PDF use `ipse-documents-v2`.
 The legacy `version/0` returns the v2 value; use `version/1` when binding an
 extraction to a source version. Earlier DOCX results are not automatically
-migrated or equivalent. V14 through v17 packed receipts and citations retain their
+migrated or equivalent. V14 through v18 packed receipts and citations retain their
 original recipes and remain readable; v16 extends the bounded block-map geometry
 with the separate numbering map. V17 retains that geometry and changes only
 undefined selected paragraph/character style handling. V18 retains that geometry
-and excludes the declared footnote/endnote layout entries described above.
+and excludes the declared footnote/endnote layout entries described above. V19
+adds the separately represented literal bullet subset described above.
 A future recipe cannot inherit that geometry without explicit validation support.
 Future indexing must explicitly rebuild or requalify older extraction results.
 The optional PDF backend requires a separately host-admitted protected parser;
@@ -1241,7 +1251,7 @@ objects. Use Elixir `JSON.encode!/decode!`, not raw Erlang encoding: binary sizi
 and `nil`→null semantics matter to persisted IDs. Sources allow 64 KiB UTF-8,
 with at most 32 chunks. Legacy sources keep their 2048-byte recipe; explicit
 Collection Source3 uses the versioned 4096-byte recipe. Document chunks remain
-inside their typed segments. V14–v18 groups may contain several original blocks and
+inside their typed segments. V14–v19 groups may contain several original blocks and
 their newline joins; separators between groups need not belong to a chunk.
 Citations bind generation/content/chunk,
 absolute byte range, literal quote/hash, URI, times, and origin. Quote bounds are

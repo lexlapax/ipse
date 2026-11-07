@@ -81,7 +81,7 @@ defmodule Ipse.KnowledgeDocumentParagraphPackingTest do
       assert Enum.all?(legacy_crossing["document"]["spans"], &(length(&1)==if(version in ~w(ipse-documents-v16 ipse-documents-v17),do: 9,else: 5)))
       assert Evidence.valid_span?(legacy_source,legacy_crossing)
     end
-    refute Evidence.valid_document?(put_in(payload["document"],["extraction_version"],"ipse-documents-v19"),payload["text"])
+    refute Evidence.valid_document?(put_in(payload["document"],["extraction_version"],"ipse-documents-v20"),payload["text"])
     refute Evidence.valid_span?(source, put_in(crossing, ["document", "spans", Access.at(0), Access.at(0)], 2))
     {mixed_start, _} = :binary.match(payload["text"], Enum.at(segments, 16)["text"])
     {:ok, mixed} = Evidence.citation(source, first, mixed_start, mixed_start + 80)

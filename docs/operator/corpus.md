@@ -381,23 +381,27 @@ hidden-text settings refuse; unsupported effect namespaces also refuse.
 
 For a directly numbered body paragraph, including one inside a table cell, the
 reader supports a narrow list format: a single decimal level with an explicit
-start and an optional start override. It tracks separate list instances. Its
-citation locator includes a `numbering` map
-with the derived ordinal, label and suffix; for example, `3.` is separate from the
-paragraph's quoted words. A multi-block v16 through v18 citation has fixed span fields for
+start and an optional start override, or a single-level literal `•` bullet with
+no numbering-level font override or restart. It tracks separate decimal list
+instances. Its citation locator includes a `numbering` map with the derived
+ordinal and label, or the declared bullet character, and its suffix. For example,
+`3.` is separate from the paragraph's quoted words. A multi-block v16 through v19 citation has fixed span fields for
 table, row, cell and numbering; absent coordinates or numbering are `null`.
 Inspect the original for layout.
-Numbering parts still leave the document partial. Bullets, nested levels, numbering
-inherited from styles, and other numbering definitions refuse when encountered;
+Numbering parts still leave the document partial. Other bullet characters, nested
+levels, numbering inherited from styles, and other numbering definitions refuse when encountered;
 numbered paragraphs affected by revisions or an ambiguous hidden paragraph marker
 also refuse. A wholly hidden or empty numbered paragraph refuses rather than
 silently changing later numbers. For this numbered-list subset, the body,
 numbering and any styles parts must use the same WordprocessingML dialect; mixed
 parts refuse because their combined interpretation is outside the reader's scope.
 
-The current DOCX recipe is `ipse-documents-v18`. Reacquire and explicitly replace an
+The literal bullet records a character declared in the document; inherited fonts
+may affect its appearance, which the reader does not verify.
+
+The current DOCX recipe is `ipse-documents-v19`. Reacquire and explicitly replace an
 older source when you need the newer recipe; existing extractions are not silently
-rebuilt. Stored v14 through v17 sources and citations retain their original recipes and
+rebuilt. Stored v14 through v18 sources and citations retain their original recipes and
 remain readable.
 
 Footnotes and endnotes declared as separators, continuation separators or

@@ -28,7 +28,7 @@ defmodule IpseKnowledge.Documents do
   def version, do: "ipse-documents-v2"
 
   @doc "Return the immutable extraction recipe selected for a result format."
-  def version("docx"), do: "ipse-documents-v18"
+  def version("docx"), do: "ipse-documents-v19"
   def version(format) when format in ~w(text markdown pdf), do: version()
 
   @doc "Project an extracted DOCX into the bounded explicit source-put contract."
@@ -49,6 +49,7 @@ defmodule IpseKnowledge.Documents do
              "ipse-documents-v15",
              "ipse-documents-v16",
              "ipse-documents-v17",
+             "ipse-documents-v18",
              version("docx")
            ],
          do: pack_blocks(segments, chunk_bytes, document["extraction_version"]),
@@ -111,7 +112,7 @@ defmodule IpseKnowledge.Documents do
         plain =
           is_map(base) and
             (not Map.has_key?(locator, "numbering") or
-               recipe in ~w(ipse-documents-v16 ipse-documents-v17 ipse-documents-v18)) and
+               recipe in ~w(ipse-documents-v16 ipse-documents-v17 ipse-documents-v18 ipse-documents-v19)) and
             ((Enum.sort(Map.keys(base)) == ~w(kind paragraph part) and
                 base["kind"] == "paragraph") or
                (Enum.sort(Map.keys(base)) == ~w(cell kind paragraph part row table) and

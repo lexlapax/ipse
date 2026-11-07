@@ -102,7 +102,7 @@ defmodule Ipse.KnowledgeDocumentsFidelityTest do
       assert result["status"]=="complete" and result["warnings"]==[]
       assert result["revision_policy"]=="insertions_included_deletions_excluded"
       assert result["visibility_policy"]=="bounded_style_and_direct_hidden_excluded"
-      assert result["extraction_version"]=="ipse-documents-v18"
+      assert result["extraction_version"]=="ipse-documents-v19"
     end
     for value <- ["false","0","off"] do
       {:ok,result}=D.extract(doc.("<w:p><w:r><w:rPr><w:vanish w:val=\"#{value}\"/></w:rPr><w:t>visible</w:t></w:r></w:p>"),"a.docx")
@@ -233,7 +233,7 @@ defmodule Ipse.KnowledgeDocumentsFidelityTest do
     body=list.(7,"First α")<>"<w:p>"<>run.("interlude")<>"</w:p>"<>list.(7,"Second β")<>list.(8,"Restart γ")<>list.(7,"Third δ")
     bytes=zip.([{"word/document.xml",xml.(body)},{"word/numbering.xml",numbering}])
     {:ok,result}=D.extract(bytes,"numbered.docx")
-    assert result["extraction_version"]=="ipse-documents-v18"
+    assert result["extraction_version"]=="ipse-documents-v19"
     assert result["status"]=="partial"
     assert Enum.map(result["segments"],& &1["text"])==["First α","interlude","Second β","Restart γ","Third δ"]
     [first,plain,second,restart,third]=result["segments"]
@@ -292,7 +292,7 @@ defmodule Ipse.KnowledgeDocumentsFidelityTest do
     changed=put_in(crossing,["document","spans",Access.at(0),Access.at(8),"label"],"4.")
     refute E.valid_span?(packed_source,changed)
 
-    for legacy_recipe <- ~w(ipse-documents-v16 ipse-documents-v17) do
+    for legacy_recipe <- ~w(ipse-documents-v16 ipse-documents-v17 ipse-documents-v18) do
     legacy=put_in(packed,["document","extraction_version"],legacy_recipe)
     assert E.valid_document?(legacy["document"],legacy["text"])
     legacy_receipt=E.document_storage_receipt!(legacy["document"])
@@ -332,6 +332,52 @@ defmodule Ipse.KnowledgeDocumentsFidelityTest do
     assert numbered_cell["numbering"]["label"]=="4."
     assert E.valid_span?(mixed_source,mixed_citation)
     refute E.valid_span?(mixed_source,update_in(mixed_citation,["document","spans",Access.at(1)],&List.delete_at(&1,5)))
+    ''')
+  end
+
+  @tag :docx_bullet
+  test "literal Unicode bullets use v19 locator metadata, never quoted text" do
+    pure(~S'''
+    alias IpseKnowledge.Evidence, as: E
+    numbering="<w:numbering xmlns:w=\"#{word}\"><w:abstractNum w:abstractNumId=\"1\"><w:multiLevelType w:val=\"singleLevel\"/><w:lvl w:ilvl=\"0\"><w:numFmt w:val=\"bullet\"/><w:lvlText w:val=\"•\"/><w:suff w:val=\"space\"/></w:lvl></w:abstractNum><w:num w:numId=\"7\"><w:abstractNumId w:val=\"1\"/></w:num></w:numbering>"
+    list=fn text -> "<w:p><w:pPr><w:numPr><w:ilvl w:val=\"0\"/><w:numId w:val=\"7\"/></w:numPr></w:pPr>"<>run.(text)<>"</w:p>" end
+    body=Enum.map_join(1..40,&list.("Bullet item #{&1} café"))
+    package=fn number -> zip.([{"word/document.xml",xml.(body)},{"word/numbering.xml",number}]) end
+    {:ok,result}=D.extract(package.(numbering),"bullet.docx")
+    assert result["extraction_version"]=="ipse-documents-v19"
+    assert result["status"]=="partial" and result["warnings"] != []
+    assert get_in(hd(result["segments"]),["locator","numbering"])==%{"version"=>2,"num_id"=>7,"level"=>0,"label"=>"•","suffix"=>"space"}
+    {:ok,payload}=D.source_payload(result,65536)
+    assert length(payload["document"]["segments"])<40
+    refute payload["text"] =~ "•"
+    assert E.valid_document?(payload["document"],payload["text"])
+    for old <- ~w(ipse-documents-v16 ipse-documents-v17 ipse-documents-v18) do
+      refute E.valid_document?(put_in(payload,["document","extraction_version"],old)["document"],payload["text"])
+    end
+    receipt=E.document_storage_receipt!(payload["document"])
+    attrs=%{"source_id"=>"bullet:source","partition"=>"notes","generation"=>1,"title"=>"Bullets",
+      "text"=>payload["text"],"uri"=>"provided:bullet.docx","observed_at_ms"=>10,
+      "event_at_ms"=>nil,"expires_at_ms"=>nil,
+      "origin"=>%{"kind"=>"provided","store_profile"=>"notes","partition_or_scope"=>"notes",
+        "receipt"=>receipt,"historical"=>false}}
+    attrs=if receipt["version"]==4, do: Map.put(attrs,"document",payload["document"]), else: attrs
+    {:ok,source}=E.source(attrs)
+    {:ok,chunks}=E.chunks(source)
+    {start,count}=:binary.match(payload["text"],"Bullet item 17 café")
+    chunk=Enum.find(chunks,&(start>=&1["start_byte"] and start+count<=&1["end_byte"]))
+    {:ok,citation}=E.citation(source,chunk,start,start+count)
+    assert citation["quote"]=="Bullet item 17 café"
+    assert citation["document"]["locator"]["numbering"]["label"]=="•"
+    assert E.valid_span?(source,citation)
+    refute E.valid_span?(source,put_in(citation,["document","locator","numbering","label"],"◦"))
+    for invalid <- [String.replace(numbering,"•","◦"),
+      String.replace(numbering,"<w:numFmt w:val=\"bullet\"/>","<w:numFmt w:val=\"bullet\"/><w:numFmt w:val=\"bullet\"/>"),
+      String.replace(numbering,"<w:lvlText w:val=\"•\"/>","<w:lvlText w:val=\"•\"/><w:lvlText w:val=\"•\"/>"),
+      String.replace(numbering,"</w:lvl>","<w:rPr><w:rFonts w:ascii=\"Symbol\"/></w:rPr></w:lvl>"),
+      String.replace(numbering,"</w:num>","<w:lvlOverride w:ilvl=\"0\"><w:startOverride w:val=\"2\"/></w:lvlOverride></w:num>"),
+      String.replace(numbering,"singleLevel","multilevel")] do
+      assert {:error,:unsupported_docx_numbering}=D.extract(package.(invalid),"unsupported.docx")
+    end
     ''')
   end
 
@@ -432,7 +478,7 @@ defmodule Ipse.KnowledgeDocumentsFidelityTest do
     body="<w:p><w:pPr><w:pStyle w:val=\"Heading1\"/></w:pPr><w:r><w:rPr><w:rStyle w:val=\"MissingChar\"/></w:rPr><w:t>Résumé 雪 evidence.</w:t></w:r></w:p>"
     bytes=doc.(body)
     {:ok,result}=D.extract(bytes,"undefined.docx")
-    assert result["extraction_version"]=="ipse-documents-v18"
+    assert result["extraction_version"]=="ipse-documents-v19"
     assert result["status"]=="complete" and result["warnings"]==[]
     assert [%{"text"=>"Résumé 雪 evidence.","style"=>"Heading1"}]=result["segments"]
     {:ok,payload}=D.source_payload(result)
@@ -447,7 +493,7 @@ defmodule Ipse.KnowledgeDocumentsFidelityTest do
     assert citation["quote"]=="雪 evidence."
     assert citation["document"]["original_sha256"]==E.sha256(bytes)
     assert citation["document"]["start_byte"]==byte_size("Résumé ")
-    assert citation["document"]["extraction_version"]=="ipse-documents-v18"
+    assert citation["document"]["extraction_version"]=="ipse-documents-v19"
     assert E.valid_span?(source,citation)
     refute E.valid_span?(source,put_in(citation,["document","start_byte"],start+1))
     ''')
@@ -516,7 +562,7 @@ defmodule Ipse.KnowledgeDocumentsFidelityTest do
     assert Map.take(first["locator"],~w(kind table row cell))==%{"kind"=>"table_cell","table"=>1,"row"=>1,"cell"=>1}
     assert Map.take(second["locator"],~w(kind table row cell))==%{"kind"=>"table_cell","table"=>2,"row"=>1,"cell"=>1}
     assert result["status"]=="complete" and result["warnings"]==[]
-    assert result["extraction_version"]=="ipse-documents-v18"
+    assert result["extraction_version"]=="ipse-documents-v19"
     ''')
   end
 
@@ -772,7 +818,7 @@ defmodule Ipse.KnowledgeDocumentsFidelityTest do
       {start,count}=:binary.match(payload["text"],quote)
       chunk=Enum.find(chunks,&(start >= &1["start_byte"] and start+count <= &1["end_byte"]))
       {:ok,citation}=E.citation(source,chunk,start,start+count)
-      assert citation["document"]["extraction_version"]=="ipse-documents-v18"
+      assert citation["document"]["extraction_version"]=="ipse-documents-v19"
       assert citation["document"]["locator"]["reference_site"]["byte_offset"]==5
       assert E.valid_span?(source,citation)
       refute E.valid_span?(source,put_in(citation,["document","locator","reference_site","byte_offset"],4))
@@ -921,7 +967,7 @@ defmodule Ipse.KnowledgeDocumentsFidelityTest do
         entry.("7","normal",run.("ordinary-looking text"))<>"</w:#{part}>"
       body="<w:p>"<>run.("bodyé")<>"<w:r><w:#{reference} w:id=\"7\"/></w:r></w:p>"
       {:ok,result}=D.extract(zip.([{"word/document.xml",xml.(body)},{"word/#{part}.xml",notes}]),"layout.docx")
-      assert result["extraction_version"]=="ipse-documents-v18"
+      assert result["extraction_version"]=="ipse-documents-v19"
       assert result["status"]=="complete" and result["warnings"]==[]
       assert [%{"text"=>"bodyé"},%{"text"=>"ordinary-looking text","locator"=>locator}]=result["segments"]
       assert locator["annotation_id"]=="7" and locator["paragraph"]==4

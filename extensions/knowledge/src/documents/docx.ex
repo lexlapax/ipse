@@ -1018,8 +1018,8 @@ defmodule IpseKnowledge.Documents.Docx.Numbering do
   @strict ~c"http://purl.oclc.org/ooxml/wordprocessingml/main"
   @maximum 2_147_483_647
 
-  # This subset derives only single-level decimal labels. A different level,
-  # format, override, style binding or number-rendering property is refused.
+  # This subset derives single-level decimal labels and a literal Unicode bullet.
+  # Other levels, formats, style bindings and rendering properties are refused.
   # Labels are returned separately from paragraph text and are never quotes.
   def parse(xml) do
     unless String.valid?(xml) and not String.contains?(xml, [<<0>>, "<!DOCTYPE", "<!ENTITY"]),
@@ -1048,7 +1048,11 @@ defmodule IpseKnowledge.Documents.Docx.Numbering do
     case :xmerl_sax_parser.stream(xml, options) do
       {:ok, %{stack: [], root: true} = result, rest} when rest in ["", []] ->
         unless Enum.all?(result.instances, fn {_, entry} ->
-                 Map.has_key?(result.abstracts, entry.abstract)
+                 case result.abstracts[entry.abstract] do
+                   %{format: "bullet"} -> is_nil(entry.override)
+                   %{} -> true
+                   _ -> false
+                 end
                end),
                do: fail()
 
@@ -1059,7 +1063,28 @@ defmodule IpseKnowledge.Documents.Docx.Numbering do
     end
   end
 
-  def next(%{abstracts: abstracts, instances: instances}, id, counters) do
+  def next(%{abstracts: abstracts, instances: instances}, id, counters)
+      when is_map(abstracts) and is_map(instances) do
+    case instances[id] do
+      %{abstract: abstract_id, override: nil} ->
+        case abstracts[abstract_id] do
+          %{format: "bullet", suffix: suffix} ->
+            {:ok,
+             %{"version" => 2, "num_id" => id, "level" => 0, "label" => "•", "suffix" => suffix},
+             counters}
+
+          _ ->
+            next_decimal(abstracts, instances, id, counters)
+        end
+
+      _ ->
+        next_decimal(abstracts, instances, id, counters)
+    end
+  end
+
+  def next(_, _, _), do: {:error, :unsupported_docx_numbering}
+
+  defp next_decimal(abstracts, instances, id, counters) do
     with %{abstract: abstract_id, override: override} <- instances[id],
          %{start: start, template: template, suffix: suffix} <- abstracts[abstract_id],
          first = if(is_nil(override), do: start, else: override),
@@ -1079,8 +1104,6 @@ defmodule IpseKnowledge.Documents.Docx.Numbering do
       _ -> {:error, :unsupported_docx_numbering}
     end
   end
-
-  def next(_, _, _), do: {:error, :unsupported_docx_numbering}
 
   defp event({:startDTD, _, _, _}, _, _), do: fail()
   defp event({:processingInstruction, _, _}, _, _), do: fail()
@@ -1179,11 +1202,19 @@ defmodule IpseKnowledge.Documents.Docx.Numbering do
       case {element, state.stack} do
         {"lvl", ["lvl", "abstractNum", "numbering"]} ->
           level = state.level
-          if level.start == nil or level.format != "decimal" or level.template == nil, do: fail()
+
+          valid =
+            (level.format == "decimal" and level.start != nil and
+               is_binary(level.template) and
+               Regex.match?(~r/\A[^%\x00-\x1f]{0,32}%1[^%\x00-\x1f]{0,32}\z/u, level.template)) or
+              (level.format == "bullet" and level.start in [nil, 1] and level.template == "•")
+
+          unless valid, do: fail()
 
           state =
             put_in(state.abstract.level, %{
               start: level.start,
+              format: level.format,
               template: level.template,
               suffix: level.suffix || "tab"
             })
@@ -1235,13 +1266,12 @@ defmodule IpseKnowledge.Documents.Docx.Numbering do
           {:start, uint!(value, false)}
 
         "numFmt" ->
-          if(value == "decimal", do: {:format, value}, else: fail())
+          if(value in ~w(decimal bullet), do: {:format, value}, else: fail())
 
         "lvlText" ->
-          if byte_size(value) <= 128 and String.valid?(value) and
-               Regex.match?(~r/\A[^%\x00-\x1f]{0,32}%1[^%\x00-\x1f]{0,32}\z/u, value),
-             do: {:template, value},
-             else: fail()
+          if byte_size(value) <= 128 and String.valid?(value),
+            do: {:template, value},
+            else: fail()
 
         "suff" ->
           if(value in ~w(tab space nothing), do: {:suffix, value}, else: fail())

@@ -70,7 +70,11 @@ defmodule Ipse.KnowledgeDocumentAcquisitionSessionTest do
         native = System.get_env("IPSE_DOCUMENT_NATIVE_TMPDIR") || System.tmp_dir!()
         base = Path.join(native, "ipse-public-collection-" <> Ipse.Usage.id())
         File.mkdir!(base)
-        if System.get_env("IPSE_TEST_WORD_KEEP") != "1", do: on_exit(fn -> File.rm_rf!(base) end)
+
+        if c[:docx_bullet_session] or System.get_env("IPSE_TEST_WORD_KEEP") == "1",
+          do: IO.puts("WORD_SESSION_FIXTURE #{base}"),
+          else: on_exit(fn -> File.rm_rf!(base) end)
+
         {Path.join(base, "workspace"), Path.join(base, "home")}
       else
         cwd = Path.join(c.root, Ipse.Usage.id())
@@ -244,7 +248,7 @@ defmodule Ipse.KnowledgeDocumentAcquisitionSessionTest do
     {document(text, [{:compress, []}]), text}
   end
 
-  defp numbered_document do
+  defp numbered_document(kind \\ :decimal) do
     word = "http://schemas.openxmlformats.org/wordprocessingml/2006/main"
     rel = "http://schemas.openxmlformats.org/package/2006/relationships"
     prefix = "http://schemas.openxmlformats.org/officeDocument/2006/relationships/"
@@ -258,8 +262,17 @@ defmodule Ipse.KnowledgeDocumentAcquisitionSessionTest do
     types =
       "<Types xmlns=\"http://schemas.openxmlformats.org/package/2006/content-types\"><Default Extension=\"rels\" ContentType=\"application/vnd.openxmlformats-package.relationships+xml\"/><Override PartName=\"/word/document.xml\" ContentType=\"application/vnd.openxmlformats-officedocument.wordprocessingml.document.main+xml\"/><Override PartName=\"/word/numbering.xml\" ContentType=\"application/vnd.openxmlformats-officedocument.wordprocessingml.numbering+xml\"/></Types>"
 
+    level =
+      case kind do
+        :decimal ->
+          "<w:start w:val=\"3\"/><w:numFmt w:val=\"decimal\"/><w:lvlText w:val=\"%1.\"/>"
+
+        :bullet ->
+          "<w:numFmt w:val=\"bullet\"/><w:lvlText w:val=\"•\"/><w:suff w:val=\"space\"/>"
+      end
+
     numbering =
-      "<w:numbering xmlns:w=\"#{word}\"><w:abstractNum w:abstractNumId=\"1\"><w:multiLevelType w:val=\"singleLevel\"/><w:lvl w:ilvl=\"0\"><w:start w:val=\"3\"/><w:numFmt w:val=\"decimal\"/><w:lvlText w:val=\"%1.\"/></w:lvl></w:abstractNum><w:num w:numId=\"7\"><w:abstractNumId w:val=\"1\"/></w:num></w:numbering>"
+      "<w:numbering xmlns:w=\"#{word}\"><w:abstractNum w:abstractNumId=\"1\"><w:multiLevelType w:val=\"singleLevel\"/><w:lvl w:ilvl=\"0\">#{level}</w:lvl></w:abstractNum><w:num w:numId=\"7\"><w:abstractNumId w:val=\"1\"/></w:num></w:numbering>"
 
     body =
       Enum.map_join(1..40, fn n ->
@@ -283,6 +296,75 @@ defmodule Ipse.KnowledgeDocumentAcquisitionSessionTest do
       )
 
     bytes
+  end
+
+  @tag :workspace_word_native
+  @tag :docx_bullet_session
+  @tag timeout: 120_000
+  test "Collection Word bullets remain separate from source-bound quoted text after resume", c do
+    run = open(c, "collection-documents")
+    bytes = numbered_document(:bullet)
+    path = Path.join(run.cwd, "source.docx")
+    File.write!(path, bytes)
+    stored = run |> invoke("source", args()) |> then(&finish_capacity(run, &1))
+    assert stored["status"] == "ok", inspect(stored)
+
+    find = fn selected ->
+      invoke(selected, "query_selected", %{
+        "store" => "notes",
+        "retrieval" => "words",
+        "query" => "amberneedle",
+        "top_k" => 1,
+        "as_of_ms" => 20,
+        "source_ids" => ["workspace:source"]
+      })
+    end
+
+    result = find.(run)
+    assert result["status"] == "partial", inspect(result)
+    assert Enum.any?(result["gaps"], &(&1["code"] == "partial_document"))
+    [hit] = result["evidence"]
+    citation = hit["citation"]
+    assert citation["quote"] =~ "amberneedle"
+    refute citation["quote"] =~ "•"
+    doc = citation["document"]
+    assert doc["original_sha256"] == JSON.sha256(bytes)
+    assert doc["extraction_version"] == "ipse-documents-v19"
+    bullet = %{"version" => 2, "num_id" => 7, "level" => 0, "label" => "•", "suffix" => "space"}
+
+    if doc["version"] == 2 do
+      assert Enum.any?(doc["spans"], fn
+               [40, _, _, _, _, nil, nil, nil, ^bullet] -> true
+               _ -> false
+             end)
+    else
+      assert doc["locator"]["paragraph"] == 40
+      assert doc["locator"]["numbering"] == bullet
+    end
+
+    File.write!(path, document("different original"))
+    changed = find.(run)
+    assert changed["status"] == "refused" and changed["evidence"] == []
+    assert Enum.any?(changed["gaps"], &(&1["code"] == "document_source_changed_or_unavailable"))
+    File.write!(path, bytes)
+    assert find.(run)["evidence"] == result["evidence"]
+    id = Session.info(run.pid).id
+    assert {:ok, events} = Journal.load(run.dir, id)
+    assert {:ok, _} = Session.Saved.restore(events, id)
+    assert :ok = Session.close_confirmed(run.pid)
+    journal = Path.join(run.dir, id <> ".jsonl")
+    before = File.read!(journal)
+
+    assert {:ok, resumed} =
+             DynamicSupervisor.start_child(
+               Ipse.Sessions,
+               {Session, Keyword.put(run.opts, :id, id)}
+             )
+
+    on_exit(fn -> if Process.alive?(resumed), do: Session.close_confirmed(resumed) end)
+    assert_idle_resume_journal(journal, before, id)
+    assert find.(%{run | pid: resumed})["evidence"] == result["evidence"]
+    assert :ok = Session.close_confirmed(resumed)
   end
 
   defp continue(run, %{"id" => id, "arguments" => arguments}), do: invoke(run, id, arguments)
@@ -977,7 +1059,7 @@ defmodule Ipse.KnowledgeDocumentAcquisitionSessionTest do
     [hit] = result["evidence"]
     citation = hit["citation"]
     assert citation["document"]["original_sha256"] == JSON.sha256(bytes)
-    assert citation["document"]["extraction_version"] == "ipse-documents-v18"
+    assert citation["document"]["extraction_version"] == "ipse-documents-v19"
 
     assert citation["quote"] ==
              binary_part(
@@ -1055,7 +1137,7 @@ defmodule Ipse.KnowledgeDocumentAcquisitionSessionTest do
       citation = hit["citation"]
       assert citation["quote"] =~ "orbitalneedle"
       assert citation["document"]["original_sha256"] == JSON.sha256(bytes)
-      assert citation["document"]["extraction_version"] == "ipse-documents-v18"
+      assert citation["document"]["extraction_version"] == "ipse-documents-v19"
 
       if citation["document"]["version"] == 2 do
         assert Enum.any?(citation["document"]["spans"], fn
@@ -1118,7 +1200,7 @@ defmodule Ipse.KnowledgeDocumentAcquisitionSessionTest do
       refute citation["quote"] =~ "42."
       doc = citation["document"]
       assert doc["original_sha256"] == JSON.sha256(bytes)
-      assert doc["extraction_version"] == "ipse-documents-v18"
+      assert doc["extraction_version"] == "ipse-documents-v19"
 
       if doc["version"] == 2 do
         assert Enum.any?(doc["spans"], fn
@@ -1238,7 +1320,7 @@ defmodule Ipse.KnowledgeDocumentAcquisitionSessionTest do
           citation = hit["citation"]
           assert citation["quote"] == text
           assert citation["document"]["status"] == "complete"
-          assert citation["document"]["extraction_version"] == "ipse-documents-v18"
+          assert citation["document"]["extraction_version"] == "ipse-documents-v19"
           assert citation["document"]["original_sha256"] == JSON.sha256(bytes)
           locator = citation["document"]["locator"]
           assert locator["part"] == "word/#{part}.xml"
@@ -1354,7 +1436,7 @@ defmodule Ipse.KnowledgeDocumentAcquisitionSessionTest do
       citation = hit["citation"]
       assert citation["quote"] == text
       assert citation["document"]["original_sha256"] == JSON.sha256(bytes)
-      assert citation["document"]["extraction_version"] == "ipse-documents-v18"
+      assert citation["document"]["extraction_version"] == "ipse-documents-v19"
 
       assert citation["document"]["locator"] == %{
                "kind" => "table_cell",
@@ -2723,7 +2805,7 @@ defmodule Ipse.KnowledgeDocumentAcquisitionSessionTest do
       assert citation["document"]["end_byte"] === byte_size(quote)
       assert citation["content_sha256"] === JSON.sha256(fixture.text)
       assert citation["document"]["original_sha256"] === JSON.sha256(fixture.bytes)
-      assert citation["document"]["extraction_version"] === "ipse-documents-v18"
+      assert citation["document"]["extraction_version"] === "ipse-documents-v19"
       assert get_in(citation, ["document", "locator", "paragraph"]) === paragraph
       citation
     end)
