@@ -425,8 +425,10 @@ following limits until the end-to-end paths are qualified:
    critical path. Public supplied-fact publication, binding, append and eight-source
    assembly now pass their bounded Session journeys, and the refreshed public
    controller model completed its fixed initial target with modeled replies.
-   Replacement, history, full native journals, physical peaks, cleanup and
-   migration remain.
+   A [one-source replacement model](archive/2026-10-26-p30-p31-implementation/document-replacement-model-20261106.md)
+   passes focused selection, checkpoint and stop controls with modeled replies.
+   The full replacement/history recipe, native journals, physical peaks, cleanup
+   and migration remain open.
    Its [authoritative Job input-binding component](archive/2026-10-26-p30-p31-implementation/document-job-input-binding-20261106.md)
    now has closed opt-in formats, actual owner/source/revision guards and a
    native staged bind/append/abort check. Caller-editable continuation hashes

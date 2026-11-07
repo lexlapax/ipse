@@ -7,6 +7,7 @@
       out: :string,
       sources: :integer,
       resume: :string,
+      resume_sha256: :string,
       variant: :string,
       phase: :string,
       response: :string,
@@ -42,8 +43,6 @@ defmodule Ipse.CollectionRecipeLedger do
   def run(count, out, opts) when count in 1..1000 do
     trace_write = Keyword.get(opts, :trace_write, &IO.binwrite/2)
     true = is_function(trace_write, 2)
-    {:ok, ledger} = File.open(Path.join(out, "invocations.jsonl"), [:write, :exclusive])
-    Process.put(:ledger, ledger)
     Process.put(:trace_write, trace_write)
     Process.put(:out, out)
     Process.put(:sequence, 0)
@@ -59,7 +58,7 @@ defmodule Ipse.CollectionRecipeLedger do
       Keyword.get(opts, :controller_result_hook, fn _section, result -> result end)
     )
 
-    true = Process.get(:phase) in ~w(build finalize transport)
+    true = Process.get(:phase) in ~w(build finalize transport replacement)
     true = Process.get(:response) in ~w(full compact_v1)
 
     Process.put(:totals, %{
@@ -90,180 +89,502 @@ defmodule Ipse.CollectionRecipeLedger do
       if checkpoint = Keyword.get(opts, :resume) do
         path = Path.expand(checkpoint)
         true = String.starts_with?(path, Path.expand("_build") <> "/")
-        :erlang.binary_to_term(File.read!(path), [:safe])
+
+        if Process.get(:phase) === "replacement",
+          do: replacement_checkpoint(path, Keyword.get(opts, :resume_sha256)),
+          else: :erlang.binary_to_term(File.read!(path), [:safe])
       else
         M.new(%{}, 0)
       end
 
     false = Keyword.has_key?(opts, :action_id_start)
     publication_baseline = length(model.publications)
+    {:ok, ledger} = File.open(Path.join(out, "invocations.jsonl"), [:write, :exclusive])
+    Process.put(:ledger, ledger)
 
-    source_result =
-      Enum.reduce_while(
-        if(Keyword.has_key?(opts, :resume), do: [], else: 0..(count - 1)),
-        model,
-        fn n, model ->
-          payload = samples[if(n < 252, do: 2097, else: 2096)]
-          receipt = Evidence.document_storage_receipt!(payload["document"])
+    if Process.get(:phase) === "replacement" do
+      true = Keyword.has_key?(opts, :resume)
 
-          source = %{
-            "source_id" => "fixture:recipe:" <> String.pad_leading(Integer.to_string(n), 4, "0"),
-            "partition" => "notes",
-            "generation" => 1,
-            "title" => "Recipe ledger supplied synthetic document",
-            "text" => payload["text"],
-            "uri" => "provided:capacity.docx",
-            "observed_at_ms" => 10,
-            "event_at_ms" => nil,
-            "expires_at_ms" => nil,
-            "origin" => %{
-              "kind" => "provided",
-              "store_profile" => "documents",
-              "partition_or_scope" => "notes",
-              "receipt" => receipt,
-              "historical" => false
-            }
-          }
-
-          source =
-            if receipt["version"] == 4,
-              do: Map.put(source, "document", payload["document"]),
-              else: source
-
-          args =
-            Map.take(
-              source,
-              ~w(source_id generation title uri observed_at_ms event_at_ms expires_at_ms)
-            )
-            |> Map.merge(%{
-              "expected_revision" => 0,
-              "filename" => "capacity.docx",
-              "bytes_base64" => Base.encode64(payload["original_bytes"])
-            })
-
-          {result, model} =
-            public_loop(
-              "source",
-              %{"store" => "local", "action" => "put_document", "args" => args},
-              model,
-              "source",
-              n
-            )
-
-          case result do
-            {:ok, %{"status" => "ok"}} -> {:cont, model}
-            other -> {:halt, {:stopped, other, model}}
-          end
+      outcome =
+        try do
+          replacement(count, out, model, profile, samples, Keyword.get(opts, :resume_sha256))
+        catch
+          {:replacement_stopped, reason} -> {:stopped, reason}
         end
-      )
 
-    case source_result do
-      {:stopped, reason, _model} ->
-        :ok = File.close(ledger)
-        {:stopped, reason}
+      :ok = File.close(ledger)
+      outcome
+    else
+      source_result =
+        Enum.reduce_while(
+          if(Keyword.has_key?(opts, :resume), do: [], else: 0..(count - 1)),
+          model,
+          fn n, model ->
+            payload = samples[if(n < 252, do: 2097, else: 2096)]
+            receipt = Evidence.document_storage_receipt!(payload["document"])
 
-      model ->
-        catalog = model.records["catalog.notes"].value
-        expected_text = min(count, 252) * 20_979 + max(count - 252, 0) * 20_969
-        true = catalog["sources"] == count and catalog["extracted_bytes"] == expected_text
-        true = catalog["chunks"] == count * 10
-        raw = snapshot(model)
+            source = %{
+              "source_id" =>
+                "fixture:recipe:" <> String.pad_leading(Integer.to_string(n), 4, "0"),
+              "partition" => "notes",
+              "generation" => 1,
+              "title" => "Recipe ledger supplied synthetic document",
+              "text" => payload["text"],
+              "uri" => "provided:capacity.docx",
+              "observed_at_ms" => 10,
+              "event_at_ms" => nil,
+              "expires_at_ms" => nil,
+              "origin" => %{
+                "kind" => "provided",
+                "store_profile" => "documents",
+                "partition_or_scope" => "notes",
+                "receipt" => receipt,
+                "historical" => false
+              }
+            }
 
-        File.write!(
-          Path.join(out, "source-summary.json"),
-          json(%{totals: Process.get(:totals), store: raw}),
-          [:exclusive]
-        )
+            source =
+              if receipt["version"] == 4,
+                do: Map.put(source, "document", payload["document"]),
+                else: source
 
-        {result, model} =
-          if Process.get(:phase) in ~w(finalize transport),
-            do: {"existing lexical selection retained", model},
-            else:
+            args =
+              Map.take(
+                source,
+                ~w(source_id generation title uri observed_at_ms event_at_ms expires_at_ms)
+              )
+              |> Map.merge(%{
+                "expected_revision" => 0,
+                "filename" => "capacity.docx",
+                "bytes_base64" => Base.encode64(payload["original_bytes"])
+              })
+
+            {result, model} =
               public_loop(
-                "lexical_index",
-                %{"store" => "local", "action" => "begin", "continuation" => nil},
+                "source",
+                %{"store" => "local", "action" => "put_document", "args" => args},
                 model,
-                "public_lexical",
-                0
+                "source",
+                n
               )
 
-        if Process.get(:phase) !== "build" or match?({:ok, %{"status" => "ok"}}, result) do
-          File.write!(
-            Path.join(out, "lexical-model.term"),
-            :erlang.term_to_binary(model, [:compressed]),
-            [:exclusive]
-          )
+            case result do
+              {:ok, %{"status" => "ok"}} -> {:cont, model}
+              other -> {:halt, {:stopped, other, model}}
+            end
+          end
+        )
 
-          File.write!(
-            Path.join(out, "lexical-summary.json"),
-            json(%{totals: Process.get(:totals), store: snapshot(model)}),
-            [:exclusive]
-          )
-
-          {shared_result, model} =
-            if Process.get(:phase) == "transport",
-              do: {transport(profile, model), model},
-              else: shared(profile, model)
-
-          File.write!(
-            Path.join(out, "final-model.term"),
-            :erlang.term_to_binary(model, [:compressed]),
-            [:exclusive]
-          )
-
-          summary = %{
-            version: 1,
-            kind: "public_controller_recipe_model",
-            phase: Process.get(:phase),
-            scope:
-              if(Process.get(:phase) === "build",
-                do:
-                  "actual public Corpus controllers with modeled Native/embedding replies and production result codecs; not Native, provider or capacity qualification",
-                else:
-                  "legacy SDK-helper diagnostic with modeled replies; not a complete public controller or migration journey"
-              ),
-            resume: Keyword.get(opts, :resume),
-            variant: Process.get(:variant),
-            requested_response: Process.get(:response),
-            public_response:
-              if(Process.get(:phase) === "build", do: "compact_v1", else: Process.get(:response)),
-            fresh_generation: 0,
-            sources: count,
-            extracted_bytes: expected_text,
-            chunks: count * 10,
-            raw_source: raw,
-            lexical_result: terminal_summary(result),
-            shared_result: terminal_summary(shared_result),
-            final_store: snapshot(model),
-            totals: Process.get(:totals),
-            full_recipe_implemented: false,
-            native_operations_executed: 0,
-            session_journal_measured: false,
-            journal_measurement:
-              "strict lower bound of actual modeled action records: two request copies plus outcome JSON; excludes metadata, invocation/result/approval/SDK2 pages, messages and Session header",
-            native_mutation_ids_modeled: map_size(model.operations),
-            action_high_water_marks: model.peaks,
-            result_publications:
-              model.publications
-              |> Enum.drop(publication_baseline)
-              |> Enum.map(&Map.drop(&1, [:bytes])),
-            model_embedding_calls: Process.get(:embedding_calls),
-            capacity_fit: nil,
-            full_session_journal_bytes: nil,
-            blockers: [
-              "fact inputs use bounded per-source publications and the actual assembly controller; each request retains the fixed frame limit",
-              "full-target lifecycle/migration and physical/Session peak not executed by this model"
-            ]
-          }
-
-          File.write!(Path.join(out, "summary.json"), json(summary), [:exclusive])
+      case source_result do
+        {:stopped, reason, _model} ->
           :ok = File.close(ledger)
-          IO.puts(json(summary))
-        else
-          :ok = File.close(ledger)
-          {:stopped, result}
-        end
+          {:stopped, reason}
+
+        model ->
+          catalog = model.records["catalog.notes"].value
+          expected_text = min(count, 252) * 20_979 + max(count - 252, 0) * 20_969
+          true = catalog["sources"] == count and catalog["extracted_bytes"] == expected_text
+          true = catalog["chunks"] == count * 10
+          raw = snapshot(model)
+
+          File.write!(
+            Path.join(out, "source-summary.json"),
+            json(%{totals: Process.get(:totals), store: raw}),
+            [:exclusive]
+          )
+
+          {result, model} =
+            if Process.get(:phase) in ~w(finalize transport),
+              do: {"existing lexical selection retained", model},
+              else:
+                public_loop(
+                  "lexical_index",
+                  %{"store" => "local", "action" => "begin", "continuation" => nil},
+                  model,
+                  "public_lexical",
+                  0
+                )
+
+          if Process.get(:phase) !== "build" or match?({:ok, %{"status" => "ok"}}, result) do
+            File.write!(
+              Path.join(out, "lexical-model.term"),
+              :erlang.term_to_binary(model, [:compressed]),
+              [:exclusive]
+            )
+
+            File.write!(
+              Path.join(out, "lexical-summary.json"),
+              json(%{totals: Process.get(:totals), store: snapshot(model)}),
+              [:exclusive]
+            )
+
+            {shared_result, model} =
+              if Process.get(:phase) == "transport",
+                do: {transport(profile, model), model},
+                else: shared(profile, model)
+
+            File.write!(
+              Path.join(out, "final-model.term"),
+              :erlang.term_to_binary(model, [:compressed]),
+              [:exclusive]
+            )
+
+            summary = %{
+              version: 1,
+              kind: "public_controller_recipe_model",
+              phase: Process.get(:phase),
+              scope:
+                if(Process.get(:phase) === "build",
+                  do:
+                    "actual public Corpus controllers with modeled Native/embedding replies and production result codecs; not Native, provider or capacity qualification",
+                  else:
+                    "legacy SDK-helper diagnostic with modeled replies; not a complete public controller or migration journey"
+                ),
+              resume: Keyword.get(opts, :resume),
+              variant: Process.get(:variant),
+              requested_response: Process.get(:response),
+              public_response:
+                if(Process.get(:phase) === "build",
+                  do: "compact_v1",
+                  else: Process.get(:response)
+                ),
+              fresh_generation: 0,
+              sources: count,
+              extracted_bytes: expected_text,
+              chunks: count * 10,
+              raw_source: raw,
+              lexical_result: terminal_summary(result),
+              shared_result: terminal_summary(shared_result),
+              final_store: snapshot(model),
+              totals: Process.get(:totals),
+              full_recipe_implemented: false,
+              native_operations_executed: 0,
+              session_journal_measured: false,
+              journal_measurement:
+                "strict lower bound of actual modeled action records: two request copies plus outcome JSON; excludes metadata, invocation/result/approval/SDK2 pages, messages and Session header",
+              native_mutation_ids_modeled: map_size(model.operations),
+              action_high_water_marks: model.peaks,
+              result_publications:
+                model.publications
+                |> Enum.drop(publication_baseline)
+                |> Enum.map(&Map.drop(&1, [:bytes])),
+              model_embedding_calls: Process.get(:embedding_calls),
+              capacity_fit: nil,
+              full_session_journal_bytes: nil,
+              blockers: [
+                "fact inputs use bounded per-source publications and the actual assembly controller; each request retains the fixed frame limit",
+                "full-target lifecycle/migration and physical/Session peak not executed by this model"
+              ]
+            }
+
+            File.write!(Path.join(out, "summary.json"), json(summary), [:exclusive])
+            :ok = File.close(ledger)
+            IO.puts(json(summary))
+          else
+            :ok = File.close(ledger)
+            {:stopped, result}
+          end
+      end
     end
+  end
+
+  @replacement_checkpoint_bytes 128 * 1024 * 1024
+  @replacement_term_bytes 512 * 1024 * 1024
+
+  # The caller's digest identifies exact modeled input; it does not authenticate
+  # the origin of that input or establish any native history.
+  defp replacement_checkpoint(path, expected) do
+    true = is_binary(expected) and J.sha256?(expected)
+    bytes = read_replacement_checkpoint(path)
+    true = J.sha256(bytes) === expected
+
+    case bytes do
+      <<131, 80, declared::unsigned-big-32, _::binary>> ->
+        true = declared in 1..@replacement_term_bytes
+
+      <<131, _::binary>> ->
+        true = byte_size(bytes) <= @replacement_term_bytes
+
+      _ ->
+        raise ArgumentError, "invalid modeled checkpoint encoding"
+    end
+
+    {model, used} = :erlang.binary_to_term(bytes, [:safe, :used])
+    true = used === byte_size(bytes)
+    true = replacement_history?(model)
+    model
+  end
+
+  # Pin the opened regular file, reject a named symlink, and never request more
+  # than one byte beyond the encoded limit even if the file grows concurrently.
+  defp read_replacement_checkpoint(path) do
+    root = Path.expand("_build")
+    {:ok, canonical_root} = Ipse.Workspace.canonical_path(root)
+    {:ok, canonical_path} = Ipse.Workspace.canonical_path(path)
+    true = canonical_path === Path.join(canonical_root, Path.relative_to(path, root))
+    {:ok, before} = File.lstat(path, time: :posix)
+    true = replacement_checkpoint_stat?(before)
+    {:ok, file} = :file.open(String.to_charlist(path), [:read, :binary, :raw])
+
+    try do
+      {:ok, info} = :file.read_file_info(file, time: :posix)
+      opened = File.Stat.from_record(info)
+      true = replacement_checkpoint_stat?(opened)
+      true = replacement_checkpoint_identity(opened) === replacement_checkpoint_identity(before)
+      {:ok, bytes} = :file.read(file, @replacement_checkpoint_bytes + 1)
+
+      true =
+        byte_size(bytes) === before.size and byte_size(bytes) <= @replacement_checkpoint_bytes
+
+      :eof = :file.read(file, 1)
+      {:ok, after_info} = :file.read_file_info(file, time: :posix)
+      {:ok, named_after} = File.lstat(path, time: :posix)
+      {:ok, ^canonical_path} = Ipse.Workspace.canonical_path(path)
+      after_stat = File.Stat.from_record(after_info)
+
+      true =
+        replacement_checkpoint_stat?(after_stat) and replacement_checkpoint_stat?(named_after)
+
+      true =
+        replacement_checkpoint_identity(after_stat) === replacement_checkpoint_identity(before)
+
+      true =
+        replacement_checkpoint_identity(named_after) === replacement_checkpoint_identity(before)
+
+      bytes
+    after
+      :file.close(file)
+    end
+  end
+
+  defp replacement_checkpoint_stat?(stat),
+    do:
+      stat.type === :regular and stat.links === 1 and
+        stat.size in 1..@replacement_checkpoint_bytes
+
+  defp replacement_checkpoint_identity(stat),
+    do: {stat.major_device, stat.minor_device, stat.inode, stat.size, stat.mtime, stat.ctime}
+
+  defp replacement_history?(%{generation: generation, operations: operations})
+       when is_integer(generation) and generation in 1..32_768 and is_map(operations) do
+    valid =
+      Enum.all?(operations, fn {id, receipt} ->
+        is_binary(id) and Regex.match?(~r/\A[0-9a-f]{32}\z/, id) and
+          is_map(receipt) and Enum.sort(Map.keys(receipt)) === ~w(floor generation request_sha256) and
+          is_integer(receipt["generation"]) and receipt["generation"] in 1..generation and
+          is_integer(receipt["floor"]) and receipt["floor"] in 0..receipt["generation"] and
+          J.sha256?(receipt["request_sha256"])
+      end)
+
+    valid and map_size(operations) === generation and
+      Enum.sort(Enum.map(operations, fn {_, receipt} -> receipt["generation"] end)) ===
+        Enum.to_list(1..generation)
+  end
+
+  defp replacement_history?(_), do: false
+
+  defp replacement_terminal(result, model) do
+    {status, reason} =
+      case result do
+        {:stop, :unknown_effect} -> {"unknown", "unknown_effect"}
+        {:blocked, code} when is_atom(code) -> {"blocked", Atom.to_string(code)}
+        {:ok, %{"status" => "unknown"}} -> {"unknown", "controller_unknown"}
+        {:ok, %{"status" => "refused"}} -> {"refused", "controller_refusal"}
+        _ -> {"invalid", "unexpected_controller_result"}
+      end
+
+    %{
+      "version" => 1,
+      "kind" => "modeled_replacement_terminal",
+      "status" => status,
+      "reason" => reason,
+      "trace_rows" => Process.get(:sequence),
+      "unknown_requests" => length(model.unknown),
+      "native_operations_executed" => 0
+    }
+  end
+
+  # A separately requested modeled phase; it never mutates a native store or
+  # interprets an old unknown operation as a retryable continuation.
+  defp replacement(count, out, model, profile, samples, checkpoint_sha256) do
+    true = map_size(model.stages) === 0 and map_size(model.heads) === 0
+    true = model.unknown === []
+    source_id = "fixture:recipe:0000"
+    source_key = "source.notes." <> J.sha256(source_id)
+    old_row = Map.fetch!(model.records, source_key)
+    old_head = old_row.value
+    true = old_head["source_key"] === J.sha256(source_id)
+    true = old_head["generation"] > 0 and old_head["revision"] > 0
+    old_catalog = Map.fetch!(model.records, "catalog.notes").value
+    true = old_catalog["sources"] === count
+    prior_operations = model.operations
+    old_refs = old_head["blocks"] ++ old_head["lexical"]["blocks"]
+
+    retained =
+      Map.new(old_refs, fn ref ->
+        row = Map.fetch!(model.records, ref["key"])
+        true = J.sha256(json(row.value)) === ref["sha256"]
+        {ref["key"], row}
+      end)
+
+    before = snapshot(model)
+
+    {old_source, model} =
+      selected_source(model, profile, source_id, "replacement_selection_before")
+
+    true = old_source["generation"] === old_head["generation"]
+
+    payload =
+      if old_source["text"] === samples[2096]["text"], do: samples[2097], else: samples[2096]
+
+    args = %{
+      "source_id" => source_id,
+      "generation" => old_head["generation"] + 1,
+      "expected_revision" => old_head["revision"],
+      "title" => "Recipe ledger replacement synthetic document",
+      "uri" => "provided:capacity.docx",
+      "observed_at_ms" => 10,
+      "event_at_ms" => nil,
+      "expires_at_ms" => nil,
+      "filename" => "capacity.docx",
+      "bytes_base64" => Base.encode64(payload["original_bytes"])
+    }
+
+    request = %{"store" => "local", "action" => "put_document", "args" => args}
+
+    {result, model, intermediate} =
+      replacement_loop(request, model, profile, source_id, old_source, 0, MapSet.new(), args)
+
+    if not (match?({:ok, %{"status" => "ok", "continuation" => nil}}, result) and
+              model.unknown === []) do
+      File.write!(Path.join(out, "terminal.json"), json(replacement_terminal(result, model)), [
+        :exclusive
+      ])
+
+      throw({:replacement_stopped, result})
+    end
+
+    true = intermediate > 0
+    true = map_size(model.stages) === 0 and map_size(model.heads) === 0
+    true = model.unknown === []
+    true = Enum.all?(prior_operations, fn {id, receipt} -> model.operations[id] === receipt end)
+    true = Enum.all?(retained, fn {key, row} -> model.records[key] === row end)
+    new_head = Map.fetch!(model.records, source_key).value
+    new_catalog = Map.fetch!(model.records, "catalog.notes").value
+    true = new_head["generation"] === old_head["generation"] + 1
+    true = new_head["revision"] === old_head["revision"] + 1
+    true = new_head["bundle_sha256"] !== old_head["bundle_sha256"]
+    true = new_catalog["sources"] === old_catalog["sources"]
+    {selected, model} = selected_source(model, profile, source_id, "replacement_selection_after")
+    true = selected["generation"] === new_head["generation"]
+    true = selected["content_sha256"] !== old_source["content_sha256"]
+
+    summary = %{
+      version: 1,
+      kind: "public_controller_replacement_model",
+      scope:
+        "actual public Corpus replacement and Collection selection controllers with modeled Native replies; no native operations, real Session, citations or capacity qualification",
+      source_id: source_id,
+      checkpoint_sha256: checkpoint_sha256,
+      previous_source_generation: old_head["generation"],
+      new_source_generation: new_head["generation"],
+      previous_source_revision: old_head["revision"],
+      new_source_revision: new_head["revision"],
+      prior_operation_ids_preserved: map_size(prior_operations),
+      retained_immutable_records: map_size(retained),
+      intermediate_old_selection_checks: intermediate,
+      before: before,
+      after: snapshot(model),
+      totals: Process.get(:totals),
+      action_high_water_marks: model.peaks,
+      native_operations_executed: 0,
+      session_journal_measured: false,
+      full_recipe_implemented: false,
+      capacity_fit: nil
+    }
+
+    File.write!(
+      Path.join(out, "final-model.term"),
+      :erlang.term_to_binary(model, [:compressed]),
+      [:exclusive]
+    )
+
+    File.write!(Path.join(out, "summary.json"), json(summary), [:exclusive])
+    IO.puts(json(summary))
+    :ok
+  end
+
+  defp replacement_loop(
+         _args,
+         model,
+         _profile,
+         _source_id,
+         _old_source,
+         intermediate,
+         _seen,
+         _original
+       )
+       when intermediate >= 256,
+       do: {{:blocked, :replacement_continuation_limit}, model, intermediate}
+
+  defp replacement_loop(args, model, profile, source_id, old_source, intermediate, seen, original) do
+    case public_invocation("source", args, model, "public_replacement", intermediate) do
+      {_result, %{unknown: [_ | _]} = model} ->
+        {{:stop, :unknown_effect}, model, intermediate}
+
+      {{:ok, %{"status" => "draft", "continuation" => continuation}}, model}
+      when is_map(continuation) and map_size(continuation) === 2 ->
+        case continuation do
+          %{
+            "id" => "source",
+            "arguments" =>
+              %{
+                "store" => "local",
+                "action" => "continue_collection_source",
+                "args" =>
+                  %{
+                    "input_action" => "put_document",
+                    "input_args" => ^original,
+                    "collection_state" => checkpoint
+                  } = next_args
+              } = next
+          }
+          when map_size(next) === 3 and map_size(next_args) === 3 and is_map(checkpoint) ->
+            digest = J.digest([continuation])
+
+            if MapSet.member?(seen, digest) do
+              {{:blocked, :replacement_continuation_repeated}, model, intermediate}
+            else
+              {selected, model} =
+                selected_source(model, profile, source_id, "replacement_selection_intermediate")
+
+              true = selected === old_source
+
+              replacement_loop(
+                next,
+                model,
+                profile,
+                source_id,
+                old_source,
+                intermediate + 1,
+                MapSet.put(seen, digest),
+                original
+              )
+            end
+
+          _ ->
+            {{:blocked, :invalid_replacement_continuation}, model, intermediate}
+        end
+
+      {result, model} ->
+        {result, model, intermediate}
+    end
+  end
+
+  defp selected_source(model, profile, source_id, section) do
+    start = C.start(profile, :selected, %{"source_ids" => [source_id], "as_of_ms" => 20})
+    {{:done, {:ok, %{"sources" => [source]}}}, model} = invocation(start, model, section, 0)
+    {source, model}
   end
 
   defp invocation(start, model, section, item) do

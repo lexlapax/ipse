@@ -1558,10 +1558,25 @@ completed model state. `collection_recipe_costs.exs` and
 traces; they do not execute another phase. Keep publication codec bytes separate
 from action pairs: the assembly's action-codec bytes describe an existing subset,
 not additional journal bytes. A resumed phase reports only its new publications;
-the checkpoint retains prior selected inputs for reads. Aggregate action lower bounds can identify a
-single-Session layout that cannot fit, but they do not prove a supported handoff
-or an actual per-Session journal total. Require known stage-free cuts and retain
-the same owner throughout a bound append before testing that execution layout.
+the checkpoint retains prior selected inputs for reads. Aggregate action lower
+bounds can identify a single-Session layout that cannot fit, but they do not
+prove a supported handoff or an actual per-Session journal total. Require known
+stage-free cuts and retain the same owner throughout a bound append before
+testing that execution layout.
+
+The replacement control resumes a completed model checkpoint pinned by its
+SHA-256 and checks its complete zero-based modeled operation ledger before it
+drives one supplied-byte document replacement through the public Source
+controller. At each staged continuation it uses the Collection selector to
+check that the previous source is still selected; after completion it checks
+the new source generation and content, retained old immutable records, and the
+original modeled operation receipts. It requires the continuation to retain the
+original input and stops on unknown, malformed, repeated or excessive
+continuations. These are modeled
+selection and accounting checks, not proof of the checkpoint's origin, a public
+citation check, an actual Session or native storage run, or evidence that the
+full replacement and migration workload fits. A stopped replacement writes a
+bounded `terminal.json` disposition alongside the retained invocation trace.
 
 Stop a bounded model at its first refusal or coordination limit and retain its
 partial trace. A missing final summary is incomplete work, not an empty or

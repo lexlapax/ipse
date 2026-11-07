@@ -1224,8 +1224,9 @@ your `/result` reads do not disclose the document to the model.
 ## Inspect, replace and forget a source
 
 These lifecycle commands apply to State and MCP stores. The experimental
-Collection source command supports ingestion, its returned continuations, and the
-bounded whole-collection backup procedure below. Per-source inspection,
+Collection source command supports ingestion, its returned continuations and
+own-draft retirement, as well as the explicitly configured supplied-fact and
+bounded whole-collection backup procedures above and below. Per-source inspection,
 forgetting and source-envelope export still return
 `collection_lifecycle_unavailable`. Its lexical and shared-job inspection
 commands inspect those builds, not a source lifecycle draft.

@@ -306,6 +306,163 @@ defmodule Ipse.CollectionRecipePublicTest do
     """)
   end
 
+  @tag :public_recipe_replacement
+  test "resumed replacement preserves prior modeled receipts and selects the new source",
+       %{runtime: runtime} do
+    runtime = Map.update!(runtime, :env, &List.keystore(&1, "TZ", 0, {"TZ", "UTC-8"}))
+
+    model_test(runtime, ~S"""
+    {:__block__, _, forms} = ledger_source |> File.read!() |> Code.string_to_quoted!()
+    module = Enum.find(forms, &match?({:defmodule, _, _}, &1))
+    {[_], []} = Code.with_diagnostics(fn -> Code.compile_quoted(module, ledger_source) end)
+    first = Path.join(System.tmp_dir!(), "recipe-replacement-first-" <> Ipse.Usage.id())
+    File.mkdir!(first)
+    :ok = Ipse.CollectionRecipeLedger.run(1, first, [])
+    checkpoint = Path.expand("_build/recipe-replacement-" <> Ipse.Usage.id() <> ".term")
+    File.mkdir_p!(Path.dirname(checkpoint))
+    File.cp!(Path.join(first, "final-model.term"), checkpoint)
+    {:ok, utc_stat} = File.lstat(checkpoint)
+    {:ok, local_record} = :file.read_file_info(String.to_charlist(checkpoint))
+    true = utc_stat.mtime != File.Stat.from_record(local_record).mtime
+    checkpoint_sha = checkpoint |> File.read!() |> Ipse.JSON.sha256()
+    output = Path.join(System.tmp_dir!(), "recipe-replacement-next-" <> Ipse.Usage.id())
+    File.mkdir!(output)
+    try do
+      :ok = Ipse.CollectionRecipeLedger.run(1, output, phase: "replacement", resume: checkpoint, resume_sha256: checkpoint_sha)
+      summary = Path.join(output, "summary.json") |> File.read!() |> Jason.decode!()
+      "public_controller_replacement_model" = summary["kind"]
+      ^checkpoint_sha = summary["checkpoint_sha256"]
+      1 = summary["previous_source_generation"]
+      2 = summary["new_source_generation"]
+      1 = summary["previous_source_revision"]
+      2 = summary["new_source_revision"]
+      true = summary["prior_operation_ids_preserved"] > 0
+      true = summary["retained_immutable_records"] > 0
+      true = summary["intermediate_old_selection_checks"] > 0
+      0 = summary["native_operations_executed"]
+      false = summary["full_recipe_implemented"]
+      nil = summary["capacity_fit"]
+      0 = summary["after"]["active_stages"]
+      rows = Path.join(output, "invocations.jsonl") |> File.stream!() |> Enum.map(&Jason.decode!/1)
+      true = Enum.any?(rows, &(&1["section"] === "public_replacement" and &1["effects"] > 0))
+      true = Enum.any?(rows, &(&1["section"] === "replacement_selection_intermediate"))
+
+      seed_model = :erlang.binary_to_term(File.read!(checkpoint), [:safe])
+      true = map_size(seed_model.operations) > 0
+      bad_history = checkpoint <> ".missing-history"
+      oversized = checkpoint <> ".oversized"
+      trailing = checkpoint <> ".trailing"
+      symlink = checkpoint <> ".symlink"
+      linked_directory = checkpoint <> ".directory-link"
+      File.write!(bad_history, :erlang.term_to_binary(%{seed_model | operations: %{}}, [:compressed]), [:exclusive])
+      File.write!(oversized, <<131, 80, 536_870_913::unsigned-big-32, 0>>, [:exclusive])
+      File.write!(trailing, File.read!(checkpoint) <> "trailing", [:exclusive])
+      :ok = File.ln_s(checkpoint, symlink)
+      :ok = File.ln_s(Path.dirname(checkpoint), linked_directory)
+      try do
+        for {path, pin} <- [
+              {checkpoint, String.duplicate("0", 64)},
+              {bad_history, bad_history |> File.read!() |> Ipse.JSON.sha256()},
+              {oversized, oversized |> File.read!() |> Ipse.JSON.sha256()},
+              {trailing, trailing |> File.read!() |> Ipse.JSON.sha256()},
+              {symlink, checkpoint_sha},
+              {Path.join(linked_directory, Path.basename(checkpoint)), checkpoint_sha}
+            ] do
+          refused_out = Path.join(System.tmp_dir!(), "recipe-replacement-invalid-" <> Ipse.Usage.id())
+          File.mkdir!(refused_out)
+          refused = try do
+            Ipse.CollectionRecipeLedger.run(1, refused_out, phase: "replacement", resume: path, resume_sha256: pin)
+            false
+          rescue
+            _ -> true
+          end
+          true = refused
+          false = File.exists?(Path.join(refused_out, "invocations.jsonl"))
+          false = File.exists?(Path.join(refused_out, "summary.json"))
+        end
+      after
+        File.rm!(bad_history)
+        File.rm!(oversized)
+        File.rm!(trailing)
+        File.rm!(symlink)
+        File.rm!(linked_directory)
+      end
+    after
+      File.rm!(checkpoint)
+    end
+    %{"replacement_modeled" => true, "native_claimed" => false}
+    """)
+  end
+
+  @tag :public_recipe_replacement_stop
+  test "replacement stops at unknown, malformed, refused and repeated continuations",
+       %{runtime: runtime} do
+    model_test(runtime, ~S"""
+    {:__block__, _, forms} = ledger_source |> File.read!() |> Code.string_to_quoted!()
+    module = Enum.find(forms, &match?({:defmodule, _, _}, &1))
+    {[_], []} = Code.with_diagnostics(fn -> Code.compile_quoted(module, ledger_source) end)
+    first = Path.join(System.tmp_dir!(), "recipe-replacement-stop-seed-" <> Ipse.Usage.id())
+    File.mkdir!(first)
+    :ok = Ipse.CollectionRecipeLedger.run(1, first, [])
+    checkpoint = Path.expand("_build/recipe-replacement-stop-" <> Ipse.Usage.id() <> ".term")
+    File.mkdir_p!(Path.dirname(checkpoint))
+    File.cp!(Path.join(first, "final-model.term"), checkpoint)
+    checkpoint_sha = checkpoint |> File.read!() |> Ipse.JSON.sha256()
+
+    try do
+      for scenario <- [:unknown, :unknown_status, :refused_with_continuation, :malformed, :foreign_route, :foreign_source, :repeated] do
+        out = Path.join(System.tmp_dir!(), "recipe-replacement-stop-" <> Ipse.Usage.id())
+        File.mkdir!(out)
+        Process.delete(:replacement_first_continuation)
+        hook = fn
+          "public_replacement", {{:ok, %{"status" => "draft", "continuation" => continuation} = value}, model} ->
+            case scenario do
+              :unknown -> {{:ok, value}, %{model | unknown: ["injected-unknown"]}}
+              :unknown_status -> {{:ok, %{value | "status" => "unknown"}}, model}
+              :refused_with_continuation -> {{:ok, %{value | "status" => "refused"}}, model}
+              :malformed -> {{:ok, put_in(value, ["continuation", "id"], "wrong")}, model}
+              :foreign_route -> {{:ok, put_in(value, ["continuation", "arguments", "action"], "continue_collection_document")}, model}
+              :foreign_source -> {{:ok, put_in(value, ["continuation", "arguments", "args", "input_args", "source_id"], "fixture:foreign")}, model}
+              :repeated ->
+                case Process.get(:replacement_first_continuation) do
+                  nil -> Process.put(:replacement_first_continuation, continuation); {{:ok, value}, model}
+                  previous -> {{:ok, %{value | "continuation" => previous}}, model}
+                end
+            end
+          _, result -> result
+        end
+        result = Ipse.CollectionRecipeLedger.run(1, out, phase: "replacement", resume: checkpoint, resume_sha256: checkpoint_sha, controller_result_hook: hook)
+        case scenario do
+          :unknown -> {:stopped, {:stop, :unknown_effect}} = result
+          :unknown_status -> {:stopped, {:ok, %{"status" => "unknown"}}} = result
+          :refused_with_continuation -> {:stopped, {:ok, %{"status" => "refused"}}} = result
+          :malformed -> {:stopped, {:blocked, :invalid_replacement_continuation}} = result
+          :foreign_route -> {:stopped, {:blocked, :invalid_replacement_continuation}} = result
+          :foreign_source -> {:stopped, {:blocked, :invalid_replacement_continuation}} = result
+          :repeated -> {:stopped, {:blocked, :replacement_continuation_repeated}} = result
+        end
+        rows = Path.join(out, "invocations.jsonl") |> File.stream!() |> Enum.map(&Jason.decode!/1)
+        sections = Enum.map(rows, & &1["section"])
+        if scenario === :repeated do
+          ["replacement_selection_before", "public_replacement", "replacement_selection_intermediate", "public_replacement"] = sections
+        else
+          ["replacement_selection_before", "public_replacement"] = sections
+        end
+        if scenario === :unknown, do: ["injected-unknown"] = List.last(rows)["unknown_requests"]
+        terminal = Path.join(out, "terminal.json") |> File.read!() |> Jason.decode!()
+        expected = if scenario in [:unknown, :unknown_status], do: "unknown", else: if(scenario === :refused_with_continuation, do: "refused", else: "blocked")
+        ^expected = terminal["status"]
+        0 = terminal["native_operations_executed"]
+        false = File.exists?(Path.join(out, "final-model.term"))
+        false = File.exists?(Path.join(out, "summary.json"))
+      end
+    after
+      File.rm!(checkpoint)
+    end
+    %{"unsafe_continuations_stopped" => true, "native_operations" => 0}
+    """)
+  end
+
   @tag :public_recipe_lexical_stop
   test "a lexical terminal stops before the shared phase", %{runtime: runtime} do
     model_test(runtime, ~S"""
