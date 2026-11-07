@@ -1145,6 +1145,64 @@ defmodule IpseKnowledge.CollectionBackupCases do
 
     current = build.(fixture.records)
     assert {{:done, {:ok, page}, _}, page} = validate.(current)
+
+    # Keep every packed envelope and catalog hash consistent while rebinding
+    # the catalog key to a head and source belonging to another identity.
+    repack = fn row, value ->
+      body = IO.iodata_to_binary(JSON.encode!(value))
+
+      packed = %{
+        "version" => 1,
+        "kind" => "document_value",
+        "sha256" => E.sha256(body),
+        "byte_count" => byte_size(body),
+        "parts" => [body]
+      }
+
+      {:ok, physical} = Ipse.Extension.ResultDocument.encode(packed, %{"type" => "object"})
+
+      Map.merge(row, %{
+        "value" => packed,
+        "sha256" => E.sha256(physical),
+        "bytes" => byte_size(physical)
+      })
+    end
+
+    unpack = fn row -> row["value"]["parts"] |> Enum.join() |> JSON.decode!() end
+    records = Map.new(fixture.records, &{&1["key"], &1})
+    original_key = fixture.source["source_key"]
+    different_key = E.sha256("different-source")
+    refute original_key === different_key
+    source = Map.fetch!(records, "source.docs." <> original_key)
+    page = Map.fetch!(records, "catalog.docs.0")
+    page_value = page |> unpack.() |> put_in(["rows", Access.at(0), "source_key"], different_key)
+    page = repack.(page, page_value)
+    catalog = Map.fetch!(records, "catalog.docs")
+
+    catalog_value =
+      catalog |> unpack.() |> put_in(["pages", Access.at(0), "sha256"], page["value"]["sha256"])
+
+    catalog = repack.(catalog, catalog_value)
+
+    mismatched =
+      records
+      |> Map.delete(source["key"])
+      |> Map.put(
+        "source.docs." <> different_key,
+        Map.put(source, "key", "source.docs." <> different_key)
+      )
+      |> Map.put(page["key"], page)
+      |> Map.put(catalog["key"], catalog)
+      |> Map.values()
+
+    refute IpseKnowledge.Store.Collection.Projection.completed_backup?(
+             fixture.profile,
+             mismatched
+           )
+
+    assert {{:done, {:error, :collection_backup_incomplete_domain, _}, _}, _} =
+             validate.(build.(mismatched))
+
     {page, page_ref, plan_ref, inputs} = current
     {bytes, page_origin} = Map.fetch!(inputs, page_ref)
 

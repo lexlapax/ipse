@@ -256,7 +256,9 @@ defmodule IpseKnowledge.Store.Collection.Projection do
           row = Map.fetch!(rows, key)
 
           true =
-            row["sha256"] === entry["head_sha256"] and div(row["value"]["ordinal"], 16) === page
+            row["sha256"] === entry["head_sha256"] and
+              row["value"]["source_key"] === entry["source_key"] and
+              div(row["value"]["ordinal"], 16) === page
 
           {bundle, refs} = backup_head!(profile, rows, row["value"])
           {bundle, [key | refs ++ used]}

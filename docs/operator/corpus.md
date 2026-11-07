@@ -1717,7 +1717,8 @@ artifact and ordinary approvals. When a producing chat closes, use that same
    `args.backup`, that raw page reference in top-level `result_input`, and the
    provisional plan reference in top-level `plan_input`. Materialize and retain
    each resulting validated-page reference; close each producer chat. The
-   validator checks the original native metadata and the complete record set.
+   validator checks the original native metadata and the complete record set,
+   including that each catalog entry names the source in its stored head.
    Re-run `backup_plan` in a fresh chat using the validated references in order.
    Its saved-result reference is the final plan. Keep every original page, plan,
    validation result and producing journal available through restoration.

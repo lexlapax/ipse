@@ -92,6 +92,8 @@ nor resource/offline qualification. No daemon configuration or existing model wa
 
 ## Regression closure and fixture qualification — 2026-11-06
 
+- [Document backup source binding](document-backup-source-binding-20261106.md) records the reproduced catalog/head mismatch, focused validation repair and remaining native and installed checks.
+- [Installed backup source binding](document-backup-installed-binding-20261106.md) checks the valid and malformed synthetic fixtures in the package's domain code; public restore remains separate.
 - [Indexed Word row context](indexed-word-row-context-20261106.md) brings bounded same-row context to already hydrated positive namespace hits. Pure containment/citation controls and one actual Collection Session case pass, including original-file replacement refusal; installed and no-token-overlap quality remain open.
 - [Knowledge preset verifier export identities](ci-knowledge-preset-verifier-20261106.md) repairs stale Graph command/tool counts and checks exact exports and catalog identities. The pure fixture and all fifteen separately built presets pass; the earlier hosted failure and temporary-checkout quota failure remain separate. macOS and the whole-source aggregate remain open.
 - [Candidate MCP and embedding source/installed checks](candidate-9b0a-mcp-embedding-20261106.md) pass all twelve existing checks in each of four modes on the frozen 9b0a package. The [managed selected-result refusal](managed-fact-result-refusal-20261106.md) separately checks the new synthetic cohort's protected-data boundary without delivering bytes or making a model request. These do not establish hosted-platform or full-milestone acceptance.

@@ -390,8 +390,11 @@ following limits until the end-to-end paths are qualified:
    Ten host provenance controls, 24 domain/controller cases and the separate
    eight-test native migration file pass. This closes the bounded same-project
    increment, not changed-target recovery, installed migration, larger segmented
-   sets, cleanup or full populated capacity. Those remain the document critical
-   path. Public supplied-fact publication, binding, append and eight-source
+   sets, cleanup or full populated capacity. A [source-identity validation repair](archive/2026-10-26-p30-p31-implementation/document-backup-source-binding-20261106.md)
+   rejects a rehashed catalog/head mismatch in focused synthetic restore validation
+   and in an [installed direct-domain check](archive/2026-10-26-p30-p31-implementation/document-backup-installed-binding-20261106.md). A public native refusal journey for
+   that malformed input remains open. Those remain the document
+   critical path. Public supplied-fact publication, binding, append and eight-source
    assembly now pass their bounded Session journeys, and the refreshed public
    controller model completed its fixed initial target with modeled replies.
    Replacement, history, full native journals, physical peaks, cleanup and

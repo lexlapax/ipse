@@ -904,7 +904,7 @@ Follow one input through the actual owners:
 | --- | --- |
 | `backup_status`, then `backup_page` | One actual native generation, fixed project namespace, complete packed-value layouts and exact chunk hashes |
 | `backup_plan` | The operator's exact selected page references, ordered native record/operation metadata, full descriptor and complete page membership |
-| `restore_validate_page` | The actual selected plan and all its pages, reconstructed bytes, native origins and complete domain joins |
+| `restore_validate_page` | The actual selected plan and all its pages, reconstructed bytes, native origins and complete domain joins, including catalog-to-head source identity |
 | `restore_open`, ordered `restore_page`, `restore_commit` | Original selected plan/page digests, one import owner, expected native generation/epoch and ordinary approval for each effect |
 
 The host captures references from the real `invoke.command` arguments; a worker
