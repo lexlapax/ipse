@@ -40,6 +40,15 @@ Both runs seed metadata directly and share a backing object among public records
 they test this metadata reservation boundary, not normal population or a disk
 quota maximum.
 
+A later actual synthetic Session control checked a known successful first
+partial cleanup followed by an approval-time fence. The retained head's IDs
+matched a unique valid journal intent/result, the Session/project/artifact
+owner, retired slot and epoch, progress revision and request digest, and the
+native local ledger's operation generation and digest. `Actions.restore` also
+accepted the journal. The focused test passed once after those assertions were
+strengthened; 80 other cases were excluded. This checks the join on a live owner,
+not an interrupted owner, retained release authority or recovery.
+
 The join records potential evidence, not the complete authorization. It does not
 compare the prior Session journal's exact action and request digest or establish
 that the original owner and its dependent processes have stopped. The existing

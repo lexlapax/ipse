@@ -5403,6 +5403,53 @@ defmodule Ipse.KnowledgeCollectionAdapterSessionTest do
     assert result === %{"status" => "refused", "code" => "document_draft_abort_incomplete"}
     head = draft_abort_snapshot(c)["document_drafts"][p["head_id"]]
     assert head["retirement_epoch"] === 1 and length(head["prepared"]) === 1
+    join = head["retirement_operation"]
+    assert is_map(join)
+    assert {:ok, events} = Journal.load(c.dir, c.id)
+    assert {:ok, _} = Actions.restore(events)
+
+    assert [intent] =
+             Enum.filter(events, fn event ->
+               event["type"] === "extension_action_intent" and
+                 event["operation_id"] === join["operation_id"]
+             end)
+
+    assert [action_result] =
+             Enum.filter(events, fn event ->
+               event["type"] === "extension_action_result" and
+                 event["operation_id"] === join["operation_id"]
+             end)
+
+    assert Actions.valid_result?(action_result)
+    assert Actions.result_intent(action_result) === intent
+    assert action_result["outcome"]["status"] === "ok"
+    assert intent["parent_invocation_id"] === join["invocation_id"]
+    assert intent["effect_binding"]["session_id"] === c.id
+    assert head["owner"]["session_id"] === intent["effect_binding"]["session_id"]
+    assert intent["identity_sha256"] === head["owner"]["identity_sha256"]
+    assert intent["effect_binding"]["project"]["project_id"] === head["owner"]["project_id"]
+    request = intent["request"]["request"]
+    assert request["op"] === "value.abort"
+    assert Map.take(request, ~w(slot epoch)) in p["prepared"]
+    assert request["progress"]["action"] === "retire"
+    assert request["progress"]["head_id"] === p["head_id"]
+    assert request["progress"]["revision"] === p["revision"]
+    assert request["maintenance_epoch"] === head["retirement_epoch"]
+    assert intent["request_sha256"] === JSON.digest([intent["request"]])
+
+    ctx = job_epoch_context(c)
+
+    assert {:ok, %{"operation" => receipt}} =
+             Ipse.Extension.Collection.execute_profile(
+               ctx.root,
+               ctx.namespace,
+               %{"op" => "inspect", "operation_id" => join["operation_id"]},
+               Usage.id(),
+               Ipse.Extension.Collection.Profile.documents()
+             )
+
+    assert receipt["generation"] === head["revision"]
+    assert receipt["request_sha256"] === intent["request_sha256"]
     stable = native_status(c)
     assert draft_abort(c, p)["status"] === "refused"
 
