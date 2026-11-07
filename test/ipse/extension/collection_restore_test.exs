@@ -381,6 +381,21 @@ defmodule Ipse.Extension.CollectionRestoreTest do
     assert plan_origin["action"] === "backup_plan"
   end
 
+  test "a zero-floor backup cannot carry a rehashed nonempty lineage" do
+    descriptor = exported_input().value["descriptor"]
+    anchor = String.duplicate("b", 32)
+
+    malformed = %{
+      descriptor
+      | "floor_anchor" => anchor,
+        "floor_lineage" => [anchor],
+        "floor_lineage_sha256" => JSON.digest([[anchor]])
+    }
+
+    assert DocumentMigration.descriptor?(descriptor)
+    refute DocumentMigration.descriptor?(malformed)
+  end
+
   test "selected bytes require one origin across the exact complete chunk sequence" do
     assert {:ok, origin} = Restore.source_origin(exported_input())
     bytes = String.duplicate("x", 6145)

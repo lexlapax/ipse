@@ -260,7 +260,8 @@ defmodule Ipse.Extension.Collection.DocumentMigration do
       Enum.all?(d["floor_lineage"], &id?/1) and
       length(Enum.uniq(d["floor_lineage"])) == length(d["floor_lineage"]) and
       ((d["floor"] === 0 and d["floor_anchor"] === nil and d["floor_lineage"] === []) or
-         (id?(d["floor_anchor"]) and List.last(d["floor_lineage"]) === d["floor_anchor"])) and
+         (d["floor"] > 0 and id?(d["floor_anchor"]) and
+            List.last(d["floor_lineage"]) === d["floor_anchor"])) and
       d["floor_lineage_sha256"] === JSON.digest([d["floor_lineage"]]) and
       is_integer(d["records"]) and d["records"] in 0..8192 and
       is_integer(d["data_bytes"]) and d["data_bytes"] in 0..(160 * 1024 * 1024) and

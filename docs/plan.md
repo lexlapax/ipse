@@ -395,6 +395,12 @@ following limits until the end-to-end paths are qualified:
    now passes an actual 72-command public journey over eleven records in three
    pages: selected-result export/validation, approval denial, same-floor import,
    rollback, abort, checkpoint removal and closed/idle no-replay reconstruction.
+   A separate [installed synthetic attempt](archive/2026-10-26-p30-p31-implementation/installed-backup-attempt-20261106.md)
+   stopped at project identity admission with an unknown outcome and no public
+   command receipts; its actor placed the project on unsupported workspace
+   Btrfs. Installed backup remains unqualified and the attempt is preserved.
+   Descriptor validation also rejects a rehashed nonempty lineage at floor zero,
+   matching the existing restore-plan rule; eleven focused restore tests pass.
    Ten host provenance controls, 24 domain/controller cases and the separate
    eight-test native migration file pass. This closes the bounded same-project
    increment, not changed-target recovery, installed migration, larger segmented
