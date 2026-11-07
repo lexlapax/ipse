@@ -93,6 +93,7 @@ nor resource/offline qualification. No daemon configuration or existing model wa
 ## Regression closure and fixture qualification — 2026-11-06
 
 - [Domain hybrid fixture repair](domain-hybrid-regression-repair-20261106.md) records the active regression failure and separately passing nine-case control; the full aggregate remains pending.
+- [Corpus namespace test isolation](corpus-namespace-test-isolation-20261106.md) records a second active regression failure and a separately passing contaminated-parent control; the full aggregate remains pending.
 - [Full regression at 98267afd](full-regression-98267afd-20261106.md) passed 4,294 tests with 136 skipped and 124 excluded; later candidate changes are outside its scope.
 - [Focused State document and signed-draft Sessions](focused-session-20261106.md) records three passing synthetic Session controls and their limits.
 - [Completed-backup wrapper repair](completed-backup-wrapper-repair-20261106.md) preserves a failed combined run and separately passing repaired wrapper.
