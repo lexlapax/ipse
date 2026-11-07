@@ -475,8 +475,10 @@ following limits until the end-to-end paths are qualified:
    controls and a [synthetic Session/Saved test](archive/2026-10-26-p30-p31-implementation/anthropic-signed-draft-20261106.md)
    with a synthetic acceptance witness. A follow-up covers bounded opaque
    redacted-thinking blocks in the same no-tool path. It checks shape, not
-   signature or opaque-data authenticity. Tool-bearing drafts, broader provider
-   coverage, installed/native-terminal
+   signature or opaque-data authenticity. OpenAI API draft withdrawal uses the
+   existing stateless Responses isolation and historical selector; focused
+   synthetic projection, transport and reconstruction controls pass.
+   Anthropic tool-bearing drafts, broader provider coverage, installed/native-terminal
    qualification and integrated clarification remain open.
 5. **Decision engines — P30A–E.** Complete the host protocol and protected
    consumer integration independently of document/graph work. Enforce the explicit

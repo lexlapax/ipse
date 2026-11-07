@@ -341,7 +341,7 @@ defmodule Ipse.Session.Draft do
            (Ipse.Session.Reference.reference?(message) and
               MapSet.member?(references, JSON.digest([message]))))
 
-  defp safe_native?(message, :chatgpt),
+  defp safe_native?(message, policy) when policy in [:chatgpt, :openai],
     do: Ipse.Session.DraftNative.responses_owned?([message])
 
   defp safe_native?(message, :ollama),
@@ -363,7 +363,8 @@ defmodule Ipse.Session.Draft do
   defp native_interval?(prefix, segment, tail, policy) do
     if Enum.any?(segment, &Map.has_key?(&1, "provider_data")),
       do:
-        policy == :chatgpt and Ipse.Session.DraftNative.isolated_responses?(prefix, segment, tail),
+        policy in [:chatgpt, :openai] and
+          Ipse.Session.DraftNative.isolated_responses?(prefix, segment, tail),
       else: true
   end
 

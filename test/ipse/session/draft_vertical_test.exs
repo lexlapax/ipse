@@ -1062,133 +1062,169 @@ defmodule Ipse.Session.DraftVerticalTest do
     assert Jason.encode!(later_body) =~ "later task"
   end
 
-  test "ChatGPT Responses transport isolates cancelled and accepted drafts across resume",
-       c do
-    fixture = Ipse.Test.ProviderFixture
-
-    response = fn id, text, reasoning ->
-      output =
-        if(reasoning,
-          do: [
-            %{
-              "type" => "reasoning",
-              "id" => "rs_private",
-              "summary" => [],
-              "encrypted_content" => "private encrypted canary"
-            }
-          ],
-          else: []
-        ) ++
-          [
-            %{
-              "type" => "message",
-              "id" => id,
-              "role" => "assistant",
-              "status" => "completed",
-              "content" => [%{"type" => "output_text", "text" => text, "annotations" => []}]
-            }
-          ]
-
-      fixture.sse(%{
-        "type" => "response.completed",
-        "response" => %{
-          "status" => "completed",
-          "model" => "fixture-model",
-          "output" => output,
-          "usage" => %{"input_tokens" => 1, "output_tokens" => 1}
-        }
-      })
-    end
-
-    {base_url, server} =
-      fixture.sequence([
-        response.("msg_private", "private draft response", true),
-        response.("msg_ordinary", "ordinary response", false),
-        response.("msg_resume", "resumed response", false),
-        response.("msg_private", "private draft response", true),
-        response.("msg_accepted", "accepted response", false),
-        response.("msg_after_accept", "after acceptance response", false)
-      ])
-
-    auth = Path.join(c.root, "transport-auth")
-
-    record = %{
-      "access_token" => "fixture-access",
-      "refresh_token" => "fixture-refresh",
-      "id_token" => "fixture-id",
-      "client_id" => "oaiapp_fixture",
-      "ext_agent_host_id" => "urn:uuid:00112233-4455-4677-8899-aabbccddeeff",
-      "subject" => "fixture",
-      "issuer" => "https://auth.openai.com",
-      "email" => "fixture@example.test",
-      "expires_at" => System.system_time(:second) + 3600,
-      "scopes" => ["chatgpt.tokens.use.direct"]
-    }
-
+  defp responses_config(:chatgpt, auth, record, base_url) do
     assert :ok =
              Ipse.Auth.with_credential_lock(auth, fn ->
                Ipse.Auth.write_credentials(auth, record)
              end)
 
-    cfg = %{
+    %{
       provider: :chatgpt,
       provider_module: Ipse.Provider.OpenAI,
       auth_dir: auth,
       base_url: base_url,
       max_output_tokens: nil
     }
+  end
 
-    {pid, _} = start(c, cfg)
-    id = Session.info(pid).id
-    assert :ok = Session.start_draft(pid, "private draft input")
-    assert_receive {:ipse, ^pid, {:done, :ok}}, 5_000
-    assert :ok = Session.cancel_draft(pid)
-    assert :ok = Session.prompt(pid, "ordinary task")
-    assert_receive {:ipse, ^pid, {:done, :ok}}, 5_000
-    assert :ok = Session.close_confirmed(pid)
-    {resumed, _} = start(c, cfg, id)
-    assert :ok = Session.prompt(resumed, "resumed task")
-    assert_receive {:ipse, ^resumed, {:done, :ok}}, 5_000
-    assert :ok = Session.close_confirmed(resumed)
+  defp responses_config(:openai, _auth, _record, base_url) do
+    %{
+      provider: :openai,
+      provider_module: Ipse.Provider.OpenAI,
+      api_key: "fixture-only",
+      base_url: base_url,
+      max_output_tokens: nil
+    }
+  end
 
-    accepted_context = %{c | dir: Path.join(c.root, "transport-accepted")}
-    {draft_session, _} = start(accepted_context, cfg)
-    accepted_id = Session.info(draft_session).id
-    assert :ok = Session.start_draft(draft_session, "private draft input")
-    assert_receive {:ipse, ^draft_session, {:done, :ok}}, 5_000
-    assert {:ok, %{id: draft_id, revision: 1}} = Session.draft(draft_session)
-    assert :ok = Session.replace_draft(draft_session, draft_id, 1, "accepted clean task")
-    {accepted, _} = synthetic_accepted_resume(accepted_context, draft_session, cfg)
-    assert_receive {:ipse, ^accepted, {:done, :ok}}, 5_000
-    assert :ok = Session.close_confirmed(accepted)
-    {after_accept, _} = start(accepted_context, cfg, accepted_id)
-    assert :ok = Session.prompt(after_accept, "later accepted task")
-    assert_receive {:ipse, ^after_accept, {:done, :ok}}, 5_000
-    assert :ok = Session.close_confirmed(after_accept)
+  for provider <- [:chatgpt, :openai] do
+    @tag :responses_draft_carryover
+    test "#{provider} Responses transport isolates cancelled and accepted drafts across resume",
+         c do
+      fixture = Ipse.Test.ProviderFixture
 
-    [{_, first}, {_, second}, {_, third}, {_, fourth}, {_, fifth}, {_, sixth}] =
-      Task.await(server, 5_000)
+      response = fn id, text, reasoning ->
+        output =
+          if(reasoning,
+            do: [
+              %{
+                "type" => "reasoning",
+                "id" => "rs_private",
+                "summary" => [],
+                "encrypted_content" => "private encrypted canary"
+              }
+            ],
+            else: []
+          ) ++
+            [
+              %{
+                "type" => "message",
+                "id" => id,
+                "role" => "assistant",
+                "status" => "completed",
+                "content" => [%{"type" => "output_text", "text" => text, "annotations" => []}]
+              }
+            ]
 
-    assert Jason.encode!(first["input"]) =~ "private draft input"
-    assert Jason.encode!(second["input"]) =~ "ordinary task"
-    assert Jason.encode!(third["input"]) =~ "resumed task"
-    assert Jason.encode!(third["input"]) =~ "msg_ordinary"
-    assert Jason.encode!(third["input"]) =~ "ordinary response"
-    assert Jason.encode!(fourth["input"]) =~ "private draft input"
-    assert Jason.encode!(fifth["input"]) =~ "accepted clean task"
-    assert Jason.encode!(sixth["input"]) =~ "later accepted task"
-    assert Jason.encode!(sixth["input"]) =~ "msg_accepted"
-    assert Jason.encode!(sixth["input"]) =~ "accepted response"
+        fixture.sse(%{
+          "type" => "response.completed",
+          "response" => %{
+            "status" => "completed",
+            "model" => "fixture-model",
+            "output" => output,
+            "usage" => %{"input_tokens" => 1, "output_tokens" => 1}
+          }
+        })
+      end
 
-    for body <- [second, third, fifth, sixth],
-        canary <- [
-          "private draft input",
-          "private draft response",
-          "private encrypted canary",
-          "rs_private",
-          "msg_private"
-        ] do
-      refute Jason.encode!(body) =~ canary
+      {base_url, server} =
+        fixture.sequence([
+          response.("msg_prior", "prior response", false),
+          response.("msg_private", "private draft response", true),
+          response.("msg_ordinary", "ordinary response", false),
+          response.("msg_resume", "resumed response", false),
+          response.("msg_prior", "prior response", false),
+          response.("msg_private", "private draft response", true),
+          response.("msg_accepted", "accepted response", false),
+          response.("msg_after_accept", "after acceptance response", false)
+        ])
+
+      auth = Path.join(c.root, "transport-auth")
+
+      record = %{
+        "access_token" => "fixture-access",
+        "refresh_token" => "fixture-refresh",
+        "id_token" => "fixture-id",
+        "client_id" => "oaiapp_fixture",
+        "ext_agent_host_id" => "urn:uuid:00112233-4455-4677-8899-aabbccddeeff",
+        "subject" => "fixture",
+        "issuer" => "https://auth.openai.com",
+        "email" => "fixture@example.test",
+        "expires_at" => System.system_time(:second) + 3600,
+        "scopes" => ["chatgpt.tokens.use.direct"]
+      }
+
+      cfg = responses_config(unquote(provider), auth, record, base_url)
+
+      {pid, _} = start(c, cfg)
+      id = Session.info(pid).id
+      assert :ok = Session.prompt(pid, "prior task")
+      assert_receive {:ipse, ^pid, {:done, :ok}}, 5_000
+      assert :ok = Session.start_draft(pid, "private draft input")
+      assert_receive {:ipse, ^pid, {:done, :ok}}, 5_000
+      assert :ok = Session.cancel_draft(pid)
+      assert :ok = Session.prompt(pid, "ordinary task")
+      assert_receive {:ipse, ^pid, {:done, :ok}}, 5_000
+      assert :ok = Session.close_confirmed(pid)
+      {resumed, _} = start(c, cfg, id)
+      assert :ok = Session.prompt(resumed, "resumed task")
+      assert_receive {:ipse, ^resumed, {:done, :ok}}, 5_000
+      assert :ok = Session.close_confirmed(resumed)
+      assert {:ok, events} = Journal.load(c.dir, id)
+      assert {:ok, %{draft: %{status: :cancelled}}} = Session.Saved.restore(events, id)
+
+      accepted_context = %{c | dir: Path.join(c.root, "transport-accepted")}
+      {draft_session, _} = start(accepted_context, cfg)
+      accepted_id = Session.info(draft_session).id
+      assert :ok = Session.prompt(draft_session, "prior task")
+      assert_receive {:ipse, ^draft_session, {:done, :ok}}, 5_000
+      assert :ok = Session.start_draft(draft_session, "private draft input")
+      assert_receive {:ipse, ^draft_session, {:done, :ok}}, 5_000
+      assert {:ok, %{id: draft_id, revision: 1}} = Session.draft(draft_session)
+      assert :ok = Session.replace_draft(draft_session, draft_id, 1, "accepted clean task")
+      {accepted, _} = synthetic_accepted_resume(accepted_context, draft_session, cfg)
+      assert_receive {:ipse, ^accepted, {:done, :ok}}, 5_000
+      assert :ok = Session.close_confirmed(accepted)
+      {after_accept, _} = start(accepted_context, cfg, accepted_id)
+      assert :ok = Session.prompt(after_accept, "later accepted task")
+      assert_receive {:ipse, ^after_accept, {:done, :ok}}, 5_000
+      assert :ok = Session.close_confirmed(after_accept)
+      assert {:ok, accepted_events} = Journal.load(accepted_context.dir, accepted_id)
+
+      assert {:ok, %{draft: %{status: :consumed}}} =
+               Session.Saved.restore(accepted_events, accepted_id)
+
+      [{_, _}, {_, first}, {_, second}, {_, third}, {_, _}, {_, fourth}, {_, fifth}, {_, sixth}] =
+        Task.await(server, 5_000)
+
+      assert Jason.encode!(first["input"]) =~ "private draft input"
+      assert Jason.encode!(second["input"]) =~ "ordinary task"
+      assert Jason.encode!(third["input"]) =~ "resumed task"
+      assert Jason.encode!(third["input"]) =~ "msg_ordinary"
+      assert Jason.encode!(third["input"]) =~ "ordinary response"
+      assert Jason.encode!(fourth["input"]) =~ "private draft input"
+      assert Jason.encode!(fifth["input"]) =~ "accepted clean task"
+      assert Jason.encode!(sixth["input"]) =~ "later accepted task"
+      assert Jason.encode!(sixth["input"]) =~ "msg_accepted"
+      assert Jason.encode!(sixth["input"]) =~ "accepted response"
+
+      for body <- [second, third, fifth, sixth],
+          canary <- [
+            "private draft input",
+            "private draft response",
+            "private encrypted canary",
+            "rs_private",
+            "msg_private"
+          ] do
+        refute Jason.encode!(body) =~ canary
+      end
+
+      for body <- [second, third, fifth, sixth] do
+        assert Jason.encode!(body["input"]) =~ "prior response"
+        assert Jason.encode!(body["input"]) =~ "msg_prior"
+        assert body["store"] === false
+        refute Map.has_key?(body, "previous_response_id")
+      end
     end
   end
 

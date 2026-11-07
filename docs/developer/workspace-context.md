@@ -267,9 +267,16 @@ the notice; no inference is replayed.
 `Draft.project` validates the original prefix, segment, reference occurrences and
 native tool grouping before withholding the interval from later dispatch.
 `Saved` repeats those checks chronologically and validates rebasing before
-compaction. The original journal remains intact. ChatGPT uses the stateless
-Responses isolation validator. Ollama also permits a complete no-tool draft
-interval when each removed native assistant message has the exact shape checked
+compaction. The original journal remains intact. ChatGPT and the separately
+selected OpenAI API route use the stateless Responses isolation validator;
+this does not change the selected provider or billing mode. It validates the
+complete native output against visible text and tool calls, requires complete
+tool groups, and refuses item or call IDs shared across the withheld and retained
+intervals. When the withheld interval contains native Responses data, the
+validator also refuses foreign native output, including xAI output, in that
+interval or the retained history. Ollama permits a
+complete no-tool draft interval when each removed native assistant message has
+the exact shape checked
 by `DraftNative.ollama_draft_without_tools?/1`: visible and native text match,
 thinking is a bounded UTF-8 string, tool calls are empty and unknown fields refuse.
 The whole interval, including thinking, is withheld; native messages outside it
@@ -284,8 +291,10 @@ here. The ordinary Stream item bound still applies. Tools, unknown fields,
 unsigned thinking and mismatched text refuse; the validator never strips a native
 field to fit. The whole draft interval remains in the private journal but is
 withheld from later requests.
-Each policy requires complete tool grouping in the prefix, removed interval and
-tail. Native messages outside the interval stay unchanged.
+The native Responses check requires complete tool grouping in the prefix,
+removed interval and tail; Ollama and Anthropic refuse tool-bearing draft
+intervals. Every projection checks the retained history's tool grouping. Native
+messages outside the interval stay unchanged.
 
 Live projection selects the policy through `DraftNative.policy/1`; Saved's
 historical selector uses the original provider in the session metadata for both

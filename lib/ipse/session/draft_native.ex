@@ -2,6 +2,7 @@ defmodule Ipse.Session.DraftNative do
   @moduledoc false
 
   def policy(%{provider: :chatgpt}), do: :chatgpt
+  def policy(%{provider: :openai}), do: :openai
   def policy(%{provider: :ollama}), do: :ollama
   def policy(%{provider: :anthropic}), do: :anthropic
   def policy(_), do: :none
@@ -90,8 +91,8 @@ defmodule Ipse.Session.DraftNative do
     |> MapSet.new()
   end
 
-  # This validator is deliberately limited to the stateless ChatGPT Responses
-  # adapter. It never rewrites an output item; the complete interval is removed.
+  # Both explicitly selected OpenAI routes use the stateless Responses adapter.
+  # The validator never rewrites an output item; the complete interval is removed.
   def responses_owned?(messages) when is_list(messages) do
     Enum.all?(messages, fn
       %{"provider_data" => data} = message -> valid_assistant?(message, data)

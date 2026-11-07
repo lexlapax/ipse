@@ -74,6 +74,149 @@ defmodule Ipse.Session.DraftNativeTest do
     assert Enum.take(body_with_prior["input"], 2) == prior["provider_data"]["output"]
   end
 
+  test "OpenAI API draft withdrawal uses the same bounded Responses isolation" do
+    prefix = [%{"role" => "user", "content" => "earlier request"}]
+    segment = [%{"role" => "user", "content" => "private draft canary"}, assistant()]
+    notice = %{"role" => "user", "content" => Ipse.Session.Draft.notice()}
+    tail = [notice, %{"role" => "user", "content" => "new request"}]
+
+    draft = %{
+      status: :cancelled,
+      notice: true,
+      prefix_count: length(prefix),
+      prefix_sha256: Ipse.JSON.digest(prefix),
+      end_count: length(prefix) + length(segment),
+      segment_sha256: Ipse.JSON.digest(segment)
+    }
+
+    assert DraftNative.policy(%{provider: :openai}) === :openai
+
+    assert {:ok, projected} =
+             Ipse.Session.Draft.project(draft, prefix ++ segment ++ tail, MapSet.new(), :openai)
+
+    assert projected === prefix ++ tail
+
+    wire =
+      Ipse.Provider.OpenAI.request_body(%{provider: :openai, model: "fixture"}, projected, [])
+
+    assert wire["store"] === false and not Map.has_key?(wire, "previous_response_id")
+    refute Jason.encode!(wire) =~ "private draft canary"
+    refute Jason.encode!(wire) =~ "opaque draft canary"
+    refute Jason.encode!(wire) =~ "draft answer canary"
+
+    # Identifiers shared across the withheld and retained intervals are ambiguous.
+    {prior, repeated} = {assistant(), assistant()}
+    overlap = [prior] ++ segment ++ tail
+
+    overlapping_draft = %{
+      draft
+      | prefix_count: 1,
+        prefix_sha256: Ipse.JSON.digest([prior]),
+        end_count: 3
+    }
+
+    assert repeated === List.last(segment)
+
+    assert {:error, :draft_projection_unsafe} =
+             Ipse.Session.Draft.project(overlapping_draft, overlap, MapSet.new(), :openai)
+
+    foreign = put_in(assistant(), ["provider_data", "provider"], "anthropic")
+    foreign_segment = [%{"role" => "user", "content" => "private draft canary"}, foreign]
+    foreign_draft = %{draft | segment_sha256: Ipse.JSON.digest(foreign_segment)}
+
+    assert {:error, :draft_projection_unsafe} =
+             Ipse.Session.Draft.project(
+               foreign_draft,
+               prefix ++ foreign_segment ++ tail,
+               MapSet.new(),
+               :openai
+             )
+
+    xai = put_in(assistant(), ["provider_data", "provider"], "xai")
+    xai_segment = [%{"role" => "user", "content" => "draft"}, xai]
+    xai_draft = %{draft | segment_sha256: Ipse.JSON.digest(xai_segment)}
+
+    assert {:error, :draft_projection_unsafe} =
+             Ipse.Session.Draft.project(
+               xai_draft,
+               prefix ++ xai_segment ++ tail,
+               MapSet.new(),
+               :openai
+             )
+
+    distinct_prior =
+      assistant()
+      |> put_in(["provider_data", "output", Access.at(0), "id"], "rs_foreign_prior")
+      |> put_in(["provider_data", "output", Access.at(1), "id"], "msg_foreign_prior")
+
+    assert DraftNative.isolated_responses?([distinct_prior], segment, tail)
+    foreign_prefix = [put_in(distinct_prior, ["provider_data", "provider"], "xai")]
+    mixed_history_draft = %{draft | prefix_sha256: Ipse.JSON.digest(foreign_prefix)}
+
+    assert {:error, :draft_projection_unsafe} =
+             Ipse.Session.Draft.project(
+               mixed_history_draft,
+               foreign_prefix ++ segment ++ tail,
+               MapSet.new(),
+               :openai
+             )
+
+    call = %{
+      "id" => "draft-call",
+      "type" => "function",
+      "function" => %{"name" => "read", "arguments" => "{}"}
+    }
+
+    call_message = %{
+      "role" => "assistant",
+      "content" => "",
+      "tool_calls" => [call],
+      "provider_data" => %{
+        "provider" => "openai",
+        "output" => [
+          %{
+            "type" => "function_call",
+            "id" => "draft-item",
+            "call_id" => "draft-call",
+            "name" => "read",
+            "arguments" => "{}"
+          }
+        ]
+      }
+    }
+
+    tool_segment = [%{"role" => "user", "content" => "draft"}, call_message]
+    tool_draft = %{draft | segment_sha256: Ipse.JSON.digest(tool_segment)}
+    dangling_result = %{"role" => "tool", "tool_call_id" => "draft-call", "content" => "result"}
+
+    assert {:error, :draft_projection_unsafe} =
+             Ipse.Session.Draft.project(
+               tool_draft,
+               prefix ++ tool_segment ++ tail ++ [dangling_result],
+               MapSet.new(),
+               :openai
+             )
+
+    paired_segment = tool_segment ++ [dangling_result]
+
+    paired_draft = %{
+      draft
+      | end_count: length(prefix) + length(paired_segment),
+        segment_sha256: Ipse.JSON.digest(paired_segment)
+    }
+
+    assert {:ok, projected} =
+             Ipse.Session.Draft.project(
+               paired_draft,
+               prefix ++ paired_segment ++ tail,
+               MapSet.new(),
+               :openai
+             )
+
+    assert projected === prefix ++ tail
+    refute Jason.encode!(projected) =~ "draft-call"
+  end
+
   test "unknown items, inconsistent visible text and ambiguous links refuse" do
     segment = [%{"role" => "user", "content" => "draft"}, assistant()]
     tail = [%{"role" => "user", "content" => "new"}]

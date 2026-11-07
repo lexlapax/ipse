@@ -342,17 +342,20 @@ request when you need to invoke a skill.
 Cancelled draft text and clarification answers remain in the private journal,
 but are withheld from later model input and eligible Session sources. Accepted
 text is admitted as fresh intent with links to its original input, answers and
-read evidence. With Ollama, the complete no-tool draft interval can be withheld
-even when its native assistant messages contain thinking. That draft-only thinking
-remains in the private journal and is not sent on later turns. Anthropic supports
+read evidence. ChatGPT and OpenAI API sessions can withhold a complete Responses
+draft interval when its native items and tool exchanges are safely isolated;
+the selected provider and billing route remain unchanged. With Ollama, the
+complete no-tool draft interval can be withheld even when its native assistant
+messages contain thinking. That draft-only thinking remains in the private
+journal and is not sent on later turns. Anthropic supports
 withholding a no-tool draft whose native content contains matching plain-text
 blocks, bounded thinking blocks with a nonempty signature, and bounded opaque
 redacted-thinking blocks. The complete draft-only native content stays in the
-private journal and is withheld from later model input. Tool exchanges and
-unknown native fields remain unsupported for draft withdrawal.
-A draft can still
-complete or be cancelled if it contains unsupported continuation, but acceptance
-or later work can refuse when the draft cannot be safely withheld. Follow the
+private journal and is withheld from later model input. Anthropic tool exchanges
+and unrecognized native fields remain unsupported for draft withdrawal.
+A draft can still complete or be cancelled if it contains unsupported
+continuation, but acceptance or later work can refuse when the draft cannot be
+safely withheld. Follow the
 recovery procedure below; earlier and later ordinary history remains available,
 subject to complete tool-call boundaries.
 Unsupported provider continuation, required compaction, or active
