@@ -14,17 +14,35 @@ defmodule Ipse.Development.Evaluation.CandidateAssessmentSession do
   alias Ipse.{JSON, Journal, Session}
   alias Ipse.Extension.{Collection, Consent, ProjectIdentity, SemanticAdmission, SemanticConsent}
   alias Ipse.Extension.{Actions, DecisionCall, Invocation, ResultSource}
+  alias Ipse.Config.Decisions
   alias Ipse.Session.ManagedOutput
   alias Ipse.Development.Evaluation.CandidateAssessment, as: Assessment
-  @route_keys ~w(provider model base_url timeout_ms)a
+
+  @route_keys ~w(provider model base_url timeout_ms upstream reasoning_effort data_collection max_output_tokens max_tokens max_response_bytes max_steps context_bytes compact compact_summary_bytes compact_threshold_bytes ollama_context_tokens ollama_model_pin extension_response_schema summary_schema)a
   @intent_types ~w(input_received extension_invocation_intent extension_action_intent worker_input_intent request_admitted inference_dispatch_intent)
 
   def main(_), do: {:error, :execution_disabled}
   def route_digest(config), do: JSON.digest([Map.take(config, @route_keys)])
+  @doc "Digest the host's complete public advice profile, without copying credentials."
+  def decision_route_digest(config) do
+    with registry when is_map(registry) <- config[:decision_profiles],
+         ["advice"] <- Map.keys(registry),
+         :ok <- Decisions.configuration(config),
+         profiles when is_map(profiles) <- Decisions.snapshot(config),
+         profile when is_map(profile) <- profiles["advice"],
+         true <- Decisions.public_profile?(profile) do
+      {:ok, JSON.digest(["candidate-assessment-decision-profile", 1, profile])}
+    else
+      _ -> {:error, :candidate_decision_route_unavailable}
+    end
+  rescue
+    _ -> {:error, :candidate_decision_route_unavailable}
+  end
 
   def prepare(declaration, sha, case_id, load, options) do
     with {:ok, baselines} <- Assessment.verify_inputs(declaration, sha, load),
          {:ok, recipe} <- Assessment.execution(declaration, sha, case_id),
+         true <- declaration["spec"]["version"] === 2,
          true <- declaration["spec"]["decision_route"]["availability"] !== "unavailable",
          true <- options?(options),
          true <- options.output === Path.join([options.root, "cases", case_id]),
@@ -305,49 +323,9 @@ defmodule Ipse.Development.Evaluation.CandidateAssessmentSession do
 
     case actions do
       [action] ->
-        assert action["operation_id"] in added or added === []
-        input = Jason.decode!(action["request"]["input"])
-        assert [%{"id" => "candidate", "input" => frozen}] = input["candidates"]
-        assert Jason.decode!(frozen) === p.input
-        [question] = action["request"]["questions"]
-        assert question["choices"] === ~w(defer_candidate keep_baseline)
-        assert JSON.sha256(question["instructions"]) === p.decision_route["rubric_sha256"]
-        operation = after_policy["operations"][action["operation_id"]]
-
-        results = completed_results(p, events, action["parent_invocation_id"])
-
-        if get_in(action, ["outcome", "status"]) === "ok" and is_map(operation) and
-             operation["status"] === "settled" and length(results) === 1 and
-             elem(hd(results), 1)["status"] === "assessed" and
-             elem(hd(results), 1)["key"] === p.recipe["arguments"]["key"] do
-          assert added === [action["operation_id"]]
-          [{result, value}] = results
-          assert result["identity"]["artifact_sha256"] === p.recipe["artifact_sha256"]
-          advice = value["advice"]
-          assert advice["choice"] in [nil, "keep_baseline", "defer_candidate"]
-
-          Map.merge(base, %{
-            "status" => if(is_nil(advice["choice"]), do: "abstained", else: "ok"),
-            "choice" => advice["choice"],
-            "response_sha256" => JSON.digest([value])
-          })
-        else
-          outcome = action["outcome"]
-
-          case results do
-            [{_result, %{"status" => "interrupted", "outcome" => ^outcome} = value}] ->
-              case causal_status(p, events, action) do
-                status when status in ~w(denied refused cancelled) ->
-                  Map.merge(base, %{"status" => status, "response_sha256" => JSON.digest([value])})
-
-                _ ->
-                  base
-              end
-
-            _ ->
-              base
-          end
-        end
+        if matched_decision_action?(p, action),
+          do: action_row(p, events, action, added, after_policy, base),
+          else: base
 
       [] ->
         case completed_results(p, events, nil) do
@@ -357,6 +335,71 @@ defmodule Ipse.Development.Evaluation.CandidateAssessmentSession do
           _ ->
             base
         end
+    end
+  end
+
+  defp matched_decision_action?(p, action) do
+    request = action["request"]
+
+    with true <- is_map(request) and request["profile"] === "advice",
+         {:ok, digest} <- decision_route_digest(p.options.config),
+         true <- digest === p.decision_route["profile_sha256"],
+         profiles when is_map(profiles) <- Decisions.snapshot(p.options.config),
+         true <-
+           DecisionCall.valid_binding?(action["effect_binding"], request, %{
+             "decision_profiles" => profiles
+           }) do
+      true
+    else
+      _ -> false
+    end
+  rescue
+    _ -> false
+  end
+
+  defp action_row(p, events, action, added, after_policy, base) do
+    assert action["operation_id"] in added or added === []
+    input = Jason.decode!(action["request"]["input"])
+    assert [%{"id" => "candidate", "input" => frozen}] = input["candidates"]
+    assert Jason.decode!(frozen) === p.input
+    [question] = action["request"]["questions"]
+    assert question["choices"] === ~w(defer_candidate keep_baseline)
+    assert JSON.sha256(question["instructions"]) === p.decision_route["rubric_sha256"]
+    operation = after_policy["operations"][action["operation_id"]]
+
+    results = completed_results(p, events, action["parent_invocation_id"])
+
+    if get_in(action, ["outcome", "status"]) === "ok" and is_map(operation) and
+         operation["status"] === "settled" and length(results) === 1 and
+         elem(hd(results), 1)["status"] === "assessed" and
+         elem(hd(results), 1)["key"] === p.recipe["arguments"]["key"] do
+      assert added === [action["operation_id"]]
+      [{result, value}] = results
+      assert result["identity"]["artifact_sha256"] === p.recipe["artifact_sha256"]
+      advice = value["advice"]
+      assert advice["choice"] in [nil, "keep_baseline", "defer_candidate"]
+
+      Map.merge(base, %{
+        "status" => if(is_nil(advice["choice"]), do: "abstained", else: "ok"),
+        "choice" => advice["choice"],
+        "response_sha256" => JSON.digest([value])
+      })
+    else
+      outcome = action["outcome"]
+
+      case results do
+        [{_result, %{"status" => "interrupted", "outcome" => ^outcome} = value}] ->
+          case causal_status(p, events, action) do
+            status when status in ~w(denied refused cancelled) ->
+              Map.merge(base, %{"status" => status, "response_sha256" => JSON.digest([value])})
+
+            _ ->
+              base
+          end
+
+        _ ->
+          base
+      end
     end
   end
 
@@ -581,7 +624,8 @@ defmodule Ipse.Development.Evaluation.CandidateAssessmentSession do
           }[profile["provider"]]
 
     is_map(profile) and profile["operation"] === "decision" and engine === route["engine"] and
-      Map.get(profile, "expected_model", profile["model"]) === route["model"]
+      Map.get(profile, "expected_model", profile["model"]) === route["model"] and
+      decision_route_digest(config) === {:ok, route["profile_sha256"]}
   end
 
   defp source?(s),

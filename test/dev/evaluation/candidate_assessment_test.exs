@@ -127,6 +127,27 @@ defmodule Ipse.Development.Evaluation.CandidateAssessmentTest do
     assert {:error, _} = A.declare(put_in(f.spec, ["version"], 1.0))
   end
 
+  test "version two requires a closed decision profile commitment and keeps version one readable" do
+    f = fixture()
+    assert f.declaration["version"] === 1
+    assert :ok = A.verify(f.declaration, f.sha)
+
+    spec =
+      f.spec
+      |> Map.put("version", 2)
+      |> put_in(["decision_route", "profile_sha256"], JSON.sha256("public profile"))
+
+    assert {:ok, current} = A.declare(spec)
+    assert current["version"] === 2
+    assert :ok = A.verify(current, JSON.digest([current]))
+
+    assert {:error, :invalid_candidate_experiment} =
+             A.declare(update_in(spec, ["decision_route"], &Map.delete(&1, "profile_sha256")))
+
+    assert {:error, :invalid_candidate_experiment} =
+             A.declare(put_in(spec, ["decision_route", "profile_sha256"], "bad"))
+  end
+
   test "input verification detects changed bytes and a mismatched ordinary observation" do
     f = fixture()
     assert {:ok, bs} = A.verify_inputs(f.declaration, f.sha, f.load)

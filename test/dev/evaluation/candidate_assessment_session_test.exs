@@ -120,7 +120,7 @@ defmodule Ipse.Development.Evaluation.CandidateAssessmentSessionTest do
     }
 
     spec = %{
-      "version" => 1,
+      "version" => 2,
       "kind" => "candidate_shadow",
       "source_sha256" => JSON.sha256("source"),
       "runtime_sha256" => JSON.sha256("runtime"),
@@ -132,6 +132,7 @@ defmodule Ipse.Development.Evaluation.CandidateAssessmentSessionTest do
         "engine" => "compatible_loopback",
         "model" => "constructed",
         "rubric_sha256" => JSON.sha256("rubric"),
+        "profile_sha256" => elem(S.decision_route_digest(config), 1),
         "availability" => "unverified_access"
       },
       "shared_limits" =>
@@ -224,22 +225,152 @@ defmodule Ipse.Development.Evaluation.CandidateAssessmentSessionTest do
     refute_received :opened_input
   end
 
+  @tag :route_preflight
+  test "Ollama response schema changes the main route digest and request" do
+    base = %{provider: :ollama, model: "fixture"}
+    schema = %{"type" => "object", "properties" => %{"answer" => %{"type" => "string"}}}
+    changed = Map.put(base, :extension_response_schema, schema)
+
+    refute Map.has_key?(Ipse.Provider.Ollama.request_body(base, [], []), "format")
+    assert Map.fetch!(Ipse.Provider.Ollama.request_body(changed, [], []), "format") == schema
+    assert S.route_digest(base) != S.route_digest(changed)
+  end
+
+  @tag :route_preflight
+  test "Anthropic fallback token limit changes the main route digest and request" do
+    base = %{provider: :anthropic, model: "fixture", max_tokens: 256}
+    changed = %{base | max_tokens: 512}
+
+    assert Map.fetch!(Ipse.Provider.Anthropic.request_body(base, [], []), "max_tokens") == 256
+    assert Map.fetch!(Ipse.Provider.Anthropic.request_body(changed, [], []), "max_tokens") == 512
+    assert S.route_digest(base) != S.route_digest(changed)
+  end
+
+  @tag :route_preflight
+  test "Ollama context and model pin change the main route digest" do
+    pin = %{
+      "version" => 1,
+      "trust_boundary" => "cooperative_service_metadata",
+      "manifest_sha256" => JSON.sha256("model"),
+      "metadata_sha256" => JSON.sha256("metadata"),
+      "runtime_version" => "0.1.0",
+      "minimum_context_tokens" => 8192
+    }
+
+    base = %{
+      provider: :ollama,
+      model: "fixture",
+      ollama_context_tokens: 8192,
+      ollama_model_pin: pin
+    }
+
+    assert Ipse.Provider.Ollama.Models.valid_pin?(pin)
+    assert S.route_digest(base) != S.route_digest(%{base | ollama_context_tokens: 16384})
+
+    assert S.route_digest(base) !=
+             S.route_digest(
+               put_in(base, [:ollama_model_pin, "manifest_sha256"], JSON.sha256("other"))
+             )
+  end
+
+  @tag :route_preflight
   test "changed route, artifact, scripted provider and decision model refuse before actors" do
     f = fixture()
+
+    ollama_pin = %{
+      "version" => 1,
+      "trust_boundary" => "cooperative_service_metadata",
+      "manifest_sha256" => JSON.sha256("model"),
+      "metadata_sha256" => JSON.sha256("metadata"),
+      "runtime_version" => "0.1.0",
+      "minimum_context_tokens" => 8192
+    }
+
+    assert Ipse.Provider.Ollama.Models.valid_pin?(ollama_pin)
 
     for config <- [
           Map.put(f.options.config, :provider_module, Scripted),
           Map.put(f.options.config, :base_url, "http://127.0.0.1:2"),
+          Map.put(f.options.config, :upstream, "other-upstream"),
+          Map.put(f.options.config, :reasoning_effort, "high"),
+          Map.put(f.options.config, :data_collection, "allow"),
+          Map.put(f.options.config, :max_output_tokens, 128),
+          Map.put(f.options.config, :max_tokens, 128),
+          Map.put(f.options.config, :max_response_bytes, 4096),
+          Map.put(f.options.config, :max_steps, 10),
+          Map.put(f.options.config, :context_bytes, 4096),
+          Map.put(f.options.config, :compact, false),
+          Map.put(f.options.config, :compact_summary_bytes, 512),
+          Map.put(f.options.config, :compact_threshold_bytes, 2048),
+          Map.put(f.options.config, :ollama_context_tokens, 8192),
+          Map.put(f.options.config, :ollama_model_pin, ollama_pin),
+          Map.put(f.options.config, :extension_response_schema, %{"type" => "object"}),
+          Map.put(f.options.config, :summary_schema, %{"type" => "object"}),
+          put_in(
+            f.options.config,
+            [:decision_profiles, "other"],
+            f.options.config.decision_profiles["advice"]
+          ),
           put_in(
             f.options.config,
             [:extensions, Access.at(0), :identity, "artifact_sha256"],
             JSON.sha256("foreign")
           ),
-          put_in(f.options.config, [:decision_profiles, "advice", "model"], "foreign")
+          put_in(f.options.config, [:decision_profiles, "advice", "model"], "foreign"),
+          put_in(
+            f.options.config,
+            [:decision_profiles, "advice", "base_url"],
+            "http://127.0.0.1:3"
+          ),
+          put_in(f.options.config, [:decision_profiles, "advice", "service_id"], "other_service"),
+          put_in(f.options.config, [:decision_profiles, "advice", "pricing"], "changed price"),
+          put_in(f.options.config, [:decision_profiles, "advice", "timeout_ms"], 1000),
+          put_in(f.options.config, [:decision_profiles, "advice", "expected_model"], "foreign"),
+          f.options.config
+          |> put_in([:decision_profiles, "advice", "expected_model"], "constructed")
+          |> put_in([:decision_profiles, "advice", "model"], "foreign")
         ] do
       assert {:error, :candidate_execution_preflight} =
                S.prepare(f.declaration, f.sha, f.id, f.load, %{f.options | config: config})
     end
+  end
+
+  @tag :route_preflight
+  test "exact reviewed advice profile is bound before any actor starts" do
+    f = fixture()
+    assert {:ok, _} = S.prepare(f.declaration, f.sha, f.id, f.load, f.options)
+
+    changed_spec =
+      put_in(f.declaration["spec"], ["decision_route", "profile_sha256"], JSON.sha256("other"))
+
+    assert {:ok, changed} = A.declare(changed_spec)
+    changed_sha = JSON.digest([changed])
+    assert :ok = A.verify(changed, changed_sha)
+
+    assert {:error, :candidate_execution_preflight} =
+             S.prepare(changed, changed_sha, f.id, f.load, f.options)
+
+    missing =
+      update_in(f.declaration, ["spec", "decision_route"], &Map.delete(&1, "profile_sha256"))
+
+    assert {:error, :invalid_candidate_experiment} = A.declare(missing["spec"])
+  end
+
+  @tag :route_preflight
+  test "historical version-one declarations remain valid but cannot start new work" do
+    f = fixture()
+
+    spec =
+      f.declaration["spec"]
+      |> Map.put("version", 1)
+      |> update_in(["decision_route"], &Map.delete(&1, "profile_sha256"))
+
+    assert {:ok, legacy} = A.declare(spec)
+    digest = JSON.digest([legacy])
+    assert :ok = A.verify(legacy, digest)
+
+    assert {:error, :candidate_execution_preflight} =
+             S.prepare(legacy, digest, f.id, f.load, f.options)
   end
 
   test "outside paths, bare yes and headless contexts cannot select this native owner" do
@@ -320,6 +451,38 @@ defmodule Ipse.Development.Evaluation.CandidateAssessmentSessionTest do
     end
   end
 
+  test "an observed decision must use the frozen profile and its effective execution" do
+    f = fixture()
+    {:ok, p} = S.prepare(f.declaration, f.sha, f.id, f.load, f.options)
+
+    configs = [
+      put_in(f.options.config, [:decision_profiles, "advice", "base_url"], "http://127.0.0.1:3"),
+      put_in(f.options.config, [:decision_profiles, "advice", "service_id"], "other_service"),
+      put_in(f.options.config, [:decision_profiles, "advice", "timeout_ms"], 1000)
+    ]
+
+    for config <- configs do
+      {events, action, _} = delivery(p, :inline, config)
+      {before, after_policy} = policies(action)
+      assert_unknown(p, events, before, after_policy)
+    end
+
+    other =
+      put_in(
+        f.options.config,
+        [:decision_profiles, "other"],
+        f.options.config.decision_profiles["advice"]
+      )
+
+    {events, action, _} = delivery(p, :inline, other, %{"profile" => "other"})
+    {before, after_policy} = policies(action)
+    assert_unknown(p, events, before, after_policy)
+
+    {events, action, _} = delivery(p, :inline, f.options.config, %{"timeout_ms" => 1000})
+    {before, after_policy} = policies(action)
+    assert S.result_row(p, events, before, after_policy, 10)["status"] === "ok"
+  end
+
   test "assessment projection refuses changed and duplicated choice alternatives" do
     f = fixture()
     {:ok, p} = S.prepare(f.declaration, f.sha, f.id, f.load, f.options)
@@ -333,9 +496,14 @@ defmodule Ipse.Development.Evaluation.CandidateAssessmentSessionTest do
           ~w(defer_candidate keep_baseline publish)
         ] do
       changed = put_in(action, ["request", "questions", Access.at(0), "choices"], choices)
+      changed_events = replace(events, action, changed)
 
-      assert_raise ExUnit.AssertionError, fn ->
-        S.result_row(p, replace(events, action, changed), before, after_policy, 110)
+      if choices in [~w(keep_baseline defer_candidate), ~w(defer_candidate keep_baseline publish)] do
+        assert_raise ExUnit.AssertionError, fn ->
+          S.result_row(p, changed_events, before, after_policy, 110)
+        end
+      else
+        assert_unknown(p, changed_events, before, after_policy)
       end
     end
   end
@@ -622,23 +790,38 @@ defmodule Ipse.Development.Evaluation.CandidateAssessmentSessionTest do
 
   # Constructed public protocol rows test extraction only. They are not Saved
   # histories or native authority; execute/3 requires strict Saved first.
-  defp delivery(p, kind) do
+  defp delivery(p, kind, config \\ nil, overrides \\ %{}) do
     parent = parent(p)
 
-    action = %{
-      "type" => "extension_action_result",
-      "operation_id" => Ipse.Usage.id(),
-      "parent_invocation_id" => parent["invocation_id"],
-      "request" => %{
+    request =
+      %{
         "op" => "decision.create",
+        "version" => 1,
+        "profile" => "advice",
+        "timeout_ms" => 2000,
         "input" =>
           Jason.encode!(%{
             "candidates" => [%{"id" => "candidate", "input" => Jason.encode!(p.input)}]
           }),
         "questions" => [
-          %{"choices" => ~w(defer_candidate keep_baseline), "instructions" => "rubric"}
+          %{
+            "id" => "candidate",
+            "type" => "choice",
+            "choices" => ~w(defer_candidate keep_baseline),
+            "instructions" => "rubric"
+          }
         ]
-      },
+      }
+      |> Map.merge(overrides)
+
+    {:ok, binding} = DecisionCall.binding(config || p.options.config, request)
+
+    action = %{
+      "type" => "extension_action_result",
+      "operation_id" => Ipse.Usage.id(),
+      "parent_invocation_id" => parent["invocation_id"],
+      "request" => request,
+      "effect_binding" => binding,
       "outcome" => %{"status" => "ok"}
     }
 

@@ -32,7 +32,7 @@ defmodule Ipse.Development.Evaluation.CandidateAssessment do
     if spec?(spec) do
       {:ok,
        %{
-         "version" => 1,
+         "version" => spec["version"],
          "kind" => "candidate_shadow_declaration",
          "spec" => spec,
          "bars" => @bars,
@@ -259,12 +259,12 @@ defmodule Ipse.Development.Evaluation.CandidateAssessment do
   end
 
   defp spec?(s) do
-    exact?(s, @spec_fields) and s["version"] === 1 and s["kind"] === "candidate_shadow" and
+    exact?(s, @spec_fields) and s["version"] in [1, 2] and s["kind"] === "candidate_shadow" and
       Enum.all?(
         ~w(source_sha256 runtime_sha256 artifact_sha256 main_route_sha256 policy_sha256 label_commitment),
         &JSON.sha256?(s[&1])
       ) and
-      exact?(s["decision_route"], ~w(engine model rubric_sha256 availability)) and
+      route_shape?(s["decision_route"], s["version"]) and
       s["decision_route"]["engine"] in ~w(openai_decisions typesafe_jev compatible_loopback) and
       text?(s["decision_route"]["model"]) and JSON.sha256?(s["decision_route"]["rubric_sha256"]) and
       s["decision_route"]["availability"] in ~w(unverified_access unavailable available) and
@@ -275,6 +275,14 @@ defmodule Ipse.Development.Evaluation.CandidateAssessment do
       Enum.all?(s["cases"], &case?/1) and unique?(s["cases"], "id") and
       unique?(s["cases"], "candidate_key")
   end
+
+  defp route_shape?(route, 1),
+    do: exact?(route, ~w(engine model rubric_sha256 availability))
+
+  defp route_shape?(route, 2),
+    do:
+      exact?(route, ~w(engine model rubric_sha256 availability profile_sha256)) and
+        JSON.sha256?(route["profile_sha256"])
 
   defp case?(c) do
     exact?(c, @case) and id?(c["id"]) and c["stratum"] in ~w(pending observed_durable) and

@@ -82,10 +82,11 @@ defmodule Ipse.Development.Evaluation.CandidateAssessmentRecipe do
 
     sources = source_commitment()
     objects = runtime_commitment()
+    assert {:ok, decision_profile_sha} = Owner.decision_route_digest(runtime)
 
     assert {:ok, declaration} =
              Assessment.declare(%{
-               "version" => 1,
+               "version" => 2,
                "kind" => "candidate_shadow",
                "source_sha256" => JSON.digest([sources]),
                "runtime_sha256" => JSON.digest([objects]),
@@ -96,6 +97,7 @@ defmodule Ipse.Development.Evaluation.CandidateAssessmentRecipe do
                  "engine" => "compatible_loopback",
                  "model" => "synthetic",
                  "rubric_sha256" => JSON.sha256(@rubric),
+                 "profile_sha256" => decision_profile_sha,
                  "availability" => "unverified_access"
                },
                "label_commitment" => labels_sha,

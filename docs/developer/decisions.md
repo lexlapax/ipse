@@ -368,7 +368,21 @@ false-durable capture. The scorer's arithmetic never establishes source
 authority, independent labels or a qualified strategy.
 
 Its companion `CandidateAssessmentSession.prepare/5` checks the frozen blobs,
-selected artifact and routes without starting an actor. A separately enabled
+selected artifact and routes without starting an actor. New Session work requires
+a version 2 declaration with the digest of the host's public `advice` decision
+profile. The profile binds the configured endpoint, service, model, timeout
+ceiling, pricing and disclosures; a request may use a shorter timeout, so the
+declaration does not fix per-request timing. The dedicated owner rejects additional decision
+profiles. Its main-route digest covers provider, model, endpoint, timeout,
+upstream, reasoning effort, data collection, output token and response-size limits,
+step and context limits, compaction settings, optional response schemas, and the
+Ollama context setting and model pin. It does not establish a fully matched workload:
+other configuration, inputs and actual work still need independent comparison.
+Version 1 declarations remain readable and scoreable, but cannot start
+a new Session case. The recorded action is checked against the frozen profile
+and effective execution before a known result is projected. These checks do not
+verify the declared source or runtime digests, nor do they bind the rubric before
+dispatch. A separately enabled
 `run/5` then validates the original capture, current policy and exact stored
 candidate before using the ordinary Session/native-approval path. Loading either
 module runs no actor, and `main/1` remains disabled. Advice extraction requires a new
@@ -423,9 +437,12 @@ critical note members for each case, while reviews name prediction and citation
 IDs that exist only after those answers have been produced. Commit the exact
 reference bytes before either answer is generated, and retain that commitment
 with the study's custody evidence. This reference-only format contains no
-prediction IDs, verdicts or independence assertions:
+prediction IDs, verdicts or independence assertions. In `iex -S mix`, load the
+development module and bind `case_id` and `critical_note_keys` to the case's
+actual identifier and reviewed note-key list before running:
 
 ```elixir
+Code.require_file("dev/evaluation/selection_experiment.exs")
 alias Ipse.Development.Evaluation.SelectionExperiment
 references = %{
   "version" => 2,

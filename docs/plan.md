@@ -1361,6 +1361,16 @@ The [bounded cost-total follow-up](archive/2026-10-26-p30-p31-implementation/p30
 keeps out-of-range sums unmeasured rather than reporting an invalid or understated
 cost. Thirty-three pure controls pass; real costs and integrated qualification remain open.
 
+The [assessment route-binding follow-up](archive/2026-10-26-p30-p31-implementation/p30-assessment-route-binding-20261107.md)
+checks the frozen public decision
+profile and selected main-route controls before new Session work, and checks the
+recorded decision execution before projecting a known result. Version-1 studies
+remain readable and scoreable. Thirty-seven direct synthetic controls and one
+fresh synthetic native Session assessment pass against the built runtime; the
+full baseline remains to be rerun for this change. Declared source/runtime
+digests and pre-dispatch rubric
+binding are not established by this increment, and quality remains unqualified.
+
 **Authorized; typed/protocol and admitted-operation increments in progress.** P31 is the active delivery
 path. P30A/B can proceed independently; later
 P30 work consumes the first usable notes journey, not the entire P31 milestone.
