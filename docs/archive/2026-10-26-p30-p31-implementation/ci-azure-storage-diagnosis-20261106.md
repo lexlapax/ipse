@@ -22,6 +22,19 @@ configuration; it rejects this Azure kernel before filesystem qualification.
 This explains refusals at that admission gate. The log does not establish the
 runner's filesystem or prove that every failure has this cause.
 
+The separate [Linux package job](https://github.com/lexlapax/ipse/actions/runs/42335693361/job/128291993490)
+at `1f26827d` succeeded on the same reported kernel. It passed the PDF-enabled
+build and protocol checks, formatter, strict compile, CI/documentation checks,
+demo, package and listed synthetic source/installed verifier steps. The generic
+installed Memory fixture included 100 records and 100 queries across six
+Sessions and two projects, without inference; it was not the declined retained
+notebook. Other completed steps covered model-service, extension, MCP, embedding,
+saved-result, document-parser and Knowledge fixtures. The Knowledge MCP proof
+reported nine checks with Session acknowledgments and backend-process exit as
+its cleanup scope. This job did not run the full source suite, qualify managed
+Collection storage or test live models. Its success is evidence for the exact
+older commit and listed synthetic steps, not the later candidate or macOS.
+
 The hosted logs also contain terminal-input and live-MCP failures without a
 demonstrated common cause. A separate macOS installed Memory action ended with
 an unknown outcome as recorded in the
