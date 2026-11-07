@@ -1493,6 +1493,169 @@ defmodule Ipse.Session.DraftVerticalTest do
     end
   end
 
+  test "Anthropic tool-assisted draft withdrawal preserves outside native history across resume",
+       c do
+    fixture = Ipse.Test.ProviderFixture
+
+    response = fn blocks, stop ->
+      fixture.sse(
+        [
+          %{
+            "type" => "message_start",
+            "message" => %{"model" => "fixture", "usage" => %{"input_tokens" => 1}}
+          }
+        ] ++
+          Enum.with_index(blocks, fn block, index ->
+            %{"type" => "content_block_start", "index" => index, "content_block" => block}
+          end) ++
+          [
+            %{
+              "type" => "message_delta",
+              "delta" => %{"stop_reason" => stop},
+              "usage" => %{"output_tokens" => 1}
+            },
+            %{"type" => "message_stop"}
+          ]
+      )
+    end
+
+    reply = fn text -> response.([%{"type" => "text", "text" => text}], "end_turn") end
+
+    prior =
+      response.(
+        [
+          %{
+            "type" => "thinking",
+            "thinking" => "prior reasoning",
+            "signature" => "prior signature"
+          },
+          %{"type" => "text", "text" => "prior answer"}
+        ],
+        "end_turn"
+      )
+
+    call =
+      response.(
+        [
+          %{
+            "type" => "thinking",
+            "thinking" => "private tool reasoning",
+            "signature" => "private tool signature"
+          },
+          %{"type" => "redacted_thinking", "data" => "private tool opaque"},
+          %{
+            "type" => "tool_use",
+            "id" => "private_tool",
+            "name" => "read",
+            "input" => %{"path" => "draft-evidence.txt"}
+          }
+        ],
+        "tool_use"
+      )
+
+    File.write!(Path.join(c.root, "draft-evidence.txt"), "private draft tool result")
+
+    {url, server} =
+      fixture.sequence([
+        prior,
+        call,
+        reply.("private proposal"),
+        reply.("ordinary answer"),
+        reply.("resumed answer"),
+        prior,
+        call,
+        reply.("private proposal"),
+        reply.("accepted answer"),
+        reply.("later answer")
+      ])
+
+    on_exit(fn -> if Process.alive?(server.pid), do: Task.shutdown(server, :brutal_kill) end)
+
+    cfg = %{
+      provider: :anthropic,
+      provider_module: Ipse.Provider.Anthropic,
+      base_url: url,
+      api_key: "fixture-only"
+    }
+
+    {pid, _} = start(c, cfg)
+    id = Session.info(pid).id
+    assert :ok = Session.prompt(pid, "prior task")
+    assert_receive {:ipse, ^pid, {:done, :ok}}, 5_000
+    assert :ok = Session.start_draft(pid, "private cancelled request")
+    assert_receive {:ipse, ^pid, {:done, :ok}}, 5_000
+    assert :ok = Session.cancel_draft(pid)
+    assert :ok = Session.prompt(pid, "ordinary task")
+    assert_receive {:ipse, ^pid, {:done, :ok}}, 5_000
+    assert :ok = Session.close_confirmed(pid)
+    {:ok, events} = Journal.load(c.dir, id)
+    assert {:ok, %{draft: %{status: :cancelled}}} = Session.Saved.restore(events, id)
+    assert Jason.encode!(events) =~ "private tool opaque"
+    {resumed, _} = start(c, cfg, id)
+    assert :ok = Session.prompt(resumed, "resumed task")
+    assert_receive {:ipse, ^resumed, {:done, :ok}}, 5_000
+    assert :ok = Session.close_confirmed(resumed)
+
+    accepted_context = %{c | dir: Path.join(c.root, "anthropic-tool-accepted")}
+    {draft, _} = start(accepted_context, cfg)
+    accepted_id = Session.info(draft).id
+    assert :ok = Session.prompt(draft, "prior task")
+    assert_receive {:ipse, ^draft, {:done, :ok}}, 5_000
+    assert :ok = Session.start_draft(draft, "private accepted request")
+    assert_receive {:ipse, ^draft, {:done, :ok}}, 5_000
+    assert {:ok, %{id: draft_id, revision: 1}} = Session.draft(draft)
+    assert :ok = Session.replace_draft(draft, draft_id, 1, "accepted task")
+    {accepted, _} = synthetic_accepted_resume(accepted_context, draft, cfg)
+    assert_receive {:ipse, ^accepted, {:done, :ok}}, 5_000
+    assert :ok = Session.close_confirmed(accepted)
+    {later, _} = start(accepted_context, cfg, accepted_id)
+    assert :ok = Session.prompt(later, "later task")
+    assert_receive {:ipse, ^later, {:done, :ok}}, 5_000
+    assert :ok = Session.close_confirmed(later)
+    {:ok, accepted_events} = Journal.load(accepted_context.dir, accepted_id)
+
+    assert {:ok, %{draft: %{status: :consumed}}} =
+             Session.Saved.restore(accepted_events, accepted_id)
+
+    assert [%{} | _] =
+             Enum.find(accepted_events, &(&1["type"] == "draft_accepted"))["tool_evidence"]
+
+    [
+      {_, _},
+      {_, _},
+      {_, cancelled_tool_result},
+      {_, ordinary},
+      {_, resumed_wire},
+      {_, _},
+      {_, _},
+      {_, accepted_tool_result},
+      {_, accepted_wire},
+      {_, later_wire}
+    ] = Task.await(server, 5_000)
+
+    assert Jason.encode!(cancelled_tool_result) =~ "private draft tool result"
+    assert Jason.encode!(accepted_tool_result) =~ "private draft tool result"
+
+    for body <- [ordinary, resumed_wire, accepted_wire, later_wire] do
+      assert Jason.encode!(body) =~ "prior reasoning"
+      assert Jason.encode!(body) =~ "prior signature"
+
+      for canary <- [
+            "private draft tool result",
+            "private tool reasoning",
+            "private tool signature",
+            "private tool opaque",
+            "draft-evidence.txt",
+            "private_tool",
+            "private proposal",
+            "private cancelled request",
+            "private accepted request"
+          ] do
+        refute Jason.encode!(body) =~ canary
+      end
+    end
+  end
+
   test "accepted intent binds tool evidence and withdraws its bytes", c do
     File.write!(Path.join(c.root, "evidence.txt"), "private evidence canary")
     {pid, label} = start(c, %{draft_read: true})

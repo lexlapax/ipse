@@ -348,17 +348,18 @@ the selected provider and billing route remain unchanged. With Ollama, the
 complete draft interval can be withheld when its native assistant messages and
 tool exchanges can be safely matched and isolated, including messages containing
 thinking. Draft-only thinking and tool results remain in the private journal
-and are not sent on later turns. Anthropic supports
-withholding a no-tool draft whose native content contains matching plain-text
-blocks, bounded thinking blocks with a nonempty signature, and bounded opaque
-redacted-thinking blocks. The complete draft-only native content stays in the
-private journal and is withheld from later model input. Anthropic tool exchanges
-and unrecognized native fields remain unsupported for draft withdrawal.
+and are not sent on later turns. Anthropic supports withholding complete draft
+intervals when native text and tool calls match their visible counterparts and
+tool exchanges are isolated. Native content may include bounded thinking blocks
+with a nonempty signature and bounded opaque redacted-thinking blocks. The
+complete draft-only native content stays in the private journal and is withheld
+from later model input. Unrecognized native fields remain unsupported for draft
+withdrawal.
 A draft can still complete or be cancelled if it contains unsupported
 continuation, but acceptance or later work can refuse when the draft cannot be
 safely withheld. Follow the
-recovery procedure below; earlier and later ordinary history remains available,
-subject to complete tool-call boundaries.
+recovery procedure below; earlier and later ordinary history remains available
+when its continuation data and tool-call boundaries can be safely isolated.
 Unsupported provider continuation, required compaction, or active
 extension delivery can refuse drafting or later continuation. Use the explicit
 [draft recovery procedure](recovery.md#recover-a-request-draft); no alternate

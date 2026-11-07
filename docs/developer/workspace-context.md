@@ -283,20 +283,20 @@ complete tool groups, with no call ID reused across the removed boundary; the
 check includes IDs retained in native Ollama messages. Unknown fields refuse.
 The whole interval, including thinking and tool results, is withheld; native
 messages outside it are preserved unchanged. The separate `plain_text_only?/1` predicate remains
-stricter for managed lineage and reference checks. Anthropic uses
-`DraftNative.anthropic_draft_without_tools?/1` for exact native text blocks whose
-concatenation matches the visible UTF-8 content, optionally interleaved with
-bounded thinking blocks with a nonempty, structurally checked signature or
-bounded opaque redacted-thinking blocks. Redacted blocks require a text block in
-the same native message. Neither signatures nor opaque data are authenticated
-here. The ordinary Stream item bound still applies. Tools, unknown fields,
-unsigned thinking and mismatched text refuse; the validator never strips a native
-field to fit. The whole draft interval remains in the private journal but is
-withheld from later requests.
-The native Responses check requires complete tool grouping in the prefix,
-removed interval and tail; Anthropic refuses tool-bearing draft intervals.
-Every projection checks the retained history's tool grouping. Native
-messages outside the interval stay unchanged.
+stricter for managed lineage and reference checks. Anthropic validates native
+text against visible UTF-8 content and tool-use blocks against normalized calls,
+including their order, IDs, names and encoded inputs. Bounded thinking blocks
+require a nonempty, structurally checked signature; redacted-thinking data stays
+opaque. For no-tool messages, a redacted block requires a text block in the
+same native message. Neither signatures nor opaque data are authenticated
+here. The ordinary Stream item bound still applies. Unknown fields, unsigned
+thinking and mismatched content refuse; the validator never strips a native
+field to fit. Tool-bearing intervals require closed tool groups and no call ID
+shared with retained history. The whole draft interval remains in the private
+journal but is withheld from later requests. Every projection checks the
+retained history's tool grouping. Messages outside the interval remain unchanged
+in the projection; Anthropic's adapter renders foreign-provider assistant
+messages from their normalized content and calls when building its wire request.
 
 Live projection selects the policy through `DraftNative.policy/1`; Saved's
 historical selector uses the original provider in the session metadata for both

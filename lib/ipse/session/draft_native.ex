@@ -160,6 +160,112 @@ defmodule Ipse.Session.DraftNative do
 
   def anthropic_draft_without_tools?(_), do: false
 
+  # Validate the same ordered normalization used by the Anthropic adapter.
+  # Signed and redacted thinking blocks remain opaque and are never rewritten.
+  def anthropic_draft_with_tools?(
+        %{
+          "tool_calls" => calls,
+          "provider_data" => %{"provider" => "anthropic", "content" => parts}
+        } = message
+      )
+      when is_list(calls) and calls != [] and length(calls) <= 32 and is_list(parts) do
+    native_calls = Enum.filter(parts, &(is_map(&1) and &1["type"] === "tool_use"))
+    other_parts = Enum.reject(parts, &(is_map(&1) and &1["type"] === "tool_use"))
+    # The text-less tool turn is valid; use an empty text solely to apply the
+    # existing opaque-block validator without changing the original message.
+    checked_parts =
+      if Enum.any?(other_parts, &(is_map(&1) and &1["type"] === "text")),
+        do: other_parts,
+        else: other_parts ++ [%{"type" => "text", "text" => ""}]
+
+    clean =
+      message |> Map.delete("tool_calls") |> put_in(["provider_data", "content"], checked_parts)
+
+    Ipse.Provider.Stream.items?(parts, "tool_use") and
+      anthropic_draft_without_tools?(clean) and length(native_calls) == length(calls) and
+      Enum.all?(Enum.zip(native_calls, calls), fn {native, normalized} ->
+        anthropic_call?(native, normalized)
+      end)
+  rescue
+    _ -> false
+  end
+
+  def anthropic_draft_with_tools?(_), do: false
+
+  defp anthropic_call?(
+         %{"type" => "tool_use", "id" => id, "name" => name, "input" => input} = native,
+         %{
+           "id" => id,
+           "type" => "function",
+           "function" => %{"name" => name, "arguments" => encoded} = function
+         } = normalized
+       ) do
+    Enum.sort(Map.keys(native)) == ~w(id input name type) and
+      Enum.sort(Map.keys(normalized)) == ~w(function id type) and
+      Enum.sort(Map.keys(function)) == ~w(arguments name) and
+      is_binary(id) and byte_size(id) in 1..512 and String.valid?(id) and
+      is_binary(name) and byte_size(name) in 1..512 and String.valid?(name) and
+      is_map(input) and encoded === Jason.encode!(input)
+  end
+
+  defp anthropic_call?(_, _), do: false
+
+  def isolated_anthropic?(prefix, segment, tail) do
+    with true <- Enum.all?(prefix ++ tail, &anthropic_retained_message?/1),
+         true <-
+           Enum.all?(segment, fn
+             %{"provider_data" => _} = message ->
+               anthropic_draft_without_tools?(message) or anthropic_draft_with_tools?(message)
+
+             _ ->
+               true
+           end),
+         true <- Enum.all?([prefix, segment, tail], &Ipse.Session.Reference.safe_tail?/1),
+         ids <- for(message <- segment, call <- message["tool_calls"] || [], do: call["id"]),
+         true <- length(ids) == length(Enum.uniq(ids)),
+         true <- MapSet.disjoint?(anthropic_ids(segment), anthropic_ids(prefix ++ tail)) do
+      true
+    else
+      _ -> false
+    end
+  rescue
+    _ -> false
+  end
+
+  # Anthropic's adapter ignores foreign provider data and rebuilds these
+  # assistant messages from normalized content and calls.
+  defp anthropic_retained_message?(%{
+         "role" => "assistant",
+         "provider_data" => %{"provider" => provider}
+       })
+       when is_binary(provider) and provider != "" and provider != "anthropic",
+       do: true
+
+  defp anthropic_retained_message?(%{"provider_data" => _} = message),
+    do: anthropic_draft_without_tools?(message) or anthropic_draft_with_tools?(message)
+
+  defp anthropic_retained_message?(_), do: true
+
+  defp anthropic_ids(messages) do
+    messages
+    |> Enum.flat_map(fn message ->
+      parts =
+        case message["provider_data"] do
+          %{"provider" => "anthropic", "content" => parts} -> parts
+          _ -> []
+        end
+
+      native =
+        if is_list(parts),
+          do: Enum.filter(parts, &(is_map(&1) and &1["type"] === "tool_use")),
+          else: []
+
+      Enum.map((message["tool_calls"] || []) ++ native, & &1["id"]) ++ [message["tool_call_id"]]
+    end)
+    |> Enum.filter(&is_binary/1)
+    |> MapSet.new()
+  end
+
   def visible_models(messages) do
     messages
     |> Enum.flat_map(fn

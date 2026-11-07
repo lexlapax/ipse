@@ -244,6 +244,150 @@ defmodule Ipse.Session.DraftNativeTest do
     refute DraftNative.isolated_responses?([], [hd(segment), annotated], tail)
   end
 
+  test "Anthropic tool blocks match normalized calls and stay inside a closed draft interval" do
+    input = %{"path" => "private.txt"}
+    native = %{"type" => "tool_use", "id" => "tool_draft", "name" => "read", "input" => input}
+
+    call = %{
+      "id" => "tool_draft",
+      "type" => "function",
+      "function" => %{"name" => "read", "arguments" => Jason.encode!(input)}
+    }
+
+    message = %{
+      "role" => "assistant",
+      "content" => "",
+      "tool_calls" => [call],
+      "provider_data" => %{
+        "provider" => "anthropic",
+        "content" => [
+          %{
+            "type" => "thinking",
+            "thinking" => "private reasoning",
+            "signature" => "private signature"
+          },
+          %{"type" => "redacted_thinking", "data" => "private opaque"},
+          native
+        ]
+      }
+    }
+
+    result = %{"role" => "tool", "tool_call_id" => "tool_draft", "content" => "private result"}
+    segment = [%{"role" => "user", "content" => "private request"}, message, result]
+    notice = %{"role" => "user", "content" => Ipse.Session.Draft.notice()}
+
+    draft = %{
+      status: :cancelled,
+      notice: true,
+      prefix_count: 0,
+      prefix_sha256: Ipse.JSON.digest([]),
+      end_count: length(segment),
+      segment_sha256: Ipse.JSON.digest(segment)
+    }
+
+    assert DraftNative.anthropic_draft_with_tools?(message)
+    assert DraftNative.isolated_anthropic?([], segment, [notice])
+
+    assert {:ok, [^notice]} =
+             Ipse.Session.Draft.project(draft, segment ++ [notice], MapSet.new(), :anthropic)
+
+    refute DraftNative.isolated_anthropic?([], [message], [result])
+    refute DraftNative.isolated_anthropic?([message, result], segment, [notice])
+    refute DraftNative.isolated_anthropic?([], [message, result, message, result], [notice])
+    assert DraftNative.isolated_anthropic?([assistant()], segment, [notice])
+
+    for provider <- ["openai", "ollama", "gemini", "openrouter", "xai", "openai_compatible"] do
+      outside_call = put_in(call, ["id"], "outside_tool")
+
+      outside = %{
+        "role" => "assistant",
+        "content" => "",
+        "tool_calls" => [outside_call],
+        "provider_data" => %{
+          "provider" => provider,
+          "content" => [%{"type" => "tool_use", "id" => "tool_draft"}]
+        }
+      }
+
+      outside_result = %{
+        "role" => "tool",
+        "tool_call_id" => "outside_tool",
+        "content" => "retained"
+      }
+
+      assert DraftNative.isolated_anthropic?([outside, outside_result], segment, [notice])
+
+      wire =
+        Ipse.Provider.Anthropic.request_body(%{model: "fixture"}, [outside, outside_result], [])
+
+      assert get_in(wire, ["messages", Access.at(0), "content", Access.at(0), "id"]) ==
+               "outside_tool"
+
+      assert get_in(wire, ["messages", Access.at(1), "content", Access.at(0), "tool_use_id"]) ==
+               "outside_tool"
+
+      refute Jason.encode!(wire) =~ "tool_draft"
+      collision = put_in(outside, ["tool_calls", Access.at(0), "id"], "tool_draft")
+      collision_result = put_in(outside_result, ["tool_call_id"], "tool_draft")
+      refute DraftNative.isolated_anthropic?([collision, collision_result], segment, [notice])
+    end
+
+    refute DraftNative.anthropic_draft_with_tools?(
+             put_in(message, ["tool_calls", Access.at(0), "id"], "forged")
+           )
+
+    refute DraftNative.anthropic_draft_with_tools?(
+             put_in(message, ["tool_calls", Access.at(0), "function", "arguments"], "{}")
+           )
+
+    refute DraftNative.anthropic_draft_with_tools?(
+             put_in(message, ["provider_data", "content", Access.at(2), "extra"], true)
+           )
+
+    refute DraftNative.anthropic_draft_with_tools?(
+             put_in(message, ["provider_data", "content", Access.at(0), "signature"], "")
+           )
+
+    refute DraftNative.anthropic_draft_with_tools?(
+             put_in(message, ["provider_data", "content", Access.at(1), "data"], "")
+           )
+  end
+
+  test "Anthropic no-tool withdrawal preserves pre-existing foreign native history" do
+    prefix = [assistant()]
+
+    message = %{
+      "role" => "assistant",
+      "content" => "private answer",
+      "provider_data" => %{
+        "provider" => "anthropic",
+        "content" => [%{"type" => "text", "text" => "private answer"}]
+      }
+    }
+
+    segment = [%{"role" => "user", "content" => "private request"}, message]
+    notice = %{"role" => "user", "content" => Ipse.Session.Draft.notice()}
+
+    draft = %{
+      status: :cancelled,
+      notice: true,
+      prefix_count: 1,
+      prefix_sha256: Ipse.JSON.digest(prefix),
+      end_count: 1 + length(segment),
+      segment_sha256: Ipse.JSON.digest(segment)
+    }
+
+    assert {:ok, [prior, ^notice]} =
+             Ipse.Session.Draft.project(
+               draft,
+               prefix ++ segment ++ [notice],
+               MapSet.new(),
+               :anthropic
+             )
+
+    assert prior === hd(prefix)
+  end
+
   test "native function calls must match visible calls and remain paired inside the interval" do
     native = %{
       "type" => "function_call",

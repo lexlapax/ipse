@@ -1658,6 +1658,11 @@ adds exact-quote acceptance, post-exit staging and independent review, with scop
 native stale/source/permission/unknown controls. Wider source combinations,
 installed and independent-human qualification, and the rest of P31I remain open.
 
+The [Anthropic tool-assisted draft increment](archive/2026-10-26-p30-p31-implementation/anthropic-tool-draft-20261107.md)
+adds bounded withdrawal for matched, isolated tool groups. Seven focused
+validation tests and 25 synthetic Session tests pass on an isolated source copy;
+native-terminal, installed, live and final integrated qualification remain open.
+
 The [Ollama draft recovery increment](archive/2026-10-26-p30-p31-implementation/ollama-draft-recovery-20261103.md)
 supports cancellation or acceptance of a plain-text draft while preserving unrelated
 native continuation on later turns and resume. A [no-tool thinking follow-up](archive/2026-10-26-p30-p31-implementation/ollama-draft-thinking-20261103.md)
