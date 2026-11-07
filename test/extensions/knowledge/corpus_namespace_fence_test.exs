@@ -41,15 +41,15 @@ defmodule Ipse.KnowledgeCorpusNamespaceFenceTest do
     refute File.exists?(Path.join(helpers, "Elixir.IpseKnowledge.Store.beam"))
 
     paths =
-      :code.get_path()
-      |> Enum.reject(&(&1 == ~c"."))
-      |> Enum.reverse()
-      |> Enum.flat_map(&["-pa", List.to_string(&1)])
+      for module <- [Ipse.Extension, Jason, JSONSchex, ExJSONPointer],
+          path = module |> :code.which() |> to_string() |> Path.dirname(),
+          do: ["-pa", path]
 
     {output, status} =
       System.cmd(
         System.find_executable("elixir"),
-        paths ++ ["-pa", helpers, Path.join(@root, "test/support/corpus_namespace_fence.exs")],
+        List.flatten(paths) ++
+          ["-pa", helpers, Path.join(@root, "test/support/corpus_namespace_fence.exs")],
         cd: @root,
         stderr_to_stdout: true,
         env: [{"ERL_FLAGS", "+S 1:1 +A 1"}]
