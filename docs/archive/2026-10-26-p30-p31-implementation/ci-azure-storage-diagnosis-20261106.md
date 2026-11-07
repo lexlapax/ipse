@@ -102,6 +102,9 @@ why the hosted reader stalled or that all descendants are cleaned up. Two
 non-terminal acceptance controls pass locally. The full native acceptance file
 has not been rerun with this change because the available host remained below
 its test memory gate; hosted verification also remains open.
+On a later run at `6f0a7c8e`, the complete synthetic native acceptance file
+passed **9 tests** on the available host, and the shared input lock and test
+port were free afterward. This does not reproduce or explain the hosted stall.
 
 The hosted logs also contain terminal-input and live-MCP failures without a
 demonstrated common cause. A separate macOS installed Memory action ended with
