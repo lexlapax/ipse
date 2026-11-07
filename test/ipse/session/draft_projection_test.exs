@@ -273,6 +273,70 @@ defmodule Ipse.Session.DraftProjectionTest do
     assert {:error, :draft_projection_unsafe} = Draft.project(draft, history)
   end
 
+  test "Anthropic signed thinking is withdrawn with a cancelled or accepted draft" do
+    native = %{
+      "role" => "assistant",
+      "content" => "visible proposal",
+      "provider_data" => %{
+        "provider" => "anthropic",
+        "content" => [
+          %{
+            "type" => "thinking",
+            "thinking" => "private reasoning canary",
+            "signature" => "private signature canary"
+          },
+          %{"type" => "text", "text" => "visible proposal"}
+        ]
+      }
+    }
+
+    segment = [%{"role" => "user", "content" => "private draft input"}, native]
+
+    prior_blocks = [
+      %{"type" => "thinking", "thinking" => "prior reasoning", "signature" => "prior signature"},
+      %{"type" => "text", "text" => "prior"}
+    ]
+
+    prior = %{
+      "role" => "assistant",
+      "content" => "prior",
+      "provider_data" => %{"provider" => "anthropic", "content" => prior_blocks}
+    }
+
+    {draft, history} = projection(segment, [prior])
+
+    accepted = %{draft | status: :consumed} |> Map.put(:accepted_message, true)
+
+    accepted_history =
+      List.replace_at(history, draft.end_count, %{
+        "role" => "user",
+        "content" => "accepted request"
+      })
+
+    for {candidate, messages, expected} <- [
+          {draft, history, Draft.notice()},
+          {accepted, accepted_history, "accepted request"}
+        ] do
+      assert {:ok, [^prior, intent, next]} =
+               Draft.project(candidate, messages, MapSet.new(), :anthropic)
+
+      assert intent["content"] == expected
+      assert next["content"] == "new task"
+      refute Jason.encode!([intent, next]) =~ "private reasoning canary"
+      refute Jason.encode!([intent, next]) =~ "visible proposal"
+      wire = Ipse.Provider.Anthropic.request_body(%{model: "fixture"}, [prior, intent, next], [])
+      refute Jason.encode!(wire) =~ "private reasoning canary"
+      refute Jason.encode!(wire) =~ "private signature canary"
+      refute Jason.encode!(wire) =~ "visible proposal"
+
+      assert wire["messages"] == [
+               %{"role" => "assistant", "content" => prior_blocks},
+               %{"role" => "user", "content" => expected},
+               %{"role" => "user", "content" => "new task"}
+             ]
+    end
+  end
+
   test "Anthropic opaque, changed and tool-bearing drafts refuse instead of stripping fields" do
     native = %{
       "role" => "assistant",
@@ -285,7 +349,11 @@ defmodule Ipse.Session.DraftProjectionTest do
 
     unsafe = [
       put_in(native, ["provider_data", "content"], [
-        %{"type" => "thinking", "thinking" => "hidden", "signature" => "signed"},
+        %{"type" => "thinking", "thinking" => "hidden", "signature" => ""},
+        %{"type" => "text", "text" => "private"}
+      ]),
+      put_in(native, ["provider_data", "content"], [
+        %{"type" => "thinking", "thinking" => "hidden", "signature" => "signed", "extra" => 1},
         %{"type" => "text", "text" => "private"}
       ]),
       put_in(native, ["provider_data", "content"], [
@@ -310,6 +378,14 @@ defmodule Ipse.Session.DraftProjectionTest do
       assert {:error, :draft_projection_unsafe} =
                Draft.project(draft, history, MapSet.new(), :anthropic)
     end
+
+    invalid_utf8 =
+      put_in(native, ["provider_data", "content"], [
+        %{"type" => "thinking", "thinking" => <<255>>, "signature" => "signed"},
+        %{"type" => "text", "text" => "private"}
+      ])
+
+    refute Ipse.Session.DraftNative.anthropic_draft_without_tools?(invalid_utf8)
   end
 
   test "Anthropic validator rejects invalid UTF-8 before JSON history encoding" do

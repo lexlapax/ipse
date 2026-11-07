@@ -52,10 +52,17 @@ defmodule Ipse.Session.DraftNative do
         %{"type" => "text", "text" => text} = part ->
           Enum.sort(Map.keys(part)) == ~w(text type) and is_binary(text) and String.valid?(text)
 
+        %{"type" => "thinking", "thinking" => thinking, "signature" => signature} = part ->
+          Enum.sort(Map.keys(part)) == ~w(signature thinking type) and
+            is_binary(thinking) and byte_size(thinking) <= 8_388_608 and
+            String.valid?(thinking) and is_binary(signature) and
+            byte_size(signature) in 1..8_388_608 and String.valid?(signature)
+
         _ ->
           false
       end) and
-      Enum.map_join(parts, & &1["text"]) === content and message["tool_calls"] in [nil, []]
+      parts |> Enum.filter(&(&1["type"] == "text")) |> Enum.map_join(& &1["text"]) ===
+        content and message["tool_calls"] in [nil, []]
   rescue
     _ -> false
   end

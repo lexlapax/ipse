@@ -139,6 +139,8 @@ nor resource/offline qualification. No daemon configuration or existing model wa
 
 - [Paired critical selection observations](p30-selection-paired-critical-20261106.md) reports known per-case membership losses without changing the unverified gate or disposition; 28 pure compatibility controls pass, with accepted real-input scoring still open.
 
+- [Anthropic signed-thinking draft withdrawal](anthropic-signed-draft-20261106.md) adds bounded no-tool projection and pure request-body controls. A later synthetic Session/Saved fixture passed; native-terminal, installed and live qualification remain open.
+
 - [Simultaneous decision entry and quiescent recovery](p30-simultaneous-settlement-20261104.md) complete one synthetic settled winner, both normal closes and sequential idle/no-replay paths in one fresh cohort. The loser encounters native-control contention, not observed budget denial; earlier failures and consumer quality remain open.
 
 - [Native pending-proposal burst](native-burst-320-20261105.md) records 40 turns/320 proposals, 100 known settled units, queue/budget advice, authenticated root chains and separate current-pin/source/four-idle qualification. Original aggregate/tail failures and timing/baseline limits remain explicit; annual, quality and broader maximum-shape gates remain open.

@@ -275,10 +275,13 @@ thinking is a bounded UTF-8 string, tool calls are empty and unknown fields refu
 The whole interval, including thinking, is withheld; native messages outside it
 are preserved unchanged. The separate `plain_text_only?/1` predicate remains
 stricter for managed lineage and reference checks. Anthropic uses
-`DraftNative.anthropic_draft_without_tools?/1` for exact native text-only blocks
-whose concatenation matches the visible UTF-8 content. Its ordinary Stream item
-bound still applies. Thinking, signed or redacted blocks, tools, unknown fields
-and mismatched text refuse; the validator never strips a native field to fit.
+`DraftNative.anthropic_draft_without_tools?/1` for exact native text blocks whose
+concatenation matches the visible UTF-8 content, optionally interleaved with
+bounded thinking blocks with a nonempty, structurally checked signature. The
+signature is not authenticated here. Its ordinary Stream item bound still applies.
+Redacted thinking, tools, unknown fields, unsigned thinking and mismatched text
+refuse; the validator never strips a native field to fit. Signed thinking is
+withheld with the whole draft interval and remains in the private journal.
 Each policy requires complete tool grouping in the prefix, removed interval and
 tail. Native messages outside the interval stay unchanged.
 

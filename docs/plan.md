@@ -448,8 +448,12 @@ following limits until the end-to-end paths are qualified:
    A separate [Anthropic text-only carryover control](archive/2026-10-26-p30-p31-implementation/anthropic-draft-carryover-20261104.md)
    now passes cancellation, an unrelated ordinary request, strict saved-history
    reconstruction and same-ID continuation through the actual synthetic Messages
-   adapter. It preserves native history outside the withdrawn interval. Opaque or
-   tool-bearing drafts, broader provider coverage, installed/native-terminal
+   adapter. It preserves native history outside the withdrawn interval. The
+   current signed-thinking extension passes 11 synthetic projection and request-body
+   controls and a [synthetic Session/Saved test](archive/2026-10-26-p30-p31-implementation/anthropic-signed-draft-20261106.md)
+   with a synthetic acceptance witness. It checks the signature's
+   structure, not authenticity. Redacted or tool-bearing drafts, broader provider
+   coverage, installed/native-terminal
    qualification and integrated clarification remain open.
 5. **Decision engines — P30A–E.** Complete the host protocol and protected
    consumer integration independently of document/graph work. Enforce the explicit

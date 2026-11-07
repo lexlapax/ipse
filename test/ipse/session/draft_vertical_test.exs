@@ -874,6 +874,186 @@ defmodule Ipse.Session.DraftVerticalTest do
     end
   end
 
+  @tag :anthropic_signed_draft_carryover
+  test "Anthropic signed-thinking drafts stay private after cancellation and acceptance across resume",
+       c do
+    fixture = Ipse.Test.ProviderFixture
+
+    response = fn text, thinking, signature ->
+      blocks =
+        if is_binary(thinking) do
+          [
+            %{
+              "type" => "content_block_start",
+              "index" => 0,
+              "content_block" => %{
+                "type" => "thinking",
+                "thinking" => "",
+                "signature" => ""
+              }
+            },
+            %{
+              "type" => "content_block_delta",
+              "index" => 0,
+              "delta" => %{"type" => "thinking_delta", "thinking" => thinking}
+            },
+            %{
+              "type" => "content_block_delta",
+              "index" => 0,
+              "delta" => %{"type" => "signature_delta", "signature" => signature}
+            }
+          ]
+        else
+          []
+        end
+
+      fixture.sse(
+        [
+          %{
+            "type" => "message_start",
+            "message" => %{"model" => "fixture", "usage" => %{"input_tokens" => 1}}
+          }
+        ] ++
+          blocks ++
+          [
+            %{
+              "type" => "content_block_start",
+              "index" => 1,
+              "content_block" => %{"type" => "text", "text" => text}
+            },
+            %{
+              "type" => "message_delta",
+              "delta" => %{"stop_reason" => "end_turn"},
+              "usage" => %{"output_tokens" => 1}
+            },
+            %{"type" => "message_stop"}
+          ]
+      )
+    end
+
+    {base_url, server} =
+      fixture.sequence([
+        response.("prior", "prior reasoning", "prior signature"),
+        response.("private proposal", "draft reasoning canary", "draft signature canary"),
+        response.("ordinary answer", nil, nil),
+        response.("resumed answer", nil, nil),
+        response.("prior", "prior reasoning", "prior signature"),
+        response.("private proposal", "draft reasoning canary", "draft signature canary"),
+        response.("accepted answer", nil, nil),
+        response.("later answer", nil, nil)
+      ])
+
+    on_exit(fn -> if Process.alive?(server.pid), do: Task.shutdown(server, :brutal_kill) end)
+
+    cfg = %{
+      provider: :anthropic,
+      provider_module: Ipse.Provider.Anthropic,
+      base_url: base_url,
+      api_key: "fixture-only"
+    }
+
+    {cancelled, _} = start(c, cfg)
+    id = Session.info(cancelled).id
+    assert :ok = Session.prompt(cancelled, "prior task")
+    assert_receive {:ipse, ^cancelled, {:done, :ok}}, 5_000
+    assert :ok = Session.start_draft(cancelled, "private draft input")
+    assert_receive {:ipse, ^cancelled, {:done, :ok}}, 5_000
+    assert {:ok, %{status: :completed, proposal: "private proposal"}} = Session.draft(cancelled)
+    assert :ok = Session.cancel_draft(cancelled)
+    assert :ok = Session.prompt(cancelled, "ordinary task")
+    assert_receive {:ipse, ^cancelled, {:done, :ok}}, 5_000
+    assert :ok = Session.close_confirmed(cancelled)
+    {:ok, events} = Journal.load(c.dir, id)
+    assert {:ok, %{draft: %{status: :cancelled}}} = Session.Saved.restore(events, id)
+    {resumed, _} = start(c, cfg, id)
+    assert :ok = Session.prompt(resumed, "resumed task")
+    assert_receive {:ipse, ^resumed, {:done, :ok}}, 5_000
+    assert :ok = Session.close_confirmed(resumed)
+    {:ok, resumed_events} = Journal.load(c.dir, id)
+    assert {:ok, %{draft: %{status: :cancelled}}} = Session.Saved.restore(resumed_events, id)
+
+    expected_thinking = %{
+      "type" => "thinking",
+      "thinking" => "draft reasoning canary",
+      "signature" => "draft signature canary"
+    }
+
+    retained_thinking? = fn
+      %{"message" => %{"provider_data" => %{"content" => parts}}} when is_list(parts) ->
+        expected_thinking in parts
+
+      _ ->
+        false
+    end
+
+    assert Enum.any?(resumed_events, retained_thinking?)
+
+    accepted_context = %{c | dir: Path.join(c.root, "anthropic-signed-accepted")}
+    {draft_session, _} = start(accepted_context, cfg)
+    accepted_id = Session.info(draft_session).id
+    assert :ok = Session.prompt(draft_session, "prior task")
+    assert_receive {:ipse, ^draft_session, {:done, :ok}}, 5_000
+    assert :ok = Session.start_draft(draft_session, "private draft input")
+    assert_receive {:ipse, ^draft_session, {:done, :ok}}, 5_000
+
+    assert {:ok, %{id: draft_id, revision: 1, proposal: "private proposal"}} =
+             Session.draft(draft_session)
+
+    assert :ok = Session.replace_draft(draft_session, draft_id, 1, "accepted clean task")
+    {accepted, _} = synthetic_accepted_resume(accepted_context, draft_session, cfg)
+    assert_receive {:ipse, ^accepted, {:done, :ok}}, 5_000
+    assert :ok = Session.close_confirmed(accepted)
+    {:ok, accepted_events} = Journal.load(accepted_context.dir, accepted_id)
+
+    assert {:ok, %{draft: %{status: :consumed}}} =
+             Session.Saved.restore(accepted_events, accepted_id)
+
+    {after_accept, _} = start(accepted_context, cfg, accepted_id)
+    assert :ok = Session.prompt(after_accept, "later task")
+    assert_receive {:ipse, ^after_accept, {:done, :ok}}, 5_000
+    assert :ok = Session.close_confirmed(after_accept)
+    {:ok, later_events} = Journal.load(accepted_context.dir, accepted_id)
+
+    assert {:ok, %{draft: %{status: :consumed}}} =
+             Session.Saved.restore(later_events, accepted_id)
+
+    assert Enum.any?(later_events, retained_thinking?)
+
+    [
+      {_, _},
+      {_, draft},
+      {_, ordinary},
+      {_, resumed_body},
+      {_, _},
+      {_, accepted_draft},
+      {_, accepted_body},
+      {_, later_body}
+    ] =
+      Task.await(server, 5_000)
+
+    for body <- [draft, accepted_draft] do
+      assert Jason.encode!(body) =~ "prior reasoning"
+      assert Jason.encode!(body) =~ "prior signature"
+    end
+
+    for body <- [ordinary, resumed_body, accepted_body, later_body] do
+      assert Jason.encode!(body) =~ "prior reasoning"
+      assert Jason.encode!(body) =~ "prior signature"
+
+      for canary <- [
+            "private draft input",
+            "private proposal",
+            "draft reasoning canary",
+            "draft signature canary"
+          ] do
+        refute Jason.encode!(body) =~ canary
+      end
+    end
+
+    assert Jason.encode!(accepted_body) =~ "accepted clean task"
+    assert Jason.encode!(later_body) =~ "later task"
+  end
+
   test "ChatGPT Responses transport isolates cancelled and accepted drafts across resume",
        c do
     fixture = Ipse.Test.ProviderFixture
