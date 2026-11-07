@@ -116,12 +116,17 @@ leave unmatched admissions that fail closed; historical ledgers remain unchanged
 The [CI readiness repair](archive/2026-10-26-p30-p31-implementation/ci-runner-formatter-readiness-20261106.md)
 restores the canonical Elixir 1.18 formatting check and replaces the retired
 macOS runner image. Its local formatter and policy checks pass; a new hosted
-baseline, package and installed checks remain unqualified.
+full-source baseline and remaining platform/installed checks remain open. The
+[Linux package job at `6e5e4bdc`](archive/2026-10-26-p30-p31-implementation/ci-azure-storage-diagnosis-20261106.md)
+passes its listed build and synthetic installed checks; it is not the full suite.
 
 The [hosted Azure diagnosis](archive/2026-10-26-p30-p31-implementation/ci-azure-storage-diagnosis-20261106.md)
 records an actual `7.0.0-1017-azure` Linux runner rejected by the current native
 kernel profile. Filesystem qualification, separate terminal/MCP failures and
 the macOS unknown installed Memory action remain open; no profile was widened.
+At `6e5e4bdc`, all four hosted Ubuntu source partitions failed with filesystem
+refusals and other unresolved failures; macOS jobs remained queued when
+inspected.
 
 The [hosted source-test partition change](archive/2026-10-26-p30-p31-implementation/ci-source-partitions-20261106.md)
 assigns every default test file to one of four jobs per OS after an unpartitioned
@@ -1391,7 +1396,11 @@ four failures, 136 skipped and 124 excluded. The failures were hybrid-fixture,
 Corpus wrapper isolation, package-fixture and artifact-time-context failures. Their separately repaired
 [nine-case](archive/2026-10-26-p30-p31-implementation/domain-hybrid-regression-repair-20261106.md),
 [16-case, 33-case and artifact](archive/2026-10-26-p30-p31-implementation/corpus-namespace-test-isolation-20261106.md)
-controls pass without changing the active run's result. The earlier
+controls pass without changing that run's result. The later isolated
+[`6e5e4bdc` regression](archive/2026-10-26-p30-p31-implementation/full-regression-6e5e4bdc-20261106.md)
+passed 4,313 tests, with 136 skipped and 124 excluded, matching input checks and
+independently confirmed cleanup. It predates the current changes and does not
+qualify those exclusions, hosted platforms or the integrated milestones. The earlier
 [complete `9f1707c` baseline](archive/2026-10-26-p30-p31-implementation/full-suite-cancel-repair-20261102.md)
 followed the [controlled cancellation repair](archive/2026-10-26-p30-p31-implementation/worker-input-cancel-20261102.md).
 The earlier [failed `39c8043` execution](archive/2026-10-26-p30-p31-implementation/full-suite-20261102.md)
