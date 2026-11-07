@@ -491,6 +491,7 @@ nor resource/offline qualification. No daemon configuration or existing model wa
 - [Unused controlled owned-effect foundation, scoped verification and open integration limits](owned-effect-component.md).
 - [Private draft-mode prototype checkpoint and open acceptance gaps](p31i-private-draft-checkpoint.md).
 - [Deferred operator-authored planning decisions](operator-planning-20261103/index.md) records a witnessed acceptance and separate post-exit save, with synthetic native and replay controls; assistant-proposal acceptance remains open.
+- [Installed operator planning-decision control](planning-decision-installed-20261107.md) covers synthetic save and revoked consent in a pinned PDF-free package; assistant and independent-human qualification remain open.
 - [Main-Session `/enhance` integration, terminal repairs and current verification limits](enhance-integration.md).
 - [Model-switch continuation, active full suite and unresolved installed proof](handoff-20261027-enhance.md).
 - [Explicit managed SDK publication, reserved metadata and replay boundary](managed-sdk-component.md).

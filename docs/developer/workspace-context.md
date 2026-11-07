@@ -344,6 +344,20 @@ After the required build, the planning-decision tests exercise replay and
 one-shot status plus synthetic PTY save, refusal and resume boundaries. They do
 not establish installed or independent-human use.
 
+To exercise the operator-authored save and revoked-consent paths in an extracted
+package, use a package-matched Elixir/OTP and ExUnit, its checksum sidecar, and
+a new private output directory on a supported native filesystem. Record the
+archive hash and full build commit independently, then run:
+
+```sh
+timeout --kill-after=10s 180s elixir dev/verification/planning_decision_installed.exs \
+  /path/to/ipse.tar.gz /private/new-output-dir ARCHIVE_SHA256 FULL_COMMIT
+```
+
+The verifier retains its synthetic logs and fixtures, refuses a changed archive
+or input, and makes no model calls. It does not qualify assistant-authored
+decisions, independent-human use, other platforms or a default PDF-enabled package.
+
 To exercise the Ollama no-tool acceptance and cancellation paths against a
 built package, record the expected archive hash and commit label independently.
 Use a new private output directory and retain the adjacent checksum sidecar:

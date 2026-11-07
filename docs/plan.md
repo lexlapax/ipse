@@ -1668,6 +1668,11 @@ adds exact-quote acceptance, post-exit staging and independent review, with scop
 native stale/source/permission/unknown controls. Wider source combinations,
 installed and independent-human qualification, and the rest of P31I remain open.
 
+An [installed synthetic operator-decision check](archive/2026-10-26-p30-p31-implementation/planning-decision-installed-20261107.md)
+passes save and revoked-consent scenarios against a pinned PDF-free package.
+Assistant-authored decisions, independent-human use, other platforms and the
+default package remain unqualified.
+
 The [Anthropic tool-assisted draft increment](archive/2026-10-26-p30-p31-implementation/anthropic-tool-draft-20261107.md)
 adds bounded withdrawal for matched, isolated tool groups. Seven focused
 validation tests and 25 synthetic Session tests pass on an isolated source copy;
