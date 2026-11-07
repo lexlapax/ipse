@@ -468,12 +468,18 @@ invalid progress. A final first-page check must reproduce the same generation/co
 A failed index call or a changed generation during a read or final check discards
 the pass and reports unavailable coverage with an unknown candidate count.
 
-The worker can continue beyond 32 candidates while all notes read so far fit.
-When they do not fit, it attempts the existing selection over the first 32 eligible
-notes, subject to the host bounds. It reserves a final read and counts page
+The worker can continue beyond the first 32 candidates even when the accumulated
+set does not fit: a later smaller note may still fit the greedy projection. It
+stops at the existing 126-note projection limit or earlier host bounds. Before
+reading values it compares the allocation to the host-framed size of an empty
+first note item; below that lower bound no note can fit, so it skips those reads
+but retains the final root check. Meeting the lower bound does not mean a whole
+note and the required framing will fit. It reserves that check and counts page
 dependencies, every successful read and worst-case proof and management-journal
-owners before issuing further work. Reaching a bound or omitting a note reports
-partial coverage. Those worker counts cover this invocation only; inherited
+owners before issuing further work. Additional successful reads also enlarge the
+causal source union. Reaching a bound or omitting a note reports partial coverage,
+even if the bound stops value reads within the final indexed page and there is no
+next-page cursor. Those worker counts cover this invocation only; inherited
 history can make the host's final union too large, in which case admission still
 refuses. Search keeps its separate 32-candidate bound, and a later cursor
 remains partial.
@@ -488,6 +494,12 @@ outcome carries no later-use absence dependency: if that journal reappears after
 the check, the omission remains partial and is not automatically repaired. Full
 fitting-set coverage across arbitrary sparse collections or that reappearance race
 requires a separate host discovery and final-use contract.
+
+The separate `collection_record_expired` outcome applies to a single literal
+whose signed ordinary-retention deadline is confirmed under the current held
+source, consent and Collection checks. Recall skips that value and reports partial
+coverage; it neither deletes the record nor renews its lifetime. Other expiry or
+source failures remain general refusals and withhold the pass.
 
 Accepted decisions use a distinct version-6 dependency. `ManagedRead` discovers
 their immutable link, retains the original committed management journal outside

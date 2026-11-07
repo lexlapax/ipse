@@ -232,7 +232,11 @@ following limits until the end-to-end paths are qualified:
    raising a fixed candidate limit does not establish that coverage. Any paging
    or discovery design must retain current-source and ownership checks. The notes
    release checkpoint additionally depends on C1a below; a small fixture alone
-   does not close it. A [pending-read containment](archive/2026-10-26-p30-p31-implementation/pending-source-containment-20261103.md)
+   does not close it. [Bounded fitting-note selection](archive/2026-10-26-p30-p31-implementation/recall-fitting-selection-20261106.md)
+   removes the early stop when accumulated notes exceed the allocation, within
+   the existing projection and host limits, and skips value reads below the
+   minimum note-item frame. Synthetic mocked controls pass; actual-host and
+   integrated workload qualification remain open. A [pending-read containment](archive/2026-10-26-p30-p31-implementation/pending-source-containment-20261103.md)
    now refuses unclassified managed values rather than exposing a proposal after
    loss of its source. It also temporarily refuses generic reads of saved
    overrides and unrelated managed values; a safe compatible path remains open.

@@ -297,12 +297,13 @@ another effect.
 To compare note packs instead, use `/ext` to inspect `select_shadow`, then ask:
 
 ```text
-Use the knowledge index to find the current note keys. With select_shadow,
+Use the knowledge index to list note keys. With select_shadow,
 compare two different packs named release and migration, each containing at most
 four of those keys. Use the query: Which conditions must this release satisfy?
 ```
 
-The model must choose the tool and supply actual returned keys. The experiment
+The model must choose the tool and supply actual returned keys. The index lists
+metadata; it does not establish that a note is currently eligible. The experiment
 reads the complete note set, with at most sixteen records, and checks its current
 sources and context allocation. More records, incomplete reads or a changed
 allocation refuse the comparison. A complete set that fits ordinary recall
@@ -800,10 +801,12 @@ proposal uses the separate native `allow CODE` review described above; accepting
 the decision itself supplies no tool permission.
 
 The automatic pass reads metadata pages and whole current notes within its
-context and host-resource limits. If all notes read so far fit, it can continue
-past the first 32 candidates. When the set does not fit, it tries to consider
-the first 32 eligible notes before choosing whole notes for the available space;
-host limits can stop it sooner.
+context and host-resource limits. It can consider later, smaller notes even when
+earlier notes do not fit. More candidate reads can take longer and retain more
+source dependencies; host limits can stop the pass before it sees every note.
+When the allocation is below the host-framed lower bound for a note, the pass
+skips note reads and still checks the collection root. Meeting that lower bound
+does not guarantee that any particular note will fit.
 The pass reports partial coverage when it stops early, omits notes or encounters
 an unavailable original. On Linux, a confirmed missing original Session journal
 can be skipped while later notes are checked. A protected single-note read can

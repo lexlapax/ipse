@@ -1088,25 +1088,29 @@ defmodule IpseKnowledge.Knowledge do
       ctx.source_proofs + extra_sources <= @recall_host_source_limit
   end
 
-  # Preserve the original bounded selection when the complete set does not fit.
-  defp recall_seed_fits?(%{notes: notes})
-       when is_list(notes) and length(notes) < @recall_candidates,
-       do: true
+  # An oversized accumulated set does not prove that a later, smaller note
+  # cannot fit the greedy baseline. Bound discovery by the existing projection
+  # and host budgets instead; every successful read remains a host dependency.
+  defp recall_seed_candidate_room?(%{
+         notes: notes,
+         budget: %{"instance" => instance, "available_bytes" => bytes}
+       })
+       when is_list(notes) and is_binary(instance) and is_integer(bytes) and bytes >= 0 do
+    # Every result containing a note contains this first note item, with
+    # nonempty encoded text, plus coverage and index items. Its empty-text
+    # rendering is a conservative lower bound with the host's actual framing.
+    minimum =
+      Ipse.Extension.context_rendered_bytes([assertion("note_text_0", "", 70)], instance)
 
-  defp recall_seed_fits?(%{budget: %{"instance" => instance, "available_bytes" => bytes}} = ctx)
-       when is_binary(instance) and is_integer(bytes) and bytes >= 0 do
-    case recall_projection(ctx, ctx.notes, instance, min(bytes, 8192)) do
-      {:ok, %{fits: fits}} -> fits
-      _ -> false
-    end
+    length(notes) < @recall_projection_limit and bytes >= minimum
   end
 
-  defp recall_seed_fits?(_), do: false
+  defp recall_seed_candidate_room?(_), do: false
 
   defp recall_next(%{ctx: %{mode: :seed, candidates: [row | rest]}} = state) do
     ctx = state.ctx
 
-    if recall_seed_room?(ctx, :record) and recall_seed_fits?(ctx) do
+    if recall_seed_room?(ctx, :record) and recall_seed_candidate_room?(ctx) do
       collection(%{"op" => "get", "key" => row["key"]}, %{
         state
         | phase: :recall_read,
@@ -1121,7 +1125,7 @@ defmodule IpseKnowledge.Knowledge do
          %{ctx: %{mode: :seed, candidates: [], next: next, coverage: "complete"}} = state
        )
        when is_binary(next) do
-    if recall_seed_room?(state.ctx, :page) and recall_seed_fits?(state.ctx) do
+    if recall_seed_room?(state.ctx, :page) and recall_seed_candidate_room?(state.ctx) do
       collection(
         %{"op" => "index", "prefix" => "note.", "cursor" => next, "limit" => @recall_candidates},
         %{state | phase: :recall_index}

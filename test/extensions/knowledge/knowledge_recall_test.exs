@@ -240,12 +240,14 @@ defmodule IpseKnowledge.KnowledgeRecallTest do
     test "small context budgets publish no oversized framing or notes" do
       records = [record(1, "synthetic note")]
       for available <- [0,1,128] do
-        {result, _, calls, items} = drive(start(), records, available_bytes: available, capture_projection_context: true)
-        ctx = %{Process.delete(:recall_projection_context) | coverage: "complete"}
+        {result, _, calls, items} = drive(start(), records, available_bytes: available)
         assert result["included"] == 0 and result["coverage"] == "partial"
         assert items == []
         assert List.last(calls) == %{"op" => "context.publish", "items" => []}
         if available == 0 do
+          assert Enum.count(calls, &(get_in(&1, ["request", "op"]) == "get")) == 0
+          drive(start(), records, available_bytes: 8192, capture_projection_context: true)
+          ctx = Process.delete(:recall_projection_context)
           assert {:ok, facts, binding} = K.recall_decision_facts(ctx, [], "knowledge", available, "query", true, nil)
           policy = IpseKnowledge.Knowledge.DecisionPolicy.default("notes.select")
           assert {:ok, plan} = IpseKnowledge.Knowledge.DecisionPolicy.plan(policy, facts, :development_experiment)
@@ -254,6 +256,41 @@ defmodule IpseKnowledge.KnowledgeRecallTest do
           assert comparison.shadow == nil and comparison.outcome["receipt"]["reason"] == "strategy_none"
         end
       end
+    end
+
+    test "zero allocation skips protected values and still verifies the root" do
+      records = for n <- 1..80, do: record(n, "synthetic note #{n}")
+      {result, _, calls, items} = drive(start(), records, page_size: 32, available_bytes: 0)
+      assert result["coverage"] == "partial" and result["included"] == 0
+      assert items == []
+      assert Enum.count(calls, &(get_in(&1, ["request", "op"]) == "get")) == 0
+      assert Enum.count(calls, &(get_in(&1, ["request", "op"]) == "index")) == 2
+
+      {changed, _, _, changed_items} =
+        drive(start(), records, page_size: 32, available_bytes: 0, verify_generation: 2)
+      assert changed["coverage"] == "unavailable" and changed["included"] == 0
+      assert changed_items == []
+    end
+
+    test "allocations below the host-framed note lower bound skip protected values" do
+      item = %{
+        "id" => "note_text_0", "version" => "1", "text" => "", "priority" => 70,
+        "source" => %{"kind" => "assertion", "uri" => nil}
+      }
+      minimum = Ipse.Extension.context_rendered_bytes([item], "knowledge")
+      assert minimum > 1
+      records = [record(1, "synthetic note")]
+
+      for available <- [1, minimum - 1] do
+        {result, _, calls, items} = drive(start(), records, available_bytes: available)
+        assert result["coverage"] == "partial" and result["included"] == 0
+        assert items == []
+        assert Enum.count(calls, &(get_in(&1, ["request", "op"]) == "get")) == 0
+        assert Enum.count(calls, &(get_in(&1, ["request", "op"]) == "index")) == 2
+      end
+
+      {_, _, calls, _} = drive(start(), records, available_bytes: minimum)
+      assert Enum.count(calls, &(get_in(&1, ["request", "op"]) == "get")) == 1
     end
 
     test "index continuation must advance and contain records" do
@@ -541,16 +578,41 @@ defmodule IpseKnowledge.KnowledgeRecallTest do
 
     test "large sets bound work, retain whole notes, and disclose explicit paging" do
       records = for n <- 1..80, do: record(n, String.duplicate("complete note #{n} ", 80))
-      {result, _, calls, items} = drive(start(), records)
+      {result, _, calls, items} = drive(start(), records, page_size: 32)
       assert result["coverage"] == "partial"
       assert result["candidates"] == 80
       assert result["included"] in 1..31
-      assert length(calls) <= 37
-      assert Enum.count(calls, &(get_in(&1, ["request", "op"]) == "get")) == 32
+      assert length(calls) == 87
+      assert Enum.count(calls, &(get_in(&1, ["request", "op"]) == "get")) == 80
+      assert Enum.count(calls, &(get_in(&1, ["request", "op"]) == "index")) == 4
       assert Ipse.Extension.context_rendered_bytes(items, "knowledge") <= 8192
       assert Enum.any?(items, &(&1["id"] == "note_index" and &1["text"] =~ "remaining_pages"))
       for {key, text} <- decoded_notes(items),
         do: assert(Enum.any?(records, &(&1["key"] == key and &1["value"]["text"] == text)))
+    end
+
+    test "a later small note is considered after an over-budget first page" do
+      later_number = Enum.max_by(1..33, &Ipse.JSON.sha256(Integer.to_string(&1)))
+      records =
+        for n <- 1..33 do
+          record(n, if(n == later_number, do: "later fitting note", else: String.duplicate("x", 2048)))
+        end
+        |> Enum.sort_by(& &1["key"])
+      later = List.last(records)
+      drive(start(), records, page_size: 32, capture_projection_context: true)
+      ctx = Process.delete(:recall_projection_context)
+      assert {:ok, small} = K.recall_projection(ctx, [List.last(ctx.notes)], "knowledge", 8192)
+      budget = small.rendered_bytes + 16
+      assert budget < 8192
+      assert {:ok, %{fits: true}} = K.recall_projection(ctx, [List.last(ctx.notes)], "knowledge", budget)
+      assert {:ok, %{fits: false}} = K.recall_projection(ctx, [hd(ctx.notes)], "knowledge", budget)
+      {result, _, calls, items} =
+        drive(start(), records, page_size: 32, available_bytes: budget)
+
+      assert result["coverage"] == "partial"
+      assert result["candidates"] == 33
+      assert Enum.count(calls, &(get_in(&1, ["request", "op"]) == "get")) == 33
+      assert decoded_notes(items) == %{later["key"] => "later fitting note"}
     end
 
     defp decoded_notes(items) do
@@ -612,6 +674,23 @@ defmodule IpseKnowledge.KnowledgeRecallTest do
       assert result == %{"status" => "refused", "code" => "invalid_index_progress"}
       assert Enum.count(calls, &(get_in(&1, ["request", "op"]) == "get")) == 32
       refute Enum.any?(calls, &(&1["op"] == "context.publish" and &1["items"] != []))
+    end
+
+    test "proof reservation stops within the last index page without claiming complete coverage" do
+      records = for n <- 1..121, do: record(n, "~N#{n}~")
+      {result, _, calls, _items} =
+        drive(start(), records, page_size: 32, capture_projection_context: true)
+      ctx = Process.delete(:recall_projection_context)
+
+      # One proof per successful record, with nine reserved for a possible next
+      # record: after 120 successful reads, the next must remain unstarted.
+      assert Enum.count(calls, &(get_in(&1, ["request", "op"]) == "get")) == 120
+      assert Enum.count(calls, &(get_in(&1, ["request", "op"]) == "index")) == 5
+      assert ctx.read == 120 and ctx.successful_reads == 120 and ctx.source_proofs == 120
+      assert length(ctx.index) == 121 and length(ctx.notes) == 120
+      assert ctx.next == nil and ctx.verified
+      assert result["candidates"] == 121 and result["unavailable"] == 0
+      assert result["coverage"] == "partial"
     end
 
     test "sparse discovery stops at the real host read bound with partial coverage" do
@@ -831,7 +910,7 @@ defmodule IpseKnowledge.KnowledgeRecallTest do
   end
   result = ExUnit.run()
   if Map.take(result, [:total, :failures, :skipped, :excluded]) !=
-       %{total: 28, failures: 0, skipped: 0, excluded: 0}, do: System.halt(1)
+       %{total: 32, failures: 0, skipped: 0, excluded: 0}, do: System.halt(1)
   IO.puts("KNOWLEDGE_RECALL_CONTROL_PASS")
   """
 
