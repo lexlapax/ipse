@@ -1,5 +1,8 @@
 defmodule Ipse.Session.DraftAcceptanceTest do
   use ExUnit.Case, async: true
+  # The PTY driver bounds each child at 60 seconds; one test runs two drivers.
+  # Let it report its failure and reap its child before ExUnit's outer deadline.
+  @moduletag timeout: 150_000
   alias Ipse.Session.DraftAcceptance
   alias Ipse.{JSON, Usage}
 

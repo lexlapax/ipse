@@ -94,6 +94,15 @@ ExUnit timeout. A later bounded synthetic diagnostic must record phase and clean
 evidence before the outer timeout; it cannot infer a native input outcome from a
 written reply alone. Production flushing and deadlines are unchanged.
 
+The draft-acceptance test module now allows 150 seconds per test. Its PTY
+driver retains its own 60-second bound, and one acceptance test starts two
+drivers in sequence. This gives the driver time to report a bound failure
+instead of the previous competing 60-second ExUnit timeout; it does not prove
+why the hosted reader stalled or that all descendants are cleaned up. Two
+non-terminal acceptance controls pass locally. The full native acceptance file
+has not been rerun with this change because the available host remained below
+its test memory gate; hosted verification also remains open.
+
 The hosted logs also contain terminal-input and live-MCP failures without a
 demonstrated common cause. A separate macOS installed Memory action ended with
 an unknown outcome as recorded in the
