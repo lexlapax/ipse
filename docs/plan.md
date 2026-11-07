@@ -1352,6 +1352,11 @@ reports known case-level membership losses even when aggregate recall is unchang
 Its 28 pure source controls include legacy and current scoring; labels, independence,
 the hard gate and the overall experiment disposition remain unverified.
 
+The [critical-recall follow-up](archive/2026-10-26-p30-p31-implementation/p30-critical-unmeasured-20261107.md)
+reports an arm's critical count as unmeasured when a critical prediction is not
+successful, and withholds the aggregate comparison. Thirty-one synthetic controls
+pass; real-input quality and the overall experiment remain unverified.
+
 **Authorized; typed/protocol and admitted-operation increments in progress.** P31 is the active delivery
 path. P30A/B can proceed independently; later
 P30 work consumes the first usable notes journey, not the entire P31 milestone.

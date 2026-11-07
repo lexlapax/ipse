@@ -190,7 +190,175 @@ defmodule Ipse.Development.Evaluation.SelectionCriticalPairsTest do
     assert {:ok, refused_report} = score(d, refs, load, [matched_first, refused])
     assert refused_report["paired_critical_observation"]["status"] == "unverified"
     assert refused_report["paired_critical_observation"]["unverified"] == 1
+    assert refused_report["baseline"]["critical_recalled"] == 1
+    assert refused_report["candidate"]["critical_recalled"] == nil
+    assert refused_report["comparison"] == nil
     assert refused_report["disposition"] == "unverified"
+  end
+
+  test "a refused or failed critical baseline stays unmeasured despite retained members" do
+    {d, refs, load, rows} = fixture()
+    original = hd(d["spec"]["cases"])
+    {:ok, old_bytes} = load.(original["baseline_sha256"])
+
+    for status <- ~w(refused failed timeout) do
+      new_bytes =
+        old_bytes
+        |> Jason.decode!()
+        |> update_in(["prediction"], fn prediction ->
+          prediction
+          |> Map.put("status", status)
+          |> Map.put("response_kind", "abstention")
+        end)
+        |> Jason.encode!()
+
+      new_sha = JSON.sha256(new_bytes)
+      new_case = Map.put(original, "baseline_sha256", new_sha)
+      cases = [new_case | tl(d["spec"]["cases"])]
+      {:ok, revised} = Selection.declare(put_in(d, ["spec", "cases"], cases)["spec"])
+
+      revised_load = fn digest ->
+        if digest == new_sha, do: {:ok, new_bytes}, else: load.(digest)
+      end
+
+      revised_rows =
+        Enum.map(rows, fn row ->
+          if row["case_id"] == new_case["id"],
+            do: Map.put(row, "baseline_sha256", new_sha),
+            else: row
+        end)
+
+      assert {:ok, report} = score(revised, refs, revised_load, revised_rows)
+      assert report["baseline"]["critical_recalled"] == nil
+      assert report["candidate"]["critical_recalled"] == 1
+      assert report["paired_critical_observation"]["status"] == "unverified"
+      assert report["comparison"] == nil
+      assert report["disposition"] == "unverified"
+    end
+  end
+
+  test "a refused noncritical case does not erase a known critical count" do
+    {d, refs, load, [first, second]} = fixture()
+    reference = Jason.decode!(refs)
+    [a, _b] = reference["rows"]
+    reference = put_in(reference, ["rows", Access.at(1), "critical_members"], [])
+    bytes = Jason.encode!(reference)
+
+    {:ok, revised} =
+      Selection.declare(put_in(d, ["spec", "label_commitment"], JSON.sha256(bytes))["spec"])
+
+    first = Map.put(first, "members", a["critical_members"])
+
+    refused =
+      second
+      |> Map.put("status", "refused")
+      |> Map.update!("prediction", fn prediction ->
+        prediction
+        |> Map.put("status", "refused")
+        |> Map.put("response_kind", "abstention")
+      end)
+
+    assert {:ok, report} = score(revised, bytes, load, [first, refused])
+    assert report["candidate"]["critical_total"] == 1
+    assert report["candidate"]["critical_recalled"] == 1
+    assert report["paired_critical_observation"]["status"] == "pass"
+    assert report["disposition"] == "unverified"
+  end
+
+  test "measured semantic reviews cannot turn refused critical recall into a comparison" do
+    {d, refs, load, rows} = fixture()
+
+    with_citation = fn prediction ->
+      Map.put(prediction, "citations", [
+        %{
+          "citation_id" => JSON.sha256(prediction["prediction_id"] <> " citation"),
+          "integrity" => "valid"
+        }
+      ])
+    end
+
+    {cases, new_blobs} =
+      Enum.map_reduce(d["spec"]["cases"], %{}, fn c, blobs ->
+        {:ok, old_bytes} = load.(c["baseline_sha256"])
+        b = Jason.decode!(old_bytes) |> update_in(["prediction"], with_citation)
+        bytes = Jason.encode!(b)
+        sha = JSON.sha256(bytes)
+        {Map.put(c, "baseline_sha256", sha), Map.put(blobs, sha, bytes)}
+      end)
+
+    revised_spec =
+      d["spec"] |> Map.put("cases", cases) |> put_in(["engine", "availability"], "available")
+
+    {:ok, revised} = Selection.declare(revised_spec)
+    by_case = Map.new(cases, &{&1["id"], &1})
+
+    revised_load = fn digest ->
+      if Map.has_key?(new_blobs, digest), do: Map.fetch(new_blobs, digest), else: load.(digest)
+    end
+
+    revised_rows =
+      Enum.map(rows, fn row ->
+        row =
+          row
+          |> Map.put("baseline_sha256", by_case[row["case_id"]]["baseline_sha256"])
+          |> update_in(["prediction"], with_citation)
+
+        if row["case_id"] == "b" do
+          row
+          |> Map.put("status", "refused")
+          |> update_in(
+            ["prediction"],
+            &(&1 |> Map.put("status", "refused") |> Map.put("response_kind", "abstention"))
+          )
+        else
+          row
+        end
+      end)
+
+    sha = JSON.digest([revised])
+    {:ok, first} = Selection.freeze_rows(revised, sha, revised_rows)
+    first_sha = JSON.digest([first])
+    {:ok, template} = Selection.prepare_reviews(revised, sha, first, first_sha, revised_load)
+
+    refused_id =
+      Enum.find(revised_rows, &(&1["status"] == "refused"))["prediction"]["prediction_id"]
+
+    reviews =
+      update_in(template, ["semantic"], fn entries ->
+        Enum.map(entries, fn review ->
+          review
+          |> Map.put("independent", true)
+          |> Map.put("reviewer_id", "synthetic-reviewer")
+          |> Map.put(
+            "verdict",
+            if(review["prediction_id"] == refused_id,
+              do: "incorrect_abstention",
+              else: "supported"
+            )
+          )
+          |> update_in(
+            ["citations"],
+            &Enum.map(&1, fn citation -> Map.put(citation, "verdict", "supported") end)
+          )
+        end)
+      end)
+
+    assert {:ok, report} =
+             Selection.score(
+               revised,
+               sha,
+               first,
+               first_sha,
+               fn -> {:ok, refs} end,
+               fn -> {:ok, Jason.encode!(reviews)} end,
+               revised_load
+             )
+
+    assert report["support_and_citations_measured"] == true
+    assert report["candidate"]["critical_recalled"] == nil
+    assert report["comparison"] == nil
+    assert report["paired_critical_observation"]["status"] == "unverified"
+    assert report["disposition"] == "unverified"
   end
 
   test "a case recalls its critical set only when every member is present" do
@@ -263,5 +431,35 @@ defmodule Ipse.Development.Evaluation.SelectionCriticalPairsTest do
     assert report["paired_critical_observation"]["status"] == "fail"
     assert report["paired_critical_observation"]["regressed_query_ids"] == ["a"]
     assert report["disposition"] == "unverified"
+
+    [first, second] = rows
+
+    refused =
+      second
+      |> Map.put("status", "refused")
+      |> Map.update!("prediction", fn prediction ->
+        prediction
+        |> Map.put("status", "refused")
+        |> Map.put("response_kind", "abstention")
+      end)
+
+    {:ok, refused_first} = Selection.freeze_rows(legacy, legacy_sha, [first, refused])
+
+    assert {:ok, refused_report} =
+             Selection.score(
+               legacy,
+               legacy_sha,
+               refused_first,
+               JSON.digest([refused_first]),
+               fn -> {:ok, label_bytes} end,
+               load
+             )
+
+    assert refused_report["baseline"]["critical_recalled"] == 1
+    assert refused_report["candidate"]["critical_recalled"] == nil
+    assert refused_report["paired_critical_observation"]["status"] == "unverified"
+    assert refused_report["paired_critical_observation"]["regressed_query_ids"] == ["a"]
+    assert refused_report["comparison"] == nil
+    assert refused_report["disposition"] == "unverified"
   end
 end

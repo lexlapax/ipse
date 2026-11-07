@@ -260,7 +260,8 @@ defmodule Ipse.Development.Evaluation.SelectionExperiment do
       end
 
     comparison =
-      if measured do
+      if measured and is_integer(baseline["critical_recalled"]) and
+           is_integer(elem(candidate, 1)["critical_recalled"]) do
         {:ok, value, _} = candidate
 
         gates =
@@ -447,9 +448,11 @@ defmodule Ipse.Development.Evaluation.SelectionExperiment do
        "abstentions" => Enum.count(values, &(&1["prediction"]["response_kind"] == "abstention")),
        "critical_total" => length(critical),
        "critical_recalled" =>
-         Enum.count(critical, fn c ->
-           Enum.all?(label_map[c["id"]]["critical_members"], &(&1 in rows[c["id"]]["members"]))
-         end),
+         if Enum.all?(critical, &(rows[&1["id"]]["prediction"]["status"] === "ok")) do
+           Enum.count(critical, fn c ->
+             Enum.all?(label_map[c["id"]]["critical_members"], &(&1 in rows[c["id"]]["members"]))
+           end)
+         end,
        "citation_total" => semantic["citation"]["total_n"],
        "citation_supported" => semantic["citation"]["supported_n"],
        "p95_ms" => if(Enum.all?(elapsed, &uint?/1), do: p95),

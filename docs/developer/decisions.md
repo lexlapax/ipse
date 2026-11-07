@@ -477,16 +477,23 @@ references before invoking the review loader. Changed populations, foreign IDs
 and citation pairs refuse. The caller still owns chronological custody: hashes
 cannot prove that labels were never exposed earlier or that a supplied review
 was independent. Historical version-1 declarations and combined label/review
-files retain their original `score/6` behavior. They are not silently converted
-to the separate version-2 contract; new studies should use version 2.
+files retain their `score/6` entry point and input format. They are not silently
+converted to the separate version-2 contract; new studies should use version 2.
+Both report null for an arm's unmeasured critical recall instead of converting
+the uncertainty to zero or a successful count.
 
 The scorer retains full baseline membership separately from the candidate's
-four-record ceiling. Missing, unknown and unavailable rows stay unmeasured;
-absent latency or cost remains null. A retrieval-only output cannot count as a
-supported answer. Synthetic engine replies produce no quality comparison. Even
-a calculated benefit leaves the report's disposition `unverified` and
-qualification `none` until the separate protocol, matched-workload, resource and independent
-review evidence is established. Exercise these distinctions with:
+four-record ceiling. Missing, unknown and unavailable rows stay unmeasured. If
+any critical case's prediction is not `ok`, including a refusal or failure,
+its arm's aggregate `critical_recalled` count is null even when that row still
+names selected members. A noncritical refusal does not erase a known critical
+count. A null critical count prevents the whole aggregate threshold comparison;
+it is neither zero nor a pass. Absent latency or cost remains null. A
+retrieval-only output cannot count as a supported answer. Synthetic engine
+replies produce no quality comparison. Even a calculated benefit leaves the
+report's disposition `unverified` and qualification `none` until the separate
+protocol, matched-workload, resource and independent review evidence is
+established. Exercise these distinctions with:
 
 ```sh
 mix test test/dev/selection_experiment_test.exs test/dev/evaluation/selection_critical_pairs_test.exs

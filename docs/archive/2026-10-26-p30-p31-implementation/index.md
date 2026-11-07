@@ -163,6 +163,7 @@ nor resource/offline qualification. No daemon configuration or existing model wa
 - [Anthropic cancelled-draft carryover](anthropic-draft-carryover-20261104.md) repairs live and saved text-only projection, preserves native outside history and passes a fresh four-wire synthetic cancellation/ordinary/same-ID journey. The first saved-policy failure and broader provider/installed/quality limits remain explicit.
 
 - [Paired critical selection observations](p30-selection-paired-critical-20261106.md) reports known per-case membership losses without changing the unverified gate or disposition; 28 pure compatibility controls pass, with accepted real-input scoring still open.
+- [Unmeasured critical recall](p30-critical-unmeasured-20261107.md) preserves null rather than reporting refused or failed critical answers as measured recall; 31 synthetic source controls pass, with independent quality and integrated qualification still open.
 
 - [Anthropic signed-thinking draft withdrawal](anthropic-signed-draft-20261106.md) adds bounded no-tool projection and pure request-body controls. A later synthetic Session/Saved fixture passed; native-terminal, installed and live qualification remain open.
 - [Anthropic tool-assisted draft withdrawal](anthropic-tool-draft-20261107.md) adds closed, matched tool groups and a synthetic Session/resume regression; installed and live qualification remain open.
