@@ -138,3 +138,23 @@ local TCP lock by the sandbox before compilation; packet `-02` reached compile
 but failed on warnings caused by its missing generated native helper. Neither
 failed attempt is reclassified as a pass. Only the fresh `-03` attempt built
 the helper before compiling.
+
+## Artifact query time context
+
+An independent scan identified a separate built-artifact test whose synthetic
+query lacked the explicit historical time context now required before reranking.
+The isolated baseline returned `query_time_changed` instead of reaching its
+existing `document_current_check_unavailable` assertion. Commit `b85f381c`
+adds that context; it does not change the document capability assertion or
+production behavior. Independent static review accepted the fixture's scope.
+
+The baseline and corrected wrapper ran in separate isolated packets at source
+base `65c5a567`. The first failed as described; the second passed its one test,
+and both packets report matching recorded source and SDK postchecks. Their
+`fixture.log` SHA-256 values are respectively
+`6093bb6729e1f5d67f15d8371609e87d5fbc7737df8033b205545608df4772f2` and
+`9f1e20365f5e89511b615af7135fec5f0a63b098e7f545dd7f0e208b3728a636`.
+The retained packets are
+`_build/verification/embedding-artifact-context-65c5a567-20261106-01/` and
+`_build/verification/embedding-artifact-context-65c5a567-20261106-02/`. This
+focused pass does not change the outcome of any full regression.
