@@ -1228,6 +1228,7 @@ defmodule Ipse.Session.DraftVerticalTest do
     end
   end
 
+  @tag :ollama_tool_draft_carryover
   test "Ollama transport withdraws no-tool drafts with thinking on cancellation and acceptance across resume",
        c do
     fixture = Ipse.Test.ProviderFixture
@@ -1378,6 +1379,115 @@ defmodule Ipse.Session.DraftVerticalTest do
           "private proposal",
           "cancelled draft thinking canary",
           "accepted draft thinking canary"
+        ] do
+      refute Jason.encode!(body) =~ canary
+    end
+  end
+
+  @tag :ollama_tool_draft_carryover
+  test "Ollama tool-assisted drafts withdraw native calls and results after cancellation and acceptance",
+       c do
+    fixture = Ipse.Test.ProviderFixture
+
+    response = fn text ->
+      fixture.ndjson([
+        %{
+          "model" => "synthetic",
+          "message" => %{"role" => "assistant", "content" => text},
+          "done" => true
+        }
+      ])
+    end
+
+    call =
+      fixture.ndjson([
+        %{
+          "model" => "synthetic",
+          "message" => %{
+            "role" => "assistant",
+            "content" => "",
+            "thinking" => "private tool thinking",
+            "tool_calls" => [
+              %{
+                "function" => %{
+                  "name" => "read",
+                  "arguments" => %{"path" => "draft-evidence.txt"}
+                }
+              }
+            ]
+          },
+          "done" => true
+        }
+      ])
+
+    File.write!(Path.join(c.root, "draft-evidence.txt"), "private draft tool result")
+
+    {url, server} =
+      fixture.sequence([
+        call,
+        response.("private proposal"),
+        response.("ordinary response"),
+        call,
+        response.("private proposal"),
+        response.("accepted response"),
+        response.("later response")
+      ])
+
+    cfg = %{provider: :ollama, provider_module: Ipse.Provider.Ollama, base_url: url}
+    {pid, _} = start(c, cfg)
+    id = Session.info(pid).id
+    assert :ok = Session.start_draft(pid, "private cancelled request")
+    assert_receive {:ipse, ^pid, {:done, :ok}}, 5_000
+    assert :ok = Session.cancel_draft(pid)
+    assert :ok = Session.prompt(pid, "ordinary task")
+    assert_receive {:ipse, ^pid, {:done, :ok}}, 5_000
+    assert :ok = Session.close_confirmed(pid)
+    {:ok, events} = Journal.load(c.dir, id)
+    assert {:ok, %{draft: %{status: :cancelled}}} = Session.Saved.restore(events, id)
+
+    accepted_context = %{c | dir: Path.join(c.root, "ollama-tool-accepted")}
+    {draft, _} = start(accepted_context, cfg)
+    accepted_id = Session.info(draft).id
+    assert :ok = Session.start_draft(draft, "private accepted request")
+    assert_receive {:ipse, ^draft, {:done, :ok}}, 5_000
+    assert {:ok, %{id: draft_id, revision: 1}} = Session.draft(draft)
+    assert :ok = Session.replace_draft(draft, draft_id, 1, "accepted task")
+    {accepted, _} = synthetic_accepted_resume(accepted_context, draft, cfg)
+    assert_receive {:ipse, ^accepted, {:done, :ok}}, 5_000
+    assert :ok = Session.close_confirmed(accepted)
+    {later, _} = start(accepted_context, cfg, accepted_id)
+    assert :ok = Session.prompt(later, "later task")
+    assert_receive {:ipse, ^later, {:done, :ok}}, 5_000
+    assert :ok = Session.close_confirmed(later)
+    {:ok, accepted_events} = Journal.load(accepted_context.dir, accepted_id)
+
+    assert {:ok, %{draft: %{status: :consumed}}} =
+             Session.Saved.restore(accepted_events, accepted_id)
+
+    assert [%{} | _] =
+             Enum.find(accepted_events, &(&1["type"] == "draft_accepted"))["tool_evidence"]
+
+    [
+      {_, _},
+      {_, draft_with_result},
+      {_, ordinary},
+      {_, _},
+      {_, accepted_with_result},
+      {_, accepted_request},
+      {_, later_request}
+    ] = Task.await(server, 5_000)
+
+    assert Jason.encode!(draft_with_result) =~ "private draft tool result"
+    assert Jason.encode!(accepted_with_result) =~ "private draft tool result"
+
+    for body <- [ordinary, accepted_request, later_request],
+        canary <- [
+          "private draft tool result",
+          "private tool thinking",
+          "draft-evidence.txt",
+          "private proposal",
+          "private cancelled request",
+          "private accepted request"
         ] do
       refute Jason.encode!(body) =~ canary
     end

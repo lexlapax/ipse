@@ -274,13 +274,15 @@ complete native output against visible text and tool calls, requires complete
 tool groups, and refuses item or call IDs shared across the withheld and retained
 intervals. When the withheld interval contains native Responses data, the
 validator also refuses foreign native output, including xAI output, in that
-interval or the retained history. Ollama permits a
-complete no-tool draft interval when each removed native assistant message has
-the exact shape checked
-by `DraftNative.ollama_draft_without_tools?/1`: visible and native text match,
-thinking is a bounded UTF-8 string, tool calls are empty and unknown fields refuse.
-The whole interval, including thinking, is withheld; native messages outside it
-are preserved unchanged. The separate `plain_text_only?/1` predicate remains
+interval or the retained history. Ollama permits a complete draft interval when
+its removed native assistant messages match the checked shapes: visible and
+native text agree, thinking is bounded UTF-8, and any native tool calls match
+their normalized names, arguments and IDs. Generated IDs must match the
+adapter's format. The prefix, removed interval and tail must each contain
+complete tool groups, with no call ID reused across the removed boundary; the
+check includes IDs retained in native Ollama messages. Unknown fields refuse.
+The whole interval, including thinking and tool results, is withheld; native
+messages outside it are preserved unchanged. The separate `plain_text_only?/1` predicate remains
 stricter for managed lineage and reference checks. Anthropic uses
 `DraftNative.anthropic_draft_without_tools?/1` for exact native text blocks whose
 concatenation matches the visible UTF-8 content, optionally interleaved with
@@ -292,8 +294,8 @@ unsigned thinking and mismatched text refuse; the validator never strips a nativ
 field to fit. The whole draft interval remains in the private journal but is
 withheld from later requests.
 The native Responses check requires complete tool grouping in the prefix,
-removed interval and tail; Ollama and Anthropic refuse tool-bearing draft
-intervals. Every projection checks the retained history's tool grouping. Native
+removed interval and tail; Anthropic refuses tool-bearing draft intervals.
+Every projection checks the retained history's tool grouping. Native
 messages outside the interval stay unchanged.
 
 Live projection selects the policy through `DraftNative.policy/1`; Saved's

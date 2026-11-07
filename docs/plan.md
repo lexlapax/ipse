@@ -493,6 +493,9 @@ following limits until the end-to-end paths are qualified:
    synthetic projection, transport and reconstruction controls pass.
    Anthropic tool-bearing drafts, broader provider coverage, installed/native-terminal
    qualification and integrated clarification remain open.
+   A [synthetic Ollama tool-assisted control](archive/2026-10-26-p30-p31-implementation/ollama-tool-draft-20261107.md)
+   also covers isolated native tool calls and results across cancellation and
+   acceptance; live and installed qualification remain open.
 5. **Decision engines — P30A–E.** Complete the host protocol and protected
    consumer integration independently of document/graph work. Enforce the explicit
    finite allowance across the whole authorized experiment, using the existing

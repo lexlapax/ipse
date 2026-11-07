@@ -281,4 +281,73 @@ defmodule Ipse.Session.DraftNativeTest do
              tail
            )
   end
+
+  test "Ollama draft calls require exact native association and a closed interval" do
+    native = %{"function" => %{"name" => "read", "arguments" => %{"path" => "private.txt"}}}
+    id = "ollama_0123456789abcdef_0"
+
+    call = %{
+      "id" => id,
+      "type" => "function",
+      "function" => %{"name" => "read", "arguments" => Jason.encode!(%{"path" => "private.txt"})}
+    }
+
+    assistant = %{
+      "role" => "assistant",
+      "content" => "",
+      "tool_calls" => [call],
+      "provider_data" => %{
+        "provider" => "ollama",
+        "message" => %{
+          "role" => "assistant",
+          "content" => "",
+          "thinking" => "private thinking",
+          "tool_calls" => [native]
+        }
+      }
+    }
+
+    result = %{"role" => "tool", "tool_call_id" => id, "content" => "private result"}
+    assert DraftNative.ollama_draft_with_tools?(assistant)
+    assert DraftNative.isolated_ollama?([], [assistant, result], [])
+    refute DraftNative.isolated_ollama?([], [assistant], [result])
+    refute DraftNative.isolated_ollama?([assistant, result], [assistant, result], [])
+    refute DraftNative.isolated_ollama?([], [assistant, result, assistant, result], [])
+
+    hidden_native = %{
+      "role" => "assistant",
+      "content" => "",
+      "provider_data" => %{
+        "provider" => "ollama",
+        "message" => %{"tool_calls" => [%{"id" => id}]}
+      }
+    }
+
+    refute DraftNative.isolated_ollama?([hidden_native], [assistant, result], [])
+
+    refute DraftNative.ollama_draft_with_tools?(
+             put_in(assistant, ["tool_calls", Access.at(0), "id"], "forged")
+           )
+
+    refute DraftNative.ollama_draft_with_tools?(
+             put_in(assistant, ["tool_calls", Access.at(0), "function", "arguments"], "{}")
+           )
+
+    refute DraftNative.ollama_draft_with_tools?(
+             put_in(
+               assistant,
+               ["provider_data", "message", "tool_calls", Access.at(0), "extra"],
+               true
+             )
+           )
+
+    assert DraftNative.ollama_draft_with_tools?(
+             assistant
+             |> put_in(
+               ["provider_data", "message", "tool_calls", Access.at(0), "id"],
+               "native-id"
+             )
+             |> put_in(["tool_calls", Access.at(0), "id"], "native-id")
+           )
+  end
 end

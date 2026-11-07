@@ -345,9 +345,10 @@ text is admitted as fresh intent with links to its original input, answers and
 read evidence. ChatGPT and OpenAI API sessions can withhold a complete Responses
 draft interval when its native items and tool exchanges are safely isolated;
 the selected provider and billing route remain unchanged. With Ollama, the
-complete no-tool draft interval can be withheld even when its native assistant
-messages contain thinking. That draft-only thinking remains in the private
-journal and is not sent on later turns. Anthropic supports
+complete draft interval can be withheld when its native assistant messages and
+tool exchanges can be safely matched and isolated, including messages containing
+thinking. Draft-only thinking and tool results remain in the private journal
+and are not sent on later turns. Anthropic supports
 withholding a no-tool draft whose native content contains matching plain-text
 blocks, bounded thinking blocks with a nonempty signature, and bounded opaque
 redacted-thinking blocks. The complete draft-only native content stays in the

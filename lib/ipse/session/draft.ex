@@ -345,17 +345,26 @@ defmodule Ipse.Session.Draft do
     do: Ipse.Session.DraftNative.responses_owned?([message])
 
   defp safe_native?(message, :ollama),
-    do: Ipse.Session.DraftNative.ollama_draft_without_tools?(message)
+    do:
+      Ipse.Session.DraftNative.ollama_draft_without_tools?(message) or
+        Ipse.Session.DraftNative.ollama_draft_with_tools?(message)
 
   defp safe_native?(message, :anthropic),
     do: Ipse.Session.DraftNative.anthropic_draft_without_tools?(message)
 
   defp safe_native?(_, _), do: false
 
-  defp native_interval?(prefix, segment, tail, policy) when policy in [:ollama, :anthropic] do
+  defp native_interval?(prefix, segment, tail, :ollama),
+    do:
+      Enum.all?(segment, fn message ->
+        message["tool_calls"] in [nil, []] or
+          Ipse.Session.DraftNative.ollama_draft_with_tools?(message)
+      end) and Ipse.Session.DraftNative.isolated_ollama?(prefix, segment, tail)
+
+  defp native_interval?(prefix, segment, tail, :anthropic) do
     Enum.all?(segment, fn message ->
       message["role"] != "tool" and message["tool_calls"] in [nil, []] and
-        (not Map.has_key?(message, "provider_data") or safe_native?(message, policy))
+        (not Map.has_key?(message, "provider_data") or safe_native?(message, :anthropic))
     end) and
       Enum.all?([prefix, segment, tail], &Ipse.Session.Reference.safe_tail?/1)
   end

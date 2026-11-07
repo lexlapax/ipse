@@ -36,6 +36,90 @@ defmodule Ipse.Session.DraftNative do
 
   def ollama_draft_without_tools?(_), do: false
 
+  # Match exactly what Ollama.finish_state emits, including its generated IDs
+  # when the native call has no ID. Never invent associations for other shapes.
+  def ollama_draft_with_tools?(
+        %{
+          "tool_calls" => calls,
+          "provider_data" => %{"provider" => "ollama", "message" => native}
+        } = message
+      )
+      when is_list(calls) and calls != [] and length(calls) <= 32 and is_map(native) do
+    clean =
+      message
+      |> Map.delete("tool_calls")
+      |> put_in(["provider_data", "message", "tool_calls"], [])
+
+    native_calls = native["tool_calls"]
+
+    ollama_draft_without_tools?(clean) and is_list(native_calls) and
+      length(native_calls) == length(calls) and
+      Enum.all?(Enum.with_index(Enum.zip(native_calls, calls)), fn {{original, normalized}, index} ->
+        ollama_call?(original, normalized, index)
+      end)
+  rescue
+    _ -> false
+  end
+
+  def ollama_draft_with_tools?(_), do: false
+
+  defp ollama_call?(
+         %{"function" => %{"name" => name, "arguments" => arguments} = function} = native,
+         %{
+           "id" => id,
+           "type" => "function",
+           "function" => %{"name" => name, "arguments" => encoded} = normalized_function
+         } = normalized,
+         index
+       ) do
+    Enum.all?(Map.keys(native), &(&1 in ~w(id function))) and
+      Enum.sort(Map.keys(function)) == ~w(arguments name) and
+      Enum.sort(Map.keys(normalized)) == ~w(function id type) and
+      Enum.sort(Map.keys(normalized_function)) == ~w(arguments name) and
+      is_binary(name) and name != "" and is_binary(id) and
+      if(Map.has_key?(native, "id"),
+        do: native["id"] === id,
+        else: Regex.match?(~r/\Aollama_[0-9a-f]{16}_#{index}\z/, id)
+      ) and
+      encoded === if(is_binary(arguments), do: arguments, else: Jason.encode!(arguments || %{}))
+  end
+
+  defp ollama_call?(_, _, _), do: false
+
+  def isolated_ollama?(prefix, segment, tail) do
+    with true <- Enum.all?([prefix, segment, tail], &Ipse.Session.Reference.safe_tail?/1),
+         ids <- for(message <- segment, call <- message["tool_calls"] || [], do: call["id"]),
+         true <- length(ids) == length(Enum.uniq(ids)),
+         inside <- tool_ids(segment),
+         outside <- tool_ids(prefix ++ tail),
+         true <- MapSet.disjoint?(inside, outside) do
+      true
+    else
+      _ -> false
+    end
+  rescue
+    _ -> false
+  end
+
+  defp tool_ids(messages) do
+    messages
+    |> Enum.flat_map(fn message ->
+      native_calls =
+        case message["provider_data"] do
+          %{"provider" => "ollama", "message" => %{"tool_calls" => calls}} when is_list(calls) ->
+            calls
+
+          _ ->
+            []
+        end
+
+      Enum.map((message["tool_calls"] || []) ++ native_calls, & &1["id"]) ++
+        [message["tool_call_id"]]
+    end)
+    |> Enum.filter(&is_binary/1)
+    |> MapSet.new()
+  end
+
   @doc false
   def anthropic_draft_without_tools?(
         %{
