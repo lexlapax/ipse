@@ -1273,6 +1273,29 @@ defmodule Ipse.Development.VerificationTest do
         before_intent = events ++ [%{"type" => "turn_finished", "status" => "error"}]
         %{"action_error_codes" => [], "action_statuses" => %{}} =
           Ipse.Development.Verification.Memory.failure_diagnostic("remember", "done_error", before_intent)
+        operations = [
+          %{"type" => "extension_invocation_intent"},
+          %{"type" => "extension_action_intent", "request" => %{"op" => "state.get", "key" => secret}},
+          %{"type" => "extension_action_result", "request" => %{"op" => "state.get", "key" => secret},
+            "outcome" => %{"status" => "unknown", "value" => %{}}},
+          %{"type" => "extension_action_result", "request" => %{"op" => "state.put", "value" => secret},
+            "outcome" => %{"status" => "ok", "value" => %{}}},
+          %{"type" => "extension_action_result", "request" => %{"op" => secret},
+            "outcome" => %{"status" => secret, "value" => %{}}},
+          %{"type" => "extension_action_result", "request" => %{"op" => "state.scan"},
+            "outcome" => secret},
+          %{"type" => "turn_finished"}
+        ]
+        operation_diagnostic = Ipse.Development.Verification.Memory.failure_diagnostic(
+          "remember", "done_error", operations)
+        %{"state.get" => %{"intent" => 1, "unknown" => 1},
+          "state.put" => %{"ok" => 1}, "state.scan" => %{"other" => 1},
+          "other" => %{"other" => 1}} =
+          operation_diagnostic["action_operations"]
+        false = String.contains?(Jason.encode!(operation_diagnostic), secret)
+        %{"action_operations" => %{}} =
+          Ipse.Development.Verification.Memory.failure_diagnostic(
+            "remember", "done_error", operations ++ [%{"type" => "extension_invocation_intent"}])
         %{"redacted" => true, "current_invocation_only" => true}
       end).()
       """
@@ -1296,7 +1319,8 @@ defmodule Ipse.Development.VerificationTest do
         diagnostic = Ipse.Development.Verification.Memory.failure_diagnostic("secret", "secret", events)
         %{"phase" => "unknown", "terminal" => "unknown", "error_event" => "not_observed",
           "error_code" => "unavailable", "events_truncated" => true,
-          "event_types" => %{"extension_action_result" => 16}} = diagnostic
+          "event_types" => %{"extension_action_result" => 16},
+          "action_operations" => %{"other" => %{"failed" => 16}}} = diagnostic
         8 = length(diagnostic["action_error_codes"])
         false = "extension_state_unavailable" in diagnostic["action_error_codes"]
         %{"bounded" => true}

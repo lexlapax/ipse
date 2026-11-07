@@ -87,3 +87,31 @@ flow; execution history remains here. The macOS first failure remains unknown.
 These pure controls establish neither retrieval correctness nor a passing
 installed package, hosted matrix or full source baseline. The separate native
 binding controls are outside this record's scope.
+
+## Later hosted result and operation categories
+
+The macOS installed-package check in hosted run `42324621646` again stopped at
+its first synthetic `remember` command. The retained diagnostic reports one
+action intent and one unknown action result, but classifies the available error
+as unrecognized. It does not establish whether the action was a read or write,
+why the outcome was unknown, or whether the earlier failure had the same cause.
+The later installed proofs in that job were skipped. The unknown outcome was not
+replayed.
+
+The diagnostic now also groups the latest bounded action rows by an explicit
+allowlist of State operation and outcome labels. Unknown labels become `other`;
+keys, values, paths, IDs and error prose are never included. A malformed outcome
+is omitted from the existing error-code projection rather than raising. This
+does not change the verifier's actions, approvals, timeout or cleanup. It can
+distinguish operation categories in a future failure, not identify the native
+phase responsible for an unknown outcome.
+
+Two isolated pure controls evaluated the actual diagnostic and the two selected
+synthetic test expressions, covering redaction, unknown and malformed labels,
+latest-invocation selection and the 16-row bound. The controls passed with their
+recorded inputs unchanged. The packet is
+`_build/verification/memory-diagnostic-pure-20261106-01/`; `run.log` SHA-256 is
+`d4a6b70f5e7973b884b487798f06b27a6bb22e711c749a6e792bd4f1887338af`, and
+`status.txt` SHA-256 is
+`49c23c18061f83423af1f8435b7445c0f584f8b3ba0769685bb2c4ff6bbf1fb7`.
+These controls do not run the installed verifier or qualify macOS.

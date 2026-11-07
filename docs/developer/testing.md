@@ -685,8 +685,11 @@ source/installed launch, retained failure, and cleanup precedence.
 
 Retain a safe first-failure diagnostic before cleaning up a scenario's synthetic
 store. The Memory verifier projects fixed command-phase and terminal labels,
-counts of recognized journal event types and action statuses, and an explicit
-allowlist of Core-defined machine error codes. Other codes become
+counts of recognized journal event types and action statuses, bounded
+`action_operations` counts using fixed State operation and status names, and an
+explicit allowlist of Core-defined machine error codes. In `action_operations`,
+other operation names and statuses become `other`; the separate action-status
+aggregate omits unrecognized statuses. Other codes become
 `unrecognized`; an absent code becomes `unavailable`. Even an identifier-shaped
 string can contain private data, so a character-pattern check is insufficient.
 Never include raw error prose, command arguments, State values, transcripts,

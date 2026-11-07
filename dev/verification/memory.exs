@@ -6,6 +6,8 @@ defmodule Ipse.Development.Verification.Memory do
 
   @diagnostic_types ~w(extension_invocation_intent extension_invocation_result extension_action_intent extension_action_result turn_finished)
   @diagnostic_codes ~w(extension_state_unavailable invalid_extension_state_request extension_state_quota write_deadline_elapsed state_deadline_fence_unavailable invalid_extension_invocation extension_output_refused extension_deadline_or_callback_failed extension_action_refused extension_action_stopped cleanup_unconfirmed owner_control_unavailable)
+  @diagnostic_operations ~w(state.get state.put state.delete state.list state.scan)
+  @diagnostic_statuses ~w(ok conflict denied unknown answered cancelled failed)
 
   def run(corpus_path) do
     {:ok, _} = Application.ensure_all_started(:ipse)
@@ -329,6 +331,7 @@ defmodule Ipse.Development.Verification.Memory do
 
     codes =
       for %{"type" => "extension_action_result", "outcome" => outcome} <- rows,
+          is_map(outcome),
           outcome["status"] in ~w(failed conflict),
           %{"code" => code} <- [outcome["value"]],
           do: diagnostic_code(code)
@@ -359,9 +362,36 @@ defmodule Ipse.Development.Verification.Memory do
             []
         end)
         |> Enum.frequencies(),
+      "action_operations" => action_operations(rows),
       "action_error_codes" => codes |> Enum.uniq() |> Enum.sort() |> Enum.take(8),
       "events_truncated" => length(tail) > 16
     }
+  end
+
+  defp action_operations(rows) do
+    Enum.reduce(rows, %{}, fn
+      %{"type" => type} = event, counts
+      when type in ~w(extension_action_intent extension_action_result) ->
+        operation =
+          case event do
+            %{"request" => %{"op" => op}} when op in @diagnostic_operations -> op
+            _ -> "other"
+          end
+
+        status =
+          case event do
+            %{"type" => "extension_action_intent"} -> "intent"
+            %{"outcome" => %{"status" => value}} when value in @diagnostic_statuses -> value
+            _ -> "other"
+          end
+
+        Map.update(counts, operation, %{status => 1}, fn statuses ->
+          Map.update(statuses, status, 1, &(&1 + 1))
+        end)
+
+      _, counts ->
+        counts
+    end)
   end
 
   defp error_code(%{"code" => code}), do: diagnostic_code(code)
