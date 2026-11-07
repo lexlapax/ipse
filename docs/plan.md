@@ -245,6 +245,10 @@ following limits until the end-to-end paths are qualified:
    now refuses unclassified managed values rather than exposing a proposal after
    loss of its source. It also temporarily refuses generic reads of saved
    overrides and unrelated managed values; a safe compatible path remains open.
+   Current native retention review binds one existing note, whereas a saved
+   override would apply to future captures for a lineage. The former is not
+   approval of the latter: restoring override reads needs an authenticated
+   choice for that exact wider scope and matching replay/current-use checks.
    [Recorded generic reads](archive/2026-10-26-p30-p31-implementation/managed-read-replay-containment-20261103.md)
    now apply the same classification during reconstruction, so affected older
    Sessions fail closed rather than using a root-only receipt; receiptless
