@@ -580,6 +580,10 @@ defmodule IpseKnowledge.Store.Collection.Index do
         rank
         |> Map.put("coverage", coverage)
         |> Map.put("native_generation", value["native_generation"])
+        |> Map.put(
+          "query_time_transition",
+          next_query_transition(s.summaries, s.args["as_of_ms"])
+        )
         |> Map.put("selected_sources", s.selected_sources)}}
     else
       _ -> error(:lexical_selection_changed)
@@ -1263,6 +1267,13 @@ defmodule IpseKnowledge.Store.Collection.Index do
 
   defp eligible?(s, now) do
     Enum.at(s, 6) <= now and (Enum.at(s, 7) == nil or Enum.at(s, 7) > now) and not Enum.at(s, 8)
+  end
+
+  defp next_query_transition(summaries, selected) do
+    summaries
+    |> Enum.flat_map(&[Enum.at(&1, 6), Enum.at(&1, 7)])
+    |> Enum.filter(&(is_integer(&1) and &1 > selected))
+    |> Enum.min(fn -> nil end)
   end
 
   defp posting_row?([term, rows], sources) do

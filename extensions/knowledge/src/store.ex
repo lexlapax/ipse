@@ -272,6 +272,42 @@ defmodule IpseKnowledge.Store do
 
   def start_revalidation(_, _, _), do: error(:invalid_snapshot)
 
+  # A caller requiring a namespace-generation fence must observe the namespace
+  # even when no source tokens were selected. The ordinary empty-token API
+  # retains its no-call behavior.
+  def start_fenced_revalidation(name, profile, %{"tokens" => []} = args) do
+    with true <- name?(name) and profile?(profile),
+         :ok <- arguments(:revalidate, args) do
+      state = %{
+        name: name,
+        profile: profile,
+        operation: :revalidate,
+        args: args,
+        effects: Map.get(args, "effects_used", 0),
+        reads: Map.get(args, "reads_used", 0),
+        cache: nil,
+        stage: nil,
+        io: nil
+      }
+
+      {effects, reads} = if profile["kind"] == "state", do: {0, 1}, else: {1, 15}
+
+      if allowance?(state, effects, reads) do
+        key = Evidence.id("namespace-generation-probe", [profile["partition"]])
+        io(state, :get_many, %{"keys" => [key]}, :revalidated)
+      else
+        error(:effect_limit)
+      end
+    else
+      _ -> error(:invalid_store_arguments)
+    end
+  rescue
+    _ -> error(:invalid_store_arguments)
+  end
+
+  def start_fenced_revalidation(name, profile, args),
+    do: start_revalidation(name, profile, args)
+
   defp revalidation_next(%{pending: []} = batch) do
     {:done,
      {:ok,
@@ -279,6 +315,7 @@ defmodule IpseKnowledge.Store do
         "tokens" => batch.tokens,
         "gaps" => [],
         "valid" => true,
+        "store_generation" => batch.generation,
         "coverage" => Map.take(batch.args, ~w(effects_used reads_used))
       }}}
   end

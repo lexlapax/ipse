@@ -809,6 +809,133 @@ defmodule Ipse.KnowledgeDocumentAcquisitionSessionTest do
     refute Enum.any?(events, &(&1["type"] == "request_admitted"))
   end
 
+  @tag :workspace_current_query
+  test "an unrelated root inserted during the workspace check conflicts with the captured generation",
+       c do
+    run = open(c)
+    File.write!(Path.join(run.cwd, "source.docx"), document("Vega migration requires an audit."))
+    assert invoke(run, "source", args())["status"] == "ok"
+    assert query(run, "Vega migration")["status"] == "ok"
+    {_, _, before} = stored_state(run)
+    source_key = JSON.sha256("synthetic-unrelated-suppressed")
+    partition = "manual"
+    key = JSON.digest(["ipse-knowledge", 1, "root", [partition, source_key]])
+    refute Map.has_key?(before["records"], key)
+
+    suppressed = %{
+      "format" => 1,
+      "kind" => "root",
+      "partition" => partition,
+      "source_key" => source_key,
+      "generation" => 1,
+      "state" => "suppressed",
+      "suppressed_at_ms" => 0
+    }
+
+    callback = fn
+      0,
+      {:in,
+       {:"$gen_call", _,
+        {:extension_action_begin, _, %{"name" => "read", "arguments" => %{"max_bytes" => 1}}}}},
+      _ ->
+        change_record(run, key, suppressed)
+        1
+
+      count, _, _ ->
+        count
+    end
+
+    assert :ok = :sys.install(run.pid, {callback, 0})
+    result = query(run, "Vega migration")
+    assert result["status"] == "conflict"
+    assert result["gaps"] == [%{"code" => "snapshot_changed"}]
+    assert result["evidence"] == [] and result["claims"] == []
+    {_, _, after_write} = stored_state(run)
+    assert after_write["generation"] == before["generation"] + 1
+    assert Map.delete(after_write["records"], key) === before["records"]
+    assert after_write["records"][key]["value"] === suppressed
+    assert query(run, "Vega migration")["status"] == "ok"
+    assert_document_query_idle_resume(run)
+  end
+
+  @tag :workspace_current_query
+  @tag timeout: 60_000
+  test "current query expiry during the workspace check refuses while historical selection remains usable",
+       c do
+    run = open(c)
+    File.write!(Path.join(run.cwd, "source.docx"), document("Vega migration requires an audit."))
+    deadline = System.system_time(:millisecond) + 12_000
+    source_args = put_in(args(), ["args", "expires_at_ms"], deadline)
+    assert invoke(run, "source", source_args)["status"] == "ok"
+    selected = System.system_time(:millisecond)
+    assert selected < deadline
+
+    query_args = %{
+      "store" => "notes",
+      "retrieval" => "words",
+      "rerank" => nil,
+      "query" => "Vega migration",
+      "top_k" => 1,
+      "as_of_ms" => nil
+    }
+
+    assert invoke(run, "query", query_args)["status"] == "ok"
+    assert System.system_time(:millisecond) < deadline
+    observer = self()
+
+    callback = fn
+      0,
+      {:in,
+       {:"$gen_call", _,
+        {:extension_action_begin, _, %{"name" => "read", "arguments" => %{"max_bytes" => 1}}}}},
+      _ ->
+        wait_for_document_deadline(deadline, System.monotonic_time(:millisecond) + 15_000)
+        send(observer, {:document_deadline_observed, deadline})
+        1
+
+      count, _, _ ->
+        count
+    end
+
+    assert :ok = :sys.install(run.pid, {callback, 0})
+    result = invoke(run, "query", query_args)
+    assert_receive {:document_deadline_observed, ^deadline}, 1_000
+    assert result["status"] == "refused"
+    assert result["gaps"] == [%{"code" => "query_time_changed"}]
+    assert result["evidence"] == [] and result["claims"] == []
+    assert invoke(run, "query", %{query_args | "as_of_ms" => selected})["status"] == "ok"
+    assert_document_query_idle_resume(run)
+  end
+
+  defp wait_for_document_deadline(deadline, watchdog) do
+    if System.system_time(:millisecond) < deadline do
+      assert System.monotonic_time(:millisecond) < watchdog
+      Process.sleep(10)
+      wait_for_document_deadline(deadline, watchdog)
+    end
+  end
+
+  defp assert_document_query_idle_resume(run) do
+    id = Session.info(run.pid).id
+    assert {:ok, events} = Journal.load(run.dir, id)
+    assert {:ok, _} = Session.Saved.restore(events, id)
+    refute Enum.any?(events, &(&1["type"] == "request_admitted"))
+    assert :ok = Session.close_confirmed(run.pid)
+    journal = Path.join(run.dir, id <> ".jsonl")
+    before = File.read!(journal)
+
+    assert {:ok, resumed} =
+             DynamicSupervisor.start_child(
+               Ipse.Sessions,
+               {Session, Keyword.put(run.opts, :id, id)}
+             )
+
+    on_exit(fn -> if Process.alive?(resumed), do: Session.close_confirmed(resumed) end)
+    assert Session.info(resumed).phase == :idle
+    assert_idle_resume_journal(journal, before, id)
+    assert :ok = Session.close_confirmed(resumed)
+  end
+
   @tag :public_many_block_document
   @tag skip:
          if(is_nil(System.get_env("IPSE_PUBLIC_WORD_FIXTURE")),

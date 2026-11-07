@@ -47,7 +47,7 @@ defmodule IpseKnowledge.CollectionCompletedBackupCases do
     }
   end
 
-  defp source_plan(generation, receipt \\ nil) do
+  defp source_plan(generation, receipt \\ nil, times \\ %{}) do
     attrs = %{
       "source_id" => "backup:one",
       "partition" => "docs",
@@ -55,9 +55,9 @@ defmodule IpseKnowledge.CollectionCompletedBackupCases do
       "title" => "Backup source",
       "text" => "Ada knows Bea. Café evidence.",
       "uri" => "provided:backup",
-      "observed_at_ms" => 10,
+      "observed_at_ms" => Map.get(times, :observed, 10),
       "event_at_ms" => nil,
-      "expires_at_ms" => nil,
+      "expires_at_ms" => Map.get(times, :expires),
       "origin" => %{
         "kind" => "provided",
         "store_profile" => "documents",
@@ -77,8 +77,8 @@ defmodule IpseKnowledge.CollectionCompletedBackupCases do
     plan
   end
 
-  defp base(generation \\ 2, receipt \\ nil) do
-    plan = source_plan(generation, receipt)
+  defp base(generation \\ 2, receipt \\ nil, times \\ %{}) do
+    plan = source_plan(generation, receipt, times)
     {:ok, head} = C.planned_source_head(plan, 0)
     source = plan.source
 
@@ -121,6 +121,11 @@ defmodule IpseKnowledge.CollectionCompletedBackupCases do
   def completed_source_fixture do
     c = base()
     %{profile: @profile, records: records(c.values), source: c.source, catalog: c.catalog}
+  end
+
+  def temporal_fixture(receipt \\ nil) do
+    times = %{observed: Process.get(:observed, 10), expires: Process.get(:expires)}
+    base(2, receipt, times) |> indexed()
   end
 
   defp indexed(c) do

@@ -1159,12 +1159,16 @@ chunk pairs cannot exceed top-k. Text result is at most 65536 bytes.
 
 Store reads only selected roots/pages at reported generation, checks bytes/source/
 chunk/time eligibility, and revalidates roots. Stale/suppressed/historical/forged/
-wrong-partition refs refuse the whole result. Empty refs abstain without Store reads.
+wrong-partition refs refuse the whole result. Empty refs require one bounded Store
+generation probe and abstain only when its generation still matches. The probe
+is an MCP call whose result pages also count against the invocation's limits.
+For a null as-of time, the time check covers hydrated selected sources; it cannot
+observe an omitted source becoming eligible or establish remote ranking completeness.
 No full-directory root-count validation occurs. Scores remain server-asserted,
 not local BM25 or proof of the server's index/access policy. The
-[public MCP proof](../../dev/verification/knowledge_mcp.exs) tests selected-only reads,
-denial, wrong partitions, incomplete/forged/stale replies, exactly one empty-query
-call, and inert interrupted recovery. It establishes protocol, not ranking quality.
+[public MCP verifier](../../dev/verification/knowledge_mcp.exs) exercises selected-only
+reads, denial, wrong partitions, incomplete/forged/stale replies and inert
+interrupted recovery. A passing run checks those protocol cases, not ranking quality.
 
 ## Implement the Research search/fetch gateway
 

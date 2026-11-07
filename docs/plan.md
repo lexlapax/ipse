@@ -329,6 +329,9 @@ following limits until the end-to-end paths are qualified:
    proposed recall check on this retained notebook. Preserve that refusal and
    the original 2,100 operation records and unknown outcomes; do not run that
    check, renew access for it, or substitute another consumer as a workaround.
+   A separate fresh synthetic [rejection follow-up diagnostic](archive/2026-10-26-p30-p31-implementation/rejection-diagnostic-setup-20261106.md)
+   stopped during bundle setup before rejection or inference; it did not identify
+   the earlier refusal or qualify recapture suppression.
    A [native renewed-recall control](archive/2026-10-26-p30-p31-implementation/authenticated-expired-recall-20261104.md)
    now passes after narrowly classifying authenticated expired ordinary neighbors,
    preserving current permission and original-source gates. Two later retained-cohort reads on c8245f87 remain failed: the first
@@ -1355,10 +1358,12 @@ passes generic installed checks and the independent synthetic decision/document
 artifacts; full-source, consumer-quality and installed knowledge qualification
 remain open.
 
-The latest [complete frozen-source baseline](archive/2026-10-26-p30-p31-implementation/full-suite-546869c8-20261106.md)
+The earlier [complete frozen-source baseline](archive/2026-10-26-p30-p31-implementation/full-suite-546869c8-20261106.md)
 at `546869c8` exited 0: 4,288 passed, 136 skipped and 124 excluded, with
 matching source, build and toolchain inventories and independently confirmed
-cleanup. It does not cover later changes. The earlier
+cleanup. The later [98267afd regression](archive/2026-10-26-p30-p31-implementation/full-regression-98267afd-20261106.md)
+passed 4,294 tests with 136 skipped and 124 excluded. Neither run covers the
+later uncommitted candidate. The earlier
 [complete `9f1707c` baseline](archive/2026-10-26-p30-p31-implementation/full-suite-cancel-repair-20261102.md)
 followed the [controlled cancellation repair](archive/2026-10-26-p30-p31-implementation/worker-input-cancel-20261102.md).
 The earlier [failed `39c8043` execution](archive/2026-10-26-p30-p31-implementation/full-suite-20261102.md)
@@ -1432,6 +1437,30 @@ The [exact query-prefix candidate](archive/2026-10-26-p30-p31-implementation/que
 has synthetic State, MCP and Collection refusal controls and fresh State and
 Collection artifact controls. A bounded synthetic Collection Session also passes;
 installed and full integrated verification remain open.
+
+The [Corpus State/MCP namespace-fence candidate](archive/2026-10-26-p30-p31-implementation/corpus-namespace-fence-20261106.md)
+has synthetic source and wrapper controls for concurrent insertion, empty
+snapshots, batched tokens and a simulated document current-use callback.
+Separate fixture controls cover 32 fetched sources and 32 selectors; Collection
+checks cover routing only. Two [State Session controls](archive/2026-10-26-p30-p31-implementation/focused-session-20261106.md)
+now cover a concurrent root insertion and source expiry during a workspace check.
+Native Collection and broader real MCP race coverage remain open. A separate [full-snapshot time candidate](archive/2026-10-26-p30-p31-implementation/corpus-query-time-20261106.md)
+has 14 private synthetic controls for source/fact boundaries, explicit history,
+pre-rerank proposal and a simulated workspace callback. The integrated wrapper
+also passed by owner report, without a retained raw log; real transport remains
+unverified. A separately reviewed synthetic source candidate extends the check
+to hydrated remote-selected sources; omitted sources remain outside its coverage.
+Collection namespace and explicitly selected queries have a separately reviewed
+source-time candidate with synthetic closed-host controls, including an empty
+namespace and a simulated workspace callback. Selected semantic fact checks use
+controlled continuations. The [isolated wrapper repair](archive/2026-10-26-p30-p31-implementation/completed-backup-wrapper-repair-20261106.md)
+preserves a failed combined run, a separately passing 19-case wrapper and a
+later three-wrapper pass. Real
+Collection Session, shared-generation semantic hydration, approval-to-dispatch
+timing and delivery leases remain open. The synthetic MCP verifier passes
+separate [source](archive/2026-10-26-p30-p31-implementation/knowledge-mcp-source-verifier-20261106.md)
+and [installed](archive/2026-10-26-p30-p31-implementation/knowledge-mcp-installed-verifier-20261106.md)
+checks; their retained unknown outcomes and cleanup scope remain explicit.
 
 The [expected-forget target control](archive/2026-10-26-p30-p31-implementation/expected-forget-target-20261106.md)
 adds an opt-in internal exact-target and control-ledger constraint with a fresh

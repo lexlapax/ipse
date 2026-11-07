@@ -64,13 +64,13 @@ defmodule IpseKnowledge.Corpus do
   end
 
   def handle("invoke.command", payload, state),
-    do: invoke(payload, Map.delete(state, :document_budget))
+    do: invoke(payload, state |> Map.delete(:document_budget) |> Map.delete(:collection_query))
 
   def handle("invoke.tool", %{"id" => "source"}, state),
     do: finish(state, refused(:invalid_invocation))
 
   def handle("invoke.tool", payload, state),
-    do: invoke(payload, Map.delete(state, :document_budget))
+    do: invoke(payload, state |> Map.delete(:document_budget) |> Map.delete(:collection_query))
 
   def handle("host.actions", payload, %{phase: phase} = state)
       when phase in [:document_read, :document_check],
@@ -801,6 +801,8 @@ defmodule IpseKnowledge.Corpus do
          at = args["as_of_ms"] || System.system_time(:millisecond),
          true <- Evidence.safe_uint?(at) do
       if retrieval["kind"] == "bm25" do
+        state = Map.put(state, :collection_query, true)
+
         advance(
           CollectionStore.start(profile, :selected, %{
             "source_ids" => args["source_ids"],
@@ -809,6 +811,8 @@ defmodule IpseKnowledge.Corpus do
           %{state | phase: :collection_query, ctx: %{args: args, as_of_ms: at}}
         )
       else
+        state = Map.put(state, :collection_query, true)
+
         advance(
           CollectionStore.start(
             profile,
@@ -1185,6 +1189,8 @@ defmodule IpseKnowledge.Corpus do
       cond do
         store_profile["kind"] == "collection" ->
           if retrieval["kind"] == "bm25" and is_nil(rerank_profile) do
+            state = Map.put(state, :collection_query, true)
+
             advance(
               CollectionStore.start(store_profile, :lexical_query, %{
                 "query" => args["query"],
@@ -1902,6 +1908,8 @@ defmodule IpseKnowledge.Corpus do
               state.ctx
               |> Map.put(:document_generation, rank["native_generation"])
               |> Map.put(:document_sources, rank["selected_sources"])
+              |> Map.put(:query_time_scope, :collection)
+              |> Map.put(:query_time_transition, Map.get(rank, "query_time_transition", :missing))
         },
         output(
           rank["status"],
@@ -1936,6 +1944,14 @@ defmodule IpseKnowledge.Corpus do
               state.ctx
               |> Map.put(:document_generation, snapshot["native_generation"])
               |> Map.put(:document_sources, snapshot["sources"])
+              |> Map.put(:query_time_scope, :collection)
+              |> Map.put(
+                :query_time_transition,
+                next_query_transition(
+                  %{"sources" => snapshot["sources"], "projections" => %{}},
+                  state.ctx.as_of_ms
+                )
+              )
         },
         output(rank["status"], rank["evidence"], rank["claims"], rank["gaps"], coverage, nil)
       )
@@ -1961,7 +1977,15 @@ defmodule IpseKnowledge.Corpus do
       %{
         state
         | phase: :collection_semantic_profile,
-          ctx: state.ctx |> Map.put(:snapshot, snapshot) |> Map.put(:selected_snapshot, selected)
+          ctx:
+            state.ctx
+            |> Map.put(:snapshot, snapshot)
+            |> Map.put(:selected_snapshot, selected)
+            |> Map.put(:query_time_scope, :collection)
+            |> Map.put(
+              :query_time_transition,
+              next_query_transition(snapshot, state.ctx.as_of_ms)
+            )
       }
     )
   end
@@ -1969,25 +1993,29 @@ defmodule IpseKnowledge.Corpus do
   defp advance({:done, {:ok, configured}}, %{phase: :collection_semantic_profile} = state) do
     selection = state.ctx.args["vector_selection"]
 
-    if configured["selection_sha256"] === selection["selection_sha256"] and
-         configured["profile"]["id"] === selection["profile"] do
-      query = state.ctx.args["query"]
-
-      advance(
-        Adapters.start(state.resolved, :embed, %{
-          "profile" => state.ctx.retrieval["embedding"],
-          "expected_selection_sha256" => selection["selection_sha256"],
-          "inputs" => [
-            %{
-              "chunk_id" => Evidence.sha256("query:" <> query),
-              "text" => Map.get(state.ctx.retrieval, "query_prefix", "") <> query
-            }
-          ]
-        }),
-        %{state | phase: :collection_semantic_embed}
-      )
+    if state.ctx[:query_time_scope] != :collection or not query_time_valid?(state) do
+      finish(state, refused(:query_time_changed))
     else
-      finish(state, refused(:incompatible_query_embedding))
+      if configured["selection_sha256"] === selection["selection_sha256"] and
+           configured["profile"]["id"] === selection["profile"] do
+        query = state.ctx.args["query"]
+
+        advance(
+          Adapters.start(state.resolved, :embed, %{
+            "profile" => state.ctx.retrieval["embedding"],
+            "expected_selection_sha256" => selection["selection_sha256"],
+            "inputs" => [
+              %{
+                "chunk_id" => Evidence.sha256("query:" <> query),
+                "text" => Map.get(state.ctx.retrieval, "query_prefix", "") <> query
+              }
+            ]
+          }),
+          %{state | phase: :collection_semantic_embed}
+        )
+      else
+        finish(state, refused(:incompatible_query_embedding))
+      end
     end
   end
 
@@ -2062,25 +2090,31 @@ defmodule IpseKnowledge.Corpus do
     valid =
       if phase == :document_use_collection,
         do: checked["native_generation"] === state.ctx.document_generation,
-        else: checked["valid"] === true
+        else:
+          checked["valid"] === true and
+            checked["store_generation"] === state.ctx.snapshot["coverage"]["generation"]
 
     sources =
       Map.get(state.ctx, :document_sources) || get_in(state.ctx, [:snapshot, "sources"]) || []
 
     at = state.ctx.args["as_of_ms"] || System.system_time(:millisecond)
 
-    if valid and Enum.all?(sources, &Evidence.current?(&1, at)) do
-      value =
-        update_in(state.ctx.document_use_result, ["coverage"], fn coverage ->
-          Map.put(coverage, "workspace_store_revalidation", checked["coverage"])
-        end)
-
-      publish_result(state, value)
+    if phase === :document_use_store and valid and not query_time_valid?(state) do
+      publish_result(state, refused(:query_time_changed))
     else
-      publish_result(
-        state,
-        output("conflict", [], [], [%{"code" => "snapshot_changed"}], %{}, nil)
-      )
+      if valid and Enum.all?(sources, &Evidence.current?(&1, at)) do
+        value =
+          update_in(state.ctx.document_use_result, ["coverage"], fn coverage ->
+            Map.put(coverage, "workspace_store_revalidation", checked["coverage"])
+          end)
+
+        publish_result(state, value)
+      else
+        publish_result(
+          state,
+          output("conflict", [], [], [%{"code" => "snapshot_changed"}], %{}, nil)
+        )
+      end
     end
   end
 
@@ -2128,7 +2162,11 @@ defmodule IpseKnowledge.Corpus do
   end
 
   defp advance({:done, {:ok, snapshot}}, %{phase: :query_snapshot} = state) do
-    ctx = Map.put(state.ctx, :snapshot, snapshot)
+    ctx =
+      state.ctx
+      |> Map.put(:snapshot, snapshot)
+      |> Map.put(:query_time_scope, :full)
+      |> Map.put(:query_time_transition, next_query_transition(snapshot, state.ctx.as_of_ms))
 
     model_effects =
       if(ctx.retrieval["kind"] in ~w(dense hybrid), do: 1, else: 0) +
@@ -2139,7 +2177,7 @@ defmodule IpseKnowledge.Corpus do
 
     read_allowance = if(ctx.retrieval["kind"] in ~w(dense hybrid), do: 8, else: 0)
 
-    if query_plan?(snapshot["coverage"], model_effects, read_allowance),
+    if query_plan?(snapshot, ctx.store_profile, model_effects, read_allowance),
       do: rank_query(%{state | ctx: ctx}, snapshot),
       else: finish(state, refused(:effect_budget))
   end
@@ -2168,7 +2206,7 @@ defmodule IpseKnowledge.Corpus do
         else: 0
       )
 
-    if query_plan?(snapshot["coverage"], model_effects, 0) do
+    if query_plan?(snapshot, state.ctx.store_profile, model_effects, 0) do
       case Evidence.rank_remote(
              snapshot["sources"],
              state.ctx.remote["refs"],
@@ -2180,7 +2218,16 @@ defmodule IpseKnowledge.Corpus do
           rank =
             Map.update!(rank, "coverage", &Map.put(&1, "remote", state.ctx.remote["coverage"]))
 
-          ctx = state.ctx |> Map.put(:snapshot, snapshot) |> Map.put(:rank, rank)
+          ctx =
+            state.ctx
+            |> Map.put(:snapshot, snapshot)
+            |> Map.put(:rank, rank)
+            |> Map.put(:query_time_scope, :remote_selected)
+            |> Map.put(
+              :query_time_transition,
+              next_query_transition(snapshot, state.ctx.as_of_ms)
+            )
+
           maybe_rerank(%{state | ctx: ctx})
 
         _ ->
@@ -2207,29 +2254,37 @@ defmodule IpseKnowledge.Corpus do
   end
 
   defp advance({:done, {:ok, checked}}, %{phase: :query_revalidate} = state) do
-    if checked["valid"] == true do
-      rank =
-        Evidence.query_scope(
-          state.ctx.rank,
-          state.ctx.snapshot["sources"],
-          state.ctx.snapshot["gaps"],
-          state.ctx.as_of_ms
+    if checked["valid"] == true and
+         checked["store_generation"] === state.ctx.snapshot["coverage"]["generation"] do
+      if not query_time_valid?(state) do
+        finish(state, refused(:query_time_changed))
+      else
+        rank =
+          Evidence.query_scope(
+            state.ctx.rank,
+            state.ctx.snapshot["sources"],
+            state.ctx.snapshot["gaps"],
+            state.ctx.as_of_ms
+          )
+
+        coverage =
+          Map.merge(rank["coverage"], %{
+            "as_of_ms" => state.ctx.as_of_ms,
+            "store" => state.ctx.snapshot["coverage"],
+            "final_validation" => checked["coverage"],
+            "revalidated" => true
+          })
+
+        claims =
+          if rank["claims"] == [],
+            do: elem(Evidence.classify(rank["evidence"], [], state.ctx.args["query"]), 1),
+            else: rank["claims"]
+
+        finish(
+          state,
+          output(rank["status"], rank["evidence"], claims, rank["gaps"], coverage, nil)
         )
-
-      coverage =
-        Map.merge(rank["coverage"], %{
-          "as_of_ms" => state.ctx.as_of_ms,
-          "store" => state.ctx.snapshot["coverage"],
-          "final_validation" => checked["coverage"],
-          "revalidated" => true
-        })
-
-      claims =
-        if rank["claims"] == [],
-          do: elem(Evidence.classify(rank["evidence"], [], state.ctx.args["query"]), 1),
-          else: rank["claims"]
-
-      finish(state, output(rank["status"], rank["evidence"], claims, rank["gaps"], coverage, nil))
+      end
     else
       finish(state, output("conflict", [], [], [%{"code" => "snapshot_changed"}], %{}, nil))
     end
@@ -2437,27 +2492,24 @@ defmodule IpseKnowledge.Corpus do
     if state.ctx.args["rerank"] == nil do
       revalidate(state)
     else
-      candidates = Enum.take(state.ctx.rank["evidence"], 16)
-      check_document_use(state, %{"evidence" => candidates, "claims" => []}, :rerank)
+      if query_time_valid?(state) do
+        candidates = Enum.take(state.ctx.rank["evidence"], 16)
+        check_document_use(state, %{"evidence" => candidates, "claims" => []}, :rerank)
+      else
+        finish(state, refused(:query_time_changed))
+      end
     end
   end
 
   defp revalidate(state) do
     args = %{"tokens" => state.ctx.snapshot["tokens"]}
-
-    counts = Map.take(state.ctx.snapshot["coverage"], ~w(effects_used reads_used))
-
-    counts =
-      if state.phase == :query_rerank and
-           is_map(state.ctx.rerank_profile) and
-           state.ctx.rerank_profile["kind"] == "model_complete",
-         do: Map.update!(counts, "effects_used", &(&1 + 1)),
-         else: counts
+    budget = Map.get(state, :document_budget, %{effects: 0, reads: 0})
+    counts = %{"effects_used" => budget.effects, "reads_used" => budget.reads}
 
     args = Map.merge(args, counts)
 
     advance(
-      Store.start_revalidation(state.ctx.args["store"], state.ctx.store_profile, args),
+      Store.start_fenced_revalidation(state.ctx.args["store"], state.ctx.store_profile, args),
       %{state | phase: :query_revalidate}
     )
   end
@@ -2541,6 +2593,41 @@ defmodule IpseKnowledge.Corpus do
   defp all_facts(snapshot),
     do: Enum.flat_map(Map.values(snapshot["projections"]), &(&1["facts"] || []))
 
+  defp next_query_transition(snapshot, selected) do
+    times =
+      Enum.flat_map(snapshot["sources"], &[&1["observed_at_ms"], &1["expires_at_ms"]]) ++
+        Enum.flat_map(all_facts(snapshot), &[&1["valid_from_ms"], &1["valid_to_ms"]])
+
+    times |> Enum.filter(&(is_integer(&1) and &1 > selected)) |> Enum.min(fn -> nil end)
+  end
+
+  defp query_time_valid?(%{
+         ctx: %{
+           query_time_scope: scope,
+           query_time_transition: transition,
+           as_of_ms: selected,
+           args: args
+         }
+       })
+       when scope in [:full, :remote_selected, :collection] and is_integer(selected) and
+              selected >= 0 and
+              is_map(args) do
+    now = System.system_time(:millisecond)
+
+    valid_transition =
+      is_nil(transition) or (Evidence.safe_uint?(transition) and transition > selected)
+
+    valid_timestamp =
+      Evidence.safe_uint?(selected) and Map.has_key?(args, "as_of_ms") and
+        (args["as_of_ms"] === nil or args["as_of_ms"] === selected)
+
+    valid_transition and valid_timestamp and
+      (args["as_of_ms"] !== nil or
+         (now >= selected and (is_nil(transition) or now < transition)))
+  end
+
+  defp query_time_valid?(_), do: false
+
   defp graph_seed(snapshot, query, as_of_ms),
     do: Evidence.graph_seed(snapshot["sources"], all_facts(snapshot), query, as_of_ms)
 
@@ -2558,13 +2645,24 @@ defmodule IpseKnowledge.Corpus do
         coverage["model_effects"] + coverage["commit_effects_worst_case"]
   end
 
-  defp query_plan?(coverage, model_effects, read_allowance) do
+  defp query_plan?(snapshot, profile, model_effects, read_allowance) do
+    coverage = snapshot["coverage"]
+
+    {fence_effects, fence_reads} =
+      if snapshot["tokens"] === [] do
+        if profile["kind"] === "state", do: {0, 1}, else: {1, 15}
+      else
+        {0, 0}
+      end
+
     is_map(coverage) and is_integer(coverage["effects_used"]) and
       is_integer(coverage["revalidate_effects_worst_case"]) and
-      coverage["effects_used"] + coverage["revalidate_effects_worst_case"] + model_effects <= 16 and
+      coverage["effects_used"] + coverage["revalidate_effects_worst_case"] + model_effects +
+        fence_effects <= 16 and
       is_integer(coverage["reads_used"]) and
       is_integer(coverage["revalidate_reads_worst_case"]) and
-      coverage["reads_used"] + coverage["revalidate_reads_worst_case"] + read_allowance <= 512
+      coverage["reads_used"] + coverage["revalidate_reads_worst_case"] + read_allowance +
+        fence_reads <= 512
   end
 
   defp valid_source_args?(action, args) do
@@ -3027,6 +3125,10 @@ defmodule IpseKnowledge.Corpus do
     budget = Map.get(state, :document_budget, %{effects: 0, reads: 0, guarded: false})
 
     cond do
+      state[:collection_query] == true and value["status"] in ~w(ok partial abstain) and
+          (state.ctx[:query_time_scope] != :collection or not query_time_valid?(state)) ->
+        publish_result(state, refused(:query_time_changed))
+
       refs == [] ->
         document_use_complete(action, state, value, [])
 
@@ -3193,13 +3295,14 @@ defmodule IpseKnowledge.Corpus do
 
       is_list(get_in(state.ctx, [:snapshot, "tokens"])) ->
         advance(
-          Store.start_revalidation(
+          Store.start_fenced_revalidation(
             state.ctx.args["store"],
             state.ctx.store_profile,
-            Map.merge(
-              Map.take(state.ctx.snapshot["coverage"], ~w(effects_used reads_used)),
-              %{"tokens" => state.ctx.snapshot["tokens"]}
-            )
+            %{
+              "effects_used" => state.document_budget.effects,
+              "reads_used" => state.document_budget.reads,
+              "tokens" => state.ctx.snapshot["tokens"]
+            }
           ),
           %{
             state
@@ -3214,14 +3317,18 @@ defmodule IpseKnowledge.Corpus do
   end
 
   defp document_use_complete(:rerank, state, _, _) do
-    advance(
-      Adapters.start(state.resolved, :rerank, %{
-        "profile" => state.ctx.args["rerank"],
-        "query" => state.ctx.args["query"],
-        "candidates" => Enum.take(state.ctx.rank["evidence"], 16)
-      }),
-      %{state | phase: :query_rerank}
-    )
+    if query_time_valid?(state) do
+      advance(
+        Adapters.start(state.resolved, :rerank, %{
+          "profile" => state.ctx.args["rerank"],
+          "query" => state.ctx.args["query"],
+          "candidates" => Enum.take(state.ctx.rank["evidence"], 16)
+        }),
+        %{state | phase: :query_rerank}
+      )
+    else
+      finish(state, refused(:query_time_changed))
+    end
   end
 
   defp document_use_complete(:index_embed, state, _, _) do
@@ -3245,6 +3352,14 @@ defmodule IpseKnowledge.Corpus do
   end
 
   defp publish_result(state, value) do
+    value =
+      if state[:collection_query] == true and
+           value["status"] in ~w(ok partial abstain) and
+           (get_in(state, [:ctx, :query_time_scope]) != :collection or
+              not query_time_valid?(state)),
+         do: refused(:query_time_changed),
+         else: value
+
     value =
       if get_in(value, ["coverage", "workspace_file_checks"]) do
         budget = state.document_budget

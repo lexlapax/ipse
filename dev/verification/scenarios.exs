@@ -242,7 +242,8 @@ defmodule Ipse.Development.Verification.Scenarios do
     {source, module, modules} = Map.fetch!(@ordinary, name)
     sources = List.wrap(source)
     spec = %{name: name, source: List.last(sources), module: module, modules: modules}
-    if length(sources) == 1, do: spec, else: Map.put(spec, :sources, sources)
+    spec = if length(sources) == 1, do: spec, else: Map.put(spec, :sources, sources)
+    if name == "knowledge-mcp", do: Map.put(spec, :retained, true), else: spec
   end
 
   def expression(spec, input, selection, mode, context \\ %{})
@@ -378,6 +379,14 @@ defmodule Ipse.Development.Verification.Scenarios do
       when name in ~w(knowledge-mcp knowledge-research) do
     expected = if name == "knowledge-mcp", do: 9, else: 17
     knowledge!(report, expected)
+
+    if name == "knowledge-mcp" do
+      "confirmed" = report["cleanup"]
+      "session_ack_and_backend_process_exit_only" = report["cleanup_scope"]
+      true = is_binary(report["retained_root"])
+    end
+
+    :ok
   end
 
   def validate!(%{name: "knowledge"}, report, "default") do
@@ -604,7 +613,11 @@ defmodule Ipse.Development.Verification.Scenarios do
     forbidden = if mode == "source", do: :archive, else: :sdk
     true = Keyword.has_key?(options, required) and Keyword.has_key?(options, :input)
     false = Keyword.has_key?(options, forbidden)
-    true = Keyword.has_key?(options, :output) == output_required?(scenario)
+
+    true =
+      scenario == "knowledge-mcp" or
+        Keyword.has_key?(options, :output) == output_required?(scenario)
+
     true = Keyword.has_key?(options, :repository) == repository_required?(scenario)
     :ok = selection!(scenario, Keyword.get(options, :selection, "default"))
     {scenario, options}

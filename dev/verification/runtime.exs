@@ -337,6 +337,7 @@ defmodule Ipse.Development.Verification.Runtime do
             eval!(runtime, Scenarios.expression(spec, input, selection, runtime.mode, context))
 
           :ok = Scenarios.validate!(spec, value, selection)
+          if scenario == "knowledge-mcp", do: validate_mcp_retention!(runtime, value)
           value
         end
 
@@ -354,6 +355,8 @@ defmodule Ipse.Development.Verification.Runtime do
   end
 
   def with_runtime(spec, options, callback) do
+    options = mcp_retained_options(spec, options)
+
     input = options |> Keyword.fetch!(:input) |> Path.expand()
     inputs = if Map.get(spec, :artifact_input, false), do: artifact_inputs!(input), else: [input]
     frozen_input = Map.new(inputs, &{&1, inventory(&1)})
@@ -366,6 +369,10 @@ defmodule Ipse.Development.Verification.Runtime do
 
     retained = Map.get(spec, :retained, false)
     root = runtime_root!(retained, options, [repository, origin | inputs])
+
+    if Map.get(spec, :name) == "knowledge-mcp" do
+      IO.puts(:stderr, "KNOWLEDGE_MCP_RETAINED_OUTPUT=" <> Path.dirname(root))
+    end
 
     outcome =
       attempt(fn ->
@@ -420,6 +427,46 @@ defmodule Ipse.Development.Verification.Runtime do
         end)
 
     first_result!(outcome, cleanup)
+  end
+
+  defp mcp_retained_options(%{name: "knowledge-mcp"}, options) do
+    if Keyword.has_key?(options, :output),
+      do: options,
+      else:
+        Keyword.put(
+          options,
+          :output,
+          Path.join(System.tmp_dir!(), "ipse-knowledge-mcp-retained-" <> id())
+        )
+  end
+
+  defp mcp_retained_options(_, options), do: options
+
+  defp validate_mcp_retention!(runtime, report) do
+    output = Path.dirname(runtime.root)
+    true = runtime.tmp == Path.join(runtime.root, "tmp")
+    true = Path.basename(runtime.root) == "runtime"
+
+    for path <- [output, runtime.root, runtime.tmp] do
+      %File.Stat{type: :directory, mode: mode} = File.lstat!(path)
+      true = Bitwise.band(mode, 0o077) == 0
+      true = command!("/bin/sh", ["-c", "pwd -P"], path, []) |> path_output!() == path
+    end
+
+    root = report["retained_root"]
+    true = is_binary(root) and Path.type(root) == :absolute and Path.dirname(root) == runtime.tmp
+    true = String.starts_with?(Path.basename(root), "ipse-knowledge-mcp-")
+    %File.Stat{type: :directory, mode: mode} = File.lstat!(root)
+    true = Bitwise.band(mode, 0o077) == 0
+    path = Path.join(root, "cleanup.json")
+    %File.Stat{type: :regular, size: bytes} = File.lstat!(path)
+    true = bytes <= 4096
+    receipt = JSON.decode!(File.read!(path))
+    true = receipt["version"] === 1 and receipt["retained_root"] === root
+    true = receipt["proof_completed"] === true and receipt["sessions_unconfirmed"] === 0
+    true = is_integer(receipt["sessions_confirmed"]) and receipt["sessions_confirmed"] > 0
+    true = receipt["backend_process_stopped"] === true
+    :ok
   end
 
   def eval!(runtime, expression) do

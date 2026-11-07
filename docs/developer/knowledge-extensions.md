@@ -725,11 +725,33 @@ fields after destination snapshot and before publication. Remote capture rejects
 unsafe timestamps before typed results.
 
 For BM25, Store supplies validated sources/heads/revision tokens/coverage. Evidence
-ranks at selected time; Corpus revalidates captured roots immediately before return.
-A mismatch conflicts instead of publishing stale success. It cannot revoke output
-already returned. `as_of_ms` filters the currently retained generations; it does
-not reconstruct a past snapshot. For example, after generation two replaces
-generation one with `observed_at_ms: 200`, a query with `as_of_ms: 150` excludes it
+ranks at selected time; Corpus revalidates captured roots and compares the final
+State or MCP namespace generation with the initial snapshot. An empty token set
+uses a bounded generation probe; larger sets retain one generation across each
+32-token chunk. Corpus counts actual invocation actions and result-page reads
+through a second fence after a workspace-file check. An unrelated namespace write
+can therefore cause a conflict. MCP generation is a service assertion, and a
+remote-selected result retains its incomplete-namespace coverage. For an ordinary
+full State/MCP snapshot with a null as-of, Corpus also records the earliest
+captured source observation/expiry or fact-validity transition. It checks that
+boundary and wall-clock rollback before proposing rerank, at final store
+revalidation, and again after a workspace check. A crossed boundary refuses
+with `query_time_changed`, even if the changed item was not returned. Explicit
+timestamps retain selected-time semantics. Remote-selected queries also check
+transitions of their hydrated selected sources, but cannot observe a transition
+in an omitted source; their namespace coverage remains incomplete. Collection
+namespace BM25 derives its next source transition from all authenticated index
+summaries, including ineligible sources. Explicit-source BM25 uses its hydrated
+sources; dense and hybrid selection also includes selected fact boundaries. Corpus
+checks these at release and after workspace revalidation, and before proposing a
+selected query embedding. A source-expiry recheck can return `snapshot_changed`
+before the time guard. Explicit as-of queries retain selected-time semantics.
+The rerank and query-embedding checks are before host proposal: approval can delay actual dispatch past
+the boundary. Sampling cannot detect rollback and recovery between checks, and
+neither fence revokes output already returned. `as_of_ms` filters the currently
+retained generations; it does not reconstruct a past snapshot. For example,
+after generation two replaces generation one with `observed_at_ms: 200`, a query
+with `as_of_ms: 150` excludes it
 without recovering generation one. Completeness covers eligible retained generations,
 so this can be a complete abstention. Suppressed, expired/future-source, and
 time-excluded-fact diagnostics remain explicit exclusions.
@@ -794,7 +816,9 @@ projection validation establishes structure and attribution, not a model receipt
 After inference, a fresh catalog read must retain the captured native generation
 and catalog hash. This also catches intervening projection/root changes that did
 not replace the raw catalog body. For current-time queries, recheck source expiry
-using the time after that read. A mismatch returns no evidence or claims.
+using the time after that read. Corpus also checks selected source and fact time
+transitions before proposing the query embedding and before publishing the
+result, including after workspace checks. A mismatch returns no evidence or claims.
 
 Coverage preserves selected-only scope, the stored-provenance limitation and
 later-use-authority false. It counts the one query inference separately from

@@ -646,7 +646,12 @@ execution. Child HOME/TMP are private. PATH contains declared utilities and sele
 Erlang, without system Elixir/Mix/Rust. This is controlled trusted execution, not
 OS confinement. Canonical paths account for aliases. Ordinary runtimes are removed
 on success/failure; service evidence remains at selected output. Measured cases
-retain runtime/evidence to reopen exact files. Retention authorizes no retry.
+and `knowledge-mcp` retain their runtime and evidence. For `knowledge-mcp`, use
+`--output` with a new private directory whose parent exists and which is outside
+the repository, SDK or archive, and input artifact. Otherwise the reported
+temporary directory can be removed by the host. A successful `knowledge-mcp`
+cleanup receipt covers Session close acknowledgments and backend process exit,
+not general hostwide cleanup. Retention authorizes no retry.
 
 | Scenario | Required input/selection |
 | --- | --- |

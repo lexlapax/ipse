@@ -104,7 +104,7 @@ defmodule IpseTest.CollectionProtocol do
 
   def run(terminal, model, _), do: {terminal, model}
 
-  defp execute(%{"op" => "snapshot"}, m),
+  def execute(%{"op" => "snapshot"}, m),
     do:
       {Map.put(summary(m), "document_store", %{
          "version" => 2,
@@ -112,12 +112,12 @@ defmodule IpseTest.CollectionProtocol do
          "write_parts" => 2
        }), m}
 
-  defp execute(%{"op" => "value.stat"} = r, m) do
+  def execute(%{"op" => "value.stat"} = r, m) do
     assert r["generation"] == m.generation
     {Map.merge(summary(m), %{"key" => r["key"], "record" => descriptor(m.records[r["key"]])}), m}
   end
 
-  defp execute(%{"op" => "value.read"} = r, m) do
+  def execute(%{"op" => "value.read"} = r, m) do
     assert r["generation"] == m.generation
     row = Map.fetch!(m.records, r["key"])
     bytes = json(row.value)
@@ -136,7 +136,7 @@ defmodule IpseTest.CollectionProtocol do
     {value, m}
   end
 
-  defp execute(%{"op" => "stage.list"}, m),
+  def execute(%{"op" => "stage.list"}, m),
     do:
       {Map.put(
          summary(m),
@@ -146,7 +146,7 @@ defmodule IpseTest.CollectionProtocol do
          |> Enum.map(&Map.take(&1, ~w(slot epoch state byte_count offset expires_at_ms)))
        ), m}
 
-  defp execute(%{"op" => "stage.inspect"} = r, m) do
+  def execute(%{"op" => "stage.inspect"} = r, m) do
     assert r["generation"] == m.generation
     stage = Map.fetch!(m.stages, {r["slot"], r["epoch"]})
 
@@ -160,7 +160,7 @@ defmodule IpseTest.CollectionProtocol do
      ), m}
   end
 
-  defp execute(%{"op" => "value.prepare_inline"} = r, m) do
+  def execute(%{"op" => "value.prepare_inline"} = r, m) do
     assert r["generation"] == m.generation
     false = Map.has_key?(m.stages, {r["slot"], r["epoch"]})
     value = Jason.decode!(r["data"])
@@ -195,7 +195,7 @@ defmodule IpseTest.CollectionProtocol do
      ), m}
   end
 
-  defp execute(%{"op" => "value.write_parts"} = r, m) do
+  def execute(%{"op" => "value.write_parts"} = r, m) do
     assert r["generation"] == m.generation
     ref = {r["slot"], r["epoch"]}
     previous = Map.get(m.stages, ref, %{"parts" => [], "offset" => 0})
@@ -243,7 +243,7 @@ defmodule IpseTest.CollectionProtocol do
     {Map.put(mutation(m, r), "write", write), m}
   end
 
-  defp execute(%{"op" => "commit"} = r, m) do
+  def execute(%{"op" => "commit"} = r, m) do
     assert r["generation"] == m.generation
     next = m.generation + 1
 

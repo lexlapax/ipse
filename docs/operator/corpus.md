@@ -151,10 +151,32 @@ a final `ok` result. The query returns a real passage with source identity,
 generation, content hash and byte offsets. Coverage reports the selected time
 and final revalidation. A complete search with no usable match returns `abstain`.
 
+For State and MCP stores, Corpus checks the store generation again before
+returning a query result. A concurrent write in the same namespace can cause a
+conflict even if it changes an unrelated source; retry after writes settle.
+Empty snapshots also require a final generation observation. An MCP store must
+report its generation correctly, and a server-selected query remains limited to
+its selected references. These checks do not hold a lease through delivery.
+
 `as_of_ms` is a Unix time in milliseconds. Use `null` to choose current time and
 record it in coverage. Expired sources and sources observed after the selected
-time do not become current evidence. Exact quotation establishes recorded bytes;
-check whether they support your question before relying on an answer.
+time do not become current evidence. For a full State or MCP snapshot with
+`as_of_ms: null`, Corpus also checks captured source and fact time boundaries
+before proposing a rerank and before returning the result. If a boundary has
+passed or the clock moved behind the selected time, it refuses with
+`query_time_changed`; run a fresh query. Even an unrelated captured item can
+cause this refusal. An explicit timestamp keeps its selected-time meaning.
+For server-selected queries, the same check covers only the hydrated selected
+sources. It cannot detect a source omitted by the server becoming eligible.
+Collection namespace queries check source time boundaries from the indexed
+catalog, including sources omitted from the results. Explicitly selected
+Collection queries check their selected sources and, for dense queries, selected
+facts. A crossed boundary refuses the result; a source that expires during a
+Collection recheck can instead return `conflict`. Retry after inspecting the result.
+Rerank and Collection query-embedding checks precede approval, which may delay dispatch beyond the boundary;
+the checks are not a lease through delivery and cannot detect a clock rollback
+that recovers between samples. Exact quotation establishes recorded bytes; check
+whether they support your question before relying on an answer.
 Lexical, dense and server-selected retrieval use the same query-aware excerpts.
 Ipse keeps a complete chunk when it fits the existing 1024-byte citation limit.
 For longer chunks, it selects a cluster of query terms and includes nearby
@@ -1143,7 +1165,9 @@ inference, checks the configured encoder digest without inference, and pins that
 digest on the approved request. It checks the returned model/dimensions/encoding
 and source-vector bindings, then checks the Collection again before returning.
 A changed Collection yields `conflict` with no evidence or claims. With
-`as_of_ms: null`, expiry during approval/inference also withholds all results.
+`as_of_ms: null`, a selected source expiring during approval or inference also
+withholds all results. A selected fact's validity transition or a detected clock
+rollback can also refuse the result; rerun the query to choose a fresh time.
 An explicit time filters the currently retained versions as described above.
 
 Read `selection_complete`, `namespace_complete`, `revalidated`,
@@ -1637,8 +1661,12 @@ Expect `method: "mcp_query"` candidates with locally validated citations,
 and store generation in coverage. Ipse reads only the returned sources/chunks
 at that generation and revalidates their roots. The server's scores remain its
 assertions. Wrong partitions, incomplete replies, stale generations or forged
-references refuse the whole result. An empty complete reference list returns
-`abstain` without reading the Store. No model or embedding is required.
+references refuse the whole result. An empty complete reference list requires a
+bounded Store generation read before it can return `abstain`; a changed generation
+conflicts. For a current-time query, an expiry of a hydrated selected source
+before the final check refuses with `query_time_changed`; retry the query. This
+cannot detect a source omitted by the server becoming eligible. No model or
+embedding is required.
 
 This route does not scan the partition directory or certify its total root count.
 It does not replace the server's capacity or access policy. Keep the same

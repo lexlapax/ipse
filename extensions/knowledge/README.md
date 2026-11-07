@@ -218,10 +218,18 @@ elixir dev/verify.exs source knowledge-research \
   --sdk _build/dev/lib/ipse/ebin --input "$IPSE_KNOWLEDGE_ARTIFACTS/research-mcp"
 ```
 
-The owned loopback MCP fixtures need local sockets. Corpus checks selected-only
-reads, forged responses, denial and unknown recovery. Research checks selected
-search/fetch tools, paged captured bodies, exact citations, completion-time
-observations and inert recovery. Server scores and source text are synthetic.
+The owned loopback MCP fixtures need local sockets. Once created, the
+`knowledge-mcp` verifier retains its private runtime and synthetic journals on
+success or failure. Pass `--output /absolute/path/to/new-private-directory` to
+choose a durable location. Otherwise the verifier reports a fresh temporary
+directory, which the host may later remove. The new path needs an existing
+parent and must be outside the repository, SDK or archive, and input artifact.
+Use a different output for each run and inspect retained unknown outcomes before
+taking further action. Corpus
+checks selected-only reads, forged responses, denial and unknown recovery.
+Research checks selected search/fetch tools, paged captured bodies, exact
+citations, completion-time observations and inert recovery. Server scores and
+source text are synthetic.
 
 ## Repeat the same proofs against an installed runtime
 
@@ -249,7 +257,8 @@ The common verifier compiles the same trusted proof against the extracted SDK
 before launch. Its runtime PATH has declared utilities and bundled `erl`, with no
 system development commands. It checks unchanged archive, artifacts, host and
 harness inventories. The archive and artifacts must match the platform and OTP
-release. Ordinary proof runtimes and temporary homes are removed afterward.
+release. Ordinary proof runtimes and temporary homes are removed afterward;
+`knowledge-mcp` retains its runtime as described above.
 
 Use [the verification guide](../../docs/developer/testing.md#prove-an-independent-artifact-without-rebuilding-the-host)
 to change shared setup, and [the knowledge training manual](../../docs/developer/knowledge-extensions.md)

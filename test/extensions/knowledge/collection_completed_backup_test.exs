@@ -14,12 +14,14 @@ defmodule IpseKnowledge.CollectionCompletedBackupIsolationTest do
 
     files =
       ~w(evidence adapters profiles documents documents/zip documents/docx documents/parser_stage documents/pdf
-      store/collection store/collection/index store/collection/projection store/collection/generation
+      store store/state store/mcp_cas store/collection store/collection/index store/collection/projection store/collection/generation
       store/collection/directory store/collection/selected store/collection/job store/collection/reduction
       store/collection/finalization store/collection/paged store/collection/producer store/collection/producer_progress)
       |> Enum.map(&Path.expand("extensions/knowledge/src/#{&1}.ex"))
 
     cases = Path.expand("collection_completed_backup_cases.exs", __DIR__)
+    protocol = Path.expand("../../support/collection_protocol.exs", __DIR__)
+    time_controls = Path.expand("../../support/collection_time.exs", __DIR__)
 
     script = """
     false = Enum.any?(Application.started_applications(), &(elem(&1, 0) === :ipse))
@@ -29,14 +31,17 @@ defmodule IpseKnowledge.CollectionCompletedBackupIsolationTest do
       other -> raise inspect(other)
     end
     ExUnit.start(autorun: false)
+    Code.require_file(#{inspect(protocol)})
     Code.require_file(#{inspect(cases)})
+    Code.require_file(#{inspect(time_controls)})
     result = ExUnit.run()
     0 = result.failures
     0 = result.skipped
     0 = result.excluded
-    13 = result.total
+    19 = result.total
     false = Enum.any?(Application.started_applications(), &(elem(&1, 0) === :ipse))
     IO.puts("COMPLETED_BACKUP_ISOLATED_PASS")
+    IO.puts("COLLECTION_TIME_ISOLATED_PASS")
     """
 
     paths =
@@ -53,6 +58,10 @@ defmodule IpseKnowledge.CollectionCompletedBackupIsolationTest do
 
     assert status === 0, output
     assert output =~ "COMPLETED_BACKUP_ISOLATED_PASS"
+
+    assert Enum.count(String.split(output, ~r/\r?\n/), &(&1 === "COLLECTION_TIME_ISOLATED_PASS")) ==
+             1
+
     assert Enum.map(modules, &:code.is_loaded/1) === before
   end
 end
