@@ -125,8 +125,9 @@ defmodule NativeNoteRecall do
     end
   end
 
-  def recall_reads(events) do
-    assert Enum.count(events, &(&1["type"] == "managed_read_observed")) == 5
+  def recall_reads(events, mode \\ :normal) do
+    observed = Enum.filter(events, &(&1["type"] == "managed_read_observed"))
+    assert length(observed) == if(mode == :too_small, do: 2, else: 5)
 
     indexes =
       Enum.filter(events, fn event ->
@@ -140,6 +141,24 @@ defmodule NativeNoteRecall do
 
     assert get_in(hd(indexes), ["outcome", "value", "generation"]) ==
              get_in(List.last(indexes), ["outcome", "value", "generation"])
+
+    gets =
+      Enum.filter(events, fn event ->
+        event["type"] in ~w(extension_action_intent extension_action_result) and
+          get_in(event, ["request", "op"]) == "collection.call" and
+          get_in(event, ["request", "request", "op"]) == "get"
+      end)
+
+    if mode == :too_small do
+      assert gets == []
+
+      assert Enum.sort(Enum.map(observed, & &1["operation_id"])) ==
+               Enum.sort(Enum.map(indexes, & &1["operation_id"]))
+    else
+      results = Enum.filter(gets, &(&1["type"] == "extension_action_result"))
+      assert length(results) == 3
+      assert Enum.all?(results, &(get_in(&1, ["outcome", "status"]) == "ok"))
+    end
   end
 end
 
@@ -359,6 +378,17 @@ available =
 
 assert available["available_bytes"] in 0..128
 
+empty_note = %{
+  "id" => "note_text_0",
+  "version" => "1",
+  "text" => "",
+  "priority" => 70,
+  "source" => %{"kind" => "assertion", "uri" => nil}
+}
+
+assert available["available_bytes"] <
+         Ipse.Extension.context_rendered_bytes([empty_note], knowledge_instance)
+
 assert :ok =
          Ipse.Session.prompt(
            low,
@@ -371,7 +401,7 @@ for row <- page["records"], do: refute(Jason.encode!(constrained) =~ row["value"
 assert_receive {:ipse, ^low, {:done, :ok}}, 15_000
 assert Map.keys(:sys.get_state(low).extension_contributions) |> Enum.sort() == ["fill", "spill"]
 assert {:ok, low_events} = Ipse.Journal.load(dir, Ipse.Session.info(low).id)
-NativeNoteRecall.recall_reads(low_events)
+NativeNoteRecall.recall_reads(low_events, :too_small)
 
 after_budget =
   Enum.drop_while(low_events, fn event ->

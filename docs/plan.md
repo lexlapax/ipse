@@ -99,7 +99,14 @@ fetched-Research and coalesced-reader changes retain their
 focused evidence outside that freeze. The committed-runtime retained-cohort
 checks remain open before notes acceptance.
 
-The later [489-file attempt](archive/2026-10-26-p30-p31-implementation/source-regression-489-20261106.md)
+The later [517-file frozen regression](archive/2026-10-26-p30-p31-implementation/full-regression-3d409619-20261107.md)
+completed with 4,318 passed and one failed, plus 136 skipped and 125 excluded.
+The failed small synthetic recall fixture and a companion race pass separately
+after the expectation repair; those focused results do not change the aggregate
+or qualify later source changes. The operator-declined retained notebook remains
+untouched, and its integrated acceptance gate remains open.
+
+The earlier [489-file attempt](archive/2026-10-26-p30-p31-implementation/source-regression-489-20261106.md)
 was interrupted before its coordination deadline, with 13 known outer failure
 headers and no final test exit or totals. Later immutable-copy and independent
 host cleanup checks pass. Separate [Word setup](archive/2026-10-26-p30-p31-implementation/word-cli-recipe-v18-20261106.md)

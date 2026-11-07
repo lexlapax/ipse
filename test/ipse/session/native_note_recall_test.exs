@@ -48,7 +48,11 @@ defmodule Ipse.Session.NativeNoteRecallTest do
     root = Path.join(System.tmp_dir!(), "ipse-native-recall-" <> Ipse.Usage.id())
     File.mkdir!(root)
     File.chmod!(root, 0o700)
-    on_exit(fn -> File.rm_rf!(root) end)
+
+    if System.get_env("IPSE_TEST_NOTE_RECALL_KEEP") == "1",
+      do: IO.puts("NATIVE_NOTE_RECALL_FIXTURE #{root}"),
+      else: on_exit(fn -> File.rm_rf!(root) end)
+
     driver = Path.join(root, "pty")
 
     assert {"", 0} =
