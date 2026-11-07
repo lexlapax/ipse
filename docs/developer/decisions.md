@@ -320,6 +320,8 @@ malformed results return labelled baseline behavior. Assessment can only retain
 the ordinary baseline or defer a proposed candidate for this batch; it cannot
 change its text, origin, category, TTL, evidence or permission.
 
+### Evaluate the advice
+
 For selection evaluation, `dev/evaluation/decision_metrics.exs` compares
 bounded aggregate counts using the frozen five-percentage-point supported-answer
 or 20% total-cost benefit, nonregression and p95 latency thresholds. For candidate
@@ -351,6 +353,8 @@ still be established. Exercise the thresholds with:
 mix test test/dev/evaluation/decision_metrics_test.exs
 mix test test/extensions/knowledge/decision_policy_test.exs test/ipse/decision_test.exs
 ```
+
+### Materialize a candidate assessment
 
 Use `dev/evaluation/candidate_assessment.exs` for a frozen keep/defer study,
 with pending proposals and observed-durable records kept in separate strata.
@@ -406,6 +410,8 @@ they establish neither independent labels nor a beneficial or rejected strategy.
 Seven synthetic main requests and one decision request span the two phases.
 Matched whole-task latency and cost remain null. Private failure roots are
 preserved for inspection; the keep flag also preserves a successful root.
+
+### Freeze a selection study
 
 For a frozen selection study, use
 `dev/evaluation/selection_experiment.exs` with a version-2 declaration. Separate
@@ -586,6 +592,8 @@ quality. Keep the review template unmeasured until genuine independent review:
 ```sh
 mix test test/dev/evaluation/protected_answer_test.exs test/dev/selection_experiment_test.exs
 ```
+
+### Verify the policy artifact and recall projections
 
 The decision-policy test also compiles the actual independent artifact against
 a minimal public SDK closure, then exercises it in another VM without `Ipse.Session` or
