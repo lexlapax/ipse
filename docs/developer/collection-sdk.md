@@ -640,11 +640,16 @@ Group packing splits pages on both logical JSON size and the native packed-value
 limit, including escaping. A single row that cannot fit refuses before publication.
 
 A job begins against one coherent captured catalog and old selected root.
-`inspect` returns its retained physical revision and recovery token. Group append
-is a private validated adapter operation, not a public Corpus action. It verifies
-the exact captured source/head order and model/extraction selectors, then stores
-immutable units before advancing job/captured-catalog metadata together. A public
-`begin` does not populate those groups or complete a build by itself.
+`inspect` returns its retained physical revision and recovery token. The separate
+opt-in `collection-dense` Corpus preset exposes `generation_produce` version 2
+action `append`. It loads durable explicit fact projections and bounded vector
+pages, then calls the private validated append adapter without returning a public
+group payload. This path requires the explicit fact selection described below;
+it does not establish fact truth, complete a build, or qualify full capacity.
+The adapter verifies the exact captured source/head order and model/extraction
+selectors, then stores immutable units before advancing job and captured-catalog
+metadata together. A public `begin` does not populate those groups or complete a
+build by itself.
 Append returns a known continuation after preparing each metadata stage. Those
 stages retain their original Session ownership and expiry; only the final
 continuation verifies both stages, the captured selected root and all immutable
@@ -729,10 +734,9 @@ journal peaks, GC/job reclamation, migration/floors and installed Word fidelity
 remain unqualified. The fixed 8,192-key/32,768-operation/192 MiB document limits and
 256 MiB combined target are not raised by staging or continuation. Keep synthetic
 initial data, actual reads, proposed writes and successful native effects distinct.
-In particular, the public command does not yet provide the bounded producer
-that feeds supplied groups into private append. That integration must fit both
-storage operations and the Session journal; a successful finalizer alone does
-not supply it.
+The separately configured producer below supplies bounded groups to append, but
+its complete workflow must still fit both storage operations and the Session
+journal. A successful finalizer alone does not supply those groups.
 
 The separate opt-in `collection-dense` artifact offers `generation_produce`
 action `selection` with exactly `store`, `version: 1`, `action: "selection"` and
