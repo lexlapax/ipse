@@ -163,10 +163,12 @@ Ipse can ask a separately approved local decision service for shadow advice
 about one eligible native literal note or pending proposal, or for a comparison
 of current note packs with ordinary recall. Records must be eligible under the
 same grant. Accepted decisions are not supported by the single-record
-assessment. Set up an Ollama main
-route and a System One-compatible decision service first; Ipse does not supply
-either service. For example, adapt this complete private operator configuration
-to the models and numeric loopback ports you actually run:
+assessment. For a saved-note assessment, you can first
+[save a reviewed statement](#save-your-own-reviewed-statement). The
+pending-proposal procedure below creates its candidate under the shadow grant.
+Set up an Ollama main route and a System One-compatible decision service; Ipse
+does not supply either service. For example, adapt this complete private operator
+configuration to the models and numeric loopback ports you actually run:
 
 ```json
 {
@@ -497,7 +499,8 @@ Native synthetic controls cover a normal interactive start and a chat started
 with `--planning` that completes a witnessed `/plan exit` before nomination.
 Planning itself cannot capture or accept this decision. The exit must return
 to an allowed normal enclosing mode; a configured or inherited enclosing planning ceiling
-cannot be bypassed by requesting a card.
+cannot be bypassed by requesting a card. To retain a decision while planning,
+use the separate [planning decision workflow](usage.md#plan-before-acting).
 Another completed answer in a later turn can nominate a separate proposal.
 An interrupted attempt remains spent for its original answer; reopening the
 conversation never repeats that capture. Normal replies remain available as
