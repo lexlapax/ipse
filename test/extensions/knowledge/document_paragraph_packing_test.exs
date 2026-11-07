@@ -8,7 +8,9 @@ defmodule Ipse.KnowledgeDocumentParagraphPackingTest do
       ~w(evidence documents/zip documents/docx documents/parser_stage documents/pdf documents)
 
     paths =
-      :code.get_path() |> Enum.reject(&(&1 == ~c".")) |> Enum.flat_map(&["-pa", to_string(&1)])
+      for module <- [Ipse.Extension, Jason, JSONSchex, ExJSONPointer],
+          path = module |> :code.which() |> to_string() |> Path.dirname(),
+          do: ["-pa", path]
 
     script = ~S'''
     import ExUnit.Assertions
@@ -100,7 +102,7 @@ defmodule Ipse.KnowledgeDocumentParagraphPackingTest do
     {output, status} =
       System.cmd(
         System.find_executable("elixir"),
-        paths ++
+        List.flatten(paths) ++
           Enum.flat_map(files, &["-r", Path.join(root, "extensions/knowledge/src/#{&1}.ex")]) ++
           ["-e", script],
         stderr_to_stdout: true
