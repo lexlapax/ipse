@@ -4,6 +4,15 @@ defmodule Ipse.Development.Evaluation.DecisionMetricsTest do
   use ExUnit.Case, async: true
   alias Ipse.Development.Evaluation.DecisionMetrics
 
+  test "bounded unsigned cost sum preserves the empty identity and exact safe limit" do
+    alias Ipse.Development.Evaluation.Metrics
+    max = 9_007_199_254_740_991
+    assert Metrics.bounded_uint_sum([]) === 0
+    assert Metrics.bounded_uint_sum([max - 1, 1]) === max
+    assert Metrics.bounded_uint_sum([max, 1]) === nil
+    assert Metrics.bounded_uint_sum([0, nil]) === nil
+  end
+
   defp baseline do
     %{
       "cases" => 100,
@@ -32,6 +41,7 @@ defmodule Ipse.Development.Evaluation.DecisionMetricsTest do
     assert {:ok,
             %{
               "disposition" => "useful_candidate",
+              "criteria" => %{"benefit" => "pass"},
               "abstentions" => %{"baseline" => 5, "candidate" => 5, "denominator" => 100}
             }} =
              DecisionMetrics.selection(base, candidate, gates())

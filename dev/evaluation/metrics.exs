@@ -21,6 +21,20 @@ defmodule Ipse.Development.Evaluation.Metrics do
 
   def version, do: @version
 
+  @doc "Return an exact JSON-safe unsigned sum, or nil when missing or out of range."
+  def bounded_uint_sum(values) when is_list(values) do
+    # Keep this pure module independently loadable while matching Ipse.JSON.safe_uint?/1.
+    max = 9_007_199_254_740_991
+
+    Enum.reduce_while(values, 0, fn value, total ->
+      if is_integer(value) and value >= 0 and value <= max - total,
+        do: {:cont, total + value},
+        else: {:halt, nil}
+    end)
+  end
+
+  def bounded_uint_sum(_), do: nil
+
   def retrieval(prediction, qrels) do
     with true <- exact?(prediction, ~w(status ranked_sources top_k)),
          true <-

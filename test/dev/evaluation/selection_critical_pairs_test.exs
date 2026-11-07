@@ -114,6 +114,53 @@ defmodule Ipse.Development.Evaluation.SelectionCriticalPairsTest do
     )
   end
 
+  test "candidate cost is exact when representable and unmeasured on overflow or missing cost" do
+    {d, refs, load, [first, second]} = fixture()
+    max = 9_007_199_254_740_991
+
+    for {costs, expected} <- [{[max - 1, 1], max}, {[max, 1], nil}, {[max, nil], nil}] do
+      rows = [
+        Map.put(first, "cost_nanos", hd(costs)),
+        Map.put(second, "cost_nanos", List.last(costs))
+      ]
+
+      assert {:ok, report} = score(d, refs, load, rows)
+      assert report["candidate"]["cost_nanos"] === expected
+      assert report["disposition"] === "unverified"
+    end
+  end
+
+  test "baseline total above the safe integer bound remains unmeasured" do
+    {d, refs, load, rows} = fixture()
+
+    {cases, blobs} =
+      d["spec"]["cases"]
+      |> Enum.with_index()
+      |> Enum.map_reduce(%{}, fn {c, index}, acc ->
+        {:ok, bytes} = load.(c["baseline_sha256"])
+        baseline = Jason.decode!(bytes)
+        cost = if index == 0, do: 9_007_199_254_740_991, else: 1
+        encoded = Jason.encode!(Map.put(baseline, "cost_nanos", cost))
+        digest = JSON.sha256(encoded)
+        {Map.put(c, "baseline_sha256", digest), Map.put(acc, digest, encoded)}
+      end)
+
+    {:ok, revised} = Selection.declare(put_in(d, ["spec", "cases"], cases)["spec"])
+    by_id = Map.new(cases, &{&1["id"], &1})
+
+    rows =
+      Enum.map(rows, &Map.put(&1, "baseline_sha256", by_id[&1["case_id"]]["baseline_sha256"]))
+
+    revised_load = fn digest ->
+      if Map.has_key?(blobs, digest), do: Map.fetch(blobs, digest), else: load.(digest)
+    end
+
+    assert {:ok, report} = score(revised, refs, revised_load, rows)
+    assert report["baseline"]["cost_nanos"] === nil
+    assert report["baseline"]["critical_recalled"] == 1
+    assert report["disposition"] === "unverified"
+  end
+
   test "reports a critical loss even when a gain offsets its aggregate" do
     {d, refs, load, rows} = fixture()
     assert {:ok, report} = score(d, refs, load, rows)
@@ -359,6 +406,55 @@ defmodule Ipse.Development.Evaluation.SelectionCriticalPairsTest do
     assert report["comparison"] == nil
     assert report["paired_critical_observation"]["status"] == "unverified"
     assert report["disposition"] == "unverified"
+
+    measured_rows =
+      Enum.with_index(revised_rows)
+      |> Enum.map(fn {row, index} ->
+        row
+        |> Map.put("status", "ok")
+        |> Map.put("cost_nanos", if(index == 0, do: 9_007_199_254_740_991, else: 1))
+        |> update_in(
+          ["prediction"],
+          &(&1 |> Map.put("status", "ok") |> Map.put("response_kind", "answer"))
+        )
+      end)
+
+    {:ok, measured_first} = Selection.freeze_rows(revised, sha, measured_rows)
+    measured_sha = JSON.digest([measured_first])
+
+    {:ok, measured_template} =
+      Selection.prepare_reviews(revised, sha, measured_first, measured_sha, revised_load)
+
+    measured_reviews =
+      update_in(measured_template, ["semantic"], fn entries ->
+        Enum.map(entries, fn review ->
+          review
+          |> Map.put("independent", true)
+          |> Map.put("reviewer_id", "synthetic-reviewer")
+          |> Map.put("verdict", "supported")
+          |> update_in(
+            ["citations"],
+            &Enum.map(&1, fn c -> Map.put(c, "verdict", "supported") end)
+          )
+        end)
+      end)
+
+    assert {:ok, measured_report} =
+             Selection.score(
+               revised,
+               sha,
+               measured_first,
+               measured_sha,
+               fn -> {:ok, refs} end,
+               fn -> {:ok, Jason.encode!(measured_reviews)} end,
+               revised_load
+             )
+
+    assert measured_report["support_and_citations_measured"] == true
+    assert measured_report["candidate"]["cost_nanos"] == nil
+    assert is_map(measured_report["comparison"])
+    assert measured_report["comparison"]["criteria"]["benefit"] == "unverified"
+    assert measured_report["disposition"] == "unverified"
   end
 
   test "a case recalls its critical set only when every member is present" do

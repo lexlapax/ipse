@@ -456,7 +456,7 @@ defmodule Ipse.Development.Evaluation.SelectionExperiment do
        "citation_total" => semantic["citation"]["total_n"],
        "citation_supported" => semantic["citation"]["supported_n"],
        "p95_ms" => if(Enum.all?(elapsed, &uint?/1), do: p95),
-       "cost_nanos" => if(Enum.all?(costs, &uint?/1), do: Enum.sum(costs))
+       "cost_nanos" => Metrics.bounded_uint_sum(costs)
      }, semantic}
   end
 

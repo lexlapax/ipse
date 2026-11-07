@@ -165,6 +165,23 @@ defmodule Ipse.Development.Evaluation.CandidateAssessmentTest do
     assert is_nil(r["observed_cost_nanos"])
   end
 
+  test "observed total cost is exact when representable and unmeasured on overflow or missing cost" do
+    f = fixture()
+    [first, second] = f.rows
+    max = 9_007_199_254_740_991
+
+    for {costs, expected} <- [{[max - 1, 1], max}, {[max, 1], nil}, {[max, nil], nil}] do
+      rows = [
+        Map.put(first, "cost_nanos", hd(costs)),
+        Map.put(second, "cost_nanos", List.last(costs))
+      ]
+
+      assert {:ok, report} = score(f.declaration, f.sha, rows, f.labels, f.load)
+      assert report["observed_cost_nanos"] === expected
+      assert report["disposition"] === "unverified"
+    end
+  end
+
   test "pending observations cannot manufacture false durable benefit" do
     f = fixture(["pending", "pending"])
     assert {:ok, r} = score(f.declaration, f.sha, f.rows, f.labels, f.load)

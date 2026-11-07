@@ -377,6 +377,9 @@ materialize complete paged results rather than treating a receipt as advice.
 `result_row/5` preserves denied, refused and cancelled statuses only when the
 typed action, accounting and delivered result support them. Missing closure,
 partial request/response failures and untyped outer errors remain unknown.
+A complete assessment reports an exact `observed_cost_nanos` total only when
+every row has a cost and their sum fits the JSON-safe integer range; otherwise
+that total is null, not a clipped or understated cost.
 A cancelled observation does not settle, refund or remove an unknown ledger
 operation. Non-advice choices, whole-task latency and cost stay null; the added
 advice phase's elapsed time is not a matched whole-task measurement. Exercise
@@ -488,8 +491,12 @@ any critical case's prediction is not `ok`, including a refusal or failure,
 its arm's aggregate `critical_recalled` count is null even when that row still
 names selected members. A noncritical refusal does not erase a known critical
 count. A null critical count prevents the whole aggregate threshold comparison;
-it is neither zero nor a pass. Absent latency or cost remains null. A
-retrieval-only output cannot count as a supported answer. Synthetic engine
+it is neither zero nor a pass. Absent latency or cost remains null. A total
+cost that exceeds the JSON-safe integer bound also remains null; it is not
+clipped or treated as a lower cost. The supported-answer improvement and cost
+reduction are alternative benefit tests: an unmeasured cost does not erase an
+independently measured supported-answer improvement. A retrieval-only output
+cannot count as a supported answer. Synthetic engine
 replies produce no quality comparison. Even a calculated benefit leaves the
 report's disposition `unverified` and qualification `none` until the separate
 protocol, matched-workload, resource and independent review evidence is

@@ -179,7 +179,7 @@ defmodule Ipse.Development.Evaluation.CandidateAssessment do
          "candidate" => candidate,
          "calculation" => comparison,
          "observed_cost_nanos" =>
-           if(Enum.all?(costs, &uint?/1) and length(rows) === length(cases), do: Enum.sum(costs)),
+           if(length(rows) === length(cases), do: Metrics.bounded_uint_sum(costs)),
          "finite_ledger_authority" => "unverified",
          "production_strategy_selectable" => false
        }}

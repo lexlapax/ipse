@@ -164,6 +164,7 @@ nor resource/offline qualification. No daemon configuration or existing model wa
 
 - [Paired critical selection observations](p30-selection-paired-critical-20261106.md) reports known per-case membership losses without changing the unverified gate or disposition; 28 pure compatibility controls pass, with accepted real-input scoring still open.
 - [Unmeasured critical recall](p30-critical-unmeasured-20261107.md) preserves null rather than reporting refused or failed critical answers as measured recall; 31 synthetic source controls pass, with independent quality and integrated qualification still open.
+- [Bounded cost totals](p30-cost-safe-sums-20261107.md) retains exact representable totals and leaves missing or out-of-range sums unmeasured; 33 pure controls pass, without qualifying real costs or P30.
 
 - [Anthropic signed-thinking draft withdrawal](anthropic-signed-draft-20261106.md) adds bounded no-tool projection and pure request-body controls. A later synthetic Session/Saved fixture passed; native-terminal, installed and live qualification remain open.
 - [Anthropic tool-assisted draft withdrawal](anthropic-tool-draft-20261107.md) adds closed, matched tool groups and a synthetic Session/resume regression; installed and live qualification remain open.

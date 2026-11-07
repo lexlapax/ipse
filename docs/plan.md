@@ -1357,6 +1357,10 @@ reports an arm's critical count as unmeasured when a critical prediction is not
 successful, and withholds the aggregate comparison. Thirty-one synthetic controls
 pass; real-input quality and the overall experiment remain unverified.
 
+The [bounded cost-total follow-up](archive/2026-10-26-p30-p31-implementation/p30-cost-safe-sums-20261107.md)
+keeps out-of-range sums unmeasured rather than reporting an invalid or understated
+cost. Thirty-three pure controls pass; real costs and integrated qualification remain open.
+
 **Authorized; typed/protocol and admitted-operation increments in progress.** P31 is the active delivery
 path. P30A/B can proceed independently; later
 P30 work consumes the first usable notes journey, not the entire P31 milestone.
