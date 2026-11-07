@@ -115,3 +115,21 @@ recorded inputs unchanged. The packet is
 `status.txt` SHA-256 is
 `49c23c18061f83423af1f8435b7445c0f584f8b3ba0769685bb2c4ff6bbf1fb7`.
 These controls do not run the installed verifier or qualify macOS.
+
+A later isolated run exercised both tagged tests through the existing
+`Runtime.with_runtime` harness: two passed, 37 were intentionally excluded and
+none skipped. The packet's source, copied SDK, generated priv, dependency,
+link and Git postchecks matched their pre-inventories. The SDK came from the
+earlier `0cdc36fa` regression build; the compared runtime source, extensions,
+native source and Mix files had not changed through `6d2a04ff`. This was not a
+newly rebuilt SDK, a model call or a macOS/installed run.
+
+The retained packet is
+`_build/verification/memory-diagnostic-runtime-6d2a04ff-20261106-02/`.
+Its `run.log` SHA-256 is
+`426a6cd0a61c663589091354f5b8d21bacdcc4a9a3a4ce58836a7118b3b337fa`, and
+`status.txt` SHA-256 is
+`742919f079bdae26e67c47d39109cbdad6af32b8fa1a28d7d3692313df5e72ea`.
+The prior packet remains failed: its wrapper counted excluded tests incorrectly
+and its dependency pre-ledger was empty. A fresh packet corrected both checks;
+the original attempt was not reclassified.
