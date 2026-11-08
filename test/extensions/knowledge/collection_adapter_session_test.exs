@@ -6099,17 +6099,19 @@ defmodule Ipse.KnowledgeCollectionAdapterSessionTest do
     end
   end
 
-  defp await_retirement_hook(path, deadline) do
-    cond do
-      File.regular?(path) ->
-        :ok
+  if System.get_env("IPSE_TEST_SOURCE_SWITCH") == "1" do
+    defp await_retirement_hook(path, deadline) do
+      cond do
+        File.regular?(path) ->
+          :ok
 
-      System.monotonic_time(:millisecond) >= deadline ->
-        flunk("native retirement hook timed out")
+        System.monotonic_time(:millisecond) >= deadline ->
+          flunk("native retirement hook timed out")
 
-      true ->
-        Process.sleep(10)
-        await_retirement_hook(path, deadline)
+        true ->
+          Process.sleep(10)
+          await_retirement_hook(path, deadline)
+      end
     end
   end
 
