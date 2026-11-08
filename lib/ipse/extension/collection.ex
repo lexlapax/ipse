@@ -2209,7 +2209,7 @@ defmodule Ipse.Extension.Collection do
          _witness,
          _cap
        ) do
-    if normalization["kind"] in ~w(native_literal_retention native_accepted_decision_retention native_literal_supersession native_pending_correction),
+    if normalization["kind"] in ~w(native_literal_retention native_literal_lineage_retention native_accepted_decision_retention native_literal_supersession native_pending_correction),
       do: {:error, :native_review_publication_fence_unavailable},
       else:
         with_capture_deadline(normalization, fn ->
