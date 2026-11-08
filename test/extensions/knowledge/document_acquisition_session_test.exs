@@ -71,7 +71,7 @@ defmodule Ipse.KnowledgeDocumentAcquisitionSessionTest do
         base = Path.join(native, "ipse-public-collection-" <> Ipse.Usage.id())
         File.mkdir!(base)
 
-        if c[:docx_bullet_session] or System.get_env("IPSE_TEST_WORD_KEEP") == "1",
+        if c[:docx_bullet_session] == true or System.get_env("IPSE_TEST_WORD_KEEP") == "1",
           do: IO.puts("WORD_SESSION_FIXTURE #{base}"),
           else: on_exit(fn -> File.rm_rf!(base) end)
 
