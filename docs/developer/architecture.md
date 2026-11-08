@@ -76,7 +76,8 @@ writers, workers, scopes, and file effects before releasing the OS advisory lock
 process so filesystem IO can settle after caller death. A task monitor cannot
 replace either that barrier or native cleanup evidence. The separately bounded
 controlled peer is reserved for reviewed, fenced operations, not arbitrary file
-IO, and currently has no inference caller. See
+IO. The managed inference transport uses it to own the bounded send and its
+cleanup witness. See
 [persistence](persistence.md) before changing close/recovery ordering.
 
 Protected Worker input keeps its original tracked publisher through native

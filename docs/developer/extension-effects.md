@@ -68,8 +68,9 @@ their separate refusal gates.
 
 Session syncs the intent before dispatch. Slow work runs in an owned task outside
 the GenServer. Session syncs its result before continuing the worker. Deadline,
-worker death, cancellation and lease expiry stop local owned work. They cannot
-undo effects that a remote service or filesystem has already performed.
+worker death, cancellation and lease expiry initiate cancellation and cleanup
+of local owned work; the owner must confirm cleanup before treating it as stopped.
+They cannot undo effects that a remote service or filesystem has already performed.
 
 For a pinned export carrying managed dependencies, native-tool and MCP results
 also pass through the [managed Worker input fence](session-sources.md#deliver-a-managed-export-input-under-its-original-owners)

@@ -162,8 +162,8 @@ its selected references. These checks do not hold a lease through delivery.
 record it in coverage. Expired sources and sources observed after the selected
 time do not become current evidence. For a full State or MCP snapshot with
 `as_of_ms: null`, Corpus also checks captured source and fact time boundaries
-before proposing a rerank and before returning the result. If a boundary has
-passed or the clock moved behind the selected time, it refuses with
+before proposing a rerank and before returning the result. If a boundary is
+reached or the clock moved behind the selected time, it refuses with
 `query_time_changed`; run a fresh query. Even an unrelated captured item can
 cause this refusal. An explicit timestamp keeps its selected-time meaning.
 For server-selected queries, the same check covers only the hydrated selected
@@ -171,7 +171,7 @@ sources. It cannot detect a source omitted by the server becoming eligible.
 Collection namespace queries check source time boundaries from the indexed
 catalog, including sources omitted from the results. Explicitly selected
 Collection queries check their selected sources and, for dense queries, selected
-facts. A crossed boundary refuses the result; a source that expires during a
+facts. Reaching a boundary refuses the result; a source that expires during a
 Collection recheck can instead return `conflict`. Retry after inspecting the result.
 Rerank and Collection query-embedding checks precede approval, which may delay dispatch beyond the boundary;
 the checks are not a lease through delivery and cannot detect a clock rollback
