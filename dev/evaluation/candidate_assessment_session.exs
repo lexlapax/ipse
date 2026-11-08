@@ -143,79 +143,99 @@ defmodule Ipse.Development.Evaluation.CandidateAssessmentSession do
     watcher = approval_watcher(pid, o.output)
 
     try do
-      IO.puts("IPSE_MANAGED_APPROVAL_CLI_READY")
+      with_close_guard(pid, fn close_once ->
+        IO.puts("IPSE_MANAGED_APPROVAL_CLI_READY")
 
-      terminal =
-        Ipse.CLI.Terminal.interact(
-          pid,
-          Process.monitor(pid),
-          true,
-          "Use ext__knowledge__assess once for the saved candidate " <>
-            record["key"] <> ". Do not capture, accept, edit, or publish any note.",
-          o.cwd
-        )
+        terminal =
+          Ipse.CLI.Terminal.interact(
+            pid,
+            Process.monitor(pid),
+            true,
+            "Use ext__knowledge__assess once for the saved candidate " <>
+              record["key"] <> ". Do not capture, accept, edit, or publish any note.",
+            o.cwd
+          )
 
-      elapsed = System.monotonic_time(:millisecond) - started
+        elapsed = System.monotonic_time(:millisecond) - started
 
-      save(o.output, "terminal.json", %{
-        "declaration_sha256" => sha,
-        "case_id" => p.recipe["case_id"],
-        "session_id" => id,
-        "terminal_status" => terminal,
-        "elapsed_ms" => elapsed
-      })
+        save(o.output, "terminal.json", %{
+          "declaration_sha256" => sha,
+          "case_id" => p.recipe["case_id"],
+          "session_id" => id,
+          "terminal_status" => terminal,
+          "elapsed_ms" => elapsed
+        })
 
-      assert :ok = Session.close_confirmed(pid)
-      {:ok, events} = Journal.load(o.state_dir, id)
-      # Preserve observed completion and full private history before assertions.
-      save(o.output, "observed.json", %{
-        "declaration_sha256" => sha,
-        "case_id" => p.recipe["case_id"],
-        "session_id" => id,
-        "terminal_status" => terminal,
-        "elapsed_ms" => elapsed,
-        "journal_sha256" => JSON.sha256(File.read!(Path.join(o.state_dir, id <> ".jsonl")))
-      })
+        assert :ok = close_once.()
+        {:ok, events} = Journal.load(o.state_dir, id)
+        # Preserve observed completion and full private history before assertions.
+        save(o.output, "observed.json", %{
+          "declaration_sha256" => sha,
+          "case_id" => p.recipe["case_id"],
+          "session_id" => id,
+          "terminal_status" => terminal,
+          "elapsed_ms" => elapsed,
+          "journal_sha256" => JSON.sha256(File.read!(Path.join(o.state_dir, id <> ".jsonl")))
+        })
 
-      assert {:ok, _} = Session.Saved.restore(events, id)
-      refute Enum.any?(events, &(get_in(&1, ["request", "op"]) === "collection.managed"))
+        assert {:ok, _} = Session.Saved.restore(events, id)
+        refute Enum.any?(events, &(get_in(&1, ["request", "op"]) === "collection.managed"))
 
-      {:ok, after_collection} =
-        Collection.execute(collection, namespace, %{"op" => "snapshot"}, Ipse.Usage.id())
+        {:ok, after_collection} =
+          Collection.execute(collection, namespace, %{"op" => "snapshot"}, Ipse.Usage.id())
 
-      assert after_collection === before_collection
-      assert File.read!(source_path) === source_bytes
-      {:ok, after_policy} = Consent.existing_snapshot(control, project["project_id"])
+        assert after_collection === before_collection
+        assert File.read!(source_path) === source_bytes
+        {:ok, after_policy} = Consent.existing_snapshot(control, project["project_id"])
 
-      assert after_policy["epoch"] === before_policy["epoch"] and
-               after_policy["policy"] === before_policy["policy"]
+        assert after_policy["epoch"] === before_policy["epoch"] and
+                 after_policy["policy"] === before_policy["policy"]
 
-      row = result_row(p, events, before_policy, after_policy, elapsed)
-      save(o.output, "row.json", row)
-      assert terminal === 0
-      idle(o, id, events)
-      {:ok, final_policy} = Consent.existing_snapshot(control, project["project_id"])
-      assert final_policy === after_policy
-      assert File.read!(source_path) === source_bytes
-      assert :sys.get_state(Ipse.Session.Input).entries === %{}
+        row = result_row(p, events, before_policy, after_policy, elapsed)
+        save(o.output, "row.json", row)
+        assert terminal === 0
+        idle(o, id, events)
+        {:ok, final_policy} = Consent.existing_snapshot(control, project["project_id"])
+        assert final_policy === after_policy
+        assert File.read!(source_path) === source_bytes
+        assert :sys.get_state(Ipse.Session.Input).entries === %{}
 
-      save(o.output, "complete.json", %{
-        "declaration_sha256" => sha,
-        "case_id" => p.recipe["case_id"],
-        "row_sha256" => JSON.digest([row]),
-        "original_journal_sha256" => p.source["journal_sha256"],
-        "consumer_journal_sha256" =>
-          JSON.sha256(File.read!(Path.join(o.state_dir, id <> ".jsonl"))),
-        "ledger_snapshot_sha256" => JSON.digest([final_policy]),
-        "collection_unchanged" => true,
-        "strict_saved_idle_no_replay" => true,
-        "qualification" => false
-      })
+        save(o.output, "complete.json", %{
+          "declaration_sha256" => sha,
+          "case_id" => p.recipe["case_id"],
+          "row_sha256" => JSON.digest([row]),
+          "original_journal_sha256" => p.source["journal_sha256"],
+          "consumer_journal_sha256" =>
+            JSON.sha256(File.read!(Path.join(o.state_dir, id <> ".jsonl"))),
+          "ledger_snapshot_sha256" => JSON.digest([final_policy]),
+          "collection_unchanged" => true,
+          "strict_saved_idle_no_replay" => true,
+          "qualification" => false
+        })
 
-      {:ok, row}
+        {:ok, row}
+      end)
     after
-      if Process.alive?(pid), do: Session.close_confirmed(pid)
       if Process.alive?(watcher), do: Process.exit(watcher, :kill)
+    end
+  end
+
+  @doc false
+  def with_close_guard(pid, run, close \\ &Session.close_confirmed/1)
+      when is_pid(pid) and is_function(run, 1) and is_function(close, 1) do
+    attempted = :atomics.new(1, [])
+
+    close_once = fn ->
+      case :atomics.compare_exchange(attempted, 1, 0, 1) do
+        :ok -> close.(pid)
+        _ -> {:error, :cleanup_unconfirmed}
+      end
+    end
+
+    try do
+      run.(close_once)
+    after
+      if Process.alive?(pid), do: close_once.()
     end
   end
 
@@ -584,17 +604,15 @@ defmodule Ipse.Development.Evaluation.CandidateAssessmentSession do
          id: id}
       )
 
-    try do
+    with_close_guard(pid, fn close_once ->
       assert Session.info(pid).phase === :idle
-      assert :ok = Session.close_confirmed(pid)
+      assert :ok = close_once.()
       {:ok, after_events} = Journal.load(o.state_dir, id)
       assert {:ok, _} = Session.Saved.restore(after_events, id)
 
       assert Enum.filter(after_events, &(&1["type"] in @intent_types)) ===
                Enum.filter(before, &(&1["type"] in @intent_types))
-    after
-      if Process.alive?(pid), do: Session.close_confirmed(pid)
-    end
+    end)
   end
 
   defp options?(o) do

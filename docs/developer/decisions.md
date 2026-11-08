@@ -391,6 +391,10 @@ materialize complete paged results rather than treating a receipt as advice.
 `result_row/5` preserves denied, refused and cancelled statuses only when the
 typed action, accounting and delivered result support them. Missing closure,
 partial request/response failures and untyped outer errors remain unknown.
+The materializer attempts to close each owned Session at most once, including
+cleanup after an earlier failure. If close is unconfirmed, it stops before
+loading that Session's journal for the next step; retain the evidence and
+inspect the owner and cleanup state rather than retrying the close automatically.
 A complete assessment reports an exact `observed_cost_nanos` total only when
 every row has a cost and their sum fits the JSON-safe integer range; otherwise
 that total is null, not a clipped or understated cost.

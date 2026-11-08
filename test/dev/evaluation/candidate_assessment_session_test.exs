@@ -10,6 +10,63 @@ defmodule Ipse.Development.Evaluation.CandidateAssessmentSessionTest do
   alias Ipse.Development.Evaluation.CandidateAssessment, as: A
   alias Ipse.Development.Evaluation.CandidateAssessmentSession, as: S
 
+  test "a failed or interrupted close is never retried by cleanup" do
+    for outcome <- [:unconfirmed, :exit] do
+      owner = self()
+
+      fake_close = fn pid ->
+        send(owner, {:close_attempt, outcome, pid})
+
+        case outcome do
+          :unconfirmed -> {:error, :cleanup_unconfirmed}
+          :exit -> exit(:synthetic_timeout)
+        end
+      end
+
+      run = fn ->
+        S.with_close_guard(self(), fn close -> :ok = close.() end, fake_close)
+      end
+
+      case outcome do
+        :unconfirmed -> assert_raise MatchError, run
+        :exit -> assert catch_exit(run.()) == :synthetic_timeout
+      end
+
+      assert_receive {:close_attempt, ^outcome, ^owner}
+      refute_receive {:close_attempt, ^outcome, _}
+    end
+  end
+
+  test "cleanup can make the first close and a confirmed close is not repeated" do
+    owner = self()
+
+    fake_close = fn pid ->
+      send(owner, {:close_attempt, pid})
+      :ok
+    end
+
+    assert :ok = S.with_close_guard(self(), fn close -> close.() end, fake_close)
+    assert_receive {:close_attempt, ^owner}
+    refute_receive {:close_attempt, _}
+  end
+
+  test "cleanup performs the first close when work fails before explicit close" do
+    owner = self()
+
+    fake_close = fn pid ->
+      send(owner, {:close_attempt, pid})
+      :ok
+    end
+
+    assert_raise RuntimeError, fn ->
+      S.with_close_guard(self(), fn _close -> raise "synthetic failure" end, fake_close)
+    end
+
+    assert_receive {:close_attempt, ^owner}
+    refute_receive {:close_attempt, _}
+  end
+
+
   defmodule ReviewOwner do
     use GenServer
 
