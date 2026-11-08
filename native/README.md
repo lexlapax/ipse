@@ -896,6 +896,17 @@ mix compile --warnings-as-errors
 mix test test/ipse/runner/transaction_test.exs test/ipse/runner/transaction_optional_read_test.exs test/ipse/runner/transaction_framing_test.exs test/ipse/runner/storage_profile_test.exs test/ipse/extension/project_identity_test.exs
 ```
 
+For the Linux document-retirement mode, also run the isolated controls with a
+fresh private temporary directory and retained fixtures:
+
+```sh
+mix test test/ipse/runner/transaction_document_retirement_test.exs --include native_sandbox --max-cases 1
+```
+
+The control-loss cases deliberately interrupt a synthetic owner; inspect their
+retained fixtures and confirm process and lock cleanup before further work.
+They do not establish a complete Session retirement journey.
+
 The transaction fixtures compile source-derived implementations under private
 test module names. The ordinary fixture changes only child-helper selection;
 fault variants deliberately alter native responses or IO results. The retained
@@ -927,17 +938,34 @@ terminal device with `NOCTTY` and rechecks device/inode identity. It never chang
 the parent's descriptor flags or line discipline.
 
 Before any flush/display/read, a retained regular-file `flock` serializes channels
-for the OS user across terminals and VMs. The canonical root of `/tmp` must be a
-root-owned sticky world-writable directory. `ipse-operator-UID/` is created with
-0700 and `input.lock` with 0600; existing paths must have matching ownership,
-protected modes, canonical directory identity and a regular single-link empty
-file. Opens use no-follow/nonblocking flags, identities are rechecked after
-acquisition, and the inode is never unlinked or replaced by this protocol. The
-lock spans final input invalidation, including parent-loss cleanup. Busy or unsafe
-locks refuse before terminal effects. This deliberately conservative per-user
-scope also fences replacements while an old helper is stopped. OS temporary-state
-maintenance must preserve active lock inodes. Terminal-device `flock` is unsuitable
-on macOS's special-file backend; the regular-file fence is shared by both hosts.
+on one terminal device for the OS user, whichever VM or process opens it. The
+lock is named after the validated terminal's device number (`rdev`):
+`/tmp/ipse-operator-UID/input-RDEV.lock`, where `RDEV` is 16 lowercase hex
+digits. Two helpers on the same terminal, including one reached through a
+different path such as a bind mount or copied device node, always meet on one
+lock. Helpers on different terminals, such as separate PTY fixtures or another
+interactive Ipse window, never contend. The node's own device/inode identity is deliberately not
+part of the name: it differs between nodes for one terminal and would split its
+input queue across locks. Pseudo-terminals from separate `devpts` instances may
+share an `rdev`; they only serialize unnecessarily. Indirect devices that resolve
+to another terminal at open time (Linux `/dev/tty`, `/dev/console`, `/dev/ptmx`
+and `/dev/tty0`; macOS `/dev/tty` and `/dev/console`) are refused before any lock
+or terminal effect, because their `rdev` would not meet a direct reader's lock.
+
+The canonical root of `/tmp` must be a root-owned sticky world-writable
+directory. `ipse-operator-UID/` is created with 0700 and each lock file with 0600;
+existing paths must have matching ownership, protected modes, canonical directory
+identity and a regular single-link empty file. Opens use no-follow/nonblocking
+flags, identities are rechecked after acquisition, and no inode is unlinked or
+replaced by this protocol; one empty file accumulates per terminal device used.
+The lock spans final input invalidation, including parent-loss cleanup. A busy
+lock is retried without blocking for at most 500 ms, never past the caller's
+deadline, so a previous helper that is still exiting does not refuse its
+successor. A lock still busy after that wait, or an unsafe one, refuses before
+terminal effects. The fence therefore also blocks a replacement on the same
+terminal while an old helper is stopped. OS temporary-state maintenance must
+preserve active lock inodes. Terminal-device `flock` is unsuitable on macOS's
+special-file backend; the regular-file fence is shared by both hosts.
 
 Control uses the ordinary one-byte/four-byte-length frame envelope:
 
@@ -992,7 +1020,11 @@ display bytes**. Its finite display limit includes complete proposed arguments;
 an unrepresentable proposal refuses before effect, without truncation. Temporary
 noncanonical input avoids kernel canonical-line truncation and preserves queued
 prompt lines. The native reader owns input editing/echo; no competing `IO.gets`
-reader runs. The Session binds each observation to its actual client, current
+reader runs. Every host path that starts a terminal-reading helper, of any
+version, first pauses the VM's own eager OTP 27 standard-input reader through
+`Ipse.Runner.TerminalInput.claim/0`, or refuses before display; see
+[the developer explanation](../docs/developer/persistence.md#bind-an-actual-operator-observation-before-recording-origin).
+The Session binds each observation to its actual client, current
 channel generation and purpose. Native approvals and question answers still need
 their exact current displayed code. EOF creates no answer observation.
 
@@ -1001,7 +1033,10 @@ state, private peer-liveness pipes and the channel lock. They use separate proce
 groups. Readiness binds both process IDs and the nonce. The guardian observes host
 loss, reaps the reader, restores termios and flushes old input before its distinct
 restoration receipt. The reader independently restores if its guardian disappears;
-that fallback receipt cannot substitute for confirmed guardian cleanup. The host
+that fallback receipt cannot substitute for confirmed guardian cleanup. The forked
+reader shares the lock's open file description, so it releases the channel only
+when it exits; it polls its guardian and host pipes and the terminal at least every
+20 ms and exits on guardian loss or terminal hangup rather than at its deadline. The host
 requires the appropriate restoration protocol and actual helper exit, retains the
 cleanup scope, and requests cooperative cancellation before bounded fallback.
 Missing receipts report unknown cleanup and retained locks fence replacement.
@@ -1023,7 +1058,10 @@ mix test test/ipse/cli/operator_input_test.exs
 Tests use the existing host C library's POSIX PTY functions. Linux pipes are
 atomically close-on-exec; fixture ownership serializes PTY creation/spawn, and
 high control descriptors are mapped only after child exec so the spawn error
-pipe is preserved. macOS's non-atomic pipe fallback is not a claim of race freedom
+pipe is preserved. Each fixture drives its own PTY, so concurrent fixtures and an
+interactive Ipse session on another terminal hold independent channel locks;
+same-terminal fencing is exercised by deliberately sharing one fixture PTY.
+macOS's non-atomic pipe fallback is not a claim of race freedom
 against other modules' test spawns. Failed first runs remain in the dated
 implementation record.
 

@@ -308,17 +308,38 @@ limits and serialization of lifecycle user-message events.
 The native deadline covers request/display/input and observes parent cancellation
 even with a full terminal output buffer. A fresh nonblocking terminal description
 preserves the parent's flags; incomplete input is invalidated. A retained native
-regular-file lock under canonical `/tmp/ipse-operator-UID/input.lock` fences reads
-across VMs and terminals for that OS user. The root must be root-owned and sticky;
-the private directory/file must have safe ownership, modes and identity. The
-helper holds the lock through its final flush. A stopped or closing old helper
-therefore makes replacement reads refuse even after the service restarts. Leave
-the lock inode in place while channels may exist. Full Unicode
+regular-file lock fences reads of one terminal: it is named
+`/tmp/ipse-operator-UID/input-RDEV.lock` after the validated terminal's device
+number, so two helpers reading the same terminal from any VM always meet on it,
+while helpers on different terminals never contend. Indirect devices such as
+`/dev/tty` are refused because their device number would not meet a direct
+reader's lock. The root must be root-owned and sticky; the private
+directory/file must have safe ownership, modes and identity. The helper holds the
+lock through its final flush. A busy lock gets a short nonblocking retry bounded
+by the caller's deadline, which covers a predecessor that is still exiting. A
+stopped old helper on the same terminal therefore still makes replacement reads
+refuse even after the service restarts. Leave lock inodes in place while channels
+may exist. Full Unicode
 escaping stays in the host. [Native protocol and PTY controls](../../native/README.md#observe-one-actual-terminal-display-and-input)
 explain the descriptor boundary. PTY fixtures are automated observations, not
 independent human evidence. Clients must own terminal reading and quiesce their
 other readers before calling it. The single-prompt helper intentionally discards
 queued future lines.
+
+The VM is itself a competing reader. Under `-noshell`, OTP 27 registers an eager
+`user_drv_reader` that starts a blocking read whenever the terminal becomes
+readable and keeps the bytes for a later `IO.gets`. When a helper wins those
+bytes, the VM's read stays blocked in the kernel and takes all or part of the
+next line typed for a later helper, which then waits until its deadline. Every
+host path that starts a terminal-reading helper therefore calls
+`Runner.TerminalInput.claim/0` first. The first claim pauses that reader and waits
+for its acknowledgement, which proves it is not inside a read. The pause is never
+lifted, because resuming would rearm the same blocked read, so such a VM no
+longer reads its terminal through `IO.gets`. A reader that cannot acknowledge is
+already blocked, and the claim refuses before any display. Nonterminal input,
+shell VMs and runtimes whose reader runs only on request are left unchanged.
+`test/ipse/runner/terminal_input_test.exs` shows an unclaimed VM taking every line
+typed for an inheriting child and a claimed one leaving them all.
 
 The interactive CLI uses the version-2 native channel. Its non-reading preflight
 selects it only for matching terminal input/output; explicitly nonterminal input

@@ -231,9 +231,11 @@ Inspect compile-time attributes and macros first: compiling a module executes
 them, so selecting its AST is not confinement for untrusted code.
 Normal-host and private clock-adapter code paths remain distinct qualifications.
 
-Before parallel groups, identify global OS owners and fixed paths. Separate VMs
-do not separate the per-user native terminal lock: keep operator/PTY/Rust terminal
-cohorts serial. Eligible groups need private real CWD/checkouts, Git/index,
+Before parallel groups, identify global OS owners and fixed paths. The native
+terminal lock is keyed by terminal device, not by VM: each PTY fixture holds only
+its own terminal's lock, but a helper reading the terminal that runs the suite
+still contends with an interactive Ipse on that terminal. Eligible groups need
+private real CWD/checkouts, Git/index,
 App/dependency build metadata and HOME/TMP, with an exact disjoint file-list union.
 Do not apply a second partition filter to explicit groups. Ordinary direct
 `Session.approve` fixtures are not automatically terminal users; inspect their
@@ -989,7 +991,7 @@ rustc --edition=2021 --test -D warnings native/ipse-bound.rs -o "$IPSE_NATIVE_TE
 "$IPSE_NATIVE_TESTS/bound"
 rustc --edition=2021 --test -D warnings native/ipse-operator.rs -o "$IPSE_NATIVE_TESTS/operator"
 "$IPSE_NATIVE_TESTS/operator"
-mix test test/ipse/runner/operator_test.exs test/ipse/session/input_test.exs
+mix test test/ipse/runner/operator_test.exs test/ipse/runner/terminal_input_test.exs test/ipse/session/input_test.exs
 mix test test/ipse/runner/leased_terminal_deadline_test.exs
 ```
 
@@ -997,9 +999,12 @@ Retain size/inode/symlink/permission/nonblocking controls and bounded ignored FI
 probes. Linux tests authority/FIFO/descriptor transfer; macOS covers only portable
 protocol cases. Operator tests use actual synthetic PTYs and the bundled helper's
 compiled identity. They cover terminal matching, deadlines, parent loss, a stopped
-old helper's cleanup fence and opaque Session witnesses. Run the native, operator
-and PTY tests serially: their conservative per-user lock intentionally makes
-overlapping native test programs contend. PTY input remains automated, and ordinary CLI/card adoption
+old helper's cleanup fence and opaque Session witnesses. The terminal-input test
+also shows that an unclaimed OTP 27 fixture VM takes lines typed for its child,
+so a fixture that reads its PTY outside `Runner` must claim first. Each fixture drives its
+own PTY, so its per-terminal channel lock does not contend with other fixtures or
+an interactive Ipse session on another terminal; same-terminal fencing is tested
+by sharing one fixture PTY. PTY input remains automated, and ordinary CLI/card adoption
 and independent human journeys need separate verification. Keep atomic ordinals
 and fixed-clock collision tests for parallel fixtures. The leased-terminal
 deadline test covers arithmetic and rounding; it does not prove clock-rate or
@@ -1123,7 +1128,7 @@ input instead of the intended later effect.
 Follow [the source-owner walkthrough](session-sources.md#retain-sources-through-a-protected-display-or-review)
 for retained descriptors and [MCP](mcp.md) for transport ownership. These
 metadata controls do not substitute for original-note/current-use controls.
-Run terminal/Rust cohorts serially under their shared per-user lock.
+Terminal/Rust cohorts each hold only their own PTY's channel lock.
 
 ### Preserve nested effects and helper continuations
 

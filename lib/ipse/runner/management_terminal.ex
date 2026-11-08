@@ -25,6 +25,7 @@ defmodule Ipse.Runner.ManagementTerminal do
          {:ok, display, _challenge} <-
            Review.preview_management_display("forget", facts, System.system_time(:millisecond)),
          {:ok, helper} <- Runner.protected_helper(Path.dirname(owned.directory)),
+         :ok <- Runner.TerminalInput.claim(),
          {:ok, ticket} <- Resources.register(:lock) do
       result = run(owned, caps, ids, facts, display, overall_wall, helper, :display)
 
@@ -135,6 +136,7 @@ defmodule Ipse.Runner.ManagementTerminal do
          {:ok, display, challenge, wall} <- review_display(command, facts, overall_wall),
          {:ok, display} <- annotate_display(command, annotation, display, facts),
          {:ok, helper} <- Runner.protected_helper(Path.dirname(owned.directory)),
+         :ok <- Runner.TerminalInput.claim(),
          {:ok, ticket} <- Resources.register(:lock) do
       result =
         run(

@@ -52,7 +52,8 @@ defmodule Ipse.Runner do
              purpose in [:ordinary, :accepted, :review, :approval] and
              (purpose in [:review, :approval] or remaining <= 5_000) do
     with {:unix, :linux} <- :os.type(),
-         {:ok, helper} <- protected_helper(cwd) do
+         {:ok, helper} <- protected_helper(cwd),
+         :ok <- Ipse.Runner.TerminalInput.claim() do
       {:ok,
        Port.open({:spawn_executable, String.to_charlist(helper)}, [
          :binary,
@@ -712,6 +713,7 @@ defmodule Ipse.Runner do
          true <- is_integer(timeout_ms) and timeout_ms in 1_000..600_000,
          true <- Ipse.CLI.Terminal.escape(prompt) == prompt,
          {:ok, helper} <- verified_operator_helper(),
+         :ok <- Ipse.Runner.TerminalInput.claim(),
          {:ok, port, ticket} <-
            owned_port(:lock, helper, [
              :binary,
@@ -787,7 +789,8 @@ defmodule Ipse.Runner do
          true <- byte_size(prompt) in 1..16_777_216,
          true <- is_integer(timeout_ms) and timeout_ms in 1_000..600_000,
          true <- Ipse.CLI.Terminal.escape(prompt) == prompt,
-         {:ok, helper} <- verified_operator_helper() do
+         {:ok, helper} <- verified_operator_helper(),
+         :ok <- Ipse.Runner.TerminalInput.claim() do
       Ipse.Runner.Operator.run(helper, prompt, timeout_ms)
     else
       _ -> {:error, :operator_input_unavailable}
@@ -800,7 +803,8 @@ defmodule Ipse.Runner do
          true <- byte_size(prompt) in 1..16_777_216,
          true <- is_integer(timeout_ms) and timeout_ms in 1_000..600_000,
          true <- Ipse.CLI.Terminal.escape(prompt) == prompt,
-         {:ok, helper} <- verified_operator_helper() do
+         {:ok, helper} <- verified_operator_helper(),
+         :ok <- Ipse.Runner.TerminalInput.claim() do
       Ipse.Runner.Operator.run_guarded(helper, prompt, timeout_ms, guard)
     else
       _ -> {:error, :operator_input_unavailable}
@@ -2329,6 +2333,26 @@ defmodule Ipse.Runner do
     end
   end
 
+  # The temp name is unique across OS processes (pid plus random bytes) and is
+  # created exclusively, so concurrent builders never share or remove each
+  # other's file. rustc then overwrites our own reserved file.
+  defp reserve_temp(target) do
+    suffix = Base.url_encode64(:crypto.strong_rand_bytes(8), padding: false)
+    temp = "#{target}.#{System.pid()}.#{suffix}"
+
+    case File.open(temp, [:write, :exclusive]) do
+      {:ok, io} ->
+        File.close(io)
+        temp
+
+      {:error, :eexist} ->
+        reserve_temp(target)
+
+      {:error, reason} ->
+        raise File.Error, reason: reason, action: "create", path: temp
+    end
+  end
+
   defp build_helper do
     source = Path.join(@root, "native/ipse-runner.rs")
     rustc = System.find_executable("rustc")
@@ -2341,7 +2365,7 @@ defmodule Ipse.Runner do
           {:ok, target}
         else
           File.mkdir_p!(Path.dirname(target))
-          temp = target <> ".#{System.unique_integer([:positive])}"
+          temp = reserve_temp(target)
 
           case System.cmd(
                  rustc,

@@ -74,8 +74,35 @@ pub(crate) mod unix {
         }
         Ok(tty)
     }
-    fn channel_lock() -> Result<File> {
+    // One lock per terminal device: readers of the same terminal serialize,
+    // readers of different terminals never contend. The key is the validated
+    // tty's rdev, not dev/ino: every node naming a direct terminal device
+    // (/dev/pts/N, a bind mount, a mknod copy) shares its rdev, while dev/ino
+    // differ between such nodes and would split one input queue across locks.
+    // A shared rdev from a separate devpts instance only over-serializes.
+    // Indirect devices resolve to another terminal at open time and have their
+    // own rdev, so a reader on one could share a queue with a direct reader
+    // under a different lock; they are refused instead of keyed.
+    fn channel_name(rdev: u64) -> Result<String> {
+        #[cfg(target_os = "linux")]
+        let (major, minor) = (((rdev >> 8) & 0xfff) | ((rdev >> 32) & !0xfff), (rdev & 0xff) | ((rdev >> 12) & !0xff));
+        // /dev/tty, /dev/console, /dev/ptmx and /dev/tty0 (current virtual console).
+        #[cfg(target_os = "linux")]
+        let indirect = matches!((major, minor), (5, 0) | (5, 1) | (5, 2) | (4, 0));
+        #[cfg(target_os = "macos")]
+        let (major, minor) = ((rdev >> 24) & 0xff, rdev & 0xff_ffff);
+        // /dev/tty and /dev/console.
+        #[cfg(target_os = "macos")]
+        let indirect = matches!((major, minor), (2, 0) | (0, 0));
+        if indirect { return Err(Failure::Refused("indirect operator terminal device unsupported")); }
+        Ok(format!("input-{rdev:016x}.lock"))
+    }
+    // A previous holder that is still exiting gets a short bounded wait; the
+    // nonblocking lock is retried and never waits past the caller's deadline.
+    const CHANNEL_WAIT: Duration = Duration::from_millis(500);
+    fn channel_lock(tty: &File, deadline: Instant) -> Result<File> {
         let fail = |_| Failure::Refused("operator channel lock unavailable");
+        let name = channel_name(tty.metadata().map_err(fail)?.rdev())?;
         let root = std::fs::canonicalize("/tmp").map_err(fail)?;
         let metadata = std::fs::symlink_metadata(&root).map_err(fail)?;
         if !metadata.is_dir() || metadata.uid() != 0 || metadata.mode() & 0o1002 != 0o1002 {
@@ -93,7 +120,7 @@ pub(crate) mod unix {
             std::fs::canonicalize(&directory).map_err(fail)? != directory {
             return Err(Failure::Refused("unsafe operator lock directory"));
         }
-        let path = directory.join("input.lock");
+        let path = directory.join(name);
         // NONBLOCK also prevents a substituted FIFO from blocking before validation.
         #[cfg(target_os = "linux")]
         let flags = NONBLOCK | 0x20000;
@@ -104,8 +131,17 @@ pub(crate) mod unix {
         let m = lock.metadata().map_err(fail)?;
         let p = std::fs::symlink_metadata(&path).map_err(fail)?;
         if !m.is_file() || m.uid() != uid || m.nlink() != 1 || m.mode() & 0o077 != 0 || m.len() != 0 ||
-            (m.dev(), m.ino()) != (p.dev(), p.ino()) || unsafe { flock(lock.as_raw_fd(), 2 | 4) } != 0 {
+            (m.dev(), m.ino()) != (p.dev(), p.ino()) {
             return Err(Failure::Refused("operator channel busy or unsafe lock"));
+        }
+        let until = deadline.min(Instant::now() + CHANNEL_WAIT);
+        while unsafe { flock(lock.as_raw_fd(), 2 | 4) } != 0 {
+            let retry = matches!(std::io::Error::last_os_error().kind(),
+                std::io::ErrorKind::WouldBlock | std::io::ErrorKind::Interrupted);
+            if !retry || Instant::now() >= until {
+                return Err(Failure::Refused("operator channel busy or unsafe lock"));
+            }
+            std::thread::sleep(Duration::from_millis(5));
         }
         let current = std::fs::symlink_metadata(&path).map_err(fail)?;
         let current_directory = std::fs::symlink_metadata(&directory).map_err(fail)?;
@@ -116,6 +152,42 @@ pub(crate) mod unix {
             return Err(Failure::Refused("operator channel lock identity changed"));
         }
         Ok(lock)
+    }
+    #[cfg(test)]
+    mod channel_tests {
+        use super::{channel_name, Failure};
+        #[cfg(target_os = "linux")]
+        fn device(major: u64, minor: u64) -> u64 {
+            ((major & 0xfff) << 8) | ((major & !0xfff) << 32) | (minor & 0xff) | ((minor & !0xff) << 12)
+        }
+        #[cfg(target_os = "macos")]
+        fn device(major: u64, minor: u64) -> u64 { (major << 24) | minor }
+        fn name(rdev: u64) -> String {
+            match channel_name(rdev) { Ok(name) => name, Err(_) => panic!("direct terminal refused") }
+        }
+        #[test]
+        fn channel_names_follow_the_terminal_device() {
+            let first = device(136, 3);
+            assert_eq!(name(first), format!("input-{first:016x}.lock"));
+            assert_eq!(name(first), name(device(136, 3)));
+            assert_ne!(name(first), name(device(136, 4)));
+            assert_ne!(name(first), name(device(4, 1)));
+            assert_ne!(name(device(136, 0x1_0003)), name(first));
+            for rdev in [first, device(4, 1), device(136, 0x1_0003)] {
+                let name = name(rdev);
+                assert!(!name.contains('/') && name.starts_with("input-") && name.ends_with(".lock"));
+            }
+        }
+        #[test]
+        fn indirect_terminal_devices_have_no_channel_name() {
+            #[cfg(target_os = "linux")]
+            let indirect = [device(5, 0), device(5, 1), device(5, 2), device(4, 0)];
+            #[cfg(target_os = "macos")]
+            let indirect = [device(2, 0), device(0, 0)];
+            for rdev in indirect {
+                assert!(matches!(channel_name(rdev), Err(Failure::Refused(_))));
+            }
+        }
     }
     fn wait(control: &File, target: &File, event: i16, deadline: Instant, reading_control: bool) -> Result<()> {
         loop {
@@ -245,7 +317,7 @@ pub(crate) mod unix {
             }
             nonblocking(&control)?;
             let mut tty = terminal()?;
-            let _channel_lock = channel_lock()?;
+            let _channel_lock = channel_lock(&tty, deadline)?;
             let (token, body) = display_request(&mut control, deadline)?; nonce = Some(token);
             if unsafe { tcflush(tty.as_raw_fd(), INPUT_QUEUE) } != 0 {
                 return Err(Failure::Refused("cannot clear prior terminal input"));
@@ -287,7 +359,7 @@ pub(crate) mod unix {
             if !control.metadata().is_ok_and(|m| m.file_type().is_fifo()) ||
                !output.metadata().is_ok_and(|m| m.file_type().is_fifo()) { return Err("probe control pipes required".into()); }
             let tty = terminal().map_err(|_| "matched probe terminal required")?;
-            let channel = channel_lock().map_err(|_| "probe terminal channel unavailable")?;
+            let channel = channel_lock(&tty, deadline).map_err(|_| "probe terminal channel unavailable")?;
             crate::ipse_terminal_lease::run(control, output, tty, channel, deadline, deadline, display_limit, false, 0, false, notice, false)
         }
         #[cfg(all(target_os = "linux", not(test)))]
@@ -299,7 +371,7 @@ pub(crate) mod unix {
             if !control.metadata().is_ok_and(|m| m.file_type().is_fifo()) ||
                !output.metadata().is_ok_and(|m| m.file_type().is_fifo()) { return Err("probe control pipes required".into()); }
             let tty = terminal().map_err(|_| "matched probe terminal required")?;
-            let channel = channel_lock().map_err(|_| "probe terminal channel unavailable")?;
+            let channel = channel_lock(&tty, deadline).map_err(|_| "probe terminal channel unavailable")?;
             crate::ipse_terminal_lease::run(control, output, tty, channel, deadline, deadline, 8192, false, 0, true, notice, false)
         }
         #[cfg(all(target_os = "linux", not(test)))]
@@ -310,7 +382,7 @@ pub(crate) mod unix {
             let output = fd(4).map_err(|_| "probe output unavailable")?;
             if !control.metadata().is_ok_and(|m| m.file_type().is_fifo()) || !output.metadata().is_ok_and(|m| m.file_type().is_fifo()) { return Err("probe control pipes required".into()); }
             let tty = terminal().map_err(|_| "matched probe terminal required")?;
-            let channel = channel_lock().map_err(|_| "probe terminal channel unavailable")?;
+            let channel = channel_lock(&tty, deadline).map_err(|_| "probe terminal channel unavailable")?;
             crate::ipse_terminal_lease::run(control, output, tty, channel, deadline, deadline, 8192, false, 128, false, false, false)
         }
         #[cfg(all(target_os = "linux", not(test)))]
@@ -343,7 +415,7 @@ pub(crate) mod unix {
             let output = fd(4).map_err(|_| "input output unavailable")?;
             if !control.metadata().is_ok_and(|m| m.file_type().is_fifo()) || !output.metadata().is_ok_and(|m| m.file_type().is_fifo()) { return Err("input control pipes required".into()); }
             let tty = terminal().map_err(|_| "matched input terminal required")?;
-            let channel = channel_lock().map_err(|_| "input terminal channel unavailable")?;
+            let channel = channel_lock(&tty, setup).map_err(|_| "input terminal channel unavailable")?;
             crate::ipse_terminal_lease::run(control, output, tty, channel, setup, overall, 65536, true, source, false, notice, session_payload)
         }
         pub fn probe() -> std::result::Result<(), String> {
@@ -356,8 +428,8 @@ pub(crate) mod unix {
                 output.write_all(&bytes(b'n', b"nonterminal")).map_err(|_| "operator probe output failed")?;
                 return Ok(());
             }
-            let _tty = terminal().map_err(|_| "operator terminal identity unavailable")?;
-            let _lock = channel_lock().map_err(|_| "operator channel unavailable")?;
+            let tty = terminal().map_err(|_| "operator terminal identity unavailable")?;
+            let _lock = channel_lock(&tty, Instant::now() + CHANNEL_WAIT).map_err(|_| "operator channel unavailable")?;
             output.write_all(&bytes(b't', b"terminal")).map_err(|_| "operator probe output failed")?;
             Ok(())
         }
@@ -712,7 +784,7 @@ pub(crate) mod unix {
                     return Ok(());
                 }
                 let mut tty = terminal()?;
-                let _lock = channel_lock()?;
+                let _lock = channel_lock(&tty, deadline)?;
                 let (nonce, display, wall) = request(&mut control, deadline)?; token = nonce;
                 let original = Original::capture(&tty)?;
                 let _restore = Restore { original: original.clone(), tty: tty.try_clone().map_err(|_| Failure::Refused("cannot retain operator restoration descriptor"))? };
@@ -898,6 +970,15 @@ mod tests {
             let slave = OpenOptions::new().read(true).write(true).custom_flags(flags).open(path).unwrap();
             Self { master, slave }
         }
+        fn share(&self) -> Self {
+            Self { master: self.master.try_clone().unwrap(), slave: self.slave.try_clone().unwrap() }
+        }
+        fn drain(&self) {
+            while ready(&self.master, 20) {
+                let mut bytes = [0; 4096];
+                if !matches!((&self.master).read(&mut bytes), Ok(n) if n > 0) { break; }
+            }
+        }
         fn raw(&self) {
             // Opaque, overallocated and aligned termios storage. libc owns its layout.
             let mut value = [0_usize; 64];
@@ -924,6 +1005,14 @@ mod tests {
         fn versioned(redirect_input: bool, redirect_output: bool, separate_output: bool, raw: bool,
             guard: Option<MutexGuard<'static, ()>>, v2: bool) -> Self {
             let tty = Tty::new(); if raw { tty.raw(); }
+            Self::spawn(tty, redirect_input, redirect_output, separate_output, guard, v2)
+        }
+        /// Another helper on an existing probe's terminal, for same-terminal channel cases.
+        fn sharing(other: &Tty, v2: bool) -> Self {
+            Self::spawn(other.share(), false, false, false, None, v2)
+        }
+        fn spawn(tty: Tty, redirect_input: bool, redirect_output: bool, separate_output: bool,
+            guard: Option<MutexGuard<'static, ()>>, v2: bool) -> Self {
             let (read, write) = pipes(); let (result, result_write) = pipes();
             let read = own(unsafe { fcntl(read.as_raw_fd(), 0, 64) });
             let result_write = own(unsafe { fcntl(result_write.as_raw_fd(), 0, 64) });
@@ -1244,7 +1333,8 @@ mod tests {
             std::thread::sleep(Duration::from_millis(2));
         }
         old.input.take();
-        let mut blocked = Probe::unlocked(false, false, false, false, None);
+        old.tty.drain();
+        let mut blocked = Probe::sharing(&old.tty, false);
         let (kind, reason) = blocked.frame();
         assert_eq!(kind, b'E'); assert!(String::from_utf8_lossy(&reason).contains("channel busy"));
         let mut preamble = Vec::new();
@@ -1257,11 +1347,24 @@ mod tests {
         blocked.done(); drop(blocked);
         assert_eq!(unsafe { kill(old.child.id() as i32, resume) }, 0);
         assert_eq!(old.frame(), (b'C', NONCE.to_vec())); old.done();
-        let mut fresh = Probe::unlocked(false, false, false, false, None);
+        let mut fresh = Probe::sharing(&old.tty, false);
         fresh.display(b"Fresh operator channel> "); fresh.displayed();
         fresh.tty.master.write_all(b"fresh input\n").unwrap();
         let mut expected = NONCE.to_vec(); expected.extend_from_slice(b"fresh input");
         assert_eq!(fresh.frame(), (b'I', expected)); fresh.done();
+    }
+    #[test]
+    fn helpers_on_different_terminals_hold_independent_channels() {
+        let mut first = Probe::new(false, false, false, false);
+        first.display(b"First terminal> "); first.displayed();
+        let mut second = Probe::unlocked(false, false, false, false, None);
+        second.display(b"Second terminal> "); second.displayed();
+        second.tty.master.write_all(b"second input\n").unwrap();
+        let mut expected = NONCE.to_vec(); expected.extend_from_slice(b"second input");
+        assert_eq!(second.frame(), (b'I', expected)); second.done();
+        first.tty.master.write_all(b"first input\n").unwrap();
+        let mut expected = NONCE.to_vec(); expected.extend_from_slice(b"first input");
+        assert_eq!(first.frame(), (b'I', expected)); first.done();
     }
     #[test]
     fn malformed_utf8_and_oversized_raw_lines_never_return_an_input_event() {
@@ -1408,6 +1511,30 @@ mod tests {
         assert_eq!(p.frame(), (b'r', NONCE.to_vec()));
         wait_restored(&p.tty, &original);
         assert!(!p.child.wait().unwrap().success());
+        // The orphaned reader exits on guardian loss, releasing this terminal's channel.
+        p.tty.drain();
+        let mut fresh = Probe::sharing(&p.tty, true);
+        fresh.display(b"After guardian loss> "); fresh.displayed();
+        fresh.tty.master.write_all(b"after loss\n").unwrap();
+        let mut expected = NONCE.to_vec(); expected.extend_from_slice(b"after loss");
+        assert_eq!(fresh.frame(), (b'i', expected));
+        assert_eq!(fresh.frame(), (b'R', NONCE.to_vec())); fresh.done();
+    }
+    #[cfg(target_os = "linux")]
+    #[test]
+    fn v2_terminal_hangup_ends_the_reader_before_the_guardian_exits() {
+        let mut p = Probe::v2();
+        p.display(b"Terminal hangup> "); p.displayed();
+        let reader = p.reader.unwrap();
+        // Closing the only master hangs up the slave under the waiting reader.
+        p.tty.master = File::open("/dev/null").unwrap();
+        let until = Instant::now() + Duration::from_secs(3);
+        while p.child.try_wait().unwrap().is_none() {
+            assert!(Instant::now() < until, "hung-up terminal left the reader running");
+            std::thread::sleep(Duration::from_millis(5));
+        }
+        // The guardian exits only after reaping the reader, so no process retains the channel.
+        assert_eq!(unsafe { kill(reader, 0) }, -1);
     }
     #[test]
     fn v2_stopped_reader_and_owner_loss_do_not_strand_raw_mode() {

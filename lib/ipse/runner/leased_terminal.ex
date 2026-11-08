@@ -291,6 +291,7 @@ defmodule Ipse.Runner.LeasedTerminal do
          [%{slot: 0}, %{slot: 1}, %{slot: 2}] = identities <- Enum.map([a, b, c], &identity/1),
          true <- length(Enum.uniq(Enum.map(identities, & &1.pid))) == 1,
          {:ok, helper} <- Ipse.Runner.protected_helper(cwd),
+         :ok <- Ipse.Runner.TerminalInput.claim(),
          {:ok, ticket} <- Resources.register(:lock) do
       mode =
         if match?({:approval, _, _, _}, mode) or match?({:relation, _, _, _, _}, mode),
