@@ -11,6 +11,7 @@ to start another review; use the [current review workflow](../operator/developme
 
 | Snapshot | Provenance | Current guidance and retained records |
 | --- | --- | --- |
+| [2026-11-08 plan consolidation](2026-11-08-plan-consolidation/index.md) | Plan before its P30/P31 narrative was condensed into package status tables; acceptance gates unchanged | [Plan](../plan.md), [P30/P31 implementation archive](2026-10-26-p30-p31-implementation/index.md) |
 | [2026-11-06 Corpus namespace candidate](2026-10-26-p30-p31-implementation/corpus-namespace-fence-20261106.md) | Synthetic generation and batch controls; later State Session and local MCP verifier checks pass, with broader races open | [Corpus](../operator/corpus.md), [plan](../plan.md#p31-usable-knowledge-and-prompt-assistance) |
 | [2026-11-06 rejection diagnostic setup](2026-10-26-p30-p31-implementation/rejection-diagnostic-setup-20261106.md) | Fresh synthetic setup failed before rejection or inference; no diagnosis established | [Recovery](../operator/recovery.md), [plan](../plan.md#p31-usable-knowledge-and-prompt-assistance) |
 | [2026-11-06 Corpus snapshot time candidate](2026-10-26-p30-p31-implementation/corpus-query-time-20261106.md) | Synthetic State, selected-remote and Collection controls; broader transport and delivery guarantees remain open | [Corpus](../operator/corpus.md), [extension training](../developer/knowledge-extensions.md), [plan](../plan.md#p31-usable-knowledge-and-prompt-assistance) |
