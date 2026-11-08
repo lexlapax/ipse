@@ -10,7 +10,8 @@ defmodule Ipse.CLI.DoctorTest do
     root = Path.join(temporary_root, "ipse-doctor-" <> Ipse.Usage.id())
     cwd = Path.join(root, "workspace")
     home = Path.join(root, "operator")
-    File.mkdir_p!(cwd)
+    File.mkdir!(root)
+    File.mkdir!(cwd)
     previous = System.get_env("IPSE_HOME")
     System.put_env("IPSE_HOME", home)
 

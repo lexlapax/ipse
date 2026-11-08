@@ -747,7 +747,7 @@ remote-selected result retains its incomplete-namespace coverage. For an ordinar
 full State/MCP snapshot with a null as-of, Corpus also records the earliest
 captured source observation/expiry or fact-validity transition. It checks that
 boundary and wall-clock rollback before proposing rerank, at final store
-revalidation, and again after a workspace check. A crossed boundary refuses
+revalidation, and again after a workspace check. A reached boundary refuses
 with `query_time_changed`, even if the changed item was not returned. Explicit
 timestamps retain selected-time semantics. Remote-selected queries also check
 transitions of their hydrated selected sources, but cannot observe a transition
@@ -1426,24 +1426,6 @@ budget and refuse. Nonempty token revalidation adds no probe. The fence depends
 on the service's generation contract and ends at the final observation; it is
 not a lease through result delivery.
 
-For `as_of_ms: null`, calculate the next observation, expiry or fact-validity
-boundary over the captured snapshot, and check it after final State or MCP
-revalidation. Refuse with `query_time_changed` when that boundary is reached or
-the clock has moved behind the selected time. The bound includes unreturned
-captured records, so a fresh query may be needed even when the selected claims
-would not change. Explicit historical timestamps keep selected-time semantics.
-The time check cannot detect a source inserted outside the captured snapshot or
-a clock rollback and recovery between samples, and is not a lease through delivery.
-The State control also simulates a non-State final callback; it is not an
-end-to-end MCP transport test. A separate fixture exercises the MCP adapter,
-generation probe, paged-result accounting and refusal paths without an external
-MCP service. Exercise both controls with:
-
-```sh
-mix test test/extensions/knowledge/graph_capture_test.exs
-mix test test/extensions/knowledge/graph_mcp_generation_test.exs
-```
-
 Undo checks the exact current revision and latest operation ID, then removes
 only that step under namespace CAS. It needs no fresh authority from an expired
 or replaced supporting source because it reduces comparison data. Historical
@@ -1466,6 +1448,34 @@ source expiry/replacement, forged tags/citations, tombstone refusal, bounded
 requests and denied/unknown stop. The separate Session capture journey continues
 to test ordinary approval and no-replay ownership; it does not by itself qualify
 an identity command or real-world entity resolution.
+
+### Guard current Graph query results
+
+Every Graph query uses the source and namespace checks above, whether or not an
+entity choice exists. For `as_of_ms: null`, calculate the next eligibility
+boundary over the captured snapshot, and check it after final State or MCP
+revalidation, before and after preparing the worker result. Historical and
+never-current sources and empty fact intervals have no eligibility transition.
+Refuse with `query_time_changed` when that boundary is reached or the clock has
+moved behind the selected time or the preceding result-time sample. The bound
+includes unreturned captured records, so a fresh query may be needed even when
+the selected claims would not change.
+Explicit timestamps keep selected-time semantics.
+
+The time check cannot detect a source inserted outside the captured snapshot or
+a clock rollback and recovery between samples, and is not a lease through delivery.
+The State control also simulates a non-State final callback; it is not an
+end-to-end MCP transport test. A separate fixture exercises the MCP adapter,
+generation probe, paged-result accounting and refusal paths without an external
+MCP service. The result-time fixture uses an in-memory fake host to interpose
+eligibility changes during preparation for inline and paged output; its MCP
+callback is simulated and does not exercise transport. Exercise these controls with:
+
+```sh
+mix test test/extensions/knowledge/graph_capture_test.exs
+mix test test/extensions/knowledge/graph_mcp_generation_test.exs
+mix test test/extensions/knowledge/graph_result_time_test.exs
+```
 
 ### Retain compatible and conflicting attributed facts
 
@@ -1656,7 +1666,11 @@ Version 2 uses v4 claims and ready slots for successive pages of at most eight
 for the next cursor; the next invocation authenticates the current source and
 commits its own claim. A null continuation only means that the captured group's
 vector pages are ready. Explicit facts and guarded group selection have separate
-commands; complete production and capacity qualification remain open.
+commands. The public `generation_produce` v2 `append` action then loads the
+selected explicit facts and bounded vector pages and advances the guarded append
+through its continuations. Follow the [shared-generation append contract](collection-sdk.md#continue-a-supplied-shared-generation)
+for its inputs and limits. Complete production and capacity qualification remain
+open.
 The [two-page synthetic Session](../archive/2026-10-26-p30-p31-implementation/shared-producer-v4-public-session.md)
 exercises the public continuation against an initially empty selected root. The
 [guarded Session](../archive/2026-10-26-p30-p31-implementation/shared-producer-guard-session.md)
@@ -1743,6 +1757,17 @@ at/before it exclude. Coverage retains raw captured bytes. Before each fetch/rer
 sample remaining allowance once; below 1000 ms refuses, otherwise pass that same value.
 An empty fetch queue ranks without requiring allowance for another fetch.
 [Storage contracts](knowledge-storage.md) specify exact gateway envelopes.
+
+For current-time investigations, Research checks every captured source, including
+ones omitted from ranking, for eligibility transitions before proposing rerank,
+before preparing the worker result and after that preparation. Permanently
+historical and never-eligible sources contribute no transitions. Equality at a
+transition or a later sample earlier than the preceding check refuses with empty
+evidence and claims;
+an explicit as-of time keeps its selected-time behavior. The controlled-clock
+cases in `test/extensions/knowledge/domain_regressions_test.exs` exercise these
+worker boundaries. They do not fence actual Host dispatch after approval or
+later Session delivery, and do not establish MCP or installed qualification.
 
 Trace Research's `retain/2` implementation into `Store.start/4` with operation
 `:put`. Research derives a canonical ID from the complete original body hash, fixes

@@ -19,7 +19,8 @@ separate Collection tool; it does not enable or authorize these Memory bindings.
 A session note does not disappear when the process exits. Both artifacts require
 `retention_seconds` in 60..31536000. A remember operation may choose a shorter
 positive `ttl_seconds`. Expiry excludes note text from recall and model inspection;
-removal from the store needs explicit collection. Backups preserve stored records,
+explicit collection or forgetting removes it from the current stored value while
+retaining suppression metadata. Backups preserve stored records,
 including expired text. Changing configuration bounds future writes and imports.
 It does not change existing expiry times. Forget affected notes if a stricter
 policy must apply immediately.
@@ -127,13 +128,15 @@ Expired, unmigrated or dependency-blocked notes return metadata and revision wit
 `visibility: "metadata_only"`. A changed scan generation refuses instead of
 mixing old and new records. These reads do not change storage. To update a note,
 use its current `expected_revision` and a strictly greater `source_generation`.
-Revision counts store changes; generation is your version of the source. Stale
-or concurrent updates conflict instead of overwriting newer data.
+Revision counts changes to that record; `source_generation` is your version of
+the source. The store's separate generation advances on each store mutation.
+Stale or concurrent updates conflict instead of overwriting newer data.
 
 Updates to an existing live target and active imports carry that target's expiry
 as `write_before_ms`. Approve while the target is still live: if it expires while
-waiting for approval or staging, the write returns `write_deadline_elapsed` and
-leaves the target unchanged. Use its current revision and inspect the result
+waiting for approval or staging, the result has `status: "source_expired"` and
+`details.code: "write_deadline_elapsed"`, and the target is unchanged. Use its
+current revision and inspect the result
 before deciding what to do next. Removing the condition or changing stores is
 not an automatic recovery step.
 

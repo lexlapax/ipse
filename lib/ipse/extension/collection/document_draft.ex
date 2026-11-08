@@ -364,7 +364,7 @@ defmodule Ipse.Extension.Collection.DocumentDraft do
          true <- owner(actual_owner) === head["owner"],
          true <- tag["revision"] === head["revision"],
          true <- maintenance["status"] === "idle",
-         true <- permitted_epoch?(head, tag, maintenance["epoch"]),
+         true <- permitted_epoch?(head, tag, maintenance["epoch"], actual_owner),
          true <- tag["action"] === "retire" or tag["unit"] === head["unit"],
          true <-
            tag["action"] !== "finish" or
@@ -377,13 +377,38 @@ defmodule Ipse.Extension.Collection.DocumentDraft do
     _ -> {:error, :document_draft_refused}
   end
 
-  defp permitted_epoch?(head, %{"action" => "retire"}, current) do
+  defp permitted_epoch?(head, %{"action" => "retire"}, current, owner) do
     head["maintenance_epoch"] <= current and
-      (is_nil(head["retirement_epoch"]) or head["retirement_epoch"] === current)
+      ((is_nil(head["retirement_epoch"]) and first_retirement_safe?(head)) or
+         (head["retirement_epoch"] === current and retirement_authorized?(head, owner)))
   end
 
-  defp permitted_epoch?(head, _, current) do
+  defp permitted_epoch?(head, _, current, _owner) do
     head["maintenance_epoch"] === current and is_nil(head["retirement_epoch"])
+  end
+
+  # Legacy heads can finish in one cleanup, but cannot record the operation
+  # join needed to authorize a subsequent cleanup under the same live owner.
+  defp first_retirement_safe?(head) do
+    Map.has_key?(head, "retirement_operation") or
+      length(head["prepared"]) + if(is_nil(head["active"]), do: 0, else: 1) <= 1
+  end
+
+  defp retirement_authorized?(head, owner) do
+    case {head["retirement_operation"], owner["retirement_authority"]} do
+      {%{"operation_id" => operation, "invocation_id" => invocation},
+       %{
+         "operation_id" => approved_operation,
+         "invocation_id" => approved_invocation,
+         "revision" => revision,
+         "epoch" => epoch
+       }} ->
+        operation === approved_operation and invocation === approved_invocation and
+          revision === head["revision"] and epoch === head["retirement_epoch"]
+
+      _ ->
+        false
+    end
   end
 
   @doc "Construct a first head from the actual locked state and host operation identity."

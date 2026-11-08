@@ -344,6 +344,9 @@ defmodule Ipse.Session.Draft do
   defp safe_native?(message, policy) when policy in [:chatgpt, :openai],
     do: Ipse.Session.DraftNative.responses_owned?([message])
 
+  defp safe_native?(message, :xai),
+    do: Ipse.Session.DraftNative.responses_owned?([message], :xai)
+
   defp safe_native?(message, :ollama),
     do:
       Ipse.Session.DraftNative.ollama_draft_without_tools?(message) or
@@ -353,6 +356,9 @@ defmodule Ipse.Session.Draft do
     do:
       Ipse.Session.DraftNative.anthropic_draft_without_tools?(message) or
         Ipse.Session.DraftNative.anthropic_draft_with_tools?(message)
+
+  defp safe_native?(message, policy) when policy in [:openrouter, :openai_compatible],
+    do: Ipse.Session.DraftNative.chat_completions_draft?(message, policy)
 
   defp safe_native?(_, _), do: false
 
@@ -374,11 +380,20 @@ defmodule Ipse.Session.Draft do
     end
   end
 
+  defp native_interval?(prefix, segment, tail, policy)
+       when policy in [:openrouter, :openai_compatible],
+       do: Ipse.Session.DraftNative.isolated_chat_completions?(prefix, segment, tail, policy)
+
   defp native_interval?(prefix, segment, tail, policy) do
     if Enum.any?(segment, &Map.has_key?(&1, "provider_data")),
       do:
-        policy in [:chatgpt, :openai] and
-          Ipse.Session.DraftNative.isolated_responses?(prefix, segment, tail),
+        policy in [:chatgpt, :openai, :xai] and
+          Ipse.Session.DraftNative.isolated_responses?(
+            prefix,
+            segment,
+            tail,
+            if(policy == :xai, do: :xai, else: :openai)
+          ),
       else: true
   end
 

@@ -962,12 +962,16 @@ defmodule Ipse.Session do
     config = Keyword.fetch!(opts, :config)
     requested_cwd = Keyword.fetch!(opts, :cwd)
     home = Map.get(config, :home) || System.get_env("IPSE_HOME") || Path.expand("~/.ipse")
+    config_has_fence? = Map.has_key?(config, :exact_action_fence)
     config = Map.put(config, :home, home)
     dir = Keyword.fetch!(opts, :state_dir) |> Path.expand()
     id = Keyword.get(opts, :id)
     owner_ref = if is_pid(opts[:owner]), do: Process.monitor(opts[:owner])
 
-    with {:ok, handoff} <- handoff_option(opts),
+    with :ok <- if(config_has_fence?, do: {:error, :invalid_exact_action_fence}, else: :ok),
+         {:ok, requested_fence} <- Ipse.Session.ExactActionFence.option(opts),
+         config = Map.put(config, :exact_action_fence, requested_fence),
+         {:ok, handoff} <- handoff_option(opts),
          :ok <- planning_cli_start_valid(config),
          :ok <- extension_configuration(config),
          :ok <- Ipse.MCP.Planning.runtime_configuration(config),
@@ -986,6 +990,10 @@ defmodule Ipse.Session do
          {:ok, _sandbox} <- Ipse.Tools.Sandbox.resolve(Map.get(config, :sandbox, :off), cwd),
          {:ok, id, _events, config, lock} <- open_and_lock(dir, id, cwd, config, lock_mode),
          {:ok, locked_events} <- Journal.load(dir, id, config[:journal]),
+         {:ok, saved_fence} <-
+           Ipse.Session.ExactActionFence.header((List.first(locked_events) || %{})["metadata"]),
+         :ok <- exact_fence_owner(saved_fence, requested_fence, opts[:owner]),
+         config = Map.put(config, :exact_action_fence, saved_fence),
          :ok <-
            Ipse.Journal.SourceOrigin.check_path(dir, id, hd(locked_events)["metadata"]),
          actual_lock_mode = Ipse.Session.Lock.mode(Ipse.Session.Lock.current()),
@@ -1030,6 +1038,7 @@ defmodule Ipse.Session do
          :ok <- repair_session_tail(dir, id, config, actual_lock_mode),
          {:ok, events} <- Journal.load(dir, id, config[:journal]),
          {:ok, saved} <- Saved.restore(events, id),
+         {:ok, exact_action_fence} <- Ipse.Session.ExactActionFence.restore(events, id),
          {:ok, _saved_mode, planning_entry} <-
            Ipse.Session.PlanningTransition.reconstruct(events, id),
          {saved, config} <- restore_draft_mode(saved, config),
@@ -1121,6 +1130,7 @@ defmodule Ipse.Session do
         calls: if(question && question.call, do: [question.call], else: []),
         question: question,
         question_recovery: saved.question_recovery,
+        startup_unknown_extension_action_count: saved.unknown_extension_action_count,
         approval: nil,
         permissions: Ipse.Session.Permissions.new(config),
         steps: if(question, do: question.steps, else: 0),
@@ -1181,9 +1191,11 @@ defmodule Ipse.Session do
             saved.managed_reads.invocations
           ),
         managed_outputs: saved.managed_reads.outputs,
+        exact_action_fence: exact_action_fence,
         managed_lineage: saved.managed_lineage,
         extension_tool_context: nil,
         extension_mcp_context: nil,
+        document_retirements: %{},
         extension_result: extension_state.last_display,
         extension_catalog: extension_catalog(config),
         extension_invocations: Invocation.count(events),
@@ -1352,6 +1364,17 @@ defmodule Ipse.Session do
       true -> Ipse.Session.Saved.prepare_handoff(opts[:handoff])
     end
   end
+
+  defp exact_fence_owner(nil, nil, _), do: :ok
+
+  defp exact_fence_owner(saved, requested, owner) when is_map(saved) do
+    if (is_nil(requested) or requested === saved) and
+         Ipse.Session.ExactActionFence.owner?(owner),
+       do: :ok,
+       else: {:error, :invalid_exact_action_fence}
+  end
+
+  defp exact_fence_owner(_, _, _), do: {:error, :invalid_exact_action_fence}
 
   defp extension_configuration(config),
     do:
@@ -1552,6 +1575,40 @@ defmodule Ipse.Session do
 
   def handle_call({:managed_capture_prepare, _, _}, _, s),
     do: {:reply, {:error, :managed_capture_unavailable}, s}
+
+  # Purpose-bound ticket for the current journaled retirement action. The
+  # actual collection transaction independently validates the locked head.
+  def handle_call(
+        {:session_control_ticket_document_retirement, ref, intent, sha},
+        {caller, _},
+        s
+      )
+      when ref != nil do
+    if s.share_barrier == nil and s.share_ticket == nil and s.job_ref == ref and
+         s.lock_mode in [:header_share_v2, :resume_share_v2] and
+         CurrentInvocation.document_retirement_binding?(s, caller, intent, sha) do
+      ticket = %{
+        ticket: make_ref(),
+        operation: :crypto.strong_rand_bytes(16),
+        deadline: System.monotonic_time(:millisecond) + 5_000,
+        caller: caller,
+        job_ref: ref,
+        intent: intent,
+        parent: s.invocation.parent,
+        phase: s.phase,
+        channel: nil,
+        document_retirement: sha
+      }
+
+      {:reply, {:ok, ticket.ticket, ticket.operation, ticket.deadline},
+       %{s | share_ticket: ticket}}
+    else
+      {:reply, {:error, :session_share_refused}, s}
+    end
+  end
+
+  def handle_call({:session_control_ticket_document_retirement, _, _, _}, _, s),
+    do: {:reply, {:error, :session_share_refused}, s}
 
   def handle_call(
         {:session_control_ticket_capture, ref, intent, sha, proofs, wall},
@@ -2064,6 +2121,7 @@ defmodule Ipse.Session do
                 :source_proofs,
                 :worker_input,
                 :managed_capture,
+                :document_retirement,
                 :worker_source_proofs
               ])
             )
@@ -2146,7 +2204,8 @@ defmodule Ipse.Session do
         else: min(b.deadline - System.monotonic_time(:millisecond), 5_000)
 
     if remaining > 0 and not Map.has_key?(b, :worker_input) and
-         not Map.has_key?(b, :managed_capture) and Process.alive?(caller) and
+         not Map.has_key?(b, :managed_capture) and
+         not Map.has_key?(b, :document_retirement) and Process.alive?(caller) and
          share_deadline_current?(b) and
          not Map.has_key?(b, :issued_terminal) do
       case Ipse.Runner.open_synthetic_notice_terminal(s.cwd, remaining, b.terminal_purpose) do
@@ -3071,6 +3130,10 @@ defmodule Ipse.Session do
       |> Map.put(:draft, if(s.draft, do: Map.take(s.draft, [:id, :revision, :status])))
       |> Map.put(:question, if(s.question, do: Map.take(s.question, [:id, :arguments])))
       |> Map.put(:question_recovery, s.question_recovery)
+      |> Map.put(
+        :startup_unknown_extension_action_count,
+        s.startup_unknown_extension_action_count
+      )
 
     {:reply, info, s}
   end
@@ -3440,6 +3503,26 @@ defmodule Ipse.Session do
       do: CurrentInvocation.document_current(s, intent),
       else: {:reply, {:error, :document_store_refused}, s}
   end
+
+  def handle_call(
+        {:extension_document_retirement, ref, intent},
+        {caller, _},
+        %{
+          job_ref: ref,
+          task: %{pid: worker},
+          invocation: %{action: %{intent: intent}},
+          phase: phase
+        } = s
+      )
+      when ref != nil and
+             phase in [:tool, :extension_command, :extension_service, :extension_events] do
+    if caller == worker or Ipse.Session.Resources.authorized_effect?(worker, caller),
+      do: CurrentInvocation.document_retirement(s, intent),
+      else: {:reply, {:error, :document_store_refused}, s}
+  end
+
+  def handle_call({:extension_document_retirement, _, _}, _, s),
+    do: {:reply, {:error, :document_store_refused}, s}
 
   # The actual Worker registers one live reader for this exact action.
   def handle_call(
@@ -5817,7 +5900,7 @@ defmodule Ipse.Session do
       )
       when barrier.owner_protocol in [:managed_approval, :managed_relation_review] or
              is_map_key(barrier, :relation_publisher) or is_map_key(barrier, :worker_input) or
-             is_map_key(barrier, :managed_capture),
+             is_map_key(barrier, :managed_capture) or is_map_key(barrier, :document_retirement),
       do: {:stop, :normal, s}
 
   def handle_info(_, %{share_barrier: %{phase: :poisoned}} = s), do: {:noreply, s}
@@ -6665,7 +6748,9 @@ defmodule Ipse.Session do
             session_pid: pid,
             host_port: b.host_port,
             channel_id:
-              if(Map.has_key?(b, :worker_input) or Map.has_key?(b, :managed_capture),
+              if(
+                Map.has_key?(b, :worker_input) or Map.has_key?(b, :managed_capture) or
+                  Map.has_key?(b, :document_retirement),
                 do: nil,
                 else: b.channel.id
               ),
@@ -6738,6 +6823,9 @@ defmodule Ipse.Session do
 
   defp maybe_deliver_controlled(s), do: {:noreply, s}
 
+  defp controlled_actor_current?(s, %{document_retirement: sha, intent: intent, caller: caller}),
+    do: CurrentInvocation.document_retirement_binding?(s, caller, intent, sha)
+
   defp controlled_actor_current?(s, %{worker_input: sha, intent: intent}) do
     Ipse.Session.WorkerInput.current?(s, intent) and
       s.invocation.worker_input.snapshot.sha256 === sha
@@ -6752,6 +6840,9 @@ defmodule Ipse.Session do
     is_map(channel) and s.operator_channel == channel and
       Process.alive?(channel.client) and Process.alive?(channel.reader)
   end
+
+  defp share_binding_current?(s, %{document_retirement: _} = ticket),
+    do: controlled_actor_current?(s, ticket)
 
   defp share_binding_current?(s, %{worker_input: _} = ticket),
     do: controlled_actor_current?(s, ticket)
@@ -7038,7 +7129,7 @@ defmodule Ipse.Session do
 
     if b[:owner_protocol] in [:managed_approval, :managed_relation_review] or
          Map.get(b, :relation_publisher, false) or Map.has_key?(b, :worker_input) or
-         Map.has_key?(b, :managed_capture) do
+         Map.has_key?(b, :managed_capture) or Map.has_key?(b, :document_retirement) do
       notify(
         s,
         {:error, "Protected review ownership was lost; inspect the journal before further work."}
@@ -8074,7 +8165,13 @@ defmodule Ipse.Session do
 
   defp open_fresh(dir, cwd, config, lock_mode) do
     config = Ipse.MCP.fingerprint_version(config, 2)
-    config = Map.put(config, :source_layout, Ipse.Session.SourceWindow.layout())
+
+    source_layout =
+      if is_map(config[:exact_action_fence]),
+        do: Ipse.Session.SourceWindow.fenced_layout(),
+        else: Ipse.Session.SourceWindow.layout()
+
+    config = Map.put(config, :source_layout, source_layout)
     config = Map.put(config, :managed_read_layout, Ipse.Session.ManagedReads.layout())
     config = Map.put(config, :managed_tool_layout, Ipse.Session.ManagedToolUse.layout())
     config = Map.put(config, :managed_action_layout, Ipse.Session.ManagedToolUse.action_layout())
@@ -8101,7 +8198,7 @@ defmodule Ipse.Session do
                %{
                  "cwd" => cwd,
                  "reference_layout" => Ipse.Session.Reference.layout(),
-                 "source_layout" => Ipse.Session.SourceWindow.layout(),
+                 "source_layout" => source_layout,
                  "pending_acceptance_layout" => Ipse.Session.PendingAcceptance.layout(),
                  "source_origin_layout" => Ipse.Journal.SourceOrigin.layout(),
                  "release_receipt_layout" =>
@@ -8143,12 +8240,18 @@ defmodule Ipse.Session do
                    do: %{},
                    else: %{"planning_mcp_protocol" => 1}
                  ),
-                 if(config[:planning_cli_start] === true,
-                   do: %{
-                     "planning_local_start" =>
-                       Ipse.Session.PlanningTransition.startup(selected_id, mode)
-                   },
-                   else: %{}
+                 Map.merge(
+                   if(config[:planning_cli_start] === true,
+                     do: %{
+                       "planning_local_start" =>
+                         Ipse.Session.PlanningTransition.startup(selected_id, mode)
+                     },
+                     else: %{}
+                   ),
+                   if(config[:exact_action_fence],
+                     do: %{"exact_action_fence" => config[:exact_action_fence]},
+                     else: %{}
+                   )
                  )
                )
              ),
@@ -8213,7 +8316,8 @@ defmodule Ipse.Session do
          :ok <- Ipse.Journal.writable_events(events),
          {:ok, version} <- Ipse.MCP.Config.journal_fingerprint_version(meta),
          config = Ipse.MCP.fingerprint_version(config, version),
-         true <- meta["source_layout"] in [nil, Ipse.Session.SourceWindow.layout()],
+         true <- Ipse.Session.SourceWindow.valid_layout?(meta["source_layout"]),
+         {:ok, config} <- Ipse.Session.ExactActionFence.resume_config(meta, config),
          config = Map.put(config, :source_layout, meta["source_layout"]),
          {:ok, managed_layout} <- Ipse.Session.ManagedReads.marker(meta),
          config = Map.put(config, :managed_read_layout, managed_layout),

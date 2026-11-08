@@ -168,15 +168,403 @@ defmodule Ipse.Session.DraftVerticalTest do
     end
   end
 
-  setup do
+  setup context do
     root = Path.join(System.tmp_dir!(), "ipse-draft-vertical-" <> Usage.id())
     File.mkdir_p!(root)
 
+    retain = Path.join(root, "retain-carryover")
+
+    if context[:chat_completions_draft_carryover] || context[:xai_draft_carryover],
+      do: File.write!(retain, "cleanup unconfirmed\n", [:exclusive])
+
+    if System.get_env("IPSE_KEEP_DRAFT_FIXTURE") == "1",
+      do: IO.puts("DRAFT_VERTICAL_FIXTURE #{root}")
+
     on_exit(fn ->
-      if System.get_env("IPSE_KEEP_DRAFT_FIXTURE") != "1", do: File.rm_rf!(root)
+      if System.get_env("IPSE_KEEP_DRAFT_FIXTURE") != "1" and not File.exists?(retain),
+        do: File.rm_rf!(root)
     end)
 
     %{root: root, dir: Path.join(root, "state")}
+  end
+
+  defmodule MalformedChatModel do
+    def complete(config, _messages, _tools, _) do
+      send(config.test_owner, {:malformed_chat_request, config.test_label})
+
+      {:ok,
+       %{
+         "role" => "assistant",
+         "content" => "draft proposal",
+         "provider_data" => %{
+           "provider" => to_string(config.provider),
+           "message" => %{"role" => "assistant", "content" => "different native body"},
+           "reported_model" => "org/model",
+           "reported_upstream" => nil
+         }
+       }, %{}}
+    end
+  end
+
+  defp fixture_authorized?(headers, expected) do
+    authorization =
+      headers
+      |> String.split("\r\n")
+      |> Enum.filter(&String.starts_with?(String.downcase(&1), "authorization:"))
+
+    case expected do
+      nil ->
+        authorization === []
+
+      token ->
+        Enum.map(authorization, &String.downcase/1) === ["authorization: bearer " <> token]
+    end
+  end
+
+  @tag :chat_completions_draft_carryover
+  @tag timeout: 180_000
+  test "Chat Completions draft calls withdraw across continuation and Saved resume", c do
+    fixture = Ipse.Test.ProviderFixture
+
+    chunk = fn delta, finish ->
+      %{
+        "model" => "org/model",
+        "provider" => "openai",
+        "choices" => [%{"index" => 0, "delta" => delta, "finish_reason" => finish}]
+      }
+    end
+
+    reply = fn text, reasoning ->
+      fixture.sse([
+        chunk.(%{"content" => text, "reasoning" => reasoning}, nil),
+        chunk.(%{}, "stop"),
+        "[DONE]"
+      ])
+    end
+
+    tool_call =
+      fixture.sse([
+        chunk.(
+          %{
+            "reasoning" => "private tool reasoning",
+            "tool_calls" => [
+              %{
+                "index" => 0,
+                "id" => "private-draft-call",
+                "type" => "function",
+                "function" => %{
+                  "name" => "read",
+                  "arguments" => Jason.encode!(%{"path" => "draft-evidence.txt"})
+                }
+              }
+            ]
+          },
+          nil
+        ),
+        chunk.(%{}, "tool_calls"),
+        "[DONE]"
+      ])
+
+    File.write!(Path.join(c.root, "draft-evidence.txt"), "private draft evidence")
+
+    for provider <- [:openrouter, :openai_compatible] do
+      {url, server} =
+        fixture.sequence(
+          [
+            reply.("earlier response", "earlier reasoning"),
+            tool_call,
+            reply.("private proposal", "private answer reasoning"),
+            reply.("ordinary response", "ordinary reasoning"),
+            reply.("resumed response", "")
+          ],
+          30_000
+        )
+
+      profile =
+        %{"provider" => to_string(provider), "model" => "org/model", "base_url" => url}
+        |> then(fn profile ->
+          if provider == :openrouter,
+            do: Map.merge(profile, %{"upstream" => "openai", "data_collection" => "deny"}),
+            else: profile
+        end)
+
+      assert :ok = Ipse.Config.Profiles.validate_profile(profile)
+
+      cfg = %{
+        provider: provider,
+        provider_module: Ipse.Provider,
+        model: "org/model",
+        base_url: url,
+        upstream: "openai",
+        data_collection: "deny",
+        execution: Ipse.Config.Profiles.manifest("fixture", profile),
+        api_key: if(provider == :openrouter, do: "fixture-only", else: nil),
+        timeout_ms: 20_000
+      }
+
+      context = %{c | dir: Path.join(c.root, "chat-#{provider}")}
+      {pid, _} = start(context, cfg)
+      id = Session.info(pid).id
+      assert :ok = Session.prompt(pid, "earlier task")
+      assert_receive {:ipse, ^pid, {:done, :ok}}, 10_000
+      assert :ok = Session.start_draft(pid, "private draft request")
+      assert_receive {:ipse, ^pid, {:done, :ok}}, 10_000
+      assert :ok = Session.cancel_draft(pid)
+      assert :ok = Session.prompt(pid, "ordinary task")
+      assert_receive {:ipse, ^pid, {:done, :ok}}, 10_000
+      assert :ok = Session.close_confirmed(pid)
+      {:ok, events} = Journal.load(context.dir, id)
+      assert {:ok, %{draft: %{status: :cancelled}}} = Session.Saved.restore(events, id)
+      {resumed, _} = start(context, cfg, id)
+      assert :ok = Session.prompt(resumed, "resumed task")
+      assert_receive {:ipse, ^resumed, {:done, :ok}}, 10_000
+      assert :ok = Session.close_confirmed(resumed)
+
+      requests = Task.await(server, 30_000)
+
+      unless Enum.all?(requests, fn {headers, _} ->
+               fixture_authorized?(
+                 headers,
+                 if(provider == :openrouter, do: "fixture-only", else: nil)
+               )
+             end),
+             do: flunk("Synthetic Chat Completions credential selection was incorrect")
+
+      assert length(requests) == 5
+      [_, _, draft_with_result, ordinary, continued] = Enum.map(requests, &elem(&1, 1))
+
+      assert Jason.encode!(draft_with_result) =~ "private draft evidence"
+      assert Jason.encode!(ordinary) =~ "earlier reasoning"
+      assert Jason.encode!(continued) =~ "ordinary response"
+
+      for body <- [ordinary, continued],
+          secret <- [
+            "private draft request",
+            "private tool reasoning",
+            "private draft evidence",
+            "private-draft-call",
+            "draft-evidence.txt",
+            "private proposal",
+            "private answer reasoning"
+          ],
+          do: refute(Jason.encode!(body) =~ secret)
+    end
+
+    File.rm!(Path.join(c.root, "retain-carryover"))
+  end
+
+  @tag :chat_completions_draft_carryover
+  test "malformed native Chat Completions draft refuses later dispatch and Saved replay", c do
+    for provider <- [:openrouter, :openai_compatible] do
+      context = %{c | dir: Path.join(c.root, "malformed-chat-#{provider}")}
+
+      profile = %{
+        "provider" => to_string(provider),
+        "model" => "org/model",
+        "base_url" => "http://127.0.0.1:9"
+      }
+
+      profile =
+        if provider == :openrouter,
+          do: Map.merge(profile, %{"upstream" => "openai", "data_collection" => "deny"}),
+          else: profile
+
+      assert :ok = Ipse.Config.Profiles.validate_profile(profile)
+
+      {pid, label} =
+        start(context, %{
+          provider: provider,
+          provider_module: MalformedChatModel,
+          model: "org/model",
+          base_url: profile["base_url"],
+          upstream: "openai",
+          data_collection: "deny",
+          execution: Ipse.Config.Profiles.manifest("fixture", profile),
+          api_key: nil
+        })
+
+      id = Session.info(pid).id
+      assert :ok = Session.start_draft(pid, "private draft")
+      assert_receive {:malformed_chat_request, ^label}, 5_000
+      assert_receive {:ipse, ^pid, {:done, :ok}}, 5_000
+      assert :ok = Session.cancel_draft(pid)
+      assert :ok = Session.prompt(pid, "ordinary task")
+      assert_receive {:ipse, ^pid, {:done, :error}}, 5_000
+      refute_receive {:malformed_chat_request, ^label}, 100
+      assert :ok = Session.close_confirmed(pid)
+      {:ok, events} = Journal.load(context.dir, id)
+      assert {:error, :draft_projection_unsafe} = Session.Saved.restore(events, id)
+    end
+
+    File.rm!(Path.join(c.root, "retain-carryover"))
+  end
+
+  for provider <- [:xai, :xai_oauth] do
+    @tag :xai_draft_carryover
+    @tag timeout: 180_000
+    test "#{provider} draft calls withdraw across continuation and Saved resume", c do
+      fixture = Ipse.Test.ProviderFixture
+
+      response = fn output, cost ->
+        fixture.sse(%{
+          "type" => "response.completed",
+          "response" => %{
+            "status" => "completed",
+            "model" => "grok-fixture",
+            "output" => output,
+            "usage" => %{"input_tokens" => 1, "output_tokens" => 1, "cost_in_usd_ticks" => cost}
+          }
+        })
+      end
+
+      message = fn id, text ->
+        %{
+          "type" => "message",
+          "id" => id,
+          "role" => "assistant",
+          "status" => "completed",
+          "content" => [%{"type" => "output_text", "text" => text, "annotations" => []}]
+        }
+      end
+
+      private_call = %{
+        "type" => "function_call",
+        "id" => "private-function-item",
+        "call_id" => "private-call-id",
+        "name" => "read",
+        "arguments" => Jason.encode!(%{"path" => "draft-evidence.txt"})
+      }
+
+      File.write!(Path.join(c.root, "draft-evidence.txt"), "private draft evidence")
+
+      {url, server} =
+        fixture.sequence(
+          [
+            response.([message.("prior-message", "earlier response")], 1),
+            response.([private_call], 2),
+            response.(
+              [
+                %{
+                  "type" => "reasoning",
+                  "id" => "private-reason",
+                  "summary" => [],
+                  "encrypted_content" => "private encrypted reasoning"
+                },
+                message.("private-message", "private proposal")
+              ],
+              3
+            ),
+            response.([message.("ordinary-message", "ordinary response")], 4),
+            response.([message.("resumed-message", "resumed response")], 5)
+          ],
+          30_000
+        )
+
+      auth_dir = Path.join(c.root, "synthetic-xai-auth")
+      File.mkdir_p!(auth_dir)
+      File.chmod!(auth_dir, 0o700)
+
+      if unquote(provider) == :xai_oauth do
+        :ok =
+          Ipse.Auth.write_credentials(
+            auth_dir,
+            %{
+              "version" => 1,
+              "issuer" => "https://auth.x.ai",
+              "client_id" => "ipse-registered-fixture",
+              "access_token" => "fixture-access-only",
+              "refresh_token" => "fixture-refresh-only",
+              "expires_at" => System.system_time(:second) + 3600,
+              "scope" => "api:access offline_access"
+            },
+            :xai
+          )
+      end
+
+      profile = %{
+        "provider" => to_string(unquote(provider)),
+        "model" => "grok-fixture",
+        "base_url" => url
+      }
+
+      assert :ok = Ipse.Config.Profiles.validate_profile(profile)
+
+      cfg = %{
+        provider: unquote(provider),
+        provider_module: Ipse.Provider,
+        model: "grok-fixture",
+        execution: Ipse.Config.Profiles.manifest("fixture", profile),
+        api_key: "fixture-only",
+        auth_dir: auth_dir,
+        base_url: url,
+        timeout_ms: 20_000
+      }
+
+      {pid, _} = start(c, cfg)
+      id = Session.info(pid).id
+      assert :ok = Session.prompt(pid, "earlier task")
+      assert_receive {:ipse, ^pid, {:done, :ok}}, 10_000
+      assert :ok = Session.start_draft(pid, "private draft request")
+      assert_receive {:ipse, ^pid, {:done, :ok}}, 10_000
+      assert :ok = Session.cancel_draft(pid)
+      assert :ok = Session.prompt(pid, "ordinary task")
+      assert_receive {:ipse, ^pid, {:done, :ok}}, 10_000
+      assert :ok = Session.close_confirmed(pid)
+      {:ok, events} = Journal.load(c.dir, id)
+      assert {:ok, %{draft: %{status: :cancelled}}} = Session.Saved.restore(events, id)
+      {resumed, _} = start(c, cfg, id)
+      assert :ok = Session.prompt(resumed, "resumed task")
+      assert_receive {:ipse, ^resumed, {:done, :ok}}, 10_000
+      assert :ok = Session.close_confirmed(resumed)
+
+      requests = Task.await(server, 30_000)
+
+      expected =
+        if unquote(provider) == :xai_oauth, do: "fixture-access-only", else: "fixture-only"
+
+      unless Enum.all?(requests, fn {headers, _} -> fixture_authorized?(headers, expected) end),
+        do: flunk("Synthetic xAI credential selection was incorrect")
+
+      assert length(requests) == 5
+      [_, _, draft_with_result, ordinary, continued] = Enum.map(requests, &elem(&1, 1))
+
+      assert Jason.encode!(draft_with_result) =~ "private draft evidence"
+      assert Jason.encode!(ordinary) =~ "earlier response"
+      assert Jason.encode!(continued) =~ "ordinary response"
+
+      for body <- [ordinary, continued],
+          secret <- [
+            "private draft request",
+            "private draft evidence",
+            "private-function-item",
+            "private-call-id",
+            "draft-evidence.txt",
+            "private proposal",
+            "private encrypted reasoning",
+            "private-reason",
+            "private-message"
+          ],
+          do: refute(Jason.encode!(body) =~ secret)
+
+      File.rm!(Path.join(c.root, "retain-carryover"))
+    end
+  end
+
+  @tag :xai_draft_carryover
+  test "malformed xAI native draft refuses later dispatch and Saved replay", c do
+    {pid, label} = start(c, %{provider: :xai, provider_module: MalformedChatModel, api_key: nil})
+    id = Session.info(pid).id
+    assert :ok = Session.start_draft(pid, "private draft")
+    assert_receive {:malformed_chat_request, ^label}, 5_000
+    assert_receive {:ipse, ^pid, {:done, :ok}}, 5_000
+    assert :ok = Session.cancel_draft(pid)
+    assert :ok = Session.prompt(pid, "ordinary task")
+    assert_receive {:ipse, ^pid, {:done, :error}}, 5_000
+    refute_receive {:malformed_chat_request, ^label}, 100
+    assert :ok = Session.close_confirmed(pid)
+    {:ok, events} = Journal.load(c.dir, id)
+    assert {:error, :draft_projection_unsafe} = Session.Saved.restore(events, id)
+    File.rm!(Path.join(c.root, "retain-carryover"))
   end
 
   defp start(c, extra \\ %{}, id \\ nil) do
@@ -203,7 +591,10 @@ defmodule Ipse.Session.DraftVerticalTest do
         {Session, config: config, cwd: c.root, state_dir: c.dir, subscriber: self(), id: id}
       )
 
-    on_exit(fn -> if Process.alive?(pid), do: Session.close(pid) end)
+    unless c[:chat_completions_draft_carryover] || c[:xai_draft_carryover] do
+      on_exit(fn -> if Process.alive?(pid), do: Session.close(pid) end)
+    end
+
     {pid, config.test_label}
   end
 

@@ -64,6 +64,7 @@ defmodule Ipse.Session.Saved do
        %{
          accounting: accounting,
          extension_state: extension_state,
+         unknown_extension_action_count: unknown_extension_action_count(events, extension_state),
          managed_reads: %{
            outputs: extension_state.managed_outputs,
            invocations:
@@ -237,6 +238,15 @@ defmodule Ipse.Session.Saved do
   defp draft_native_policy([%{"metadata" => %{"provider" => "openai"}} | _]), do: :openai
   defp draft_native_policy([%{"metadata" => %{"provider" => "ollama"}} | _]), do: :ollama
   defp draft_native_policy([%{"metadata" => %{"provider" => "anthropic"}} | _]), do: :anthropic
+  defp draft_native_policy([%{"metadata" => %{"provider" => "openrouter"}} | _]), do: :openrouter
+
+  defp draft_native_policy([%{"metadata" => %{"provider" => "openai_compatible"}} | _]),
+    do: :openai_compatible
+
+  defp draft_native_policy([%{"metadata" => %{"provider" => provider}} | _])
+       when provider in ["xai", "xai_oauth"],
+       do: :xai
+
   defp draft_native_policy(_), do: :none
 
   def context(events) do
@@ -247,7 +257,16 @@ defmodule Ipse.Session.Saved do
   end
 
   defp validate_context_events(events) do
-    with :ok <- Ipse.Session.Input.validate_events(events),
+    metadata = (List.first(events) || %{})["metadata"] || %{}
+
+    session =
+      get_in(metadata, ["source_origin", "session_id"]) ||
+        get_in(metadata, ["semantic_admission", "pin", "session_id"]) ||
+        Enum.find_value(events, & &1["session_id"]) || String.duplicate("0", 32)
+
+    with {:ok, _} <- Ipse.Session.ExactActionFence.restore(events, session),
+         :ok <- validate_fenced_actions(events, metadata),
+         :ok <- Ipse.Session.Input.validate_events(events),
          :ok <- Ipse.Session.PendingNomination.validate_events(events, nil),
          :ok <- Ipse.Session.ChatReviewHandoff.validate_reoffers(events),
          :ok <- Ipse.Session.OperatorAnswer.validate_events(events),
@@ -268,6 +287,17 @@ defmodule Ipse.Session.Saved do
          {:ok, _} <- Ipse.Usage.restore(events),
          :ok <- Ipse.Session.InferenceDispatch.validate_events(events),
          :ok <- Projection.validate_events(events) do
+      :ok
+    end
+  end
+
+  defp validate_fenced_actions(events, metadata) do
+    if metadata["source_layout"] === Ipse.Session.ExactActionFence.layout() do
+      case Actions.restore(events) do
+        {:ok, _} -> :ok
+        error -> error
+      end
+    else
       :ok
     end
   end
@@ -1034,6 +1064,7 @@ defmodule Ipse.Session.Saved do
   def inspect_saved(dir, id) do
     with {:ok, events} <- Journal.load(dir, id),
          {:ok, messages} <- context(events),
+         {:ok, action_state} <- Actions.restore(events),
          :ok <- Ipse.Observability.validate_events(events, id),
          :ok <- Ipse.Extension.Subscriptions.validate_sources(dir, id, events),
          {:ok, accounting} <- Ipse.Usage.restore(events, id),
@@ -1061,6 +1092,7 @@ defmodule Ipse.Session.Saved do
            if(saved_limit, do: "saved_configuration", else: "default_not_recorded"),
          "recorded_failures" => Enum.count(events, &(&1["type"] == "compaction_failed")),
          "unknown_tool_count" => length(Ipse.Session.Context.unknown_call_ids(messages)),
+         "unknown_extension_action_count" => unknown_extension_action_count(events, action_state),
          "request_measurements" =>
            events
            |> Enum.filter(&valid_measurement?/1)
@@ -1070,6 +1102,35 @@ defmodule Ipse.Session.Saved do
     end
   rescue
     _ -> {:error, :invalid_diagnostic_context}
+  end
+
+  defp unknown_extension_action_count(events, action_state) do
+    pending_question =
+      case action_state do
+        %{action: action, question: question} when is_map(action) and is_map(question) ->
+          if Actions.question?(action["request"]) and
+               question["parent_invocation_id"] === action["parent_invocation_id"] and
+               question["operation_id"] === action["operation_id"],
+             do: {action["parent_invocation_id"], action["operation_id"]}
+
+        _ ->
+          nil
+      end
+
+    results =
+      for %{"type" => "extension_action_result"} = event <- events,
+          into: %{},
+          do: {{event["parent_invocation_id"], event["operation_id"]}, event["outcome"]["status"]}
+
+    Enum.count(events, fn
+      %{"type" => "extension_action_intent"} = event ->
+        key = {event["parent_invocation_id"], event["operation_id"]}
+        status = Map.get(results, key)
+        status === "unknown" or (is_nil(status) and key !== pending_question)
+
+      _ ->
+        false
+    end)
   end
 
   defp valid_measurement?(event) do

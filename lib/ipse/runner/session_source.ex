@@ -29,8 +29,47 @@ defmodule Ipse.Runner.SessionSource do
     end)
   end
 
-  defp with_sources(cap, context, leases, fun, begin_share) do
-    with %Transaction.Capability{owner: owner, depth: 3} <- cap,
+  # This path adds no authority: the actual active action and live retirement
+  # registry are checked by Session, and the locked draft is checked by Collection.
+  def with_document_retirement(cap, context, intent, authority, fun) when is_function(fun, 1) do
+    binding = get_in(intent, ["effect_binding", "project"])
+    sha = Ipse.JSON.digest([context.parent, intent, authority])
+
+    Ipse.Extension.ProjectIdentity.with_held_binding(
+      context.config[:home],
+      context.cwd,
+      binding,
+      fn _ ->
+        with {:ok, [identity_cap, ^cap]} <- Transaction.document_retirement_stack(),
+             {:ok, identity} <- Transaction.retained_share_identity(identity_cap),
+             {:ok, collection} <- Transaction.retained_share_identity(cap) do
+          identities = [{identity.device, identity.inode}, {collection.device, collection.inode}]
+
+          with_sources(
+            cap,
+            context,
+            [],
+            fun,
+            fn ->
+              Host.begin_document_retirement_share(context.owner, context.job_ref, intent, sha)
+            end,
+            {:document_retirement, identities}
+          )
+        else
+          _ -> @unknown
+        end
+      end
+    )
+  rescue
+    _ -> @unknown
+  catch
+    _, _ -> @unknown
+  end
+
+  defp with_sources(cap, context, leases, fun, begin_share, mode \\ :standard) do
+    expected_depth = if mode == :standard, do: 3, else: 2
+
+    with %Transaction.Capability{owner: owner, depth: ^expected_depth} <- cap,
          true <- owner == self() and Resources.active?(),
          {:ok, %{pid: recipient}} <- Transaction.retained_share_identity(cap),
          {:ok, ticket} <- Resources.register(:lock),
@@ -45,15 +84,16 @@ defmodule Ipse.Runner.SessionSource do
                    controls[:original_source_proofs],
                    snapshot[:inactive_source_locks]
                  ),
-               :ok <- import_writer(cap, context, binding, recipient, controls),
-               :ok <- import_session(cap, context, binding, recipient, controls),
-               :ok <- import_source(cap, context, binding, recipient, transport, controls) do
+               :ok <- arm(cap, mode, controls),
+               :ok <- import_writer(cap, context, binding, recipient, controls, mode),
+               :ok <- import_session(cap, context, binding, recipient, controls, mode),
+               :ok <- import_source(cap, context, binding, recipient, transport, controls, mode) do
             result =
               if leases == [],
-                do: fun.(),
+                do: invoke(fun, mode, controls),
                 else: Transaction.with_source_leases(cap, Enum.map(leases, & &1.token), fun)
 
-            case settle(cap, context, binding, transport, controls) do
+            case settle(cap, context, binding, transport, controls, mode) do
               :ok -> result
               _ -> @unknown
             end
@@ -94,6 +134,19 @@ defmodule Ipse.Runner.SessionSource do
     _, _ -> @unknown
   end
 
+  defp arm(_, :standard, _), do: :ok
+
+  defp arm(cap, {:document_retirement, identities}, controls),
+    do:
+      Transaction.document_retirement_arm(cap, controls.operation, identities, controls.deadline)
+
+  defp invoke(fun, :standard, _), do: fun.()
+
+  defp invoke(fun, {:document_retirement, _}, controls) do
+    remaining = max(controls.deadline - System.monotonic_time(:millisecond), 0)
+    fun.(System.system_time(:millisecond) + remaining)
+  end
+
   defp bound_leases?(leases, proofs, locks) when is_list(leases) and is_list(proofs) do
     groups = Enum.group_by(proofs, & &1["session_id"])
 
@@ -113,15 +166,15 @@ defmodule Ipse.Runner.SessionSource do
 
   defp bound_leases?(_, _, _), do: false
 
-  defp import_writer(cap, c, binding, recipient, controls) do
+  defp import_writer(cap, c, binding, recipient, controls, mode) do
     with {:ok, identity} <- Host.session_share_writer_open(c.owner, c.job_ref, binding) do
       {name, secret} = pair()
 
       request =
         :gen_server.send_request(
           cap.controller,
-          {:writer_control_import, cap, controls.operation, entry(identity, name, secret),
-           controls.deadline}
+          {import_operation(mode, :writer), cap, controls.operation,
+           entry(identity, name, secret), controls.deadline}
         )
 
       with :ok <-
@@ -138,7 +191,7 @@ defmodule Ipse.Runner.SessionSource do
     end
   end
 
-  defp import_session(cap, c, binding, recipient, controls) do
+  defp import_session(cap, c, binding, recipient, controls, mode) do
     with {:ok, stat} <- File.stat("/proc/#{controls.session_pid}/fd/0"),
          true <- Bitwise.band(stat.mode, 0xF000) == 0x1000 and stat.inode > 0 do
       identity = %{pid: controls.session_pid, device: stat.major_device, inode: stat.inode}
@@ -147,8 +200,8 @@ defmodule Ipse.Runner.SessionSource do
       request =
         :gen_server.send_request(
           cap.controller,
-          {:session_control_import, cap, controls.operation, entry(identity, name, secret),
-           controls.deadline}
+          {import_operation(mode, :session), cap, controls.operation,
+           entry(identity, name, secret), controls.deadline}
         )
 
       with :ok <-
@@ -159,14 +212,15 @@ defmodule Ipse.Runner.SessionSource do
     end
   end
 
-  defp import_source(cap, c, binding, recipient, transport, controls) do
+  defp import_source(cap, c, binding, recipient, transport, controls, mode) do
     with {:ok, identity} <- Host.session_share_identity(c.owner, c.job_ref, binding) do
       {name, secret} = pair()
 
       request =
         :gen_server.send_request(
           cap.controller,
-          {:source_import, cap, transport, entry(identity, name, secret), controls.deadline}
+          {import_operation(mode, :source), cap, transport, entry(identity, name, secret),
+           controls.deadline}
         )
 
       target = %{identity | pid: recipient}
@@ -178,7 +232,7 @@ defmodule Ipse.Runner.SessionSource do
     end
   end
 
-  defp settle(cap, c, binding, transport, controls) do
+  defp settle(cap, c, binding, transport, controls, mode) do
     deadline = controls.deadline
     request = :gen_server.send_request(cap.controller, {:source_close, cap, transport, deadline})
 
@@ -200,10 +254,26 @@ defmodule Ipse.Runner.SessionSource do
              remaining(deadline)
            ),
          :ok <- Host.session_share_writer_close(c.owner, c.job_ref, binding),
+         :ok <- disarm(cap, mode, controls),
          :ok <-
            Host.finish_controlled_session_share(c.owner, c.job_ref, binding, controls.host_port),
          do: :ok
   end
+
+  defp import_operation(:standard, :writer), do: :writer_control_import
+  defp import_operation(:standard, :session), do: :session_control_import
+  defp import_operation(:standard, :source), do: :source_import
+  defp import_operation({:document_retirement, _}, :writer), do: :retirement_writer_control_import
+
+  defp import_operation({:document_retirement, _}, :session),
+    do: :retirement_session_control_import
+
+  defp import_operation({:document_retirement, _}, :source), do: :retirement_source_import
+
+  defp disarm(_, :standard, _), do: :ok
+
+  defp disarm(cap, {:document_retirement, _}, controls),
+    do: Transaction.document_retirement_disarm(cap, controls.deadline)
 
   defp await_owner(owner, binding, phase, deadline) do
     receive do

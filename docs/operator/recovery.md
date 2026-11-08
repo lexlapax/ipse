@@ -28,6 +28,18 @@ Both commands are local. They make no model requests, activate no extensions,
 and repair no journal. Listing reads bounded metadata; a listed session may
 still fail whole-history validation.
 
+The diagnostic's `unknown_extension_action_count` counts saved extension actions
+with an unknown result or no recorded result, except a validated current pending
+operator question. A nonzero count means an effect may have happened; inspect its
+actual outcome before requesting new work. Ordinary tool calls have their own
+unknown count.
+
+On resume, Ipse warns if the validated startup snapshot contains extension
+actions with unknown outcomes. An effect may have happened. Ipse never
+automatically replays those actions. Inspect the
+diagnostic and actual outcome before retrying. The warning reflects the saved
+state at startup, not later work.
+
 Use the startup message to choose the next step. These refusals replay no saved
 work and do not make an incompatible or damaged journal safe to rewrite:
 
@@ -52,7 +64,7 @@ Session. If ordinary inspection cannot establish the outcome, ask for
 developer-assisted inspection and use a newly written task only after that
 review. A fresh Session grants no authority to reuse unavailable source text.
 
-Diagnosis reports phase, unknown calls, context bytes, accounting, recent request
+Diagnosis reports unknown calls, context bytes, accounting, recent request
 durations, and journal-limit receipts. Its context scope excludes live system
 headers. Bytes are not tokens. Durations cover owned model/compaction work, not
 all tools or approval waits. Normal diagnostics omit conversation text and hidden
@@ -276,8 +288,13 @@ through later use.
 For an interrupted document build or restore, preserve its Session, draft,
 operation IDs and saved result references. Inspect the current Collection
 status and the exact draft before choosing an available continuation or abort.
-An unknown write is not a continuation or permission to replay; if its actual
-outcome cannot be established, preserve it for inspection. The
+After a known partial Collection draft cleanup, only the same live Session
+process can continue that cleanup under the same idle epoch; reopening the same
+Session ID does not restore the prior process's authority. A legacy head with
+more than one remaining stage refuses before its first cleanup. An admitted
+write can still have taken effect after owner loss. An unknown write is not a
+continuation or permission to replay; if its actual outcome cannot be
+established, preserve it for inspection. The
 [document Collection procedure](corpus.md#query-a-document-collection) and
 [small-Collection backup procedure](corpus.md#back-up-a-small-document-collection)
 give the applicable commands and ownership limits.
@@ -362,8 +379,10 @@ and offer a fresh native review, as described in
 [decision recovery](#inspect-unconfirmed-protected-knowledge). Wait for its new
 `approval>` or the first `you>` prompt; ordinary chat input is not armed during
 that startup check. It cannot replay a capture or an unresolved acceptance.
-Pending questions
-reappear for an explicit answer. A recorded answer survives interruption, but
+Recoverable pending questions reappear for an explicit answer. If the managed
+context needed for a saved question cannot safely be restored or displayed,
+Ipse warns that the question was withheld; inspect the session before
+continuing. A recorded answer survives interruption, but
 ordinary resume still starts idle. Use interactive chat for questions; headless
 `run` cannot answer them. `/context refresh` changes instructions/skills only,
 without making a changed execution configuration compatible.
@@ -493,9 +512,11 @@ permissions and transfers no credentials, provider settings, native continuation
 tools, or approvals. The new journal saves the artifact once; later resume the
 new ID normally without its original handoff file.
 
-The artifact contains a source ID, decoded-event digest, unknown count, and up to
-sixteen bounded unknown-call references with an omission count. It omits original
-arguments/results and provider data. Its digest proves provenance, not authenticity
+The artifact contains a source ID, decoded-event digest, unknown model tool-call
+count, and up to sixteen bounded unknown-call references with an omission count.
+It omits original arguments/results and provider data. That count does not include
+unresolved extension actions; inspect those separately and include their
+uncertainty in the operator note. Its digest proves provenance, not authenticity
 or independent review. Your note can contain secrets; no scanner reviews it.
 Notes allow 8192 UTF-8 bytes and the full version-1 artifact allows 16 KiB, including
 JSON escaping. Extra/duplicate fields and inconsistent counts refuse before sign-in

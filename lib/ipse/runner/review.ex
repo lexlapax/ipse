@@ -500,6 +500,7 @@ defmodule Ipse.Runner.Review do
         old_deadline = facts["old_deadline_ms"]
         deadlines = Enum.reject([old_deadline, selected_deadline], &is_nil/1)
         accepted? = facts["kind"] == "managed_accepted_decision_retention"
+        lineage? = facts["kind"] == "managed_literal_lineage_retention"
 
         with true <- pending.command === command and facts === pending.facts and live?(pending),
              true <- Ipse.Session.ManagedLifecycle.retention_review?(command, facts, wall),
@@ -532,10 +533,11 @@ defmodule Ipse.Runner.Review do
                is_map(receipt) and Map.has_key?(receipt, "valid_until_ms") and
                  Map.has_key?(receipt, "publish_before_ms") and receipt["version"] === 3 and
                  receipt["kind"] ===
-                   if(accepted?,
-                     do: "native_accepted_decision_retention",
-                     else: "native_literal_retention"
-                   ) and
+                   (cond do
+                      accepted? -> "native_accepted_decision_retention"
+                      lineage? -> "native_literal_lineage_retention"
+                      true -> "native_literal_retention"
+                    end) and
                  receipt["policy"] === facts["policy"],
              true <- receipt["action_sha256"] === facts["action_sha256"],
              true <-

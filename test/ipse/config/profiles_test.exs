@@ -198,7 +198,9 @@ defmodule Ipse.Config.ProfilesTest do
       registry = %{"local" => %{"version" => 1, "origins" => ["http://127.0.0.1:11434"]}}
       selection = %{"fixture" => %{"enabled" => false}}
 
-      for ceiling <- [:normal, :draft, :planning, :read_only], approval <- [:allow, :deny] do
+      for ceiling <- [:normal, :draft, :planning, :read_only],
+          approval <- [:allow, :deny],
+          fence <- [nil, %{"version" => 1}] do
         parent = %{
           provider: :demo,
           model: "parent",
@@ -207,6 +209,7 @@ defmodule Ipse.Config.ProfilesTest do
           inference_services: registry,
           semantic_selections: selection,
           semantic_admission: %{"pin" => "must not copy"},
+          exact_action_fence: fence,
           approval: approval,
           approval_origin: :explicit,
           headless: true,
@@ -223,6 +226,7 @@ defmodule Ipse.Config.ProfilesTest do
         assert child.enclosing_mode == Atom.to_string(ceiling)
         assert child.knowledge_ceiling == "disabled"
         refute Map.has_key?(child, :semantic_admission)
+        refute Map.has_key?(child, :exact_action_fence)
       end
     end
 

@@ -281,6 +281,11 @@ defmodule Ipse.Extension.Collection.ManagedRetention do
        else: @error
   end
 
+  # Until native review and current-use scope validation are connected, the
+  # new page syntax cannot grant even the legacy exact-value interpretation.
+  defp effective(_, _, _, %{"version" => 3, "kind" => "native_lineage_management"}, _),
+    do: @error
+
   defp effective(candidate, first, _, choice, value_sha256) do
     with true <-
            choice["lineage"] == candidate["lineage"] and choice["target_key"] == candidate["key"],

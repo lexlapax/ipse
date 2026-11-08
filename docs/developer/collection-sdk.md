@@ -482,6 +482,9 @@ effect reports `document_draft_abort_incomplete`; unknown stops without a replay
 token. A later fence cannot refresh an existing retirement epoch. Missing or
 foreign-owner heads refuse rather than proving nonpublication. See the
 [operator cleanup workflow](../operator/corpus.md#query-a-document-collection).
+Continuation after a known partial cleanup also requires the original live
+Session's non-restored registry and the native owner-control handoff; see
+[owner-bound head retirement](knowledge-storage.md#fence-document-stages-before-metadata-maintenance).
 General garbage collection, adoption and recovery remain separate work.
 
 New heads reserve room for `retirement_operation` when admitted. The field is

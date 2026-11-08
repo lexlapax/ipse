@@ -89,8 +89,22 @@ defmodule Ipse.Runner.ManagementTerminal do
 
   @doc false
   def begin_retention_review(owned, caps, facts, overall_wall) do
+    true = facts["kind"] in ~w(managed_literal_retention managed_accepted_decision_retention)
     command = Ipse.Extension.Collection.ManagedRetention.command(facts["policy"])
     begin_review_for(command, owned, caps, facts, overall_wall, nil)
+  rescue
+    _ -> {:error, :management_display_refused}
+  end
+
+  @doc false
+  def begin_lineage_retention_review(owned, caps, facts, overall_wall, source_lease) do
+    with true <- facts["kind"] === "managed_literal_lineage_retention",
+         {:ok, _} <- StoredSources.share_verified_identity(source_lease, [facts["source_proof"]]) do
+      command = Ipse.Extension.Collection.ManagedRetention.command(facts["policy"])
+      begin_review_for(command, owned, caps, facts, overall_wall, source_lease)
+    else
+      _ -> {:error, :management_display_refused}
+    end
   rescue
     _ -> {:error, :management_display_refused}
   end
@@ -166,6 +180,10 @@ defmodule Ipse.Runner.ManagementTerminal do
   defp source_identity("reject", nil), do: {:ok, nil}
   defp source_identity("correct", nil), do: {:ok, nil}
   defp source_identity(command, nil) when command in ~w(pin ordinary duration), do: {:ok, nil}
+
+  defp source_identity(command, source) when command in ~w(pin ordinary duration),
+    do: StoredSources.share_identity(source)
+
   defp source_identity("accept", :historical_pending), do: {:ok, :historical_pending}
 
   defp source_identity("accept", {:group, leases}) when is_list(leases) do

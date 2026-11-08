@@ -260,7 +260,8 @@ defmodule Ipse.Extension.Collection.DocumentDraftSchemaTest do
     retire = %{"version" => 1, "action" => "retire", "head_id" => id, "revision" => 1}
     assert {:ok, ^head} = DocumentDraft.authorize(fenced, retire, owner)
     retiring = put_in(fenced, ["document_drafts", id, "retirement_epoch"], 2)
-    assert {:ok, _} = DocumentDraft.authorize(retiring, retire, owner)
+    # Legacy partial heads are readable but lack an authenticated live owner.
+    assert {:error, _} = DocumentDraft.authorize(retiring, retire, owner)
     refute match?({:ok, _}, DocumentDraft.authorize(retiring, tag, owner))
 
     assert {:error, _} =
@@ -269,6 +270,88 @@ defmodule Ipse.Extension.Collection.DocumentDraftSchemaTest do
                retire,
                owner
              )
+  end
+
+  test "a partial retirement requires the live owner's exact known cleanup" do
+    state = state()
+    [{head_id, head}] = Map.to_list(state["document_drafts"])
+    operation = Usage.id()
+    prior_invocation = Usage.id()
+    owner = Map.put(head["owner"], "invocation_id", Usage.id())
+    receipt = %{"generation" => 2, "floor" => 0, "request_sha256" => JSON.sha256("cleanup")}
+
+    partial =
+      head
+      |> Map.put("retirement_epoch", 1)
+      |> Map.put("retirement_operation", %{
+        "operation_id" => operation,
+        "invocation_id" => prior_invocation
+      })
+      |> Map.put("revision", 2)
+
+    current =
+      state
+      |> Map.put("generation", 2)
+      |> put_in(["operations", operation], receipt)
+      |> put_in(["document_drafts", head_id], partial)
+
+    tag = %{"version" => 1, "action" => "retire", "head_id" => head_id, "revision" => 2}
+
+    authority = %{
+      "operation_id" => operation,
+      "invocation_id" => prior_invocation,
+      "revision" => 2,
+      "epoch" => 1
+    }
+
+    assert {:error, _} = DocumentDraft.authorize(current, tag, owner)
+
+    assert {:ok, ^partial} =
+             DocumentDraft.authorize(
+               current,
+               tag,
+               Map.put(owner, "retirement_authority", authority)
+             )
+
+    for {key, wrong} <- [
+          {"operation_id", Usage.id()},
+          {"invocation_id", Usage.id()},
+          {"revision", 1},
+          {"epoch", 2}
+        ] do
+      assert {:error, _} =
+               DocumentDraft.authorize(
+                 current,
+                 tag,
+                 Map.put(owner, "retirement_authority", Map.put(authority, key, wrong))
+               )
+    end
+
+    legacy =
+      update_in(current, ["document_drafts", head_id], &Map.delete(&1, "retirement_operation"))
+
+    assert DocumentDraft.valid?(legacy)
+
+    assert {:error, _} =
+             DocumentDraft.authorize(
+               legacy,
+               tag,
+               Map.put(owner, "retirement_authority", authority)
+             )
+  end
+
+  test "an unretired legacy head cannot begin a multi-step retirement" do
+    state = state()
+    [{head_id, head}] = Map.to_list(state["document_drafts"])
+    owner = Map.put(head["owner"], "invocation_id", Usage.id())
+    tag = %{"version" => 1, "action" => "retire", "head_id" => head_id, "revision" => 1}
+    refs = [%{"slot" => 0, "epoch" => Usage.id()}, %{"slot" => 1, "epoch" => Usage.id()}]
+    multi = put_in(state, ["document_drafts", head_id, "prepared"], refs)
+
+    assert DocumentDraft.valid?(multi)
+    assert {:error, _} = DocumentDraft.authorize(multi, tag, owner)
+    single = put_in(multi, ["document_drafts", head_id, "prepared"], [hd(refs)])
+    assert {:ok, _} = DocumentDraft.authorize(single, tag, owner)
   end
 
   test "partial writes change revision but advance only after the actual complete effect" do

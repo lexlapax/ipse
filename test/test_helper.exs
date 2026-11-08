@@ -20,7 +20,10 @@ if is_nil(System.get_env("RUSTUP_HOME")) and File.dir?(rustup_home),
 
 System.put_env("HOME", operator_home)
 System.put_env("IPSE_HOME", Path.join(operator_home, ".ipse"))
-System.at_exit(fn _ -> File.rm_rf!(operator_home) end)
+
+unless System.get_env("IPSE_KEEP_TEST_OPERATOR_HOME") == "1" do
+  System.at_exit(fn _ -> File.rm_rf!(operator_home) end)
+end
 
 ExUnit.start(
   exclude: [

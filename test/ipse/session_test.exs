@@ -60,8 +60,8 @@ defmodule Ipse.SessionTest do
 
   setup context do
     temporary_root = if context[:native_workspace], do: "/tmp", else: System.tmp_dir!()
-    root = Path.join(temporary_root, "ipse-session-#{System.unique_integer([:positive])}")
-    File.mkdir_p!(root)
+    root = Path.join(temporary_root, "ipse-session-" <> Ipse.Usage.id())
+    File.mkdir!(root)
     on_exit(fn -> File.rm_rf!(root) end)
     %{root: root, dir: Path.join(root, "state")}
   end

@@ -16,6 +16,7 @@ defmodule Ipse.Session.ManagedLifecycle do
   alias Ipse.{JSON, Usage}
   alias Ipse.Extension.{Collection, ManagedRecipe, SemanticConsent}
   @error {:error, :managed_lifecycle_refused}
+  @lineage_scope "selected literal and later captures citing the same retained source occurrence, version and exact span; other source occurrences are unchanged"
   @context Enum.sort(
              ~w(session_id job_id client_id project_id namespace binding_sha256 management_epoch management_sha256 original_pin recipe)
            )
@@ -166,6 +167,107 @@ defmodule Ipse.Session.ManagedLifecycle do
     _ -> @error
   end
 
+  @doc """
+  Prepare distinct, explicit future-lineage review facts without issuing authority.
+
+  This records a proposed wider scope separately from the existing exact-value
+  review. It is not accepted by the native Review permit or publication path
+  until those paths independently support the new scope.
+  """
+  def prepare_lineage_retention(context, managed, policy, reason) do
+    with true <- get_in(managed, ["metadata", "management_target"]) != "accepted_decision",
+         true <- policy["kind"] in ~w(pin ordinary duration),
+         {:ok, prepared} <- prepare_retention(context, managed, policy, reason),
+         %{"kind" => "managed_literal_retention"} = old <- prepared["facts"],
+         recipe = context["recipe"],
+         target = old["target"],
+         [proof] <-
+           Enum.reduce(recipe["evidence_path"], target["value"], fn field, value ->
+             if is_map(value), do: value[field], else: nil
+           end),
+         {:ok, candidate} <-
+           ManagedRecipe.extract(recipe, target["key"], target["value"], [proof]),
+         true <- candidate["lineage"] === old["metadata"]["lineage"],
+         body =
+           old
+           |> Map.delete("action_sha256")
+           |> Map.put("kind", "managed_literal_lineage_retention")
+           |> Map.put("source_proof", proof)
+           |> Map.put("scope", @lineage_scope),
+         facts = Map.put(body, "action_sha256", JSON.digest([body])),
+         :ok <- JSON.validate_object(facts),
+         true <- byte_size(Jason.encode!(facts)) <= 16_384 do
+      {:ok,
+       prepared
+       |> Map.put("facts", facts)
+       |> put_in(["intent", "facts"], facts)}
+    else
+      _ -> @error
+    end
+  rescue
+    _ -> @error
+  end
+
+  @doc """
+  Retain the original inactive source for a proposed lineage review.
+
+  This private lease grants no review or publication authority. The caller must
+  still re-read the exact signed target and current management policy under
+  their owners, and bind the lease through any eventual native effect.
+  """
+  def with_lineage_source(context, facts, fun)
+      when is_map(context) and is_map(facts) and is_function(fun, 2) do
+    admission = get_in(context, [:config, :semantic_admission])
+    pin = if is_map(admission), do: admission["pin"]
+    original = facts["context"]
+    proof = facts["source_proof"]
+
+    with true <- lineage_retention_facts?(facts),
+         true <- facts["action_sha256"] === JSON.digest([Map.delete(facts, "action_sha256")]),
+         true <- facts["scope"] === @lineage_scope,
+         true <- context?(original) and is_map(pin),
+         true <- Ipse.Extension.SemanticAdmission.valid?(admission, context[:session_id]),
+         true <- admission["status"] === "active",
+         true <- JSON.safe_uint?(admission["policy"]["expires_at_ms"]),
+         true <- System.system_time(:millisecond) < admission["policy"]["expires_at_ms"],
+         true <- context[:session_id] === original["session_id"],
+         true <- pin["project_id"] === original["project_id"],
+         true <- pin["namespace"] === original["namespace"],
+         true <- pin["binding_sha256"] === original["binding_sha256"],
+         true <- pin["epoch"] === original["management_epoch"],
+         {:ok, lineage} <- ManagedRecipe.source_identity(proof),
+         true <- lineage === get_in(facts, ["metadata", "lineage"]),
+         true <- get_in(facts, ["target", "key"]) === "note." <> lineage,
+         {:ok, candidate} <-
+           ManagedRecipe.extract(
+             original["recipe"],
+             facts["target"]["key"],
+             facts["target"]["value"],
+             [proof]
+           ),
+         true <- candidate["lineage"] === lineage,
+         true <-
+           facts["target"]["sha256"] ===
+             JSON.sha256(Collection.Migration.encode(facts["target"]["value"])),
+         :ok <-
+           SemanticConsent.check_sources(admission["policy"], [
+             %{"category" => proof["origin"], "path" => proof["path"]}
+           ]) do
+      Ipse.Session.StoredSources.with_shareable_verified(context, proof, fn
+        %{"proof" => ^proof} = source, lease -> fun.(source, lease)
+        _, _ -> @error
+      end)
+    else
+      _ -> @error
+    end
+  rescue
+    _ -> @error
+  catch
+    _, _ -> @error
+  end
+
+  def with_lineage_source(_, _, _), do: @error
+
   @doc false
   def retention_review?(command, facts, now) when is_map(facts) and is_integer(now) do
     alias Ipse.Extension.Collection.ManagedRetention
@@ -186,6 +288,26 @@ defmodule Ipse.Session.ManagedLifecycle do
   end
 
   def retention_review?(_, _, _), do: false
+
+  defp lineage_retention_facts?(facts) do
+    with true <- facts["kind"] === "managed_literal_lineage_retention",
+         true <- facts["scope"] === @lineage_scope,
+         true <- context?(facts["context"]),
+         target when is_map(target) <- facts["target"],
+         proof when is_map(proof) <- facts["source_proof"],
+         {:ok, candidate} <-
+           ManagedRecipe.extract(facts["context"]["recipe"], target["key"], target["value"], [
+             proof
+           ]),
+         true <- candidate["lineage"] === get_in(facts, ["metadata", "lineage"]),
+         true <- target["sha256"] === JSON.sha256(Collection.Migration.encode(target["value"])) do
+      true
+    else
+      _ -> false
+    end
+  rescue
+    _ -> false
+  end
 
   @doc "Prepare exact expiry facts from an authenticated stored observation; no permission or native review is minted."
   def prepare_expiry(context, managed, now) do

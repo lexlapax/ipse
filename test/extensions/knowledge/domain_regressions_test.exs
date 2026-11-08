@@ -15,10 +15,25 @@ defmodule Ipse.KnowledgeDomainRegressionsTest do
     end
   end
 
+  defmodule ResearchWallClock do
+    def now do
+      case Process.get(:research_wall) do
+        [value | rest] -> Process.put(:research_wall, rest); value
+        [] -> raise "research wall clock exhausted"
+        value -> value
+      end
+    end
+  end
+
   # Exact boundary tests use a generated clock-controlled module; capture-completion tests use Research unchanged.
   File.read!("extensions/knowledge/src/research.ex")
   |> String.replace("defmodule IpseKnowledge.Research do","defmodule TimedResearch do")
   |> String.replace("System.monotonic_time(:millisecond)","ResearchClock.now()")
+  |> Code.compile_string()
+
+  File.read!("extensions/knowledge/src/research.ex")
+  |> String.replace("defmodule IpseKnowledge.Research do","defmodule WallTimedResearch do")
+  |> String.replace("System.system_time(:millisecond)","ResearchWallClock.now()")
   |> Code.compile_string()
 
   defmodule DomainRegressions do
@@ -233,6 +248,153 @@ defmodule Ipse.KnowledgeDomainRegressionsTest do
         Research.handle("host.actions",%{"outcome"=>%{"status"=>"ok","value"=>page}},state)
     end
 
+    test "research rechecks all current source transitions after reranking" do
+      source = fn id, observed, expires ->
+        {:ok, value} = Evidence.source(%{
+          "source_id" => id, "partition" => "research-provided", "generation" => 1,
+          "title" => id, "text" => "Release requires an audit.", "uri" => "local:" <> id,
+          "observed_at_ms" => observed, "event_at_ms" => nil, "expires_at_ms" => expires,
+          "origin" => %{"kind" => "provided", "store_profile" => nil,
+            "partition_or_scope" => nil, "receipt" => nil, "historical" => false}
+        })
+        value
+      end
+
+      current = source.("current", 1, 200)
+      future = source.("future", 150, nil)
+      resolved = %{"options" => %{"rerank" => %{"judge" => %{"kind" => "model_complete",
+        "profile" => "judge", "max_candidates" => 16, "quote_bytes" => 128}}}}
+      run = fn sources, args, wall ->
+        {:ok, ranked} = Evidence.rank_lexical(sources, "release", 10, 100)
+        {:call, _, cont} = Adapters.start(resolved, :rerank,
+          %{"profile" => "judge", "query" => "release", "candidates" => ranked["evidence"]})
+        state = %{resolved: resolved, phase: :rerank, cont: cont,
+          ctx: %{args: Map.merge(%{"query" => "release"}, args), ranked: ranked, at: 100,
+            sources: sources, bytes: 1, profile: %{"kind" => "provided"}}}
+        Process.put(:research_wall, wall)
+        outcome = %{"status" => "ok", "value" => %{"profile" => "judge",
+          "text" => JSON.encode!(%{"order" => ["e1"]}), "usage" => %{}}}
+        {:ok, %{"kind" => "result", "value" => result}, _} =
+          WallTimedResearch.handle("host.actions", %{"outcome" => outcome}, state)
+        result
+      end
+
+      assert run.([current, future], %{}, 149)["status"] == "ok"
+      for {sources, wall} <- [{[current, future], 150}, {[current], 200}, {[current], 99},
+                              {[current], [199, 200]}, {[current], [199, 198]}] do
+        result = run.(sources, %{}, wall)
+        assert result["status"] == "refused"
+        assert result["gaps"] == [%{"code" => "query_time_changed"}]
+        assert result["evidence"] == [] and result["claims"] == []
+      end
+      assert run.([current, future], %{"as_of_ms" => 100}, 201)["status"] == "ok"
+      for expires <- [130, 150] do
+        never_current = source.("never-current", 150, expires)
+        assert run.([current, never_current], %{}, 160)["status"] == "ok"
+      end
+      historical_source = put_in(source.("historical", 150, nil), ["origin", "historical"], true)
+      assert run.([current, historical_source], %{}, 160)["status"] == "ok"
+
+      provided = Map.take(current, ~w(source_id generation title text uri observed_at_ms event_at_ms expires_at_ms))
+      options = %{"options" => %{
+        "search" => %{"given" => %{"kind" => "provided", "version" => 1}},
+        "fetch" => %{"given" => %{"kind" => "provided", "version" => 1}},
+        "retrieval" => %{"words" => %{"kind" => "bm25", "version" => 1}},
+        "rerank" => resolved["options"]["rerank"]}}
+      args = %{"search" => "given", "fetch" => "given", "retrieval" => "words",
+        "rerank" => "judge", "query" => "release", "sources" => [provided],
+        "limits" => %{"max_sources" => 1, "max_body_bytes" => 1024, "timeout_ms" => 30000}}
+      initial = %{resolved: options, phase: :idle, ctx: nil, cont: nil}
+      for {wall, kind} <- [{199, "host_call"}, {200, "result"}] do
+        Process.put(:research_wall, [100, 100, wall])
+        {:ok, reply, _} = WallTimedResearch.handle("invoke.command",
+          %{"id" => "investigate", "arguments" => args}, initial)
+        assert reply["kind"] == kind
+        if kind == "result" do
+          assert reply["value"]["gaps"] == [%{"code" => "query_time_changed"}]
+          assert reply["value"]["evidence"] == [] and reply["value"]["claims"] == []
+        end
+      end
+      Process.put(:research_wall, [100, 100, 199])
+      {:ok, %{"kind" => "host_call"}, pending} = WallTimedResearch.handle("invoke.command",
+        %{"id" => "investigate", "arguments" => args}, initial)
+      Process.put(:research_wall, [198])
+      rerank_outcome = %{"status" => "ok", "value" => %{"profile" => "judge",
+        "text" => JSON.encode!(%{"order" => ["e1"]}), "usage" => %{}}}
+      {:ok, %{"kind" => "result", "value" => rollback}, _} =
+        WallTimedResearch.handle("host.actions", %{"outcome" => rerank_outcome}, pending)
+      assert rollback["gaps"] == [%{"code" => "query_time_changed"}]
+      assert rollback["evidence"] == [] and rollback["claims"] == []
+
+      Process.put(:research_wall, [100, 100, 200])
+      {:ok, no_rerank, _} = WallTimedResearch.handle("invoke.command",
+        %{"id" => "investigate", "arguments" => Map.put(args, "rerank", nil)}, initial)
+      assert no_rerank["value"]["gaps"] == [%{"code" => "query_time_changed"}]
+      assert no_rerank["value"]["evidence"] == []
+
+      Process.put(:research_wall, [100, 200])
+      {:ok, historical, historical_state} = WallTimedResearch.handle("invoke.command",
+        %{"id" => "investigate", "arguments" => Map.put(args, "as_of_ms", 100)}, initial)
+      assert historical["kind"] == "host_call"
+      Process.put(:research_wall, [])
+      {:ok, %{"kind" => "result", "value" => historical_result}, _} =
+        WallTimedResearch.handle("host.actions", %{"outcome" => rerank_outcome}, historical_state)
+      assert historical_result["status"] == "ok"
+      assert Process.get(:research_wall) == []
+    end
+
+    test "research discards a prepared paged result when source time crosses during encoding" do
+      sources = for n <- 1..10 do
+        id = "paged-#{n}"
+        {:ok, source} = Evidence.source(%{
+          "source_id" => id, "partition" => "research-provided", "generation" => 1,
+          "title" => id, "text" => "release " <> String.duplicate("x", 980),
+          "uri" => "local:" <> id, "observed_at_ms" => 1, "event_at_ms" => nil,
+          "expires_at_ms" => 200,
+          "origin" => %{"kind" => "provided", "store_profile" => nil,
+            "partition_or_scope" => nil, "receipt" => nil, "historical" => false}
+        })
+        source
+      end
+
+      {:ok, ranked} = Evidence.rank_lexical(sources, "release", 10, 100)
+      assert length(ranked["evidence"]) == 10
+      resolved = %{"options" => %{"rerank" => %{"judge" => %{"kind" => "model_complete",
+        "profile" => "judge", "max_candidates" => 16, "quote_bytes" => 128}}}}
+      {:call, _, cont} = Adapters.start(resolved, :rerank,
+        %{"profile" => "judge", "query" => "release", "candidates" => ranked["evidence"]})
+      state = %{resolved: resolved, phase: :rerank, cont: cont,
+        ctx: %{args: %{"query" => "release"}, ranked: ranked, at: 100,
+          sources: sources, bytes: 9880, profile: %{"kind" => "provided"}}}
+      order = Enum.map(1..10, &("e" <> Integer.to_string(&1)))
+      outcome = %{"status" => "ok", "value" => %{"profile" => "judge",
+        "text" => JSON.encode!(%{"order" => order}), "usage" => %{}}}
+
+      Process.put(:research_wall, [199, 199])
+      assert {:ok, %Ipse.Extension.ResultPublication.Output{} = paged, stable_state} =
+        WallTimedResearch.handle("host.actions", %{"outcome" => outcome}, state)
+      assert paged.byte_count > 12_000
+      assert %{"status" => "ok", "evidence" => evidence} = JSON.decode!(paged.bytes)
+      assert length(evidence) == 10
+      assert stable_state == %{state | phase: :idle}
+      assert Process.get(:research_wall) == []
+
+      Process.put(:research_wall, [199, 200])
+      assert {:ok, %{"kind" => "result", "value" => refusal}, refused_state} =
+        WallTimedResearch.handle("host.actions", %{"outcome" => outcome}, state)
+      assert refusal["status"] == "refused"
+      assert refusal["gaps"] == [%{"code" => "query_time_changed"}]
+      assert refusal["evidence"] == [] and refusal["claims"] == []
+      assert refused_state == %{state | phase: :idle}
+      assert Process.get(:research_wall) == []
+
+      Process.put(:research_wall, [199, 198])
+      assert {:ok, %{"kind" => "result", "value" => rollback}, _} =
+        WallTimedResearch.handle("host.actions", %{"outcome" => outcome}, state)
+      assert rollback["gaps"] == [%{"code" => "query_time_changed"}]
+      assert rollback["evidence"] == [] and rollback["claims"] == []
+    end
+
     defp research_selection do
       resolved=%{"options"=>%{"search"=>%{"web"=>%{"kind"=>"mcp","binding"=>"search","contract"=>"search-v1"}},
         "fetch"=>%{"web"=>%{"kind"=>"mcp","binding"=>"fetch","contract"=>"fetch-v1"}},
@@ -288,7 +450,7 @@ defmodule Ipse.KnowledgeDomainRegressionsTest do
     end
   end
   result=ExUnit.run()
-  System.halt(if(result.failures==0 and result.total==9 and result.skipped==0 and result.excluded==0,do: 0,else: 1))
+  System.halt(if(result.failures==0 and result.total==11 and result.skipped==0 and result.excluded==0,do: 0,else: 1))
   """
 
   test "domain regressions execute in the isolated extension VM" do

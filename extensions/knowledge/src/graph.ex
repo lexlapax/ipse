@@ -672,21 +672,43 @@ defmodule IpseKnowledge.Graph do
   defp advance(_, state), do: finish(state, refused(:invalid_operation_state))
 
   defp finish_query(state) do
-    now = System.system_time(:millisecond)
-    transition = state.ctx.next_query_transition
-
-    if state.ctx.args["as_of_ms"] === nil and
-         (now < state.ctx.as_of_ms or (is_integer(transition) and now >= transition)) do
-      finish(state, refused(:query_time_changed))
+    with {:ok, checked_at} <- query_time_check(state, state.ctx.as_of_ms),
+         result <- finish_current_query(state),
+         {:ok, _} <- query_time_check(state, checked_at) do
+      result
     else
-      finish_current_query(state)
+      _ -> finish(state, refused(:query_time_changed))
+    end
+  end
+
+  defp query_time_check(state, minimum) do
+    if state.ctx.args["as_of_ms"] === nil do
+      now = System.system_time(:millisecond)
+      transition = state.ctx.next_query_transition
+
+      if now >= minimum and (is_nil(transition) or now < transition),
+        do: {:ok, now},
+        else: :error
+    else
+      {:ok, minimum}
     end
   end
 
   defp next_query_transition(sources, facts, selected) do
     times =
-      Enum.flat_map(sources, &[&1["observed_at_ms"], &1["expires_at_ms"]]) ++
-        Enum.flat_map(facts, &[&1["valid_from_ms"], &1["valid_to_ms"]])
+      Enum.flat_map(sources, fn source ->
+        observed = source["observed_at_ms"]
+        expires = source["expires_at_ms"]
+
+        if source["origin"]["historical"] or (is_integer(expires) and expires <= observed),
+          do: [],
+          else: [observed, expires]
+      end) ++
+        Enum.flat_map(facts, fn fact ->
+          first = fact["valid_from_ms"]
+          last = fact["valid_to_ms"]
+          if is_integer(first) and first === last, do: [], else: [first, last]
+        end)
 
     times |> Enum.filter(&(is_integer(&1) and &1 > selected)) |> Enum.min(fn -> nil end)
   end

@@ -24,7 +24,9 @@ defmodule Ipse.Extension.CollectionStoreSessionTest do
   setup_all do
     source = Path.join(System.tmp_dir!(), "ipse-document-store-artifact-" <> Usage.id())
     File.mkdir_p!(Path.join(source, "ebin"))
-    on_exit(fn -> File.rm_rf!(source) end)
+    retain = System.get_env("IPSE_KEEP_COLLECTION_UNKNOWN") == "1"
+    if retain, do: IO.puts("COLLECTION_UNKNOWN_ARTIFACT #{source}")
+    on_exit(fn -> if not retain, do: File.rm_rf!(source) end)
     name = "Independent.DocumentStore#{System.unique_integer([:positive])}"
     caps = ~w(invoke.command host.actions host.actions.mixed host.collection.store)
 
@@ -184,7 +186,13 @@ defmodule Ipse.Extension.CollectionStoreSessionTest do
     File.mkdir_p!(home)
     File.mkdir!(cwd)
     File.chmod!(home, 0o700)
-    on_exit(fn -> File.rm_rf!(dir) end)
+
+    retain =
+      c[:retain_collection_unknown] == true and
+        System.get_env("IPSE_KEEP_COLLECTION_UNKNOWN") == "1"
+
+    if retain, do: IO.puts("COLLECTION_UNKNOWN_ROOT #{dir}")
+    on_exit(fn -> if not retain, do: File.rm_rf!(dir) end)
     {:ok, artifact} = Artifact.import(c.source, Path.join(home, "extensions/artifacts"))
 
     trust = %{
@@ -874,6 +882,7 @@ defmodule Ipse.Extension.CollectionStoreSessionTest do
              )
   end
 
+  @tag retain_collection_unknown: true
   test "native publication uncertainty reaches the actual journal as unknown and resume does not replay",
        c do
     run = open(c)

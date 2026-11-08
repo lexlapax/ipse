@@ -268,24 +268,34 @@ the notice; no inference is replayed.
 native tool grouping before withholding the interval from later dispatch.
 `Saved` repeats those checks chronologically and validates rebasing before
 compaction. The original journal remains intact. ChatGPT and the separately
-selected OpenAI API route use the stateless Responses isolation validator;
-this does not change the selected provider or billing mode. It validates the
-complete native output against visible text and tool calls, requires complete
-tool groups, and refuses item or call IDs shared across the withheld and retained
-intervals. When the withheld interval contains native Responses data, the
-validator also refuses foreign native output, including xAI output, in that
-interval or the retained history. Ollama permits a complete draft interval when
-its removed native assistant messages match the checked shapes: visible and
+selected OpenAI API route share the `openai` Responses replay namespace; both
+explicitly selected xAI routes share the separate `xai` namespace. They use the
+stateless Responses isolation validator without changing provider or billing mode.
+It validates the complete native output against visible text and tool calls,
+requires complete tool groups, and refuses item or call IDs shared across the
+withheld and retained intervals. When the withheld interval contains native
+Responses data, the
+validator also refuses another provider's native output in that interval or the
+retained history. OpenRouter and the explicit loopback
+Chat Completions route validate their own native assistant message against the
+normalized content and tool calls. Their complete prefix, removed interval and
+tail must have closed tool groups, and call IDs cannot cross the removed boundary.
+Reasoning and tool results in the interval remain in the private journal but are
+withheld from later requests. A retained assistant message from another provider
+is rendered by the selected adapter from its normalized content and calls.
+Ollama permits a complete draft interval when its removed native assistant
+messages match the checked shapes: visible and
 native text agree, thinking is bounded UTF-8, and any native tool calls match
 their normalized names, arguments and IDs. Generated IDs must match the
 adapter's format. The prefix, removed interval and tail must each contain
 complete tool groups, with no call ID reused across the removed boundary; the
 check includes IDs retained in native Ollama messages. Unknown fields refuse.
 The whole interval, including thinking and tool results, is withheld; native
-messages outside it are preserved unchanged. The separate `plain_text_only?/1` predicate remains
-stricter for managed lineage and reference checks. Anthropic validates native
-text against visible UTF-8 content and tool-use blocks against normalized calls,
-including their order, IDs, names and encoded inputs. Bounded thinking blocks
+messages outside it are preserved unchanged. The separate `plain_text_only?/1`
+predicate remains stricter for managed lineage and reference checks. Anthropic
+validates native text against visible UTF-8 content and tool-use blocks against
+normalized calls, including their order, IDs, names and encoded inputs. Bounded
+thinking blocks
 require a nonempty, structurally checked signature; redacted-thinking data stays
 opaque. For no-tool messages, a redacted block requires a text block in the
 same native message. Neither signatures nor opaque data are authenticated
@@ -334,6 +344,7 @@ Practice the complete transitions with synthetic providers and a native PTY:
 
 ```sh
 mix test test/ipse/session/draft_vertical_test.exs test/ipse/session/draft_projection_test.exs
+mix test test/ipse/session/draft_chat_completions_projection_test.exs
 mix test test/ipse/session/draft_response_limits_test.exs
 mix test test/ipse/session/draft_acceptance_test.exs test/ipse/session/draft_native_test.exs
 mix test test/ipse/session/draft_lineage_test.exs test/ipse/mcp/catalog_session_test.exs

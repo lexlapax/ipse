@@ -116,11 +116,18 @@ defmodule Ipse.Extension.ContributionsTest do
     File.write!(Path.join(source, "extension.json"), Jason.encode!(manifest))
     home = Path.join(root, "home")
     {:ok, artifact} = Artifact.import(source, Path.join(home, "extensions/artifacts"))
-    on_exit(fn -> File.rm_rf!(root) end)
+
+    on_exit(fn ->
+      unless File.exists?(Path.join(root, "retain-diagnosis")), do: File.rm_rf!(root)
+    end)
+
     %{artifact: artifact, home: home, artifact_root: root, marker: marker}
   end
 
   setup ctx do
+    retain = Path.join(ctx.artifact_root, "retain-diagnosis")
+    if File.exists?(retain), do: raise("diagnosis fixture cleanup unconfirmed; root retained")
+    if ctx[:preserve_diagnosis], do: File.write!(retain, "cleanup unconfirmed\n", [:exclusive])
     root = Path.join(ctx.artifact_root, "session-#{Ipse.Usage.id()}")
     File.mkdir_p!(root)
     File.write!(Path.join(root, "evidence.txt"), "recorded literal evidence\n")
@@ -181,7 +188,10 @@ defmodule Ipse.Extension.ContributionsTest do
          config: ctx.config, cwd: ctx.root, state_dir: ctx.dir, subscriber: self(), id: id}
       )
 
-    on_exit(fn -> if Process.alive?(pid), do: Session.close(pid) end)
+    on_exit(fn ->
+      if ctx[:preserve_diagnosis] != true and Process.alive?(pid), do: Session.close(pid)
+    end)
+
     pid
   end
 
@@ -203,6 +213,83 @@ defmodule Ipse.Extension.ContributionsTest do
     )
 
     start(ctx, id)
+  end
+
+  @tag preserve_diagnosis: true
+  test "saved diagnosis counts unresolved extension actions without exposing arguments", ctx do
+    pid = start(ctx)
+    invoke(pid, "assertion")
+    invoke(pid, "assertion")
+    id = Session.info(pid).id
+    assert :ok = Session.close_confirmed(pid)
+    assert {:ok, events} = Journal.load(ctx.dir, id)
+    index = Enum.find_index(events, &(&1["type"] == "extension_action_intent"))
+    assert is_integer(index)
+    prefix = Enum.take(events, index + 1)
+    [intent] = Enum.filter(prefix, &(&1["type"] == "extension_action_intent"))
+    assert inspect(intent["request"]) =~ "literal evidence"
+
+    diagnose = fn label, records ->
+      dir = Path.join(ctx.root, label)
+      File.mkdir!(dir)
+
+      File.write!(
+        Path.join(dir, id <> ".jsonl"),
+        Enum.map_join(records, "\n", &Jason.encode!/1) <> "\n"
+      )
+
+      Ipse.Session.Saved.inspect_saved(dir, id)
+    end
+
+    assert {:ok, unresolved} = diagnose.("unresolved", prefix)
+    assert unresolved["unknown_extension_action_count"] == 1
+    refute Jason.encode!(unresolved) =~ "literal evidence"
+
+    assert {:ok, unknown} = Actions.result(intent, %{"status" => "unknown", "value" => %{}})
+    assert {:ok, explicit_unknown} = diagnose.("explicit-unknown", prefix ++ [unknown])
+    assert explicit_unknown["unknown_extension_action_count"] == 1
+    refute Jason.encode!(explicit_unknown) =~ "literal evidence"
+
+    # Session records this event on cancellation. A later real invocation must
+    # not hide the first action's missing result.
+    second_start =
+      events
+      |> Enum.with_index()
+      |> Enum.filter(fn {event, _} -> event["type"] == "extension_invocation_intent" end)
+      |> List.last()
+      |> elem(1)
+
+    second_action =
+      events
+      |> Enum.with_index()
+      |> Enum.find_value(fn {event, i} ->
+        if i > second_start and event["type"] == "extension_action_intent", do: i
+      end)
+
+    later_prefix = Enum.slice(events, second_start..second_action)
+    cancelled_then_later = prefix ++ [%{"type" => "cancelled"}] ++ later_prefix
+    assert {:ok, _} = Actions.restore(cancelled_then_later)
+    assert {:ok, multiple} = diagnose.("multiple", cancelled_then_later)
+    assert multiple["unknown_extension_action_count"] == 2
+    refute Jason.encode!(multiple) =~ "literal evidence"
+
+    cancelled_then_settled =
+      prefix ++ [%{"type" => "cancelled"}] ++ Enum.drop(events, second_start)
+
+    assert {:ok, _} = Actions.restore(cancelled_then_settled)
+    assert {:ok, one_historical} = diagnose.("historical", cancelled_then_settled)
+    assert one_historical["unknown_extension_action_count"] == 1
+    refute Jason.encode!(one_historical) =~ "literal evidence"
+
+    assert {:ok, settled} = diagnose.("settled", events)
+    assert settled["unknown_extension_action_count"] == 0
+    refute Jason.encode!(settled) =~ "literal evidence"
+
+    corrupted =
+      List.replace_at(prefix, index, Map.put(intent, "request_sha256", String.duplicate("0", 64)))
+
+    assert {:error, _} = diagnose.("malformed", corrupted)
+    File.rm!(Path.join(ctx.artifact_root, "retain-diagnosis"))
   end
 
   test "assertions remain attributed data and model requests cache exact snapshots", ctx do

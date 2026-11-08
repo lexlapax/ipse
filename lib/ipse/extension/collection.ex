@@ -54,6 +54,8 @@ defmodule Ipse.Extension.Collection do
   @acceptance_attempt_key {__MODULE__, :acceptance_effect_attempted}
   @document_epoch_key {__MODULE__, :document_epoch}
   @document_progress_key {__MODULE__, :document_progress}
+  @document_retirement_owner_key {__MODULE__, :document_retirement_owner}
+  @document_retirement_wall_key {__MODULE__, :document_retirement_wall}
   @document_migration_key {__MODULE__, :document_migration}
   @error {:error, :collection_unavailable}
 
@@ -336,6 +338,28 @@ defmodule Ipse.Extension.Collection do
     Ipse.Session.Resources.file_effect(fn ->
       document_admission(root, namespace, owner, fun)
     end)
+  end
+
+  # Host-only scope. The worker supplies neither this context nor authority;
+  # Collection rechecks the real locked draft before reaching the switch.
+  @doc false
+  def with_document_retirement_owner(context, intent, authority, fun) when is_function(fun, 0) do
+    with nil <- Process.get(@document_retirement_owner_key),
+         %{"op" => "collection.store", "request" => %{"progress" => %{"action" => "retire"}}} <-
+           intent["request"],
+         true <- context.parent["invocation_id"] === intent["parent_invocation_id"] do
+      Process.put(@document_retirement_owner_key, {context, intent, authority})
+
+      try do
+        fun.()
+      after
+        Process.delete(@document_retirement_owner_key)
+      end
+    else
+      _ -> {:error, :invalid_document_admission}
+    end
+  rescue
+    _ -> {:unknown, :collection_publication_unconfirmed}
   end
 
   defp document_admission(root, namespace, owner, fun) do
@@ -831,7 +855,9 @@ defmodule Ipse.Extension.Collection do
     facts = intent["facts"]
     command = Ipse.Extension.Collection.ManagedRetention.command(facts["policy"])
 
-    with true <- owned[:journal_owner] === self(),
+    with true <-
+           facts["kind"] in ~w(managed_literal_retention managed_accepted_decision_retention),
+         true <- owned[:journal_owner] === self(),
          true <- intent["operation_id"] === operation_id,
          true <- get_in(facts, ["context", "namespace"]) === project,
          true <- get_in(facts, ["context", "session_id"]) === owned[:id],
@@ -862,6 +888,61 @@ defmodule Ipse.Extension.Collection do
   end
 
   def execute_managed_retention(_, _, _, _, _, _, _, _, _),
+    do: {:error, :invalid_managed_collection_request}
+
+  @doc false
+  def execute_managed_lineage_retention(
+        root,
+        project,
+        original,
+        operation_id,
+        recipe_sha256,
+        normalizer,
+        owned,
+        intent,
+        permit,
+        source_lease
+      )
+      when is_function(normalizer, 2) and is_map(owned) and is_map(intent) do
+    facts = intent["facts"]
+    command = Ipse.Extension.Collection.ManagedRetention.command(facts["policy"])
+
+    with true <- facts["kind"] === "managed_literal_lineage_retention",
+         true <- owned[:journal_owner] === self(),
+         true <- intent["operation_id"] === operation_id,
+         true <- get_in(facts, ["context", "namespace"]) === project,
+         true <- get_in(facts, ["context", "session_id"]) === owned[:id],
+         true <- facts["request_sha256"] === JSON.digest([original]),
+         {:ok, _} <-
+           Ipse.Session.StoredSources.share_verified_identity(source_lease, [
+             facts["source_proof"]
+           ]),
+         :ok <- Ipse.Runner.Review.check(permit, command, facts) do
+      previous = Process.put(@acceptance_attempt_key, false)
+
+      try do
+        execute_managed_version(
+          root,
+          project,
+          original,
+          operation_id,
+          recipe_sha256,
+          normalizer,
+          {:lineage_retention, owned, intent, permit, source_lease}
+        )
+      after
+        if is_nil(previous),
+          do: Process.delete(@acceptance_attempt_key),
+          else: Process.put(@acceptance_attempt_key, previous)
+      end
+    else
+      _ -> {:error, :invalid_managed_collection_request}
+    end
+  rescue
+    _ -> {:error, :invalid_managed_collection_request}
+  end
+
+  def execute_managed_lineage_retention(_, _, _, _, _, _, _, _, _, _),
     do: {:error, :invalid_managed_collection_request}
 
   @doc false
@@ -1807,6 +1888,9 @@ defmodule Ipse.Extension.Collection do
         match?({:retention, _, _, _}, version) ->
           3
 
+        match?({:lineage_retention, _, _, _, _}, version) ->
+          3
+
         match?({:supersession, _}, version) ->
           :supersession
 
@@ -1946,6 +2030,59 @@ defmodule Ipse.Extension.Collection do
         else
           _ -> {:error, :native_review_publication_fence_unavailable}
         end
+      end)
+    else
+      _ -> {:error, :native_review_publication_fence_unavailable}
+    end
+  end
+
+  defp managed_mutation(
+         path,
+         uid,
+         state,
+         manifest,
+         original,
+         request,
+         id,
+         extra,
+         normalization,
+         {:lineage_retention, owned, intent, permit, source_lease},
+         witness,
+         cap
+       ) do
+    alias Ipse.Runner.Review
+    facts = intent["facts"]
+
+    with true <- facts["kind"] === "managed_literal_lineage_retention",
+         true <- normalization["kind"] === "native_literal_lineage_retention",
+         true <- get_in(facts, ["collection", "root_sha256"]) === witness["root_sha256"],
+         true <- facts["operation_id"] === id,
+         {:ok, _} <-
+           Ipse.Session.StoredSources.share_verified_identity(source_lease, [
+             facts["source_proof"]
+           ]),
+         {:ok, bound} <-
+           Review.claim_retention_effect(permit, facts, intent, original, request, normalization) do
+      Transaction.with_lifecycle_journal_lease(cap, owned, intent, fn ->
+        Transaction.with_source_lease(cap, source_lease, fn ->
+          with :ok <- Transaction.lifecycle_guard(cap, intent),
+               {:ok, ^bound} <-
+                 Review.claimed_retention_effect(
+                   permit,
+                   facts,
+                   intent,
+                   original,
+                   request,
+                   normalization
+                 ) do
+            with_notes_publication_deadline(bound.publish_before_ms, fn ->
+              Process.put(@acceptance_attempt_key, true)
+              apply_mutation(path, uid, state, manifest, request, id, extra)
+            end)
+          else
+            _ -> {:error, :native_review_publication_fence_unavailable}
+          end
+        end)
       end)
     else
       _ -> {:error, :native_review_publication_fence_unavailable}
@@ -2854,9 +2991,14 @@ defmodule Ipse.Extension.Collection do
           with :ok <- write_values(pending),
                :ok <- write_files(pending_blocks, "manifests"),
                :ok <- immutable(Path.join(path, "manifests"), hash, bytes, uid),
-               :ok <- publish_pointer(path, uid, pointer, next),
                :ok <-
-                 collect(path, uid, next, %{hash: hash, blocks: MapSet.new(Map.keys(blocks))}) do
+                 publish_pointer_and_collect(
+                   path,
+                   uid,
+                   pointer,
+                   next,
+                   %{hash: hash, blocks: MapSet.new(Map.keys(blocks))}
+                 ) do
             {:ok, receipt}
           else
             _ -> {:unknown, :collection_publication_unconfirmed}
@@ -2880,6 +3022,37 @@ defmodule Ipse.Extension.Collection do
     end
   end
 
+  defp publish_pointer_and_collect(path, uid, bytes, state, manifest) do
+    fun = fn ->
+      with :ok <- publish_pointer(path, uid, bytes, state),
+           do: collect(path, uid, state, manifest)
+    end
+
+    case Process.get(@document_retirement_owner_key) do
+      {context, intent, authority} ->
+        cap = publication_cap()
+
+        Ipse.Runner.SessionSource.with_document_retirement(
+          cap,
+          context,
+          intent,
+          authority,
+          fn wall ->
+            Process.put(@document_retirement_wall_key, wall)
+
+            try do
+              fun.()
+            after
+              Process.delete(@document_retirement_wall_key)
+            end
+          end
+        )
+
+      nil ->
+        fun.()
+    end
+  end
+
   defp publish_pointer(_path, _uid, bytes, state) do
     temporary = ".pending-" <> Ipse.Usage.id()
 
@@ -2894,7 +3067,21 @@ defmodule Ipse.Extension.Collection do
   end
 
   defp switch_pointer(temporary) do
-    with :ok <- document_migration_guard(), do: switch_pointer_admitted(temporary)
+    with :ok <- document_migration_guard() do
+      case Process.get(@document_retirement_wall_key) do
+        wall when is_integer(wall) ->
+          wall =
+            case Process.get(@switch_deadline_key) do
+              deadline when is_integer(deadline) -> min(wall, deadline)
+              nil -> wall
+            end
+
+          Transaction.document_retirement_switch(publication_cap(), temporary, wall)
+
+        nil ->
+          switch_pointer_admitted(temporary)
+      end
+    end
   end
 
   defp switch_pointer_admitted(temporary) do

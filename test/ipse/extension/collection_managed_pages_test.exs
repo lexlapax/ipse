@@ -273,6 +273,44 @@ defmodule Ipse.Extension.CollectionManagedPagesTest do
     end
   end
 
+  @tag :future_lineage
+  test "future-lineage choices have distinct closed page bytes and do not reinterpret older choices" do
+    id = F.id(5)
+    exact = F.capsule(id, %{"kind" => "duration", "duration_ms" => 1000})
+    future = exact |> Map.put("version", 3) |> Map.put("kind", "native_lineage_management")
+    exact_row = %{F.row() | "choice" => exact}
+    future_row = %{F.row() | "choice" => future}
+
+    assert {:ok, exact_raw} = Pages.pack(:anchor, Pages.zero(:anchor), %{id => exact_row})
+    assert {:ok, future_raw} = Pages.pack(:anchor, Pages.zero(:anchor), %{id => future_row})
+    refute exact_raw == future_raw
+    assert byte_size(exact_raw) == byte_size(future_raw)
+
+    assert {:ok, %{entries: %{^id => ^exact_row}}} =
+             Pages.unpack(:anchor, Pages.zero(:anchor), exact_raw)
+
+    assert {:ok, %{entries: %{^id => ^future_row}}} =
+             Pages.unpack(:anchor, Pages.zero(:anchor), future_raw)
+
+    assert {:error, _} = Pages.open(nil, %{}, %{})
+    assert {:error, _} = Pages.compact_choice(id, future)
+
+    for choice <- [
+          Map.put(future, "version", 2),
+          Map.put(future, "kind", "native_management"),
+          Map.put(future, "extra", true),
+          Map.put(future, "lineage", F.id(6)),
+          Map.put(future, "target_key", "note." <> F.id(6)),
+          Map.put(future, "target_key", "pending." <> id),
+          Map.put(future, "input_sha256", F.hash("duration 0123456789abcdef\n"))
+        ] do
+      assert {:error, _} =
+               Pages.pack(:anchor, Pages.zero(:anchor), %{
+                 id => %{future_row | "choice" => choice}
+               })
+    end
+  end
+
   test "live pages retain all four hashes exact clocks and changing historical policies" do
     rows =
       Map.new(1..20, fn n ->

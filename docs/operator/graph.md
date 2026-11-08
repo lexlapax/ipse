@@ -272,13 +272,17 @@ Graph does not check whether an acquired document was replaced or deleted
 before it uses stored document facts or returns their citations. Verify the
 original file separately before relying on those results.
 
-For `as_of_ms: null`, Graph checks the captured snapshot's next source or fact
-time boundary again after store revalidation. If that boundary passed, or the
-clock is earlier than the selected time, it refuses with `query_time_changed`;
+For `as_of_ms: null`, Graph checks the captured snapshot's next eligibility
+boundary after store revalidation, both before and after preparing the worker
+result. If that boundary is reached, or the clock is earlier than the selected
+time or the preceding result-time sample, it refuses with `query_time_changed`
+and no evidence or claims;
 run a fresh query to rebuild the view. This is conservative: an unrelated
-captured item can cause a refusal. Explicit timestamps keep their selected-time
-semantics. The time check covers the captured snapshot, and cannot detect a
-clock rollback and recovery between samples or guarantee validity through delivery.
+captured item can cause a refusal. Historical or never-current sources and
+empty fact intervals have no eligibility transition. Explicit timestamps keep
+their selected-time semantics. The time check covers the captured snapshot; it
+cannot detect a clock rollback and recovery between samples or guarantee
+validity through delivery.
 
 With a State-backed store, Graph also checks that the State scope has not changed
 between the snapshot and its final read. A concurrent write anywhere in that
@@ -316,10 +320,11 @@ Bounds are depth 0..4, 1..128 nodes, 1..256 traversal edges, and
 1..10 returned passages. Depth zero follows no edge. Reaching the depth limit
 while an unvisited positive outgoing fact remains makes coverage incomplete,
 including at depth zero. Reaching a leaf or finishing a cycle does not leave
-unfinished traversal work. `coverage.complete: false` means a traversal bound cut
-the path; the result is `partial`, and absent relationships have not been checked
-and disproved. An unpublished source also makes the result partial, including an
-empty result. Complete empty traversal returns `abstain`.
+unfinished traversal work. `coverage.complete: false` can indicate a traversal
+bound or a gap such as a stale fact, unpublished source, or partial document.
+Inspect `gaps` to distinguish the cause. The result is `partial`, and absent
+relationships have not been checked and disproved. An unpublished source can
+also make an empty result partial. Complete empty traversal returns `abstain`.
 
 The query examines the bounded store population before selecting a path; the
 256-edge limit does not cap unrelated stored facts. Supporting assertions and
@@ -467,12 +472,15 @@ citations, gaps and coverage in that document, up to the 4 MiB aggregate limit.
 Each quotation still allows at most 1024 bytes. No claim basis is removed to
 make the result fit an inline reply.
 
-In the same chat, replace the example ID with the returned output ID and inspect
-the first claim's first supporting quote:
+For an attributed first claim that has a `basis`, replace the example ID with
+the returned output ID and inspect its first supporting quote in the same chat:
 
 ```text
 /result {"output_id":"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa","path":["claims",0,"basis",0,"quote"]}
 ```
+
+An open claim may instead use `evidence_indexes` to refer to returned evidence,
+or have no citation. Inspect the claim before choosing a result path.
 
 After closing chat, print the whole result with the original session ID and
 state directory:

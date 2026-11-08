@@ -22,7 +22,9 @@ defmodule Ipse.Session.SourceWindow do
   ]
 
   def layout, do: @layout
-  def enabled?(config), do: config[:source_layout] == @layout
+  def fenced_layout, do: Ipse.Session.ExactActionFence.layout()
+  def valid_layout?(layout), do: layout in [nil, @layout, fenced_layout()]
+  def enabled?(config), do: config[:source_layout] in [@layout, fenced_layout()]
 
   @doc false
   def source_effect_operation?(operation), do: operation in @source_effect_ops
@@ -78,9 +80,10 @@ defmodule Ipse.Session.SourceWindow do
   @doc "Called only after the complete Saved prefix has passed its owning validators."
   def restore(events, session) do
     metadata = (List.first(events) || %{})["metadata"] || %{}
-    true = metadata["source_layout"] in [nil, @layout]
+    true = valid_layout?(metadata["source_layout"])
 
-    with {:ok, origin} <- Ipse.Journal.SourceOrigin.recorded(metadata, session),
+    with {:ok, _fence} <- Ipse.Session.ExactActionFence.restore(events, session),
+         {:ok, origin} <- Ipse.Journal.SourceOrigin.recorded(metadata, session),
          {:ok, index} <- SourceIndex.new(session, 1, if(origin, do: JSON.digest([origin]))) do
       window = %__MODULE__{
         index: index,
@@ -89,7 +92,7 @@ defmodule Ipse.Session.SourceWindow do
             do: JSON.digest([metadata["planning_local_start"]])
           ),
         workspace_acquisitions: Ipse.Session.WorkspaceAcquisition.new(metadata),
-        admitted: metadata["source_layout"] == @layout,
+        admitted: metadata["source_layout"] in [@layout, fenced_layout()],
         coverage:
           Map.new(
             ~w(observed indexed unavailable capacity_refused legacy_unverified pending_gaps refused),

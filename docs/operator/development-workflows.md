@@ -157,7 +157,10 @@ actual checks, and remaining limitations.
 ```
 
 Use each proposal's approval code. Stop and narrow repeated scope expansion.
-A child review has six-call/two-minute limits; inspect its evidence yourself.
+The review role selects a model profile; the requested read-only scope is an
+instruction, not an enforced ceiling in this session. Review child approvals
+separately and deny proposed mutations. A child has limits of six model steps
+and two minutes; inspect its evidence yourself.
 
 ## Check idle resume and the exact candidate
 
@@ -169,6 +172,7 @@ same variables. Replace `SESSION_ID`:
 IPSE_SESSION=SESSION_ID
 shasum -a 256 "$IPSE_TRIAL/sessions/$IPSE_SESSION.jsonl" > "$IPSE_TRIAL/idle-journal.sha256"
 git -C "$IPSE_CANDIDATE" diff --binary > "$IPSE_TRIAL/before.patch"
+git -C "$IPSE_CANDIDATE" diff --cached --binary > "$IPSE_TRIAL/before-staged.patch"
 git -C "$IPSE_CANDIDATE" status --short > "$IPSE_TRIAL/before.status"
 "$IPSE_STABLE/ipse" chat --config "$IPSE_TRIAL/config.json" \
   --no-project-config --profile main --cwd "$IPSE_CANDIDATE" \
@@ -181,6 +185,8 @@ Before submitting another task, check from the other terminal:
 shasum -a 256 -c "$IPSE_TRIAL/idle-journal.sha256"
 git -C "$IPSE_CANDIDATE" diff --binary > "$IPSE_TRIAL/after.patch"
 cmp "$IPSE_TRIAL/before.patch" "$IPSE_TRIAL/after.patch"
+git -C "$IPSE_CANDIDATE" diff --cached --binary > "$IPSE_TRIAL/after-staged.patch"
+cmp "$IPSE_TRIAL/before-staged.patch" "$IPSE_TRIAL/after-staged.patch"
 git -C "$IPSE_CANDIDATE" status --short > "$IPSE_TRIAL/after.status"
 cmp "$IPSE_TRIAL/before.status" "$IPSE_TRIAL/after.status"
 ```

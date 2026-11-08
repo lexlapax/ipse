@@ -152,6 +152,23 @@ end
 defmodule Ipse.CLITest do
   use ExUnit.Case, async: false
 
+  test "resume warnings contain no saved payload and distinguish withheld questions" do
+    info = %{
+      startup_unknown_extension_action_count: 1,
+      question_recovery: :managed_question_withheld,
+      private_payload: "PRIVATE-SAVED-ARGUMENT"
+    }
+
+    text = ExUnit.CaptureIO.capture_io(:stderr, fn -> Ipse.CLI.resume_warnings(info) end)
+    assert text =~ "unknown outcomes"
+    assert text =~ "never replayed automatically"
+    assert text =~ "cannot safely be restored or displayed"
+    refute text =~ "PRIVATE-SAVED-ARGUMENT"
+
+    quiet = %{info | startup_unknown_extension_action_count: 0, question_recovery: nil}
+    assert ExUnit.CaptureIO.capture_io(:stderr, fn -> Ipse.CLI.resume_warnings(quiet) end) == ""
+  end
+
   test "helper profile is a single explicit knowledge experiment option" do
     for command <- [
           ["chat"],

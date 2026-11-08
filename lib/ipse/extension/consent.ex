@@ -1140,8 +1140,10 @@ defmodule Ipse.Extension.Consent do
               {:read, value} ->
                 with :ok <- Transaction.check(lock), do: {:ok, value}
 
+              # write/2 validates the complete state against the locked project
+              # before staging or switching it; avoid a second full-ledger traversal.
               {:write, next, value} ->
-                with true <- valid_state?(next, project), :ok <- write(path, next) do
+                with :ok <- write(path, next) do
                   {:ok, value}
                 else
                   {:error, reason}
@@ -1153,14 +1155,14 @@ defmodule Ipse.Extension.Consent do
                 end
 
               {:write_effect, next, value} ->
-                with true <- valid_state?(next, project), :ok <- write(path, next) do
+                with :ok <- write(path, next) do
                   {:ok, value}
                 else
                   _ -> {:unknown, :consent_write_unconfirmed}
                 end
 
               {:write_unknown, next, reason} ->
-                with true <- valid_state?(next, project), :ok <- write(path, next) do
+                with :ok <- write(path, next) do
                   {:unknown, reason}
                 else
                   _ -> {:unknown, :consent_write_unconfirmed}
@@ -1263,11 +1265,11 @@ defmodule Ipse.Extension.Consent do
   end
 
   defp write(path, s) do
-    pending = ".pending-" <> Ipse.Usage.id()
     lock = Process.get(@lock_key)
 
-    with true <- lock != nil and Path.basename(path) == s["project"],
-         {:ok, bytes} <- encode_control(s, s["project"]),
+    with true <- lock != nil and is_map(s) and Path.basename(path) == Map.get(s, "project"),
+         {:ok, bytes} <- encode_control(s, Map.get(s, "project")),
+         pending = ".pending-" <> Ipse.Usage.id(),
          :ok <- Transaction.quota(lock, :flat, @allocated_bytes),
          :ok <- Transaction.preflight(lock, [byte_size(bytes)]),
          {:ok, before} <- Transaction.allocation(lock, :flat),

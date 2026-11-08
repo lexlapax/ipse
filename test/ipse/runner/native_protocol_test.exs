@@ -4,7 +4,8 @@ defmodule Ipse.NativeHelperBoundaryTest do
   setup do
     root = Path.join("/tmp", "ipse-helper-boundary-#{Ipse.Usage.id()}")
     cwd = Path.join(root, "workspace")
-    File.mkdir_p!(cwd)
+    File.mkdir!(root)
+    File.mkdir!(cwd)
     previous = System.get_env("IPSE_RUNNER_PATH")
 
     on_exit(fn ->
@@ -64,7 +65,8 @@ defmodule Ipse.NativeHelperBoundaryTest do
     File.rm!(Path.join(ctx.cwd, "alias"))
 
     app = Application.app_dir(:ipse)
-    assert {:error, reason} = Ipse.Tools.Sandbox.resolve(:native, app)
+    assert {:error, _} = Ipse.Tools.Sandbox.resolve(:native, app)
+    assert {:error, reason} = Ipse.Tools.Sandbox.helper_boundary(app, helper)
     assert reason =~ "overlaps the active helper or application"
   end
 end

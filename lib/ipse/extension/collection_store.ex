@@ -213,31 +213,56 @@ defmodule Ipse.Extension.CollectionStore do
                                context.owner,
                                {:extension_document_current, context.job_ref, intent}
                              ),
+                           {:ok, retirement_authority} <-
+                             GenServer.call(
+                               context.owner,
+                               {:extension_document_retirement, context.job_ref, intent}
+                             ),
                            :ok <- observe_inline_claim(context, intent),
                            {:ok, deadline} <- projection_deadline(context, intent, deadline) do
-                        DocumentStage.execute(
-                          root(context.config[:home]),
-                          b["namespace"],
-                          intent["request"]["request"],
-                          intent["operation_id"],
-                          %{
-                            "project_id" => b["project"]["project_id"],
-                            "session_id" => context.session_id,
-                            "identity_sha256" => JSON.digest([context.identity]),
-                            "invocation_id" => intent["parent_invocation_id"]
-                          },
-                          [
-                            sdk_request_sha256: JSON.digest([intent["request"]]),
-                            publication_guard: fn changes, read ->
-                              Ipse.Extension.Collection.WorkspaceDocumentGuard.check(
-                                context,
-                                intent,
-                                changes,
-                                read
+                        run = fn ->
+                          DocumentStage.execute(
+                            root(context.config[:home]),
+                            b["namespace"],
+                            intent["request"]["request"],
+                            intent["operation_id"],
+                            Map.merge(
+                              %{
+                                "project_id" => b["project"]["project_id"],
+                                "session_id" => context.session_id,
+                                "identity_sha256" => JSON.digest([context.identity]),
+                                "invocation_id" => intent["parent_invocation_id"]
+                              },
+                              if(is_nil(retirement_authority),
+                                do: %{},
+                                else: %{"retirement_authority" => retirement_authority}
                               )
-                            end
-                          ] ++ if(is_nil(deadline), do: [], else: [publish_before_ms: deadline])
-                        )
+                            ),
+                            [
+                              sdk_request_sha256: JSON.digest([intent["request"]]),
+                              publication_guard: fn changes, read ->
+                                Ipse.Extension.Collection.WorkspaceDocumentGuard.check(
+                                  context,
+                                  intent,
+                                  changes,
+                                  read
+                                )
+                              end
+                            ] ++ if(is_nil(deadline), do: [], else: [publish_before_ms: deadline])
+                          )
+                        end
+
+                        if get_in(intent, ["request", "request", "progress", "action"]) ===
+                             "retire" do
+                          Ipse.Extension.Collection.with_document_retirement_owner(
+                            context,
+                            intent,
+                            retirement_authority,
+                            run
+                          )
+                        else
+                          run.()
+                        end
                       else
                         _ -> @error
                       end

@@ -294,6 +294,25 @@ without inference; a committed answer survives a crash without restarting work.
 Corrupt bindings refuse before tail repair. Exercise stale input in Terminal as
 well as Session: a valid Session answer can still originate from a broken UI.
 
+[`Session.Saved`](../../lib/ipse/session/saved.ex) validates extension action
+history before counting intents with an unknown or missing result. Diagnosis
+reports only the aggregate count, without action arguments. A missing result
+remains uncertain even if a later cancellation ended the invocation; validation
+must not turn that absence into a successful effect. An explicitly recorded,
+validated cancelled question result is settled for this count. A cancellation
+record alone does not settle a preceding action intent. An unmatched question is
+excluded only while it is the current action with a matching validated
+pending-question event; an intent alone remains uncertain.
+
+Session startup derives the same count from its locked, validated journal snapshot
+and exposes it through `Session.info`. On resume the CLI prints a content-free
+warning when it is nonzero. The outcome may include an effect that happened.
+A managed question whose context cannot safely be restored or displayed has a
+separate warning; the startup count is not a live status of later work. Follow
+the pending-question and resume controls in
+[`invocation_test.exs`](../../test/ipse/extension/invocation_test.exs) and the
+warning display control in [`cli_test.exs`](../../test/ipse/cli_test.exs).
+
 ## Own child conversations
 
 [`Tools.Delegation`](../../lib/ipse/tools/delegation.ex) owns definitions, call

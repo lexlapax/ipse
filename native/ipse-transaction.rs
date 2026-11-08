@@ -746,6 +746,9 @@ mod unix {
             while !root.join(format!("source-switch-{phase}.go")).exists() && Instant::now() < until {
                 std::thread::sleep(Duration::from_millis(5));
             }
+            if !root.join(format!("source-switch-{phase}.go")).exists() {
+                std::process::exit(2);
+            }
         }
     }
     // The guard is evaluated after the staged file and target have been
@@ -1121,6 +1124,12 @@ mod unix {
         let mut writer_control: Option<WriterControl> = None;
         #[cfg(target_os = "linux")]
         let mut session_control: Option<WriterControl> = None;
+        // Isolated purpose-specific two-lock retirement mode. The operation is
+        // the Session ticket's one-use control identifier, not worker input.
+        #[cfg(target_os = "linux")]
+        let mut document_retirement: Option<([u8; 16], bool, u64, Instant)> = None;
+        #[cfg(target_os = "linux")]
+        let mut document_retirement_used = false;
         #[cfg(target_os = "linux")]
         let mut pipe: Option<(super::super::ipse_lease_sink::RetainedSource, u64, Instant, bool)> = None;
         #[cfg(target_os = "linux")]
@@ -1195,6 +1204,15 @@ mod unix {
             }
             #[cfg(target_os = "linux")]
             if writer_control.is_some() && matches!(kind, b'A' | b'R' | b'X' | b'Y' | b'K' | b'S') {
+                reply(b'U', seq, stack.len(), Some(INVALID))?; return Ok(());
+            }
+            #[cfg(target_os = "linux")]
+            if document_retirement.is_some() && !matches!(kind, b'P' | b'I' | b'b' | b'e' | b'k' | b'z' | b'd' | b'o' | b'm' | b'G' | b'H' | b'B' | b'F' | b'M' | b'W' | b'D' | b'N' | b'Q' | b'l') {
+                reply(b'U', seq, stack.len(), Some(INVALID))?; return Ok(());
+            }
+            #[cfg(target_os = "linux")]
+            if document_retirement_used && document_retirement.is_none() &&
+                !matches!(kind, b'P' | b'G' | b'H' | b'B' | b'F' | b'M' | b'R') {
                 reply(b'U', seq, stack.len(), Some(INVALID))?; return Ok(());
             }
             if staging.is_some() && kind != b'D' { return Err("transaction staging interrupted".into()); }
@@ -1308,6 +1326,70 @@ mod unix {
                     } else {
                         answer!(b'E', seq, Some(INVALID));
                     }
+                }
+                #[cfg(target_os = "linux")]
+                b'g' if bytes.len() == 65 && stack.len() == 2 && !document_retirement_used && document_retirement.is_none() && writer_control.is_none() && session_control.is_none() && source.is_empty() && state_intent.is_none() => {
+                    let operation: [u8; 16] = bytes[9..25].try_into().unwrap();
+                    let pd = u64::from_be_bytes(bytes[25..33].try_into().unwrap());
+                    let pi = u64::from_be_bytes(bytes[33..41].try_into().unwrap());
+                    let cd = u64::from_be_bytes(bytes[41..49].try_into().unwrap());
+                    let ci = u64::from_be_bytes(bytes[49..57].try_into().unwrap());
+                    let wall = u64::from_be_bytes(bytes[57..65].try_into().unwrap());
+                    let observed = Instant::now();
+                    let now = SystemTime::now().duration_since(UNIX_EPOCH).ok().and_then(|x| u64::try_from(x.as_millis()).ok());
+                    let remaining = now.and_then(|x| wall.checked_sub(x));
+                    if operation == [0; 16] || pi == 0 || ci == 0 ||
+                       wall > 9_007_199_254_740_991 || !remaining.is_some_and(|x| (1..=5_000).contains(&x)) ||
+                       stack[0].lock_id.dev() != pd || stack[0].lock_id.ino() != pi ||
+                       stack[1].lock_id.dev() != cd || stack[1].lock_id.ino() != ci {
+                        answer!(b'E', seq, Some(INVALID)); continue;
+                    }
+                    document_retirement_used = true;
+                    document_retirement = Some((operation, false, wall, observed + Duration::from_millis(remaining.unwrap())));
+                    answer!(b'g', seq, None);
+                }
+                #[cfg(target_os = "linux")]
+                b'b' if bytes.len() == 93 && stack.len() == 2 && document_retirement.is_some() && writer_control.is_none() && session_control.is_none() && source.is_empty() => {
+                    let operation: [u8; 16] = bytes[9..25].try_into().unwrap();
+                    if document_retirement.as_ref().map(|x| x.0) != Some(operation) { answer!(b'E', seq, Some(INVALID)); continue; }
+                    match super::super::ipse_owner_control::collect(&bytes[25..], &operation, 2, 0, &[], deadline.min(Instant::now() + Duration::from_secs(5))) {
+                        Ok((owner, expected, peer)) => {
+                            let control = WriterControl { owner, expected, peer };
+                            if !control.live() { reply(b'U', seq, stack.len(), Some(UNSAFE))?; return Ok(()); }
+                            writer_control = Some(control); answer!(b'b', seq, None);
+                        },
+                        Err(_) => { reply(b'U', seq, stack.len(), Some(IO))?; return Ok(()); },
+                    }
+                }
+                #[cfg(target_os = "linux")]
+                b'e' if bytes.len() == 93 && stack.len() == 2 && document_retirement.is_some() && writer_control.is_some() && session_control.is_none() && source.is_empty() => {
+                    let operation: [u8; 16] = bytes[9..25].try_into().unwrap();
+                    if document_retirement.as_ref().map(|x| x.0) != Some(operation) { answer!(b'E', seq, Some(INVALID)); continue; }
+                    let writer = writer_control.as_ref().unwrap();
+                    let watched = [writer.owner.as_raw_fd(), writer.expected.process.as_raw_fd(), writer.peer.as_raw_fd()];
+                    match super::super::ipse_owner_control::collect(&bytes[25..], &operation, 1, 0, &watched, deadline.min(Instant::now() + Duration::from_secs(5))) {
+                        Ok((owner, expected, peer)) => {
+                            let control = WriterControl { owner, expected, peer };
+                            if !control.live() { reply(b'U', seq, stack.len(), Some(UNSAFE))?; return Ok(()); }
+                            session_control = Some(control); answer!(b'e', seq, None);
+                        },
+                        Err(_) => { reply(b'U', seq, stack.len(), Some(IO))?; return Ok(()); },
+                    }
+                }
+                #[cfg(target_os = "linux")]
+                b'k' if bytes.len() == 93 && stack.len() == 2 && document_retirement.is_some() && writer_control.is_some() && session_control.is_some() && source.is_empty() => {
+                    let operation: [u8; 16] = bytes[9..25].try_into().unwrap();
+                    if operation == [0; 16] || used_operations.contains(&operation) || used_operations.len() >= 256 { reply(b'U', seq, stack.len(), Some(INVALID))?; return Ok(()); }
+                    used_operations.push(operation);
+                    match super::super::ipse_lease_sink::RetainedSource::acquire(&bytes[25..], operation, deadline.min(Instant::now() + Duration::from_secs(5))) {
+                        Ok(held) if stack.iter().all(|h| valid(h, uid)) => { source.push(held); answer!(b'k', seq, None); },
+                        _ => { reply(b'U', seq, stack.len(), Some(IO))?; return Ok(()); },
+                    }
+                }
+                #[cfg(target_os = "linux")]
+                b'm' if bytes.len() == 9 && stack.len() == 2 && document_retirement.is_some() && writer_control.is_none() && session_control.is_none() && source.is_empty() => {
+                    document_retirement = None;
+                    answer!(b'm', seq, None);
                 }
                 #[cfg(target_os = "linux")]
                 b'O' if bytes.len() == 93 && stack.len() == 3 && writer_control.is_none() && source.is_empty() && state_intent.is_none() => {
@@ -1490,7 +1572,20 @@ mod unix {
                     stack.pop(); answer!(b'R', seq, None);
                     if stack.is_empty() { return Ok(()); }
                 }
-                b'T' if !stack.is_empty() => {
+                b'T' | b'l' if !stack.is_empty() => {
+                    #[cfg(target_os = "linux")]
+                    if kind == b'l' {
+                        if stack.len() != 2 || writer_control.is_none() || session_control.is_none() || source.len() != 1 {
+                            reply(b'U', seq, stack.len(), Some(INVALID))?; return Ok(());
+                        }
+                        match document_retirement.as_mut() {
+                            Some((_, attempted, wall, cutoff)) if !*attempted && bytes.len() == 67 &&
+                                u64::from_be_bytes(bytes[9..17].try_into().unwrap()) <= *wall && Instant::now() < *cutoff => *attempted = true,
+                            _ => { reply(b'U', seq, stack.len(), Some(INVALID))?; return Ok(()); }
+                        }
+                    }
+                    #[cfg(not(target_os = "linux"))]
+                    if kind == b'l' { reply(b'U', seq, stack.len(), Some(INVALID))?; return Ok(()); }
                     #[cfg(target_os = "linux")]
                     let chat_deadline = match chat_acceptance {
                         Some(ChatAcceptance::Armed { wall, cutoff }) => {
@@ -1517,6 +1612,12 @@ mod unix {
                     }
                     match switch_before(stack.last().unwrap(), &bytes[9..], uid, || {
                         #[cfg(target_os = "linux")]
+                        if kind == b'l' {
+                            let (_, _, wall, cutoff) = document_retirement.as_ref().unwrap();
+                            let now = SystemTime::now().duration_since(UNIX_EPOCH).ok().and_then(|x| u64::try_from(x.as_millis()).ok());
+                            if !now.is_some_and(|n| n < *wall) || Instant::now() >= *cutoff { return false; }
+                        }
+                        #[cfg(target_os = "linux")]
                         if let Some((wall, cutoff)) = chat_deadline {
                             let now = SystemTime::now().duration_since(UNIX_EPOCH).ok().and_then(|x| u64::try_from(x.as_millis()).ok());
                             if !now.is_some_and(|n| acceptance_live(wall, cutoff, n, Instant::now())) { return false; }
@@ -1531,7 +1632,7 @@ mod unix {
                     }) {
                         Ok(()) => {
                             if !stack.iter().all(|h| valid(h, uid)) { reply(b'U', seq, stack.len(), Some(UNSAFE))?; return Ok(()); }
-                            answer!(b'T', seq, None);
+                            answer!(kind, seq, None);
                         },
                         Err((false, code)) => answer!(b'E', seq, Some(code)),
                         Err((true, code)) => { reply(b'U', seq, stack.len(), Some(code))?; return Ok(()); },
@@ -1676,6 +1777,24 @@ mod unix {
         use std::os::unix::fs::{DirBuilderExt, OpenOptionsExt};
         use std::sync::atomic::{AtomicU64, Ordering};
         static NEXT: AtomicU64 = AtomicU64::new(0);
+
+        #[test]
+        fn guarded_decision_does_not_prove_owner_survives_the_rename() {
+            // This is only a simulated boolean transition, not a Session or
+            // owner-control process-loss test.
+            let f = Fixture::new();
+            let before = format!(".pending-{}", "1".repeat(32));
+            let after = format!(".pending-{}", "2".repeat(32));
+            f.write("root.json", b"old");
+            f.write(&before, b"new-before");
+            f.write(&after, b"new-after");
+            assert_eq!(switch_guarded(f.held(), &before, "root.json", f.uid, None, || false), Err((false, UNSAFE)));
+            assert_eq!(std::fs::read(f.path.join("root.json")).unwrap(), b"old");
+            let live = std::cell::Cell::new(true);
+            assert_eq!(switch_guarded(f.held(), &after, "root.json", f.uid, None, || { live.set(false); true }), Ok(()));
+            assert!(!live.get());
+            assert_eq!(std::fs::read(f.path.join("root.json")).unwrap(), b"new-after");
+        }
         struct Fixture { path: PathBuf, held: Option<Held>, uid: u32 }
         impl Fixture {
             fn new() -> Self {

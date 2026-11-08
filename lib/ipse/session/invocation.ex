@@ -21,6 +21,8 @@ defmodule Ipse.Session.Invocation do
 
   alias Ipse.Session.Turn
 
+  @document_retirement_limit 32_768
+
   defstruct parent: nil,
             request: nil,
             action: nil,
@@ -473,6 +475,89 @@ defmodule Ipse.Session.Invocation do
     {:reply, reply, s}
   end
 
+  # Only a known, journaled cleanup completed by this live Session process can
+  # authorize another step of the same partial retirement. This registry is not
+  # restored on resume: an earlier owner or unknown outcome needs recovery.
+  def document_retirement(s, intent) do
+    with {:reply, :ok, ^s} <- document_current(s, intent) do
+      request = intent["request"]["request"]
+      tag = request["progress"]
+
+      if is_map(tag) and tag["action"] === "retire" do
+        key = retirement_key(intent, tag["head_id"])
+
+        if map_size(s.document_retirements) < @document_retirement_limit or
+             Map.has_key?(s.document_retirements, key) do
+          {:reply, {:ok, Map.get(s.document_retirements, key)}, s}
+        else
+          {:reply, {:error, :document_store_refused}, s}
+        end
+      else
+        {:reply, {:ok, nil}, s}
+      end
+    else
+      _ -> {:reply, {:error, :document_store_refused}, s}
+    end
+  rescue
+    _ -> {:reply, {:error, :document_store_refused}, s}
+  end
+
+  # The live registry value is read again when the Session opens the
+  # controlled transfer; the digest narrows that transfer, never authorizes it.
+  def document_retirement_binding?(s, caller, intent, expected) do
+    with true <- s.task != nil and s.job_ref != nil,
+         true <-
+           caller == s.task.pid or Ipse.Session.Resources.authorized_effect?(s.task.pid, caller),
+         %{"op" => "collection.store", "request" => %{"progress" => %{"action" => "retire"}}} <-
+           intent["request"],
+         {:reply, {:ok, authority}, ^s} <- document_retirement(s, intent),
+         true <- Ipse.JSON.digest([s.invocation.parent, intent, authority]) === expected do
+      true
+    else
+      _ -> false
+    end
+  rescue
+    _ -> false
+  end
+
+  defp retirement_key(event, head_id) do
+    binding = event["effect_binding"]
+    {binding["namespace"], binding["project"]["project_id"], event["identity_sha256"], head_id}
+  end
+
+  defp record_document_retirement(s, event) do
+    request = get_in(event, ["request", "request"])
+    tag = if is_map(request), do: request["progress"]
+    progress = get_in(event, ["outcome", "value", "progress"])
+
+    if get_in(event, ["request", "op"]) === "collection.store" and is_map(tag) and
+         tag["action"] === "retire" and get_in(event, ["outcome", "status"]) === "ok" and
+         is_map(progress) do
+      key = retirement_key(event, tag["head_id"])
+
+      retirements =
+        case progress["status"] do
+          "retiring" ->
+            Map.put(s.document_retirements, key, %{
+              "operation_id" => event["operation_id"],
+              "invocation_id" => event["parent_invocation_id"],
+              "revision" => progress["revision"],
+              "epoch" => progress["retirement_epoch"]
+            })
+
+          "retired" ->
+            Map.delete(s.document_retirements, key)
+
+          _ ->
+            s.document_retirements
+        end
+
+      %{s | document_retirements: retirements}
+    else
+      s
+    end
+  end
+
   def prepare_document_embedding(s, ref, request) do
     identity = s.invocation.parent["identity"]
     required = Ipse.Extension.CollectionStore.embedding_source_required?(identity)
@@ -585,7 +670,8 @@ defmodule Ipse.Session.Invocation do
              service,
              effect_binding
            ),
-         :ok <- extension_effect_record_capacity(s, intent) do
+         :ok <- extension_effect_record_capacity(s, intent),
+         {:ok, s} <- exact_action_attempt(s, parent, intent) do
       cond do
         mutation and request["op"] in ["collection.call", "collection.managed"] and
             not Ipse.Session.ManagedToolUse.publication_prerequisites?(s, request, effect_binding) ->
@@ -736,7 +822,65 @@ defmodule Ipse.Session.Invocation do
            }}
       end
     else
+      {:exact_action_refused, next} -> {:reply, {:error, :exact_action_fence_refused}, next}
       _ -> {:reply, {:error, :extension_action_refused}, s}
+    end
+  end
+
+  defp exact_action_attempt(s, parent, intent) do
+    fence = exact_action_state(s)
+
+    if is_map(fence) and is_map(fence.fence) and
+         get_in(intent, ["request", "op"]) === fence.fence["operation"] and
+         get_in(parent, ["payload", "turn_id"]) !== s.turn_id do
+      {:exact_action_refused, s}
+    else
+      exact_action_attempt_record(s, fence, parent, intent)
+    end
+  end
+
+  defp exact_action_attempt_record(s, fence, parent, intent) do
+    case Ipse.Session.ExactActionFence.attempt(fence, parent, intent, s.id) do
+      :unrestricted ->
+        {:ok, s}
+
+      {:attempt, event} ->
+        Session.record(s, event)
+        next = Map.put(s, :exact_action_fence, %{fence | attempt: event})
+        if event["matched"], do: {:ok, next}, else: {:exact_action_refused, next}
+
+      _ ->
+        {:exact_action_refused, s}
+    end
+  end
+
+  defp exact_action_permitted?(s, intent) do
+    fence = exact_action_state(s)
+    parent = s.invocation.parent
+
+    case fence do
+      %{fence: nil} ->
+        Ipse.Session.ExactActionFence.permitted?(fence, parent, intent)
+
+      %{fence: restriction} when is_map(restriction) ->
+        Ipse.Session.ExactActionFence.permitted?(fence, parent, intent) and
+          (get_in(intent, ["request", "op"]) !== restriction["operation"] or
+             get_in(parent, ["payload", "turn_id"]) === s.turn_id)
+
+      _ ->
+        false
+    end
+  end
+
+  defp exact_action_state(s) do
+    case Map.fetch(s, :exact_action_fence) do
+      {:ok, fence} ->
+        fence
+
+      :error ->
+        if get_in(s, [:config, :source_layout]) == Ipse.Session.SourceWindow.fenced_layout(),
+          do: nil,
+          else: %{fence: nil, attempt: nil}
     end
   end
 
@@ -762,6 +906,7 @@ defmodule Ipse.Session.Invocation do
 
   def begin_inference(s, message, intent) do
     with true <- inference_begin?(message, intent["request"]),
+         true <- exact_action_permitted?(s, intent),
          true <- output_timely?(s),
          true <- intent["approval"] in ~w(approved session_allow),
          true <- Ipse.Extension.Registry.live?(s.invocation.parent["identity"]),
@@ -1088,6 +1233,7 @@ defmodule Ipse.Session.Invocation do
         end
 
       s = Session.record_extension_action(s, event)
+      s = record_document_retirement(s, event)
       s = Session.managed_event(s, event)
       s = %{s | invocation: Ipse.Session.DocumentEmbedding.record_action(s.invocation, event)}
 
@@ -1191,6 +1337,7 @@ defmodule Ipse.Session.Invocation do
 
     allowed =
       allowed == true and
+        exact_action_permitted?(s, intent) and
         (native or not Ipse.Session.ManagedToolUse.managed_invocation?(s)) and
         Actions.allowed_under_outer?(s.invocation.parent, intent["request"]) and
         Ipse.Extension.Mode.ordinary(mode, Actions.mutating?(intent["request"])) != :deny

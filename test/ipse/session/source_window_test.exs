@@ -265,7 +265,9 @@ defmodule Ipse.Session.SourceWindowTest do
     session = start(c, :large)
     assert :ok = Session.prompt(session, "Original admitted prompt")
     assert_receive {:ipse, ^session, {:done, :ok}}, 2000
-    config = :sys.get_state(session).config
+    internal_config = :sys.get_state(session).config
+    assert Map.fetch!(internal_config, :exact_action_fence) === nil
+    config = Map.delete(internal_config, :exact_action_fence)
     id = Session.info(session).id
     assert :ok = Session.close_confirmed(session)
     assert {:ok, events} = Journal.load(c.dir, id)
@@ -284,7 +286,7 @@ defmodule Ipse.Session.SourceWindowTest do
     path = Path.join(c.dir, id <> ".jsonl")
     File.write!(path, bytes)
 
-    assert {:error, _} =
+    assert {:error, :invalid_source_window} =
              DynamicSupervisor.start_child(
                Ipse.Sessions,
                {Session,

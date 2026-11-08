@@ -296,6 +296,13 @@ defmodule Ipse.Extension.Actions do
     {:ok, output_layout} = Ipse.Session.ManagedOutput.marker(metadata)
     {:ok, _} = Ipse.Session.ManagedToolUse.action_marker(metadata)
 
+    fence_session =
+      get_in(metadata, ["source_origin", "session_id"]) ||
+        get_in(metadata, ["semantic_admission", "pin", "session_id"]) ||
+        String.duplicate("0", 32)
+
+    {:ok, _} = Ipse.Session.ExactActionFence.restore(events, fence_session)
+
     :ok =
       Ipse.Session.ManagedSupersession.validate_events(
         events,
@@ -701,6 +708,16 @@ defmodule Ipse.Extension.Actions do
     else
       _ -> @error
     end
+  end
+
+  defp validate_event(%{"type" => "exact_action_fence_attempt"} = event, state, _) do
+    if state.metadata["source_layout"] === Ipse.Session.ExactActionFence.layout() and
+         is_map(state.parent) and state.parent["invocation_id"] === event["parent_invocation_id"] and
+         is_nil(state.action) and is_nil(state.worker_input) and not state.unknown and
+         is_nil(state.resume_needed) and is_nil(state.question) and
+         not MapSet.member?(state.seen, event["operation_id"]),
+       do: {:ok, state},
+       else: @error
   end
 
   defp validate_event(%{"type" => "extension_action_intent"} = event, state, cwd) do

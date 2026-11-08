@@ -56,6 +56,30 @@ separate effect. [Protected collection work](collection-sdk.md) uses an explicit
 ceilings. That narrow path never applies to ordinary file, shell, MCP, service or
 inference actions.
 
+Trusted in-VM host code can additionally start a Session with the top-level
+`:exact_action_fence` option and a live local `:owner`. The closed version-two
+map names an operation and the SHA-256 digests of the admitted extension identity,
+invocation descriptor, complete parent invocation arguments and complete action request, each calculated with
+`Ipse.JSON.digest([value])`. The Session records the first targeted attempt
+before approval; a mismatch is refused, and the attempt stays spent after a
+restart. The option is a restriction, not a grant or replacement for approval.
+Resume requires a live owner and preserves the recorded restriction. Worker
+requests and workspace configuration cannot set it.
+The earlier prototype fence version is rejected rather than reopened without
+the argument binding.
+Delegation is disabled for a fenced Session, so a child cannot bypass the
+restriction through its separate journal and action chain.
+
+Fenced Sessions use the enforced `session_sources_v2_exact_action` compatibility
+generation: its source events have the same meaning as v1, while its header must
+also contain the valid fence. A v1 or legacy header cannot contain that fence.
+Older hosts reject the new generation rather than reopening it without the
+restriction. See `Ipse.Session.ExactActionFence` and the matching Session tests
+when changing this boundary.
+This check assumes cooperative retained storage: a party able to replace the
+whole journal can remove both the marker and the fence. It is not a tamper-proof
+defense against wholesale history rewriting.
+
 When an invocation carries managed dependencies, `ManagedApproval` binds its
 complete inherited union, original parent and pending action to the Session-issued
 native terminal. The full proposal includes its existing execution or MCP binding.

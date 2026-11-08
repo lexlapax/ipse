@@ -49,6 +49,10 @@ defmodule Ipse.Extension.Host do
       begin_controlled_session_share(owner, job_ref, intent, {:capture_source, sha, proofs, wall})
 
   @doc false
+  def begin_document_retirement_share(owner, job_ref, intent, sha),
+    do: begin_controlled_session_share(owner, job_ref, intent, {:document_retirement, sha})
+
+  @doc false
   def begin_synthetic_supersession_review_share(owner, job_ref, intent, sha),
     do:
       begin_controlled_session_share(owner, job_ref, intent, {:supersession_display_fixture, sha})
@@ -61,6 +65,9 @@ defmodule Ipse.Extension.Host do
   defp begin_controlled_session_share(owner, job_ref, intent, mode) do
     ticket_request =
       case mode do
+        {:document_retirement, sha} ->
+          {:session_control_ticket_document_retirement, job_ref, intent, sha}
+
         {:capture_source, sha, proofs, wall} ->
           {:session_control_ticket_capture, job_ref, intent, sha, proofs, wall}
 

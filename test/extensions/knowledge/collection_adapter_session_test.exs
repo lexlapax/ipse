@@ -13,7 +13,15 @@ defmodule Ipse.KnowledgeCollectionAdapterSessionTest do
     root = Path.join(System.tmp_dir!(), "ipse-collection-adapter-artifact-" <> Usage.id())
     File.mkdir_p!(Path.join(root, "ebin"))
     File.chmod!(root, 0o700)
-    on_exit(fn -> File.rm_rf!(root) end)
+
+    on_exit(fn ->
+      # Retain the shared artifact whenever a retirement case began; the
+      # external owner audit decides when its synthetic files may be removed.
+      case File.lstat(root <> ".retain") do
+        {:error, :enoent} -> File.rm_rf!(root)
+        _ -> :ok
+      end
+    end)
 
     files =
       Enum.map(
@@ -101,6 +109,9 @@ defmodule Ipse.KnowledgeCollectionAdapterSessionTest do
   end
 
   setup c do
+    if c[:document_draft_abort] || c[:document_progress_fault] || c[:packed_unknown],
+      do: File.write!(c.artifact <> ".retain", "retain for independent audit\n")
+
     local_modules = [IpseKnowledge.Evidence, IpseKnowledge.Store.Collection.Projection]
     initially_unloaded = Enum.filter(local_modules, &(:code.is_loaded(&1) == false))
 
@@ -119,17 +130,33 @@ defmodule Ipse.KnowledgeCollectionAdapterSessionTest do
     File.mkdir!(cwd)
     File.chmod!(home, 0o700)
 
-    if c[:public_backup_identity],
-      do: IO.puts("PUBLIC_BACKUP_IDENTITY_FIXTURE #{root}"),
-      else: on_exit(fn -> File.rm_rf!(root) end)
+    cond do
+      c[:public_backup_identity] ->
+        IO.puts("PUBLIC_BACKUP_IDENTITY_FIXTURE #{root}")
+
+      c[:draft_abort_resumed_owner] || c[:document_draft_abort] || c[:document_progress_fault] ||
+          c[:packed_unknown] ->
+        IO.puts("DRAFT_ABORT_RESUMED_OWNER_FIXTURE #{root}")
+
+      true ->
+        on_exit(fn -> File.rm_rf!(root) end)
+    end
 
     selected_artifact =
       if c[:public_shared_selected] do
         output = Path.expand("_build/shared-selected-corpus-" <> Usage.id())
 
-        if c[:public_backup_identity],
-          do: IO.puts("PUBLIC_BACKUP_IDENTITY_ARTIFACT #{output}"),
-          else: on_exit(fn -> File.rm_rf!(output) end)
+        cond do
+          c[:public_backup_identity] ->
+            IO.puts("PUBLIC_BACKUP_IDENTITY_ARTIFACT #{output}")
+
+          c[:draft_abort_resumed_owner] || c[:document_draft_abort] ||
+            c[:document_progress_fault] || c[:packed_unknown] ->
+            IO.puts("DRAFT_ABORT_RESUMED_OWNER_ARTIFACT #{output}")
+
+          true ->
+            on_exit(fn -> File.rm_rf!(output) end)
+        end
 
         sdk = Path.dirname(List.to_string(:code.which(Ipse.Extension)))
 
@@ -288,6 +315,12 @@ defmodule Ipse.KnowledgeCollectionAdapterSessionTest do
       compact: false
     }
 
+    config =
+      if c[:draft_abort_release_owner],
+        do:
+          Map.put(config, :observability, Map.put(Ipse.Observability.defaults(), "mode", "local")),
+        else: config
+
     {config, semantic_server, semantic_selection} =
       if c[:public_semantic_selected] do
         response = Jason.encode!(%{"model" => "fixture-model", "embeddings" => [[1.0, 0.0]]})
@@ -335,7 +368,12 @@ defmodule Ipse.KnowledgeCollectionAdapterSessionTest do
 
     opts = [config: config, cwd: cwd, state_dir: Path.join(home, "sessions"), subscriber: self()]
     assert {:ok, pid} = DynamicSupervisor.start_child(Ipse.Sessions, {Session, opts})
-    on_exit(fn -> if Process.alive?(pid), do: Session.close_confirmed(pid) end)
+
+    if c[:document_draft_abort] || c[:document_progress_fault] || c[:packed_unknown] do
+      on_exit(fn -> refute Process.alive?(pid) end)
+    else
+      on_exit(fn -> if Process.alive?(pid), do: Session.close_confirmed(pid) end)
+    end
 
     %{
       pid: pid,
@@ -4097,11 +4135,8 @@ defmodule Ipse.KnowledgeCollectionAdapterSessionTest do
     assert_receive :packed_native_lost
     :telemetry.detach(handler)
 
-    if Process.alive?(c.pid) do
-      assert Session.close_confirmed(c.pid) in [:ok, {:error, :cleanup_unconfirmed}]
-      if Process.alive?(c.pid), do: Process.exit(c.pid, :kill)
-    end
-
+    assert Process.alive?(c.pid)
+    assert :ok = Session.close_confirmed(c.pid)
     assert_receive {:DOWN, ^guard_ref, :process, ^guard, _}, 5000
     assert {:ok, before} = Journal.load(c.dir, c.id)
 
@@ -5418,10 +5453,27 @@ defmodule Ipse.KnowledgeCollectionAdapterSessionTest do
     snapshot
   end
 
-  defp draft_abort_close_idle(c) do
+  defp assert_retirement_settled(c, head) do
+    assert {:ok, events} = Journal.load(c.dir, c.id)
+    assert {:ok, _} = Actions.restore(events)
+
+    results =
+      Enum.filter(events, fn event ->
+        event["type"] === "extension_action_result" and
+          get_in(event, ["request", "request", "op"]) === "value.abort" and
+          get_in(event, ["request", "request", "progress", "action"]) === "retire" and
+          get_in(event, ["request", "request", "progress", "head_id"]) === head["id"]
+      end)
+
+    assert ["ok", "denied"] === Enum.map(results, &get_in(&1, ["outcome", "status"]))
+    assert hd(results)["operation_id"] === head["retirement_operation"]["operation_id"]
+  end
+
+  defp draft_abort_close_idle(c, check_closed \\ fn _ -> :ok end) do
     assert :ok = Session.close_confirmed(c.pid)
     assert {:ok, closed} = Journal.load(c.dir, c.id)
     assert {:ok, _} = Session.Saved.restore(closed, c.id)
+    check_closed.(closed)
     before = draft_abort_snapshot(c)
 
     assert {:ok, resumed} =
@@ -5573,6 +5625,7 @@ defmodule Ipse.KnowledgeCollectionAdapterSessionTest do
 
   @tag :document_draft_abort
   @tag :packed_fact_session
+  @tag :draft_abort_release_owner
   @tag timeout: 180_000
   test "Projection abort freezes R after one known cleanup and cannot renew it across another fence",
        c do
@@ -5649,7 +5702,29 @@ defmodule Ipse.KnowledgeCollectionAdapterSessionTest do
 
     assert native_status(c) === stable
     assert Map.new(immutable, fn {key, _} -> {key, physical(c, key)} end) === immutable
-    draft_abort_close_idle(c)
+
+    draft_abort_close_idle(c, fn closed ->
+      assert {:ok, release} = Ipse.Session.ReleaseReceipt.current_intent(closed, c.id)
+      assert is_map(release)
+
+      assert {:ok, %{"release_claim" => "signed_release_claim"}} =
+               Session.Saved.inspect_saved(c.dir, c.id)
+
+      index = fn event -> Enum.find_index(closed, &(&1 === event)) end
+      assert [owner] = Enum.filter(closed, &(&1["type"] === "session_release_owner_started"))
+      assert [epoch] = Enum.filter(closed, &(&1["type"] === "lifecycle_epoch_started"))
+      assert [closure] = Enum.filter(closed, &(&1["type"] === "lifecycle_epoch_closed"))
+      assert release["owner_id"] === owner["owner_id"]
+      assert release["epoch_id"] === epoch["epoch_id"]
+      assert closure["epoch_id"] === epoch["epoch_id"]
+      assert closure["cleanup_confirmed"] === false
+      assert release["closure_sha256"] === JSON.digest([closure])
+      assert index.(owner) < index.(epoch)
+      assert index.(epoch) < index.(intent)
+      assert index.(intent) < index.(action_result)
+      assert index.(action_result) < index.(closure)
+      assert index.(closure) < index.(release)
+    end)
   end
 
   @tag :document_draft_abort
@@ -5673,6 +5748,471 @@ defmodule Ipse.KnowledgeCollectionAdapterSessionTest do
              "refused"
 
     draft_abort_close_idle(c)
+  end
+
+  @tag :document_draft_abort
+  @tag :packed_fact_session
+  @tag timeout: 180_000
+  test "the same live Session may explicitly resume its known partial retirement", c do
+    {_args, opened} = draft_abort_projection(c)
+    progress = opened["continuation"]["progress"]
+    assert length(progress["prepared"]) === 2
+    count = make_ref()
+
+    hook = fn proposed ->
+      assert get_in(proposed, ["request", "request", "op"]) === "value.abort"
+      next = Process.get(count, 0) + 1
+      Process.put(count, next)
+      next === 1
+    end
+
+    assert draft_abort(Map.put(c, :draft_abort_approval_hook, hook), progress)["status"] ===
+             "refused"
+
+    assert Process.get(count) === 2
+    head = draft_abort_snapshot(c)["document_drafts"][progress["head_id"]]
+    assert length(head["prepared"]) === 1
+    assert_retirement_settled(c, head)
+
+    assert draft_abort(c, progress)["status"] === "aborted"
+    assert is_nil(draft_abort_snapshot(c)["document_drafts"][progress["head_id"]])
+    draft_abort_close_idle(c)
+  end
+
+  @tag :document_draft_abort
+  @tag :packed_fact_session
+  @tag timeout: 180_000
+  test "retirement switches only after live Session and Writer controls are imported", c do
+    {_args, opened} = draft_abort_projection(c)
+    progress = opened["continuation"]["progress"]
+    generation = native_status(c)["generation"] + 1
+    handler = "retirement-positive-" <> Usage.id()
+    parent = self()
+
+    assert :ok =
+             :telemetry.attach(
+               handler,
+               [:ipse, :extension, :collection, :staged],
+               fn _, _, metadata, _ ->
+                 if metadata.generation === generation do
+                   wall = Process.get({Ipse.Extension.Collection, :document_retirement_wall})
+                   send(parent, {:retirement_positive_staged, self(), is_integer(wall)})
+                 end
+               end,
+               nil
+             )
+
+    on_exit(fn -> :telemetry.detach(handler) end)
+    assert draft_abort(c, progress)["status"] === "aborted"
+    assert_receive {:retirement_positive_staged, _, true}, 5_000
+    assert is_nil(draft_abort_snapshot(c)["document_drafts"][progress["head_id"]])
+    draft_abort_close_idle(c)
+  end
+
+  @tag :document_draft_abort
+  @tag :packed_fact_session
+  @tag :draft_abort_resumed_owner
+  @tag :draft_abort_release_owner
+  @tag timeout: 180_000
+  test "Session loss after retirement controls are imported does not switch the root", c do
+    {_args, opened} = draft_abort_projection(c)
+    progress = opened["continuation"]["progress"]
+    before = draft_abort_snapshot(c)
+    generation = native_status(c)["generation"] + 1
+    handler = "retirement-owner-loss-" <> Usage.id()
+    parent = self()
+
+    assert :ok =
+             :telemetry.attach(
+               handler,
+               [:ipse, :extension, :collection, :staged],
+               fn _, _, metadata, _ ->
+                 if metadata.generation === generation do
+                   wall = Process.get({Ipse.Extension.Collection, :document_retirement_wall})
+                   send(parent, {:retirement_staged, self(), is_integer(wall)})
+
+                   receive do
+                     :continue_retirement -> :ok
+                   after
+                     60_000 -> Process.exit(self(), :kill)
+                   end
+                 end
+               end,
+               nil
+             )
+
+    on_exit(fn -> :telemetry.detach(handler) end)
+    guard = :sys.get_state(c.pid).lock_guard
+    guard_ref = Process.monitor(guard)
+    owner_ref = Process.monitor(c.pid)
+
+    assert :ok =
+             Session.invoke_export(c.pid, :command, "ext__documents__put", %{
+               "abort_head" => progress["head_id"],
+               "kind" => progress["kind"]
+             })
+
+    assert_receive {:ipse, pid, {:approval, approval, "extension:collection.store", proposed}},
+                   10_000
+
+    assert pid === c.pid
+    assert get_in(proposed, ["request", "request", "progress", "action"]) === "retire"
+    assert :ok = Session.approve(c.pid, approval, true)
+    assert_receive {:retirement_staged, effect, true}, 10_000
+    effect_ref = Process.monitor(effect)
+    Process.exit(c.pid, :kill)
+    assert_receive {:DOWN, ^owner_ref, :process, _, :killed}, 5_000
+    send(effect, :continue_retirement)
+    assert_receive {:DOWN, ^effect_ref, :process, ^effect, _}, 10_000
+    assert_receive {:DOWN, ^guard_ref, :process, ^guard, _}, 10_000
+    assert {:ok, %{"release_claim" => "unknown"}} = Session.Saved.inspect_saved(c.dir, c.id)
+    assert draft_abort_snapshot(c) === before
+  end
+
+  @tag :document_draft_abort
+  @tag :packed_fact_session
+  @tag :draft_abort_resumed_owner
+  @tag :draft_abort_release_owner
+  @tag timeout: 180_000
+  test "retirement owner-control port loss stops the Session without switching the root", c do
+    {_args, opened} = draft_abort_projection(c)
+    progress = opened["continuation"]["progress"]
+    before = draft_abort_snapshot(c)
+    generation = native_status(c)["generation"] + 1
+    handler = "retirement-control-loss-" <> Usage.id()
+    parent = self()
+
+    assert :ok =
+             :telemetry.attach(
+               handler,
+               [:ipse, :extension, :collection, :staged],
+               fn _, _, metadata, _ ->
+                 if metadata.generation === generation do
+                   wall = Process.get({Ipse.Extension.Collection, :document_retirement_wall})
+                   send(parent, {:retirement_control_staged, self(), is_integer(wall)})
+
+                   receive do
+                     :continue_retirement -> :ok
+                   after
+                     60_000 -> Process.exit(self(), :kill)
+                   end
+                 end
+               end,
+               nil
+             )
+
+    on_exit(fn -> :telemetry.detach(handler) end)
+    owner_ref = Process.monitor(c.pid)
+    guard = :sys.get_state(c.pid).lock_guard
+    guard_ref = Process.monitor(guard)
+
+    assert :ok =
+             Session.invoke_export(c.pid, :command, "ext__documents__put", %{
+               "abort_head" => progress["head_id"],
+               "kind" => progress["kind"]
+             })
+
+    assert_receive {:ipse, pid, {:approval, approval, "extension:collection.store", proposed}},
+                   10_000
+
+    assert pid === c.pid
+    assert get_in(proposed, ["request", "request", "progress", "action"]) === "retire"
+    assert :ok = Session.approve(c.pid, approval, true)
+    assert_receive {:retirement_control_staged, effect, true}, 10_000
+    effect_ref = Process.monitor(effect)
+    %{share_barrier: %{owner_port: owner_port, document_retirement: _}} = :sys.get_state(c.pid)
+    port_ref = :erlang.monitor(:port, owner_port)
+
+    :sys.replace_state(c.pid, fn
+      %{share_barrier: %{owner_port: ^owner_port}} = state ->
+        :ok = Ipse.Runner.close_owner_control(owner_port)
+        state
+    end)
+
+    assert_receive {:DOWN, ^port_ref, :port, ^owner_port, _}, 5_000
+    send(effect, :continue_retirement)
+    assert_receive {:DOWN, ^owner_ref, :process, _, :normal}, 10_000
+    assert_receive {:DOWN, ^effect_ref, :process, ^effect, _}, 10_000
+    assert_receive {:DOWN, ^guard_ref, :process, ^guard, _}, 10_000
+    assert {:ok, %{"release_claim" => "unknown"}} = Session.Saved.inspect_saved(c.dir, c.id)
+    assert draft_abort_snapshot(c) === before
+  end
+
+  if System.get_env("IPSE_TEST_SOURCE_SWITCH") == "1" do
+    for phase <- ["before-decision", "after-decision"] do
+      @tag :document_draft_abort
+      @tag :packed_fact_session
+      @tag :draft_abort_resumed_owner
+      @tag :draft_abort_release_owner
+      @tag :document_retirement_switch_hook
+      @tag timeout: 180_000
+      test "Session loss at native retirement #{phase} keeps the outcome unknown", c do
+        {_args, opened} = draft_abort_projection(c)
+        progress = opened["continuation"]["progress"]
+        document = job_epoch_context(c)
+        root_file = Path.join([document.root, document.namespace, "root.json"])
+        old_root = File.read!(root_file)
+        generation = native_status(c)["generation"] + 1
+        handler = "retirement-hook-owner-" <> Usage.id()
+        parent = self()
+
+        assert :ok =
+                 :telemetry.attach(
+                   handler,
+                   [:ipse, :extension, :collection, :staged],
+                   fn _, _, metadata, _ ->
+                     if metadata.generation === generation do
+                       cap = Process.get({Ipse.Extension.Collection, :lock_held})
+                       {:os_pid, native_pid} = Port.info(cap.port, :os_pid)
+                       send(parent, {:retirement_hook_controller, cap.controller, native_pid})
+                     end
+                   end,
+                   nil
+                 )
+
+        on_exit(fn -> :telemetry.detach(handler) end)
+        hook_dir = c.opts[:cwd]
+        phase = unquote(phase)
+        arm = Path.join(hook_dir, "source-switch-#{phase}.arm")
+        ready = Path.join(hook_dir, "source-switch-#{phase}.ready")
+        proceed = Path.join(hook_dir, "source-switch-#{phase}.go")
+        File.write!(arm, "armed")
+        owner_ref = Process.monitor(c.pid)
+        guard = :sys.get_state(c.pid).lock_guard
+        guard_ref = Process.monitor(guard)
+
+        watcher =
+          Task.async(fn ->
+            watched_owner = Process.monitor(c.pid)
+            await_retirement_hook(ready, System.monotonic_time(:millisecond) + 10_000)
+            Process.exit(c.pid, :kill)
+
+            receive do
+              {:DOWN, ^watched_owner, :process, _, :killed} -> :ok
+            after
+              5_000 -> flunk("Session death was not observed before releasing the native hook")
+            end
+
+            File.write!(proceed, "go")
+          end)
+
+        assert :ok =
+                 Session.invoke_export(c.pid, :command, "ext__documents__put", %{
+                   "abort_head" => progress["head_id"],
+                   "kind" => progress["kind"]
+                 })
+
+        assert_receive {:ipse, pid,
+                        {:approval, approval, "extension:collection.store", proposed}},
+                       10_000
+
+        assert pid === c.pid
+        assert get_in(proposed, ["request", "request", "progress", "action"]) === "retire"
+        assert :ok = Session.approve(c.pid, approval, true)
+        assert_receive {:retirement_hook_controller, controller, native_pid}, 10_000
+        controller_ref = Process.monitor(controller)
+        assert_receive {:DOWN, ^owner_ref, :process, _, :killed}, 10_000
+        Task.await(watcher, 10_000)
+        assert_receive {:DOWN, ^guard_ref, :process, ^guard, _}, 10_000
+        assert_receive {:DOWN, ^controller_ref, :process, ^controller, _}, 10_000
+        refute File.exists?("/proc/#{native_pid}")
+        assert {:ok, %{"release_claim" => "unknown"}} = Session.Saved.inspect_saved(c.dir, c.id)
+
+        if phase === "before-decision" do
+          assert File.read!(root_file) === old_root
+        else
+          # Once the native decision has been made, either physical state may
+          # survive. Retain the fixture; no retry or inferred outcome is safe.
+          assert {:ok, _} = File.read(root_file)
+        end
+      end
+    end
+  end
+
+  defp await_retirement_hook(path, deadline) do
+    cond do
+      File.regular?(path) ->
+        :ok
+
+      System.monotonic_time(:millisecond) >= deadline ->
+        flunk("native retirement hook timed out")
+
+      true ->
+        Process.sleep(10)
+        await_retirement_hook(path, deadline)
+    end
+  end
+
+  @tag :document_draft_abort
+  @tag :packed_fact_session
+  @tag timeout: 180_000
+  test "a full live-retirement registry refuses before changing a new head", c do
+    {_args, opened} = draft_abort_projection(c)
+    progress = opened["continuation"]["progress"]
+    before = draft_abort_snapshot(c)
+
+    :sys.replace_state(c.pid, fn state ->
+      %{state | document_retirements: Map.new(1..32_768, &{&1, nil})}
+    end)
+
+    assert draft_abort(c, progress)["status"] === "refused"
+    assert draft_abort_snapshot(c) === before
+    draft_abort_close_idle(c)
+  end
+
+  @tag :document_draft_abort
+  @tag :packed_fact_session
+  @tag :draft_abort_resumed_owner
+  @tag :draft_abort_release_owner
+  @tag timeout: 180_000
+  test "a resumed owner cannot continue a partial retirement without prior-owner cleanup evidence",
+       c do
+    {_args, opened} = draft_abort_projection(c)
+    progress = opened["continuation"]["progress"]
+    assert length(progress["prepared"]) === 2
+    count = make_ref()
+
+    approve_first = fn proposed ->
+      assert get_in(proposed, ["request", "request", "op"]) === "value.abort"
+
+      case Process.get(count, 0) do
+        0 ->
+          Process.put(count, 1)
+          true
+
+        1 ->
+          Process.put(count, 2)
+          false
+      end
+    end
+
+    stopped = draft_abort(Map.put(c, :draft_abort_approval_hook, approve_first), progress)
+    assert stopped["status"] === "refused"
+    assert Process.get(count) === 2
+    before = draft_abort_snapshot(c)
+    head = before["document_drafts"][progress["head_id"]]
+    assert length(head["prepared"]) === 1
+    assert head["retirement_epoch"] === before["document_maintenance"]["epoch"]
+    assert is_map(head["retirement_operation"])
+    assert_retirement_settled(c, head)
+
+    guard = :sys.get_state(c.pid).lock_guard
+    guard_ref = Process.monitor(guard)
+    owner_ref = Process.monitor(c.pid)
+    Process.exit(c.pid, :kill)
+    assert_receive {:DOWN, ^owner_ref, :process, _, :killed}, 5_000
+    assert_receive {:DOWN, ^guard_ref, :process, ^guard, _}, 5_000
+    assert {:ok, %{"release_claim" => "unknown"}} = Session.Saved.inspect_saved(c.dir, c.id)
+
+    assert {:ok, resumed} =
+             DynamicSupervisor.start_child(
+               Ipse.Sessions,
+               {Session, Keyword.put(c.opts, :id, c.id)}
+             )
+
+    on_exit(fn -> refute Process.alive?(resumed) end)
+    resumed_context = %{c | pid: resumed}
+    after_resume = draft_abort(resumed_context, progress)
+    assert after_resume["status"] === "refused"
+    assert draft_abort_snapshot(c) === before
+    assert :ok = Session.close_confirmed(resumed)
+  end
+
+  @tag :document_draft_abort
+  @tag :public_shared_selected
+  @tag :draft_abort_resumed_owner
+  @tag :draft_abort_release_owner
+  @tag timeout: 180_000
+  test "public Corpus refuses partial retirement after its original owner dies", c do
+    args = %{
+      "source_id" => "fixture:public-owner-death",
+      "generation" => 1,
+      "expected_revision" => 0,
+      "title" => "Synthetic source",
+      "text" => String.duplicate("Synthetic source evidence. ", 300),
+      "uri" => "provided:fixture:public-owner-death",
+      "observed_at_ms" => 20,
+      "event_at_ms" => nil,
+      "expires_at_ms" => nil
+    }
+
+    source = %{"store" => "local", "action" => "put", "args" => args}
+    assert invoke(c, "source", source)["status"] === "draft"
+    job_close_fence(job_open_fence(c))
+    captured = make_ref()
+
+    freeze = fn _ ->
+      heads = draft_abort_snapshot(c)["document_drafts"] || %{}
+      head = Enum.find(Map.values(heads), &(length(&1["prepared"]) >= 2))
+      if head, do: Process.put(captured, head)
+      is_nil(head)
+    end
+
+    staging = Map.put(c, :draft_abort_approval_hook, freeze)
+
+    Enum.reduce_while(1..40, source, fn _, request ->
+      result = invoke(staging, "source", request)
+
+      cond do
+        is_map(Process.get(captured)) -> {:halt, result}
+        result["status"] === "draft" -> {:cont, result["continuation"]["arguments"]}
+        true -> flunk("public source finished before the partial-retirement setup")
+      end
+    end)
+
+    head = Process.get(captured)
+    assert is_map(head)
+
+    request = %{
+      "store" => "local",
+      "action" => "abort_collection_draft",
+      "args" => %{"head_id" => head["id"], "kind" => head["kind"]}
+    }
+
+    count = make_ref()
+
+    approve_first = fn proposed ->
+      assert get_in(proposed, ["request", "request", "op"]) === "value.abort"
+
+      case Process.get(count, 0) do
+        0 ->
+          Process.put(count, 1)
+          true
+
+        1 ->
+          Process.put(count, 2)
+          false
+      end
+    end
+
+    stopped = invoke(Map.put(c, :draft_abort_approval_hook, approve_first), "source", request)
+    assert stopped["status"] === "refused"
+    assert Process.get(count) === 2
+    before = draft_abort_snapshot(c)
+    partial = before["document_drafts"][head["id"]]
+    assert is_map(partial["retirement_operation"])
+    assert partial["retirement_epoch"] === before["document_maintenance"]["epoch"]
+    assert_retirement_settled(c, partial)
+
+    guard = :sys.get_state(c.pid).lock_guard
+    guard_ref = Process.monitor(guard)
+    owner_ref = Process.monitor(c.pid)
+    Process.exit(c.pid, :kill)
+    assert_receive {:DOWN, ^owner_ref, :process, _, :killed}, 5_000
+    assert_receive {:DOWN, ^guard_ref, :process, ^guard, _}, 5_000
+    assert {:ok, %{"release_claim" => "unknown"}} = Session.Saved.inspect_saved(c.dir, c.id)
+
+    assert {:ok, resumed} =
+             DynamicSupervisor.start_child(
+               Ipse.Sessions,
+               {Session, Keyword.put(c.opts, :id, c.id)}
+             )
+
+    on_exit(fn -> refute Process.alive?(resumed) end)
+    outcome = invoke(%{c | pid: resumed}, "source", request)
+    assert outcome["status"] === "refused"
+    assert draft_abort_snapshot(c) === before
+    assert :ok = Session.close_confirmed(resumed)
   end
 
   @tag :document_draft_abort
@@ -5774,11 +6314,8 @@ defmodule Ipse.KnowledgeCollectionAdapterSessionTest do
     assert_receive :draft_abort_native_lost
     :telemetry.detach(handler)
 
-    if Process.alive?(c.pid) do
-      assert Session.close_confirmed(c.pid) in [:ok, {:error, :cleanup_unconfirmed}]
-      if Process.alive?(c.pid), do: Process.exit(c.pid, :kill)
-    end
-
+    assert Process.alive?(c.pid)
+    assert :ok = Session.close_confirmed(c.pid)
     assert_receive {:DOWN, ^guard_ref, :process, ^guard, _}, 5000
     assert {:ok, closed} = Journal.load(c.dir, c.id)
 
@@ -6019,11 +6556,8 @@ defmodule Ipse.KnowledgeCollectionAdapterSessionTest do
     assert_receive :progress_native_lost
     :telemetry.detach(handler)
 
-    if Process.alive?(c.pid) do
-      assert Session.close_confirmed(c.pid) in [:ok, {:error, :cleanup_unconfirmed}]
-      if Process.alive?(c.pid), do: Process.exit(c.pid, :kill)
-    end
-
+    assert Process.alive?(c.pid)
+    assert :ok = Session.close_confirmed(c.pid)
     assert_receive {:DOWN, ^guard_ref, :process, ^guard, _}, 5000
     assert {:ok, closed} = Journal.load(c.dir, c.id)
 

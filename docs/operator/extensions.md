@@ -413,8 +413,9 @@ distributions fail without replacement advice. Shared request/input/money budget
 apply; an output-token reservation refuses before HTTP because these endpoints
 provide no enforceable output cap. See [resource controls](resources.md).
 
-Cancellation closes local owned transport but cannot undo remote work. Interrupted
-calls keep partial/unknown liability and never replay on resume. Inspect the
+Cancellation starts cleanup of local owned transport but cannot undo remote work.
+If cleanup is unconfirmed, its outcome remains unknown. Interrupted calls keep
+partial/unknown liability and never replay on resume. Inspect the
 service before explicitly retrying. The API routes have synthetic protocol tests;
 live account access and useful automatic consumer quality require separate
 qualification. The [developer chapter](../developer/decisions.md) explains the

@@ -127,6 +127,33 @@ defmodule Ipse.Runner.Transaction do
     end
   end
 
+  # Private document-retirement candidate. The caller must independently bind
+  # these caps to the held ProjectIdentity and Collection domains.
+  @doc false
+  def document_retirement_stack do
+    case Process.get(@key) do
+      controller when is_pid(controller) -> call(controller, :document_retirement_stack)
+      _ -> {:error, :invalid_transaction_capability}
+    end
+  end
+
+  @doc false
+  def document_retirement_arm(cap, operation_id, [{pd, pi}, {cd, ci}], deadline)
+      when is_binary(operation_id) and byte_size(operation_id) == 16 and
+             operation_id != <<0::128>> and is_integer(pd) and pd in 0..18_446_744_073_709_551_615 and
+             is_integer(pi) and pi in 1..18_446_744_073_709_551_615 and
+             is_integer(cd) and cd in 0..18_446_744_073_709_551_615 and
+             is_integer(ci) and ci in 1..18_446_744_073_709_551_615 and is_integer(deadline),
+      do: operation(cap, {:document_retirement_arm, operation_id, pd, pi, cd, ci, deadline})
+
+  def document_retirement_arm(_, _, _, _), do: {:error, :invalid_transaction_request}
+
+  @doc false
+  def document_retirement_disarm(cap, deadline) when is_integer(deadline),
+    do: operation(cap, {:document_retirement_disarm, deadline})
+
+  def document_retirement_disarm(_, _), do: {:error, :invalid_transaction_request}
+
   @doc false
   def retained_share_export(cap, operation_id, recipient, deadline)
       when is_binary(operation_id) and byte_size(operation_id) == 16 and
@@ -597,6 +624,16 @@ defmodule Ipse.Runner.Transaction do
 
   def switch_before(_, _, _, _), do: {:error, :invalid_transaction_request}
 
+  @doc false
+  def document_retirement_switch(cap, pending, deadline)
+      when is_integer(deadline) and deadline in 1..9_007_199_254_740_991 do
+    if pending?(pending),
+      do: operation(cap, {:document_retirement_switch, pending, deadline}),
+      else: {:error, :invalid_transaction_request}
+  end
+
+  def document_retirement_switch(_, _, _), do: {:error, :invalid_transaction_request}
+
   def reclaim(cap, directory, names) do
     if selector(directory) != nil and is_list(names) and length(names) in 1..64 and
          Enum.all?(names, &(pending?(&1) or immutable?(&1))) and
@@ -777,6 +814,8 @@ defmodule Ipse.Runner.Transaction do
                source_operations: [],
                writer_control: false,
                session_control: false,
+               document_retirement: nil,
+               document_retirement_used: false,
                pipe: nil,
                cleanup: nil
              }}
@@ -860,6 +899,72 @@ defmodule Ipse.Runner.Transaction do
     def handle_call({:operation, _, _}, {owner, _}, %{owner: owner, pipe: pipe} = s)
         when not is_nil(pipe),
         do: {:reply, {:error, :transaction_pipe_frozen}, s}
+
+    def handle_call(
+          {:retirement_writer_control_import, cap, operation, entry, deadline},
+          {owner, _},
+          %{
+            owner: owner,
+            caps: [cap | _],
+            document_retirement: %{operation: operation, deadline: deadline},
+            writer_control: false,
+            source_operations: []
+          } = s
+        ) do
+      if cap.depth == 2 and is_binary(entry) and byte_size(entry) == 68 and deadline > now() do
+        case command(s, ?b, operation <> entry, 2, deadline) do
+          {:ok, s, <<>>} -> {:reply, :ok, %{s | writer_control: true}}
+          _ -> fail(s)
+        end
+      else
+        {:reply, {:error, :invalid_transaction_capability}, s}
+      end
+    end
+
+    def handle_call(
+          {:retirement_session_control_import, cap, operation, entry, deadline},
+          {owner, _},
+          %{
+            owner: owner,
+            caps: [cap | _],
+            document_retirement: %{operation: operation, deadline: deadline},
+            writer_control: true,
+            session_control: false
+          } = s
+        ) do
+      if cap.depth == 2 and is_binary(entry) and byte_size(entry) == 68 and deadline > now() do
+        case command(s, ?e, operation <> entry, 2, deadline) do
+          {:ok, s, <<>>} -> {:reply, :ok, %{s | session_control: true}}
+          _ -> fail(s)
+        end
+      else
+        {:reply, {:error, :invalid_transaction_capability}, s}
+      end
+    end
+
+    def handle_call(
+          {:retirement_source_import, cap, operation, entry, deadline},
+          {owner, _},
+          %{
+            owner: owner,
+            caps: [cap | _],
+            document_retirement: %{deadline: deadline},
+            writer_control: true,
+            session_control: true,
+            source_operations: []
+          } = s
+        ) do
+      if cap.depth == 2 and is_binary(operation) and byte_size(operation) == 16 and
+           operation != <<0::128>> and is_binary(entry) and byte_size(entry) == 68 and
+           deadline > now() do
+        case command(s, ?k, operation <> entry, 2, deadline) do
+          {:ok, s, <<>>} -> {:reply, :ok, %{s | source_operations: [operation]}}
+          _ -> fail(s)
+        end
+      else
+        {:reply, {:error, :invalid_transaction_capability}, s}
+      end
+    end
 
     def handle_call(
           {:writer_control_import, cap, operation, entry, deadline},
@@ -982,6 +1087,88 @@ defmodule Ipse.Runner.Transaction do
     def handle_call(:retained_share_stack, _, s),
       do: {:reply, {:error, :invalid_transaction_capability}, s}
 
+    def handle_call(
+          :document_retirement_stack,
+          {owner, _},
+          %{owner: owner, retained_share: nil, caps: [second, first]} = s
+        ),
+        do: {:reply, {:ok, [first, second]}, s}
+
+    def handle_call(:document_retirement_stack, _, s),
+      do: {:reply, {:error, :invalid_transaction_capability}, s}
+
+    def handle_call(
+          {:operation, cap, {:document_retirement_arm, operation, pd, pi, cd, ci, deadline}},
+          {owner, _},
+          %{
+            owner: owner,
+            caps: [cap, _],
+            document_retirement: nil,
+            document_retirement_used: false,
+            writer_control: false,
+            session_control: false,
+            source_operations: [],
+            retained_share: nil
+          } = s
+        ) do
+      if cap.depth == 2 and deadline > now() and deadline <= now() + 5_000 do
+        wall = System.system_time(:millisecond) + max(deadline - now(), 0)
+
+        if Ipse.JSON.safe_uint?(wall) and wall > System.system_time(:millisecond) do
+          case command(
+                 s,
+                 ?g,
+                 <<operation::binary, pd::64, pi::64, cd::64, ci::64, wall::64>>,
+                 2,
+                 deadline
+               ) do
+            {:ok, s, <<>>} ->
+              {:reply, :ok,
+               %{
+                 s
+                 | document_retirement: %{operation: operation, deadline: deadline, wall: wall},
+                   document_retirement_used: true
+               }}
+
+            _ ->
+              fail(s)
+          end
+        else
+          {:reply, {:error, :invalid_transaction_capability}, s}
+        end
+      else
+        {:reply, {:error, :invalid_transaction_capability}, s}
+      end
+    end
+
+    def handle_call(
+          {:operation, cap, {:document_retirement_disarm, deadline}},
+          {owner, _},
+          %{
+            owner: owner,
+            caps: [cap, _],
+            document_retirement: %{deadline: deadline},
+            writer_control: false,
+            session_control: false,
+            source_operations: []
+          } = s
+        ) do
+      if deadline > now() do
+        case command(s, ?m, <<>>, 2, deadline) do
+          {:ok, s, <<>>} -> {:reply, :ok, %{s | document_retirement: nil}}
+          _ -> fail(s)
+        end
+      else
+        fail(s)
+      end
+    end
+
+    def handle_call({:operation, _, {:document_retirement_arm, _, _, _, _, _, _}}, _, s),
+      do: {:reply, {:error, :invalid_transaction_capability}, s}
+
+    def handle_call({:operation, _, {:document_retirement_disarm, _}}, _, s),
+      do: {:reply, {:error, :invalid_transaction_capability}, s}
+
     def handle_call({:acquire, _path}, {owner, _}, %{owner: owner, retained_share: share} = s)
         when not is_nil(share),
         do: {:reply, {:error, :transaction_share_frozen}, s}
@@ -1100,6 +1287,29 @@ defmodule Ipse.Runner.Transaction do
         else: {:reply, {:error, :invalid_transaction_capability}, s}
     end
 
+    def handle_call(
+          {:operation, cap, {:document_retirement_switch, stage, wall}},
+          {owner, _},
+          %{
+            owner: owner,
+            caps: [cap, _],
+            document_retirement: %{deadline: deadline} = retirement,
+            writer_control: true,
+            session_control: true,
+            source_operations: [_]
+          } = s
+        ) do
+      if not Map.get(retirement, :attempted, false) and deadline > now() do
+        s = %{s | document_retirement: Map.put(retirement, :attempted, true)}
+        operate({:document_retirement_switch, stage, min(wall, retirement.wall)}, s)
+      else
+        {:reply, {:error, :invalid_transaction_capability}, s}
+      end
+    end
+
+    def handle_call({:operation, _, {:document_retirement_switch, _, _}}, _, s),
+      do: {:reply, {:error, :invalid_transaction_capability}, s}
+
     def handle_call({:operation, cap, op}, {owner, _}, %{owner: owner, caps: [cap | _]} = s) do
       operate(op, s)
     end
@@ -1204,6 +1414,9 @@ defmodule Ipse.Runner.Transaction do
 
           {:switch_before, stage, deadline} ->
             {?T, <<deadline::64>> <> stage <> "root.json"}
+
+          {:document_retirement_switch, stage, deadline} ->
+            {?l, <<deadline::64>> <> stage <> "root.json"}
 
           {:install, dir, stage, target} ->
             {?N, <<dir>> <> stage <> target}
@@ -1503,7 +1716,13 @@ defmodule Ipse.Runner.Transaction do
           ?d,
           ?j,
           ?h,
-          ?i
+          ?i,
+          ?g,
+          ?m,
+          ?b,
+          ?e,
+          ?k,
+          ?l
         ] or
             size > maximum ->
           :unknown

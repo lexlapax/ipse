@@ -701,6 +701,11 @@ are exact, with no optional trailing bytes:
 | `z` | Close the most recently imported retained source using its 16-byte operation ID. |
 | `O`, `o` | Linux-only writer-control import (16-byte operation and 68-byte owner identity) and close (empty). |
 | `c`, `d` | Linux-only additional Session-control import (16-byte operation and 68-byte owner identity) and close (empty). The writer control must already be held; close imported sources and the Session control before closing the writer control. |
+| `g` | Linux-only document-retirement arm: 16-byte nonzero operation ID, u64 device and inode for each of the Identity and Collection locks, then u64 wall-clock cutoff. Requires exactly those two locks in that order and no imported controls or sources. The cutoff must be 1..5,000 ms in the future. |
+| `b`, `e` | Linux-only retirement Writer and Session control imports, respectively: 16-byte armed operation ID and 68-byte owner identity. Import the Writer first, then the Session. |
+| `k` | Linux-only retirement source import: a nonzero, unused 16-byte source operation ID and 68-byte expected source owner and descriptor identity. Both controls must already be held. |
+| `m` | Empty: disarm document retirement after closing its imported source and controls. A transaction cannot rearm retirement. |
+| `l` | Linux-only retirement root switch: u64 wall deadline, 41-byte pending basename and `root.json`. Requires the armed two-lock mode, both controls and exactly one retained source; only one switch attempt is allowed. |
 | `p` | Linux-only stdin descriptor import: 16-byte operation, u64 original wall expiry, 68-byte supervisor/pipe identity, u32 frame length and that exact frame (1..32,772 bytes). Requires three held locks, Writer and Session controls, and at least one retained source. |
 | `w` | One raw frame exactly equal to the frame sealed during import. Consumes the imported pipe attempt; substitution and repeated writes refuse. |
 | `q` | Close the imported stdin description using its 16-byte operation; complete exporter settlement before other operations. |
@@ -723,6 +728,17 @@ The additional Session control is used by the reviewed literal-supersession
 and managed export-input adapters. The trusted host binds it to the actual
 Session, Writer, pending purpose and current source set; transfer alone grants
 no effect authority.
+
+Document retirement uses its separate `g`/`b`/`e`/`k`/`l` mode rather than
+the three-lock imports above. The host checks the active action and live-owner
+registry and imports the actual Writer, Session and Session source while holding
+the Identity and Collection locks. The final native decision checks the lock
+identities, imported owners and source, the wall deadline and its derived
+monotonic cutoff. Settlement closes the source, Session control and Writer
+control before disarming. A lost owner, failed transfer or unconfirmed
+settlement does not prove that a switch did not happen; preserve an unknown
+outcome for inspection rather than replaying it. See the
+[document retirement design](../docs/developer/knowledge-storage.md#fence-document-stages-before-metadata-maintenance).
 
 The `h`/`i` protocol is an internal guarded-switch primitive. It is not yet
 connected to a same-reply acceptance journey. The trusted Elixir caller must

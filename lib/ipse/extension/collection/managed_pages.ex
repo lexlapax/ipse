@@ -184,6 +184,12 @@ defmodule Ipse.Extension.Collection.ManagedPages do
         when map_size(value) == 3 ->
           <<3>> <> raw(sha, 32)
 
+        {:anchor, %{"version" => 3, "kind" => "native_lineage_management"} = value} ->
+          # Tag 4 is a distinct authorization scope, never an interpretation
+          # of an existing exact-value choice. No parser result grants authority.
+          true = value["target_key"] === "note." <> key
+          <<4>> <> capsule_encode(key, exact_scope_capsule(value))
+
         {:anchor, value} ->
           <<2>> <> capsule_encode(key, value)
       end
@@ -257,6 +263,13 @@ defmodule Ipse.Extension.Collection.ManagedPages do
           <<hash::binary-size(32), remaining::binary>> = rest
 
           {%{"version" => 1, "kind" => "native_management_commitment", "sha256" => hex(hash)},
+           remaining}
+
+        {:anchor, 4} ->
+          {value, remaining} = capsule_decode(key, rest)
+          true = value["target_key"] === "note." <> key
+
+          {value |> Map.put("version", 3) |> Map.put("kind", "native_lineage_management"),
            remaining}
       end
 
@@ -770,6 +783,9 @@ defmodule Ipse.Extension.Collection.ManagedPages do
       raw(value["target_value_sha256"], 32) <>
       <<at::56, code, byte_size(reason) - 1>> <> reason <> duration
   end
+
+  defp exact_scope_capsule(value),
+    do: value |> Map.put("version", 2) |> Map.put("kind", "native_management")
 
   defp capsule_decode(
          lineage,

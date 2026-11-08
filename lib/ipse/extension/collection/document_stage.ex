@@ -141,11 +141,25 @@ defmodule Ipse.Extension.Collection.DocumentStage do
       r["op"] not in ~w(value.read value.stat value.layout value.index stage.inspect snapshot stage.list stage.available progress.inspect)
 
   @doc "The owner is supplied by the trusted host, never by the worker request."
-  def owner?(owner),
-    do:
-      exact?(owner, ~w(project_id session_id identity_sha256 invocation_id)) and
-        JSON.sha256?(owner["project_id"]) and JSON.sha256?(owner["identity_sha256"]) and
-        id?(owner["session_id"]) and id?(owner["invocation_id"])
+  def owner?(owner) when is_map(owner) do
+    base = Map.delete(owner, "retirement_authority")
+
+    exact?(base, ~w(project_id session_id identity_sha256 invocation_id)) and
+      JSON.sha256?(base["project_id"]) and JSON.sha256?(base["identity_sha256"]) and
+      id?(base["session_id"]) and id?(base["invocation_id"]) and
+      retirement_authority?(owner["retirement_authority"])
+  end
+
+  def owner?(_), do: false
+
+  defp retirement_authority?(nil), do: true
+
+  defp retirement_authority?(value) do
+    exact?(value, ~w(operation_id invocation_id revision epoch)) and
+      id?(value["operation_id"]) and id?(value["invocation_id"]) and
+      JSON.safe_uint?(value["revision"]) and value["revision"] > 0 and
+      JSON.safe_uint?(value["epoch"]) and value["epoch"] > 0
+  end
 
   @doc """
   Decode a complete packed value using a trusted retained document reader.
@@ -211,7 +225,7 @@ defmodule Ipse.Extension.Collection.DocumentStage do
                   opening when is_map(opening) <- h["owner"],
                   true <-
                     owner?(opening) and
-                      Map.delete(opening, "invocation_id") === Map.delete(owner, "invocation_id"),
+                      DocumentDraft.owner(opening) === DocumentDraft.owner(owner),
                   true <- h["state"] === "sealed" and h["offset"] === h["byte_count"],
                   true <- JSON.safe_uint?(h["expires_at_ms"]) and now < h["expires_at_ms"],
                   true <- public_key?(h["key"]) and JSON.safe_uint?(h["expected_revision"]),
@@ -856,7 +870,7 @@ defmodule Ipse.Extension.Collection.DocumentStage do
            if(r["op"] == "value.reclaim",
              do: expiry <= System.system_time(:millisecond),
              else:
-               Map.delete(opening, "invocation_id") === Map.delete(owner, "invocation_id") and
+               DocumentDraft.owner(opening) === DocumentDraft.owner(owner) and
                  (r["op"] == "value.abort" or System.system_time(:millisecond) < expiry)
            ) do
       {:ok, h}

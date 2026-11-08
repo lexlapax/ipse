@@ -3,8 +3,8 @@ defmodule Ipse.LinuxSandboxTest do
   alias Ipse.Runner
 
   setup_all do
-    root = Path.join("/tmp", "ipse-linux-probe-#{System.unique_integer([:positive])}")
-    File.mkdir_p!(root)
+    root = Path.join("/tmp", "ipse-linux-probe-" <> Ipse.Usage.id())
+    File.mkdir!(root)
     on_exit(fn -> File.rm_rf!(root) end)
     source = Path.join(root, "probe.rs")
     probe = Path.join(root, "probe")
@@ -14,10 +14,11 @@ defmodule Ipse.LinuxSandboxTest do
 
   setup ctx do
     root =
-      Path.join("/tmp", "ipse-linux-sandbox-#{System.unique_integer([:positive])}")
+      Path.join("/tmp", "ipse-linux-sandbox-" <> Ipse.Usage.id())
 
     cwd = Path.join(root, "workspace")
-    File.mkdir_p!(cwd)
+    File.mkdir!(root)
+    File.mkdir!(cwd)
     on_exit(fn -> File.rm_rf!(root) end)
 
     if ctx[:native_sandbox] do

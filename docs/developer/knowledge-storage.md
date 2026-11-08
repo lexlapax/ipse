@@ -623,6 +623,17 @@ needs at most two. An empty head needs one real retirement operation.
 
 Known terminal completion releases the reservations. A known refusal after
 partial cleanup is reported as incomplete; unknown supplies no replay token.
+The Session records a known journaled partial cleanup in a bounded, non-restored
+live-owner registry. A later explicit cleanup must match that entry and the
+native head's operation, invocation, revision and retirement epoch. A resumed
+process with the same Session ID does not inherit this authority. A legacy head
+without the operation join refuses a multi-stage first cleanup; a single-stage
+cleanup can still finish atomically. The registry is not itself a native owner
+lease. Before the final native switch, separate Session/Writer controls and the
+Session source share are transferred under the held Identity and Collection
+owners. The native decision rechecks their liveness and bounded deadline.
+Unconfirmed ownership or settlement remains unknown; a decision admitted before
+owner loss may already have changed the root.
 Another fence refuses the stored retirement epoch, even on a later explicit
 command. This does not adopt another Session/artifact or remove immutable public
 values. Do not edit tokens or metadata to recover capacity; general GC and
@@ -876,8 +887,10 @@ current validator identity. Knowledge owns the meaning and completeness of the
 stored document set. Do not move that domain classifier into Core.
 
 The client is experimental and admits at most **32 native records in four
-selected pages**, with up to eight records per page. This is a bounded completed
-set, not a full-capacity backup facility. The optional
+selected pages**, with up to eight records per page. The plan also admits at
+most 128 operation entries and 128 floor-lineage entries, and each invocation
+has a 512-read limit. A smaller record set can still exceed those bounds. This
+is a bounded completed set, not a full-capacity backup facility. The optional
 `document_completed_v1` input-validation selection is available only for the
 Corpus `collection-documents` and `collection-dense` presets with an actual
 Collection store. It creates an explicit version-three document binding whose
@@ -910,7 +923,11 @@ Follow one input through the actual owners:
 The host captures references from the real `invoke.command` arguments; a worker
 cannot substitute an arbitrary result later. `StoredSources.with_result/3`
 retains each inactive original Session's OS lock/file/origin and actual project
-binding. Source and consumer must use the same canonical cwd and admitted
+binding for its callback. Restore validates non-selected page results one at a
+time and releases each page lock when that callback returns. It retains the plan
+lock through the native call and, for `restore.page`, also retains that page's
+lock; it does not hold every source-page lock through the switch. Source and
+consumer must use the same canonical cwd and admitted
 project. Same-Session input, active/copy/hardlink/legacy sources, incomplete work
 and changed input refuse. The helper returns complete managed dependencies;
 Restore requires a known empty union rather than interpreting protected JSON

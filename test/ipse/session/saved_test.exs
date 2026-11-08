@@ -315,6 +315,7 @@ defmodule Ipse.HandoffTest do
     assert exported["unknown_call_ids"] == ["compacted-unknown"]
     assert {:ok, diagnosis} = Ipse.Session.Saved.inspect_saved(c.dir, id)
     assert diagnosis["unknown_tool_count"] == 1
+    assert diagnosis["unknown_extension_action_count"] == 0
     assert {:ok, _} = exported |> Jason.encode!() |> Saved.prepare_handoff()
   end
 

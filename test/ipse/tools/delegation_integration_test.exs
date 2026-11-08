@@ -126,16 +126,20 @@ defmodule Ipse.DelegationSessionTest do
     root =
       Path.join(
         temporary_root,
-        "ipse-delegation-session-#{System.unique_integer([:positive])}"
+        "ipse-delegation-session-" <> Ipse.Usage.id()
       )
 
     home = Path.join(root, "home")
-    File.mkdir_p!(Path.join(root, "workspace"))
+    File.mkdir!(root)
+    File.mkdir!(Path.join(root, "workspace"))
     File.mkdir_p!(home)
     File.write!(Path.join(home, "AGENTS.md"), "Child inherits this saved global guidance.\n")
     File.write!(Path.join(root, "workspace/AGENTS.md"), "Workspace guidance fixture.\n")
 
-    on_exit(fn -> File.rm_rf!(root) end)
+    on_exit(fn ->
+      unless context[:native_workspace], do: File.rm_rf!(root)
+    end)
+
     %{root: root, cwd: Path.join(root, "workspace"), home: home, dir: Path.join(root, "state")}
   end
 
@@ -241,6 +245,7 @@ defmodule Ipse.DelegationSessionTest do
     child_snapshot = Enum.find(child_events, &(&1["type"] == "workspace_context_snapshot"))
     assert child_snapshot["snapshot"] == parent_snapshot["snapshot"]
     refute Enum.any?(child_events, &(&1["type"] == "mcp_catalog"))
+    assert :ok = Session.close_confirmed(parent)
   end
 
   test "headless denial and a forged disabled delegate start no child", ctx do
@@ -286,7 +291,11 @@ defmodule Ipse.DelegationSessionTest do
     parent_id = Session.info(parent).id
     child_dir = Path.join([ctx.dir, "subagents", parent_id])
     assert [{child_id, _}] = child_journals(child_dir)
-    child_root_config = :sys.get_state(parent).config |> Map.put(:subagents, false)
+    internal_config = :sys.get_state(parent).config
+    assert Map.fetch!(internal_config, :exact_action_fence) === nil
+
+    child_root_config =
+      internal_config |> Map.delete(:exact_action_fence) |> Map.put(:subagents, false)
 
     assert {:error, :resume_configuration_mismatch} =
              DynamicSupervisor.start_child(
@@ -563,7 +572,9 @@ defmodule Ipse.DelegationSessionTest do
     assert_receive {:ipse, ^parent, {:subagent, child_id, :started}}, 2_000
     assert_receive {:ipse, ^parent, {:done, :ok}}, 3_000
     id = Session.info(parent).id
-    config = :sys.get_state(parent).config
+    internal_config = :sys.get_state(parent).config
+    assert Map.fetch!(internal_config, :exact_action_fence) === nil
+    config = Map.delete(internal_config, :exact_action_fence)
     assert :ok = Session.close(parent)
     saved = events(ctx.dir, id)
     start = Enum.find(saved, &(&1["type"] == "delegation_started"))

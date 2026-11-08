@@ -176,7 +176,7 @@ defmodule Ipse.MCP.SessionTest do
              )
 
     id = Ipse.Session.info(pid).id
-    config = :sys.get_state(pid).config |> Map.put(:approval, :ask)
+    config = :sys.get_state(pid).config |> session_start_config() |> Map.put(:approval, :ask)
     assert :ok = Ipse.Session.close_confirmed(pid)
 
     opts =
@@ -564,7 +564,7 @@ defmodule Ipse.MCP.SessionTest do
     assert_receive {:ipse, ^pid, {:done, :ok}}, 10_000
     assert File.read!(Path.join(ctx.root, "calls.log")) == "lookup\n"
     id = Ipse.Session.info(pid).id
-    config = :sys.get_state(pid).config
+    config = :sys.get_state(pid).config |> session_start_config()
     {:ok, events} = Ipse.Journal.load(ctx.dir, id)
 
     assert Enum.any?(
@@ -624,7 +624,7 @@ defmodule Ipse.MCP.SessionTest do
              Ipse.Session.render_draft(pid, channel, state.draft.id, state.draft.revision)
 
     id = Ipse.Session.info(pid).id
-    config = state.config
+    config = session_start_config(state.config)
     {:ok, events} = Ipse.Journal.load(ctx.dir, id)
 
     assert Enum.any?(
@@ -671,7 +671,7 @@ defmodule Ipse.MCP.SessionTest do
     await_file(Path.join(ctx.root, "hang-ready"))
     assert File.read!(Path.join(ctx.root, "calls.log")) == "lookup\n"
     id = Ipse.Session.info(pid).id
-    config = :sys.get_state(pid).config
+    config = :sys.get_state(pid).config |> session_start_config()
     [transport] = :sys.get_state(pid).mcp_resources |> Map.keys()
     ref = Process.monitor(transport)
     Process.exit(pid, :kill)
@@ -853,7 +853,7 @@ defmodule Ipse.MCP.SessionTest do
              )
 
     id = Ipse.Session.info(pid).id
-    config = :sys.get_state(pid).config
+    config = :sys.get_state(pid).config |> session_start_config()
     before = File.read!(Path.join(ctx.root, "calls.log"))
     assert :ok = Ipse.Session.close_confirmed(pid)
 
@@ -1119,7 +1119,7 @@ defmodule Ipse.MCP.SessionTest do
   test "resume cannot silently drop the explicitly configured servers", ctx do
     pid = session(ctx)
     id = Ipse.Session.info(pid).id
-    config = :sys.get_state(pid).config |> Map.put(:mcp_servers, [])
+    config = :sys.get_state(pid).config |> session_start_config() |> Map.put(:mcp_servers, [])
     DynamicSupervisor.terminate_child(Ipse.Sessions, pid)
 
     assert {:error, :resume_configuration_mismatch} =
@@ -1135,7 +1135,7 @@ defmodule Ipse.MCP.SessionTest do
   test "new sessions version fingerprints and old journals retain legacy bindings on resume",
        ctx do
     fresh = session(ctx, approval: :allow)
-    config = :sys.get_state(fresh).config
+    config = :sys.get_state(fresh).config |> session_start_config()
     fresh_id = Ipse.Session.info(fresh).id
     assert {:ok, [%{"metadata" => metadata} | _]} = Ipse.Journal.load(ctx.dir, fresh_id)
     assert metadata["mcp_fingerprint_version"] === 2
@@ -1199,7 +1199,7 @@ defmodule Ipse.MCP.SessionTest do
 
   test "overlapping cross-server secrets do not prevent inert legacy resume", ctx do
     fresh = session(ctx)
-    config = :sys.get_state(fresh).config
+    config = :sys.get_state(fresh).config |> session_start_config()
     {:ok, [header | initial]} = Ipse.Journal.load(ctx.dir, Ipse.Session.info(fresh).id)
     :ok = Ipse.Session.close_confirmed(fresh)
     [base] = config.mcp_servers
@@ -1358,6 +1358,11 @@ defmodule Ipse.MCP.SessionTest do
     }
 
     {server, tool, reads}
+  end
+
+  defp session_start_config(config) do
+    assert Map.fetch!(config, :exact_action_fence) === nil
+    Map.delete(config, :exact_action_fence)
   end
 
   defp session(ctx, opts \\ [], id \\ nil) do

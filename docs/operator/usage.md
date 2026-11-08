@@ -343,12 +343,15 @@ request when you need to invoke a skill.
 Cancelled draft text and clarification answers remain in the private journal,
 but are withheld from later model input and eligible Session sources. Accepted
 text is admitted as fresh intent with links to its original input, answers and
-read evidence. ChatGPT and OpenAI API sessions can withhold a complete Responses
-draft interval when its native items and tool exchanges are safely isolated;
-the selected provider and billing route remain unchanged. With Ollama, the
-complete draft interval can be withheld when its native assistant messages and
-tool exchanges can be safely matched and isolated, including messages containing
-thinking. Draft-only thinking and tool results remain in the private journal
+read evidence. ChatGPT, OpenAI API and xAI sessions can withhold a complete
+Responses draft interval when its native items and tool exchanges are safely
+isolated; the selected provider and billing route remain unchanged. OpenRouter
+and explicitly selected local OpenAI-compatible sessions can also withhold a
+complete draft interval when native messages match their visible text and tool
+calls, and tool exchanges are isolated. With Ollama, the complete draft interval
+can be withheld when its native assistant messages and tool exchanges can be
+safely matched and isolated, including messages containing thinking. Draft-only
+thinking and tool results remain in the private journal
 and are not sent on later turns. Anthropic supports withholding complete draft
 intervals when native text and tool calls match their visible counterparts and
 tool exchanges are isolated. Native content may include bounded thinking blocks

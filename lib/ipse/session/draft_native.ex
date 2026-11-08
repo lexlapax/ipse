@@ -5,6 +5,11 @@ defmodule Ipse.Session.DraftNative do
   def policy(%{provider: :openai}), do: :openai
   def policy(%{provider: :ollama}), do: :ollama
   def policy(%{provider: :anthropic}), do: :anthropic
+  def policy(%{provider: provider}) when provider in [:xai, :xai_oauth], do: :xai
+
+  def policy(%{provider: provider}) when provider in [:openrouter, :openai_compatible],
+    do: provider
+
   def policy(_), do: :none
 
   @doc false
@@ -107,6 +112,125 @@ defmodule Ipse.Session.DraftNative do
       native_calls =
         case message["provider_data"] do
           %{"provider" => "ollama", "message" => %{"tool_calls" => calls}} when is_list(calls) ->
+            calls
+
+          _ ->
+            []
+        end
+
+      Enum.map((message["tool_calls"] || []) ++ native_calls, & &1["id"]) ++
+        [message["tool_call_id"]]
+    end)
+    |> Enum.filter(&is_binary/1)
+    |> MapSet.new()
+  end
+
+  # Validate the exact normalized and native shapes produced by the selected
+  # Chat Completions adapter. Reasoning remains opaque and is removed with the
+  # entire message; it must never be reconstructed from the normalized text.
+  def chat_completions_draft?(
+        %{
+          "role" => "assistant",
+          "content" => content,
+          "provider_data" => %{"provider" => provider, "message" => native} = data
+        } = message,
+        policy
+      )
+      when policy in [:openrouter, :openai_compatible] and is_map(native) do
+    calls = message["tool_calls"] || []
+    native_calls = native["tool_calls"] || []
+
+    provider === Atom.to_string(policy) and is_binary(content) and String.valid?(content) and
+      Enum.all?(Map.keys(data), &(&1 in ~w(provider message reported_model reported_upstream))) and
+      (not Map.has_key?(data, "reported_model") or
+         Ipse.Provider.model_name(data["reported_model"]) === data["reported_model"]) and
+      valid_upstream?(data["reported_upstream"]) and
+      Enum.all?(
+        Map.keys(native),
+        &(&1 in ~w(role content tool_calls reasoning reasoning_details))
+      ) and
+      native["role"] === "assistant" and native["content"] === content and
+      valid_reasoning?(native) and is_list(calls) and length(calls) <= 32 and
+      native_calls === calls and
+      match?({:ok, _}, Ipse.Tools.admit_calls(calls, Ipse.Tools.empty_call_budget())) and
+      Enum.all?(calls, &chat_call?/1)
+  rescue
+    _ -> false
+  end
+
+  def chat_completions_draft?(_, _), do: false
+
+  defp valid_upstream?(nil), do: true
+
+  defp valid_upstream?(value),
+    do: is_binary(value) and byte_size(value) <= 8_388_608 and String.valid?(value)
+
+  defp valid_reasoning?(native) do
+    reasoning = native["reasoning"]
+    details = native["reasoning_details"]
+
+    (is_nil(reasoning) or
+       (is_binary(reasoning) and byte_size(reasoning) <= 8_388_608 and String.valid?(reasoning))) and
+      (is_nil(details) or
+         (is_list(details) and length(details) <= 32_768 and Enum.all?(details, &is_map/1) and
+            case Jason.encode(details) do
+              {:ok, bytes} -> byte_size(bytes) <= 8_388_608
+              _ -> false
+            end))
+  end
+
+  defp chat_call?(%{"id" => id, "type" => "function", "function" => function} = call)
+       when is_map(function) do
+    Enum.sort(Map.keys(call)) === ~w(function id type) and
+      Enum.sort(Map.keys(function)) === ~w(arguments name) and is_binary(id) and
+      byte_size(id) in 1..512 and String.valid?(id) and
+      is_binary(function["name"]) and byte_size(function["name"]) in 1..256 and
+      String.valid?(function["name"]) and
+      match?({:ok, args} when is_map(args), Ipse.JSON.decode_unique(function["arguments"]))
+  rescue
+    _ -> false
+  end
+
+  defp chat_call?(_), do: false
+
+  def isolated_chat_completions?(prefix, segment, tail, policy)
+      when policy in [:openrouter, :openai_compatible] do
+    key = Atom.to_string(policy)
+
+    with true <- Enum.all?([prefix, segment, tail], &Ipse.Session.Reference.safe_tail?/1),
+         true <-
+           Enum.all?(segment, fn
+             %{"provider_data" => _} = message -> chat_completions_draft?(message, policy)
+             %{"tool_calls" => calls} when calls not in [nil, []] -> false
+             _ -> true
+           end),
+         true <-
+           Enum.all?(prefix ++ tail, fn
+             %{"role" => "assistant", "provider_data" => %{"provider" => ^key}} = message ->
+               chat_completions_draft?(message, policy)
+
+             _ ->
+               true
+           end),
+         ids <- for(message <- segment, call <- message["tool_calls"] || [], do: call["id"]),
+         true <- length(ids) == length(Enum.uniq(ids)),
+         true <- MapSet.disjoint?(chat_ids(segment, key), chat_ids(prefix ++ tail, key)) do
+      true
+    else
+      _ -> false
+    end
+  rescue
+    _ -> false
+  end
+
+  def isolated_chat_completions?(_, _, _, _), do: false
+
+  defp chat_ids(messages, key) do
+    messages
+    |> Enum.flat_map(fn message ->
+      native_calls =
+        case message["provider_data"] do
+          %{"provider" => ^key, "message" => %{"tool_calls" => calls}} when is_list(calls) ->
             calls
 
           _ ->
@@ -283,19 +407,22 @@ defmodule Ipse.Session.DraftNative do
 
   # Both explicitly selected OpenAI routes use the stateless Responses adapter.
   # The validator never rewrites an output item; the complete interval is removed.
-  def responses_owned?(messages) when is_list(messages) do
+  def responses_owned?(messages, provider \\ :openai)
+
+  def responses_owned?(messages, provider)
+      when is_list(messages) and provider in [:openai, :xai] do
     Enum.all?(messages, fn
-      %{"provider_data" => data} = message -> valid_assistant?(message, data)
+      %{"provider_data" => data} = message -> valid_assistant?(message, data, provider)
       _ -> true
     end)
   rescue
     _ -> false
   end
 
-  def responses_owned?(_), do: false
+  def responses_owned?(_, _), do: false
 
-  def isolated_responses?(prefix, segment, tail) do
-    with true <- responses_owned?(prefix ++ segment ++ tail),
+  def isolated_responses?(prefix, segment, tail, provider \\ :openai) do
+    with true <- responses_owned?(prefix ++ segment ++ tail, provider),
          true <- Ipse.Session.Reference.safe_tail?(prefix),
          true <- Ipse.Session.Reference.safe_tail?(segment),
          true <- Ipse.Session.Reference.safe_tail?(tail),
@@ -311,14 +438,27 @@ defmodule Ipse.Session.DraftNative do
     _ -> false
   end
 
-  defp valid_assistant?(message, data) do
-    is_map(data) and message["role"] == "assistant" and data["provider"] == "openai" and
-      Enum.all?(Map.keys(data), &(&1 in ~w(provider output reported_model))) and
+  defp valid_assistant?(message, data, provider) do
+    is_map(data) and message["role"] == "assistant" and
+      data["provider"] == Atom.to_string(provider) and
+      Enum.all?(Map.keys(data), &(&1 in responses_fields(provider))) and
+      valid_response_cost?(data, provider) and
       is_list(data["output"]) and length(data["output"]) in 1..128 and
       Enum.all?(data["output"], &valid_item?/1) and
       text(data["output"]) == (message["content"] || "") and
       calls(data["output"]) == (message["tool_calls"] || [])
   end
+
+  defp responses_fields(:openai), do: ~w(provider output reported_model)
+  defp responses_fields(:xai), do: ~w(provider output reported_model reported_cost_usd_ticks)
+
+  defp valid_response_cost?(data, :xai) do
+    not Map.has_key?(data, "reported_cost_usd_ticks") or
+      (is_integer(data["reported_cost_usd_ticks"]) and
+         data["reported_cost_usd_ticks"] in 0..9_007_199_254_740_991)
+  end
+
+  defp valid_response_cost?(_, :openai), do: true
 
   defp valid_item?(%{"type" => "reasoning", "id" => id} = item) do
     nonempty?(id) and only?(item, ~w(type id summary content encrypted_content status)) and

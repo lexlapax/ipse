@@ -60,8 +60,9 @@ Usage metadata version 3 admits explicit `operation: "decision"` records while
 preserving text version 1 and embedding version 2. Request/source/response,
 normalized usage, completion and action result are cross-bound during replay.
 Successful advice requires the durable validated response and completed metering.
-Cancellation or owner death closes owned transport, leaves partial/unknown work
-and publishes no advice. Idle resume validates saved facts without HTTP. A
+Cancellation or owner death initiates owned transport cleanup, leaves
+partial/unknown work and publishes no advice. Unconfirmed cleanup remains unknown.
+Idle resume validates saved facts without HTTP. A
 delegated call needs its own parent-relayed approval, explicit child artifact grant
 and shared parent reservation; child MCP and recursive delegation remain denied.
 For an invalid native decision response, the action reports `decision_response`
@@ -381,20 +382,21 @@ other configuration, inputs and actual work still need independent comparison.
 Version 1 declarations remain readable and scoreable, but cannot start
 a new Session case. The recorded action is checked against the frozen profile
 and effective execution before a known result is projected. These checks do not
-verify the declared source or runtime digests, nor do they bind the rubric before
-dispatch. A separately enabled
-`run/5` then validates the original capture, current policy and exact stored
-candidate before using the ordinary Session/native-approval path. Loading either
-module runs no actor, and `main/1` remains disabled. Advice extraction requires a new
+verify the declared source or runtime digests. A separately enabled `run/5`
+constructs the expected request and checks its rubric, then validates the original
+capture, current policy and exact stored candidate before entering the ordinary
+Session/native-approval path. Its version-2 fence binds the parent identity,
+descriptor and arguments to that exact decision request. It records one attempt
+before approval and keeps it consumed across resume. This constrains
+`decision.create`; it does not establish an egress restriction for every action in
+the Session. Run the opt-in integrated terminal control below and retain its
+evidence for the exact candidate under review. Loading either module runs no
+actor, and `main/1` remains disabled. Advice extraction requires a new
 settled operation and the exact current output release with confirmed cleanup;
 materialize complete paged results rather than treating a receipt as advice.
 `result_row/5` preserves denied, refused and cancelled statuses only when the
 typed action, accounting and delivered result support them. Missing closure,
 partial request/response failures and untyped outer errors remain unknown.
-The materializer attempts to close each owned Session at most once, including
-cleanup after an earlier failure. If close is unconfirmed, it stops before
-loading that Session's journal for the next step; retain the evidence and
-inspect the owner and cleanup state rather than retrying the close automatically.
 A complete assessment reports an exact `observed_cost_nanos` total only when
 every row has a cost and their sum fits the JSON-safe integer range; otherwise
 that total is null, not a clipped or understated cost.
@@ -405,6 +407,7 @@ these joins before enabling an actual case:
 
 ```sh
 mix test test/dev/evaluation/candidate_assessment_test.exs test/dev/evaluation/candidate_assessment_session_test.exs
+mix test test/dev/evaluation/candidate_assessment_inventory_test.exs
 ```
 
 Exercise the complete materialization path separately with the opt-in synthetic
@@ -413,7 +416,7 @@ lane; this control must not overlap another operator review:
 
 ```sh
 MIX_ENV=test HEX_OFFLINE=1 ./dev/build.sh
-IPSE_RUN_CANDIDATE_ASSESSMENT_PROTOCOL=1 IPSE_KEEP_SHADOW_FIXTURES=1 \
+IPSE_RUN_CANDIDATE_ASSESSMENT_PROTOCOL=1 \
   MIX_ENV=test HEX_OFFLINE=1 mix test \
   test/extensions/knowledge/candidate_assessment_evaluation_session_test.exs \
   --max-cases 1 --trace
@@ -421,16 +424,26 @@ IPSE_RUN_CANDIDATE_ASSESSMENT_PROTOCOL=1 IPSE_KEEP_SHADOW_FIXTURES=1 \
 
 The recipe reuses the ordinary experiment CLI and main-tool capture fixture in
 a fresh private cohort. Its first phase closes the source and freezes the actual
-candidate, baseline, routes, policy and input commitments. The second phase uses
-that same one-call grant and loopback endpoint through the real Session/native
-approval owner. It writes and reopens the first-row commitment before invoking
-the scorer. Scripted labels explicitly say `independent:false`, so the expected
+candidate, baseline, routes, policy and input commitments. The second phase
+recomputes its fixed script and built BEAM/app/helper inventories and compares
+them with both the saved recipe and frozen declaration before configuration and
+again immediately before `Owner.run`; it checks the inventories again afterward.
+These are point-in-time disk observations. They do not attest to already-loaded
+code, detect changes restored between checks, or seal the operating system or
+network. This recipe-specific check does not change the generic owner's guarantees.
+The second phase uses that same one-call grant and loopback endpoint through the
+real Session/native approval owner. The materializer makes at most one confirmed
+close attempt per Session; an unconfirmed close stops the workflow before it
+loads that Session's journal and leaves the outcome for inspection rather than
+triggering a second attempt during teardown. It writes and reopens
+the first-row commitment before invoking the scorer. Scripted labels explicitly
+say `independent:false`, so the expected
 scoring result is refusal, after the label loader actually runs. A known released
 row and this refusal establish materialization and label-admission behavior;
 they establish neither independent labels nor a beneficial or rejected strategy.
 Seven synthetic main requests and one decision request span the two phases.
-Matched whole-task latency and cost remain null. Private failure roots are
-preserved for inspection; the keep flag also preserves a successful root.
+Matched whole-task latency and cost remain null. The test retains every private
+fixture root for a separate process and effect audit, including on success.
 
 ### Freeze a selection study
 
@@ -614,8 +627,8 @@ bind the actual output IDs through `Metrics.semantic/2` and
 `SelectionExperiment.score/7`. A valid
 quote join establishes byte integrity, not support or reviewer independence.
 Constructed protocol tests and synthetic replies cannot establish actual model
-quality. The source adapters need their own focused checks and a genuine paired
-Session journey before supplying actual experiment evidence. The
+quality. Verify the source adapters with focused checks and a paired Session
+journey for the artifact and workload under review. The
 [packaged synthetic v2 lifecycle](../archive/2026-10-26-p30-p31-implementation/p30-paired-selection-v2-20261106.md)
 exercises physical reference freeze before startup, the actual complete baseline
 before selection, first-row persistence, a later unmeasured review loader and

@@ -99,7 +99,11 @@ defmodule Ipse.Extension.ManagedCollectionCallSessionTest do
   setup_all do
     root = Path.join(System.tmp_dir!(), "ipse-collection-sdk-artifact-" <> Ipse.Usage.id())
     File.mkdir_p!(Path.join(root, "ebin"))
-    on_exit(fn -> File.rm_rf!(root) end)
+
+    on_exit(fn ->
+      unless File.exists?(Path.join(root, "retain-withheld-question")), do: File.rm_rf!(root)
+    end)
+
     name = "Independent.Collection#{System.unique_integer([:positive])}"
 
     capabilities =
@@ -561,7 +565,11 @@ defmodule Ipse.Extension.ManagedCollectionCallSessionTest do
     document_name = name <> "Document"
     document_caps = capabilities ++ ["host.collection.store"]
     File.mkdir_p!(Path.join(document_root, "ebin"))
-    on_exit(fn -> File.rm_rf!(document_root) end)
+
+    on_exit(fn ->
+      unless File.exists?(Path.join(root, "retain-withheld-question")),
+        do: File.rm_rf!(document_root)
+    end)
 
     document_source =
       source
@@ -610,7 +618,12 @@ defmodule Ipse.Extension.ManagedCollectionCallSessionTest do
 
     File.write!(Path.join(document_root, "extension.json"), Jason.encode!(document_manifest))
     service_root = root <> "-service"
-    on_exit(fn -> File.rm_rf!(service_root) end)
+
+    on_exit(fn ->
+      unless File.exists?(Path.join(root, "retain-withheld-question")),
+        do: File.rm_rf!(service_root)
+    end)
+
     service_caps = capabilities ++ ["host.services"]
 
     requires = %{
@@ -705,6 +718,14 @@ defmodule Ipse.Extension.ManagedCollectionCallSessionTest do
   end
 
   defp setup_collection(c) do
+    retain = Path.join(c.artifact, "retain-withheld-question")
+
+    if File.exists?(retain),
+      do: raise("withheld-question fixture cleanup unconfirmed; roots retained")
+
+    if c[:extension_question_recovery],
+      do: File.write!(retain, "cleanup unconfirmed\n", [:exclusive])
+
     root =
       cond do
         c[:native_root_approval] ->
@@ -735,7 +756,7 @@ defmodule Ipse.Extension.ManagedCollectionCallSessionTest do
     unless c[:native_root_approval] || c[:literal_v4_ab] || c[:worker_input_capacity] ||
              c[:registered_capture_sequence] ||
              c[:registered_competing] || c[:protected_outer_cancel] || c[:managed_ab_diagnostic],
-           do: on_exit(fn -> File.rm_rf!(root) end)
+           do: on_exit(fn -> unless File.exists?(retain), do: File.rm_rf!(root) end)
 
     if c[:registered_capture_sequence], do: IO.puts("REGISTERED_CAPTURE_ROOT=" <> root)
     if c[:registered_competing], do: IO.puts("COMPETING_CAPTURE_ROOT=" <> root)
@@ -1747,7 +1768,11 @@ defmodule Ipse.Extension.ManagedCollectionCallSessionTest do
     ]
 
     {:ok, pid} = DynamicSupervisor.start_child(Ipse.Sessions, {Session, opts})
-    on_exit(fn -> if Process.alive?(pid), do: Session.close(pid) end)
+
+    on_exit(fn ->
+      if c[:extension_question_recovery] != true and Process.alive?(pid), do: Session.close(pid)
+    end)
+
     pid
   end
 
@@ -1998,16 +2023,38 @@ defmodule Ipse.Extension.ManagedCollectionCallSessionTest do
 
       File.write!(c.trace <> ".host-release", "release")
       assert_receive {:ipse, ^pid, {:question, question_id, _}}, 10_000
-      writer = :sys.get_state(pid).journal_writer
+      owner_state = :sys.get_state(pid)
+      writer = owner_state.journal_writer
+      guard = owner_state.lock_guard
+      assert is_pid(guard) and Process.alive?(guard)
+      guard_state = :sys.get_state(guard)
+      assert guard_state.owner == pid
+      assert guard_state.lost == false
+      dependents = guard_state.dependents |> Map.values() |> Enum.map(&elem(&1, 0)) |> Enum.uniq()
+      assert writer in dependents
+      dependent_monitors = Enum.map(dependents, &{&1, Process.monitor(&1)})
+      guard_monitor = Process.monitor(guard)
       monitor = Process.monitor(pid)
       writer_monitor = Process.monitor(writer)
       Process.exit(pid, :kill)
       assert_receive {:DOWN, ^monitor, :process, ^pid, :killed}, 5000
       assert_receive {:DOWN, ^writer_monitor, :process, ^writer, _}, 5000
+      assert_receive {:DOWN, ^guard_monitor, :process, ^guard, :normal}, 10_000
+
+      for {dependent, ref} <- dependent_monitors do
+        assert_receive {:DOWN, ^ref, :process, ^dependent, _}, 10_000
+      end
+
+      lock_path = Path.join(c.dir, id <> ".lock")
+      inode = File.stat!(lock_path).inode
+      assert {:ok, lock} = Ipse.Runner.protected_lock(lock_path)
+      assert File.stat!(lock_path).inode == inode
       assert {:ok, events} = Journal.load(c.dir, id)
       assert Enum.any?(events, &(&1["type"] == "extension_question"))
       assert Enum.any?(events, &(&1["type"] == "managed_read_observed"))
       legacy = legacy_tracking_prefix(c.dir, id, events)
+      assert File.stat!(lock_path).inode == inode
+      assert :ok = Ipse.Runner.unlock(lock)
       assert {:ok, reconstructed} = Session.Saved.restore(legacy, id)
       assert reconstructed.extension_state.question != nil
       assert reconstructed.question == nil
@@ -2025,6 +2072,13 @@ defmodule Ipse.Extension.ManagedCollectionCallSessionTest do
       resumed = start(c, %{operator_questions: true}, id)
       assert Session.info(resumed).question == nil
       assert Session.info(resumed).question_recovery == :managed_question_withheld
+      resumed_info = Session.info(resumed)
+
+      warning =
+        ExUnit.CaptureIO.capture_io(:stderr, fn -> Ipse.CLI.resume_warnings(resumed_info) end)
+
+      assert warning =~ "cannot safely be restored or displayed"
+      refute warning =~ "detail"
       refute_receive {:ipse, ^resumed, {:question, _, _}}, 50
 
       assert {:error, :no_pending_question} =
@@ -2034,6 +2088,7 @@ defmodule Ipse.Extension.ManagedCollectionCallSessionTest do
       assert {:ok, after_events} = Journal.load(c.dir, id)
       assert Enum.take(after_events, length(legacy)) == legacy
       refute Enum.any?(after_events, &(&1["type"] == "extension_continuation_intent"))
+      File.rm!(Path.join(c.artifact, "retain-withheld-question"))
     end
   end
 

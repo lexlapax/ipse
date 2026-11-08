@@ -19,10 +19,78 @@ defmodule Ipse.Development.Evaluation.CandidateAssessmentSession do
   alias Ipse.Development.Evaluation.CandidateAssessment, as: Assessment
 
   @route_keys ~w(provider model base_url timeout_ms upstream reasoning_effort data_collection max_output_tokens max_tokens max_response_bytes max_steps context_bytes compact compact_summary_bytes compact_threshold_bytes ollama_context_tokens ollama_model_pin extension_response_schema summary_schema)a
+  @assessment_instruction "Choose keep_baseline or defer_candidate for this already proposed candidate. Defer only when ambiguity, conflict or low durability warrants omitting this capture. Advice cannot change evidence, origin, text, category, retention or permission."
   @intent_types ~w(input_received extension_invocation_intent extension_action_intent worker_input_intent request_admitted inference_dispatch_intent)
 
   def main(_), do: {:error, :execution_disabled}
   def route_digest(config), do: JSON.digest([Map.take(config, @route_keys)])
+
+  @doc false
+  def expected_decision_request(input, rubric_sha) when is_map(input) do
+    with true <- JSON.sha256(@assessment_instruction) === rubric_sha,
+         encoded_candidate <- IO.iodata_to_binary(Elixir.JSON.encode!(input)),
+         encoded_input <-
+           IO.iodata_to_binary(
+             Elixir.JSON.encode!(%{
+               "candidates" => [%{"id" => "candidate", "input" => encoded_candidate}]
+             })
+           ),
+         request <- %{
+           "op" => "decision.create",
+           "version" => 1,
+           "profile" => "advice",
+           "input" => encoded_input,
+           "questions" => [
+             %{
+               "id" => "candidate",
+               "type" => "choice",
+               "instructions" => @assessment_instruction,
+               "choices" => ~w(defer_candidate keep_baseline)
+             }
+           ],
+           "timeout_ms" => 30_000
+         },
+         true <- byte_size(encoded_candidate) <= 6144,
+         true <- byte_size(encoded_input) <= 8192,
+         true <- byte_size(IO.iodata_to_binary(Elixir.JSON.encode!(request))) <= 16_384,
+         :ok <- DecisionCall.validate(request) do
+      {:ok, request}
+    else
+      _ -> {:error, :candidate_request_unavailable}
+    end
+  rescue
+    _ -> {:error, :candidate_request_unavailable}
+  end
+
+  def expected_decision_request(_, _), do: {:error, :candidate_request_unavailable}
+
+  @doc false
+  def assessment_fence(config, recipe, input, route) do
+    with true <- is_map(recipe) and is_map(route),
+         arguments when is_map(arguments) <- recipe["arguments"],
+         ["key"] <- Map.keys(arguments),
+         {:ok, entry, descriptor} <-
+           Ipse.Extension.Catalog.lookup(config, "invoke.tool", "ext__knowledge__assess"),
+         true <- entry.identity["instance"] === "knowledge",
+         true <- entry.identity["artifact_sha256"] === recipe["artifact_sha256"],
+         :ok <- Ipse.Extension.Catalog.validate_call(descriptor, arguments),
+         {:ok, request} <- expected_decision_request(input, route["rubric_sha256"]) do
+      {:ok,
+       %{
+         "version" => 2,
+         "operation" => "decision.create",
+         "identity_sha256" => JSON.digest([entry.identity]),
+         "descriptor_sha256" => JSON.digest([descriptor]),
+         "arguments_sha256" => JSON.digest([arguments]),
+         "request_sha256" => JSON.digest([request])
+       }}
+    else
+      _ -> {:error, :candidate_fence_unavailable}
+    end
+  rescue
+    _ -> {:error, :candidate_fence_unavailable}
+  end
+
   @doc "Digest the host's complete public advice profile, without copying credentials."
   def decision_route_digest(config) do
     with registry when is_map(registry) <- config[:decision_profiles],
@@ -78,15 +146,22 @@ defmodule Ipse.Development.Evaluation.CandidateAssessmentSession do
 
   def run(declaration, sha, case_id, load, options) do
     with {:ok, prepared} <- prepare(declaration, sha, case_id, load, options),
-         true <- options.enabled do
-      execute(declaration, sha, prepared)
+         true <- options.enabled,
+         {:ok, fence} <-
+           assessment_fence(
+             options.config,
+             prepared.recipe,
+             prepared.input,
+             prepared.decision_route
+           ) do
+      execute(declaration, sha, prepared, fence)
     else
       false -> {:error, :execution_disabled}
       error -> error
     end
   end
 
-  defp execute(declaration, sha, p) do
+  defp execute(declaration, sha, p, fence) do
     # Everything above this point precedes App, Session, native or model work.
     o = p.options
     assert {:error, :enoent} = File.lstat(o.output)
@@ -135,7 +210,12 @@ defmodule Ipse.Development.Evaluation.CandidateAssessmentSession do
       DynamicSupervisor.start_child(
         Ipse.Sessions,
         {Session,
-         config: o.config, cwd: o.cwd, state_dir: o.state_dir, owner: self(), subscriber: self()}
+         config: o.config,
+         cwd: o.cwd,
+         state_dir: o.state_dir,
+         owner: self(),
+         subscriber: self(),
+         exact_action_fence: fence}
       )
 
     id = Session.info(pid).id

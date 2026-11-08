@@ -146,6 +146,7 @@ defmodule Ipse.Session.AcceptedDecisionLifecycleTest do
     assert {:error, _} = inspect_target(%{c | record: put_in(c.record["value"]["extra"], true)})
   end
 
+  @tag :future_lineage
   test "native accepted forgetting prepares one deletion and cannot enter literal retention", c do
     {:ok, metadata} = inspect_target(c)
     namespace = JSON.sha256("namespace")
@@ -242,6 +243,78 @@ defmodule Ipse.Session.AcceptedDecisionLifecycleTest do
     assert retention["request"]["changes"] == [
              %{"key" => c.record["key"], "expected_revision" => 2, "value" => c.record["value"]}
            ]
+
+    assert {:error, _} =
+             ManagedLifecycle.prepare_lineage_retention(
+               context,
+               managed,
+               %{"kind" => "pin"},
+               "No accepted lineage grant"
+             )
+
+    proof = Ipse.Test.ManagedPolicy.proof()
+    {:ok, lineage} = ManagedRecipe.source_identity(proof)
+
+    literal_value = %{
+      "lineage" => lineage,
+      "text" => proof["quote"],
+      "category" => "ordinary",
+      "evidence" => %{"sources" => [proof]}
+    }
+
+    literal = record("note." <> lineage, literal_value, Usage.id())
+
+    literal_managed =
+      managed
+      |> put_in(["metadata", "management_target"], "literal_source")
+      |> put_in(["metadata", "lineage"], lineage)
+      |> put_in(["observation", "value", "record"], literal)
+      |> put_in(["observation", "result_sha256"], JSON.digest([%{"record" => literal}]))
+
+    assert {:ok, proposed} =
+             ManagedLifecycle.prepare_lineage_retention(
+               context,
+               literal_managed,
+               %{"kind" => "pin"},
+               "Future same-source lineage"
+             )
+
+    assert proposed["facts"]["kind"] == "managed_literal_lineage_retention"
+    assert proposed["facts"]["scope"] =~ "later captures"
+    assert proposed["facts"]["source_proof"] == proof
+
+    assert {:error, _} =
+             ManagedLifecycle.prepare_lineage_retention(
+               context,
+               put_in(literal_managed, ["metadata", "lineage"], JSON.sha256("different lineage")),
+               %{"kind" => "pin"},
+               "Future same-source lineage"
+             )
+
+    assert proposed["facts"]["action_sha256"] ==
+             JSON.digest([Map.delete(proposed["facts"], "action_sha256")])
+
+    assert proposed["intent"]["facts"] == proposed["facts"]
+    refute ManagedLifecycle.retention_review?("pin", proposed["facts"], 1100)
+    altered = Map.put(proposed["facts"], "scope", "selected record only")
+
+    altered =
+      Map.put(altered, "action_sha256", JSON.digest([Map.delete(altered, "action_sha256")]))
+
+    refute ManagedLifecycle.retention_review?("pin", altered, 1100)
+
+    assert {:error, _} =
+             ManagedLifecycle.with_lineage_source(%{}, proposed["facts"], fn _, _ ->
+               flunk("a shaped fact and missing current admission cannot acquire a source lease")
+             end)
+
+    assert {:error, _} =
+             ManagedLifecycle.prepare_lineage_retention(
+               context,
+               literal_managed,
+               %{"kind" => "session"},
+               "No implicit suppression"
+             )
   end
 
   test "native-choice consistency preserves accepted value/link identities and original clocks",

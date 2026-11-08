@@ -429,11 +429,16 @@ defmodule Ipse.Extension.Collection.DocumentDraftNativeCapacityTest do
       }
     }
 
-    assert {:ok, %{"document_progress" => %{"status" => "retiring"}}} =
+    legacy_root_before = File.read!(root)
+
+    refute match?(
+             {:ok, _},
              DocumentStage.execute(c.root, c.ns, legacy_abort, Usage.id(), c.owner)
+           )
 
     after_legacy = snapshot(c)
-    assert after_legacy["generation"] == after_marked["generation"] + 1
+    assert after_legacy === after_marked
+    assert File.read!(root) === legacy_root_before
     refute Map.has_key?(after_legacy["document_drafts"][legacy["id"]], "retirement_operation")
 
     heads = Map.values(seeded["document_drafts"])
@@ -462,5 +467,68 @@ defmodule Ipse.Extension.Collection.DocumentDraftNativeCapacityTest do
     }
 
     IO.puts("DRAFT_CAPACITY " <> Jason.encode!(marker))
+  end
+
+  for kept <- [:active, :prepared] do
+    test "a single #{kept} stage on an unretired legacy head finishes atomically", c do
+      prepare_epoch(c)
+      {seeded, _, _, _, _, _} = seed_geometry(c)
+
+      legacy =
+        seeded["document_drafts"]
+        |> Map.values()
+        |> Enum.find(&(&1["active"]["slot"] == 0))
+
+      refute Map.has_key?(legacy, "retirement_operation")
+      [prepared] = legacy["prepared"]
+      active = legacy["active"]
+
+      {head, removed_slot, retained_ref} =
+        case unquote(kept) do
+          :active ->
+            {%{legacy | "prepared" => []}, prepared["slot"], Map.take(active, ~w(slot epoch))}
+
+          :prepared ->
+            {%{legacy | "active" => nil}, active["slot"], prepared}
+        end
+
+      prefix = "host.stage.#{removed_slot}."
+
+      records =
+        seeded["records"]
+        |> Enum.reject(fn {key, _} -> String.starts_with?(key, prefix) end)
+        |> Map.new()
+
+      narrowed =
+        seeded |> Map.put("records", records) |> put_in(["document_drafts", head["id"]], head)
+
+      assert DocumentDraft.valid?(narrowed)
+      install(c, narrowed)
+      before = snapshot(c)
+
+      request =
+        Map.merge(retained_ref, %{
+          "op" => "value.abort",
+          "generation" => before["generation"],
+          "maintenance_epoch" => 1,
+          "progress" => %{
+            "version" => 1,
+            "action" => "retire",
+            "head_id" => head["id"],
+            "revision" => head["revision"]
+          }
+        })
+
+      assert {:ok, %{"document_progress" => %{"status" => "retired"}}} =
+               DocumentStage.execute(c.root, c.ns, request, Usage.id(), c.owner)
+
+      after_abort = snapshot(c)
+      assert after_abort["generation"] === before["generation"] + 1
+      refute Map.has_key?(after_abort["document_drafts"], head["id"])
+      assert Enum.all?(head["slots"], &(&1 in after_abort["document_available_slots"]))
+
+      assert Map.take(read_state(c)["records"], ["fixture.public.00001"]) ===
+               Map.take(narrowed["records"], ["fixture.public.00001"])
+    end
   end
 end

@@ -288,8 +288,10 @@ file already differs from the selected original, queries withhold that original'
 evidence while staging; retaining its stored generation does not make its file current.
 
 A draft has a finite expiry. State-backed draft writes retain that expiry through
-approval and synced staging; if it elapses before the final locked publication
-decision, `write_deadline_elapsed` refuses the replacement. A previously admitted
+approval and synced staging. If it elapses before the final locked publication
+decision, the host action reports `write_deadline_elapsed`; Corpus returns a
+`refused` result with a `store_refused` gap. Inspect the action outcome to
+distinguish the deadline from other store refusals. A previously admitted
 native replacement can finish later. Ordinary document Collection stages use
 their own final locked decision, described below; managed-derived mutations
 retain separate refusal gates. Do not strip a deadline to continue a draft.
@@ -584,12 +586,20 @@ and releases the head's reserved slots. Published sources, selected roots and
 earlier immutable values remain; those values still consume storage. This is
 separate from forgetting a source or collecting unused data.
 
-A different Session or artifact cannot take over the draft. A later maintenance
-fence can stop partially completed cleanup; no command renews that old cleanup.
-If it refuses or becomes unknown, retain the journal for reviewed recovery.
-Unknown results offer no replay continuation, and a missing head is not proof
-that publication never happened. Repeated fresh drafts do not repair retained
-work. Keep the host version that created a new document draft until that draft is
+A different Session or artifact cannot take over the draft. After a known partial
+cleanup, a fresh explicit abort can continue only while the same Session process
+is still alive, with the same project, artifact and idle maintenance epoch.
+Reopening the same Session ID does not restore that authority, and a later
+maintenance fence also stops the partial cleanup. An older-format head without
+the operation marker refuses before cleanup if it has more than one remaining
+stage; an empty head or one remaining stage can be retired in one operation.
+
+If cleanup refuses or becomes unknown, retain the journal and draft for
+inspection. A cleanup already admitted when its owner is lost may have taken
+effect; an unknown result supplies no replay continuation, and a missing head is
+not proof that publication never happened. Do not edit metadata, replay an
+unknown action or create repeated fresh drafts to reclaim the reserved stages.
+Keep the host version that created a new document draft until that draft is
 finished or retired: older hosts cannot read its newer progress metadata, even
 before retirement. Existing older-format drafts remain readable by the current
 host. Installed upgrade and downgrade journeys are not yet qualified. State and
@@ -1394,9 +1404,15 @@ If a server changes weights behind an unchanged endpoint and model name, Ipse
 cannot detect that change. Select a distinct model or host profile name before
 reindexing so the new and old embeddings cannot be combined.
 
-After a failed or interrupted index command, inspect the source again. If its
-registered draft matches the same generation, embedding profile and selected
-chunks, explicitly discard that draft before restarting work:
+After an interrupted index command, or when the worker or transport cleanup is
+unconfirmed, retain the draft and inspect the session journal, owner and service
+before aborting it or starting another request. An interrupted effect may have
+occurred; do not automatically replay it. See [recovery](recovery.md) for
+unknown outcomes.
+
+After a settled failure with owner and transport cleanup confirmed, inspect the
+source again. If its registered draft matches the same generation, embedding
+profile and selected chunks, explicitly discard that draft before restarting work:
 
 ```text
 /ext ext__corpus__index {"store":"notes","embedding":"vectors","source_id":"manual:locks","generation":1,"action":"abort","chunks":["CHUNK_ID"]}

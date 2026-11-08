@@ -66,6 +66,123 @@ defmodule Ipse.Development.Evaluation.CandidateAssessmentSessionTest do
     refute_receive {:close_attempt, _}
   end
 
+  @tag :fence_owner
+  test "expected assessment request binds the frozen input and rubric" do
+    rubric =
+      "Choose keep_baseline or defer_candidate for this already proposed candidate. Defer only when ambiguity, conflict or low durability warrants omitting this capture. Advice cannot change evidence, origin, text, category, retention or permission."
+
+    input = %{"text" => "Frozen candidate", "reason" => "fixture"}
+    assert {:ok, request} = S.expected_decision_request(input, JSON.sha256(rubric))
+    assert :ok = DecisionCall.validate(request)
+
+    assert request["questions"] == [
+             %{
+               "id" => "candidate",
+               "type" => "choice",
+               "instructions" => rubric,
+               "choices" => ~w(defer_candidate keep_baseline)
+             }
+           ]
+
+    assert %{"candidates" => [%{"id" => "candidate", "input" => encoded}]} =
+             Jason.decode!(request["input"])
+
+    assert Jason.decode!(encoded) == input
+
+    assert {:error, :candidate_request_unavailable} =
+             S.expected_decision_request(input, JSON.sha256("other"))
+
+    assert {:error, :candidate_request_unavailable} =
+             S.expected_decision_request(
+               %{"text" => String.duplicate("x", 9000)},
+               JSON.sha256(rubric)
+             )
+  end
+
+  @tag :fence_owner
+  test "assessment fence binds catalog identity, descriptor, arguments and request" do
+    rubric =
+      "Choose keep_baseline or defer_candidate for this already proposed candidate. Defer only when ambiguity, conflict or low durability warrants omitting this capture. Advice cannot change evidence, origin, text, category, retention or permission."
+
+    hash = JSON.sha256("synthetic artifact")
+
+    descriptor = %{
+      "id" => "assess",
+      "description" => "Synthetic assessment",
+      "arguments_schema" => %{
+        "type" => "object",
+        "additionalProperties" => false,
+        "properties" => %{"key" => %{"type" => "string"}},
+        "required" => ["key"]
+      },
+      "result_schema" => %{"type" => "object", "additionalProperties" => true}
+    }
+
+    exports = Map.put(Ipse.Extension.Catalog.empty(), "tools", [descriptor])
+    identity = %{"instance" => "knowledge", "artifact_sha256" => hash}
+    config = %{extensions: [%{identity: identity, exports: exports}]}
+    args = %{"key" => "pending." <> JSON.sha256("synthetic")}
+    recipe = %{"artifact_sha256" => hash, "arguments" => args}
+    input = %{"text" => "candidate"}
+    route = %{"rubric_sha256" => JSON.sha256(rubric)}
+
+    assert {:ok, fence} = S.assessment_fence(config, recipe, input, route)
+
+    assert {:ok, _, actual_descriptor} =
+             Ipse.Extension.Catalog.lookup(config, "invoke.tool", "ext__knowledge__assess")
+
+    assert {:ok, request} = S.expected_decision_request(input, route["rubric_sha256"])
+
+    assert fence == %{
+             "version" => 2,
+             "operation" => "decision.create",
+             "identity_sha256" => JSON.digest([identity]),
+             "descriptor_sha256" => JSON.digest([actual_descriptor]),
+             "arguments_sha256" => JSON.digest([args]),
+             "request_sha256" => JSON.digest([request])
+           }
+
+    assert {:ok, changed_argument} =
+             S.assessment_fence(
+               config,
+               put_in(recipe, ["arguments", "key"], "pending.other"),
+               input,
+               route
+             )
+
+    assert changed_argument["arguments_sha256"] != fence["arguments_sha256"]
+    assert changed_argument["request_sha256"] == fence["request_sha256"]
+
+    assert {:ok, changed_input} = S.assessment_fence(config, recipe, %{"text" => "other"}, route)
+    assert changed_input["request_sha256"] != fence["request_sha256"]
+    assert changed_input["arguments_sha256"] == fence["arguments_sha256"]
+
+    changed_exports =
+      put_in(exports, ["tools", Access.at(0), "description"], "Changed description")
+
+    changed_config = %{config | extensions: [%{identity: identity, exports: changed_exports}]}
+    assert {:ok, changed_descriptor} = S.assessment_fence(changed_config, recipe, input, route)
+    assert changed_descriptor["descriptor_sha256"] != fence["descriptor_sha256"]
+
+    assert {:error, :candidate_fence_unavailable} =
+             S.assessment_fence(
+               config,
+               Map.put(recipe, "artifact_sha256", JSON.sha256("other")),
+               input,
+               route
+             )
+
+    assert {:error, :candidate_fence_unavailable} =
+             S.assessment_fence(
+               config,
+               put_in(recipe, ["arguments", "extra"], true),
+               input,
+               route
+             )
+
+    assert {:error, :candidate_fence_unavailable} =
+             S.assessment_fence(config, recipe, input, %{"rubric_sha256" => JSON.sha256("other")})
+  end
 
   defmodule ReviewOwner do
     use GenServer
@@ -217,6 +334,33 @@ defmodule Ipse.Development.Evaluation.CandidateAssessmentSessionTest do
         config: config
       }
     }
+  end
+
+  @tag :fence_owner
+  test "enabled owner refuses a changed rubric before starting the execution path" do
+    f = fixture()
+
+    descriptor = %{
+      "id" => "assess",
+      "description" => "Synthetic assessment",
+      "arguments_schema" => %{
+        "type" => "object",
+        "additionalProperties" => false,
+        "properties" => %{"key" => %{"type" => "string"}},
+        "required" => ["key"]
+      },
+      "result_schema" => %{"type" => "object", "additionalProperties" => true}
+    }
+
+    exports = Map.put(Ipse.Extension.Catalog.empty(), "tools", [descriptor])
+    [entry] = f.options.config.extensions
+    config = %{f.options.config | extensions: [Map.put(entry, :exports, exports)]}
+    options = %{f.options | enabled: true, config: config}
+
+    assert {:ok, _} = S.prepare(f.declaration, f.sha, f.id, f.load, options)
+
+    assert {:error, :candidate_fence_unavailable} =
+             S.run(f.declaration, f.sha, f.id, f.load, options)
   end
 
   @tag :candidate_off_preflight

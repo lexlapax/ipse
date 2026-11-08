@@ -1,7 +1,13 @@
 Code.require_file("candidate_assessment_session.exs", __DIR__)
 
 defmodule Ipse.Development.Evaluation.CandidateAssessmentRecipe do
-  @moduledoc "Synthetic standalone assessment materialization; labels are deliberately non-independent."
+  @moduledoc """
+  Synthetic standalone assessment materialization; labels are deliberately non-independent.
+
+  Inventory checks bind the declared hashes to point-in-time disk observations of
+  the listed scripts, runtime files and helper. They do not attest loaded code,
+  prevent changes between observations, or seal the operating system or network.
+  """
   import ExUnit.Assertions
   alias Ipse.{JSON, Journal, Session}
   alias Ipse.Extension.{Collection, Consent, ProjectIdentity, SemanticAdmission, SemanticConsent}
@@ -149,6 +155,8 @@ defmodule Ipse.Development.Evaluation.CandidateAssessmentRecipe do
     assert file_sha(recipe["config_path"]) === recipe["config_sha256"]
     assert source_commitment() === recipe["source_commitment"]
     assert runtime_commitment() === recipe["runtime_commitment"]
+    declaration = read(Path.join(root, "declaration.json"))
+    assert inventory_matches?(declaration, recipe, source_commitment(), runtime_commitment())
 
     for key <-
           ~w(IPSE_PROVIDER IPSE_MODEL IPSE_SANDBOX IPSE_MAX_STEPS IPSE_CONTEXT_BYTES IPSE_COMPACT IPSE_SUBAGENTS IPSE_SUBAGENT_CONCURRENCY IPSE_TIMEOUT_MS IPSE_MAX_OUTPUT_TOKENS IPSE_PROFILE IPSE_CONFIG),
@@ -185,7 +193,6 @@ defmodule Ipse.Development.Evaluation.CandidateAssessmentRecipe do
     assert runtime.provider === :ollama and runtime.model === "synthetic"
     assert runtime.base_url === recipe["base_url"]
     assert get_in(runtime, [:decision_profiles, "advice", "base_url"]) === recipe["base_url"]
-    declaration = read(Path.join(root, "declaration.json"))
     load = fn sha -> File.read(Path.join([root, "blobs", sha <> ".json"])) end
 
     options = %{
@@ -206,9 +213,13 @@ defmodule Ipse.Development.Evaluation.CandidateAssessmentRecipe do
                options
              )
 
+    assert_rubric_refusal(declaration, recipe, load, options, existing_project)
+
     {listener, server} = server(recipe["base_url"], recipe["key"], root)
 
     try do
+      assert inventory_matches?(declaration, recipe, source_commitment(), runtime_commitment())
+
       assert {:ok, row} =
                Owner.run(
                  declaration,
@@ -309,6 +320,86 @@ defmodule Ipse.Development.Evaluation.CandidateAssessmentRecipe do
       :gen_tcp.close(listener)
       Task.shutdown(server, :brutal_kill)
     end
+  end
+
+  @doc false
+  def inventory_matches?(%{"spec" => spec}, recipe, source, runtime)
+      when is_map(spec) and is_map(recipe) and is_map(source) and is_map(runtime) do
+    source === recipe["source_commitment"] and runtime === recipe["runtime_commitment"] and
+      JSON.digest([source]) === spec["source_sha256"] and
+      JSON.digest([runtime]) === spec["runtime_sha256"]
+  end
+
+  def inventory_matches?(_, _, _, _), do: false
+
+  @doc false
+  def inventory_snapshot, do: {source_commitment(), runtime_commitment()}
+
+  # A re-declared, validly hashed rubric change reaches Owner.prepare but must
+  # refuse before Session startup or a request to the selected loopback route.
+  defp assert_rubric_refusal(declaration, recipe, load, options, project) do
+    changed_spec =
+      put_in(
+        declaration,
+        ["spec", "decision_route", "rubric_sha256"],
+        JSON.sha256("synthetic different frozen rubric")
+      )["spec"]
+
+    assert {:ok, changed} = Assessment.declare(changed_spec)
+    changed_sha = JSON.digest([changed])
+    assert changed_sha !== recipe["declaration_sha256"]
+    assert {:ok, _} = Owner.prepare(changed, changed_sha, recipe["case_id"], load, options)
+
+    uri = URI.parse(recipe["base_url"])
+
+    assert uri.scheme === "http" and uri.host === "127.0.0.1" and is_integer(uri.port) and
+             uri.port > 0
+
+    assert {:ok, probe} =
+             :gen_tcp.listen(uri.port, [
+               :binary,
+               active: false,
+               reuseaddr: true,
+               ip: {127, 0, 0, 1}
+             ])
+
+    try do
+      before_files = session_file_snapshot(options.state_dir)
+      before_sessions = Process.whereis(Ipse.Sessions)
+      control = SemanticAdmission.control_root(options.config.home)
+      assert {:ok, before_policy} = Consent.existing_snapshot(control, project["project_id"])
+
+      assert {:error, :candidate_fence_unavailable} =
+               Owner.run(changed, changed_sha, recipe["case_id"], load, options)
+
+      assert {:error, :timeout} = :gen_tcp.accept(probe, 250)
+      assert before_files === session_file_snapshot(options.state_dir)
+      assert Process.whereis(Ipse.Sessions) === before_sessions
+      assert {:ok, ^before_policy} = Consent.existing_snapshot(control, project["project_id"])
+
+      save(options.root, "rubric-refusal.json", %{
+        "scope" => "pre_session_preflight",
+        "declaration_sha256" => changed_sha,
+        "error" => "candidate_fence_unavailable",
+        "selected_loopback_connections_after_refusal" => 0,
+        "session_files_unchanged" => true,
+        "policy_unchanged" => true
+      })
+    after
+      :gen_tcp.close(probe)
+    end
+  end
+
+  defp session_file_snapshot(dir) do
+    dir
+    |> File.ls!()
+    |> Enum.sort()
+    |> Enum.map(fn name ->
+      path = Path.join(dir, name)
+      stat = File.lstat!(path)
+      content = if stat.type === :regular, do: JSON.sha256(File.read!(path)), else: nil
+      {name, stat.type, content}
+    end)
   end
 
   defp server(base, key, root) do

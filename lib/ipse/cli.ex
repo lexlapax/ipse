@@ -460,6 +460,8 @@ defmodule Ipse.CLI do
         "Ipse · #{config.provider}/#{config.model}\nSession: #{info.id}\nWorkspace: #{info.cwd}"
       )
 
+      if is_binary(opts[:resume]), do: resume_warnings(info)
+
       Terminal.puts(:stderr, Ipse.Tools.Sandbox.describe(config.sandbox))
 
       if config.configuration.sources != [],
@@ -559,6 +561,25 @@ defmodule Ipse.CLI do
       {:error, reason} ->
         Terminal.puts(:stderr, "Cannot start: #{format_error(reason)}")
         1
+    end
+  end
+
+  @doc false
+  def resume_warnings(info) do
+    if info.startup_unknown_extension_action_count > 0 do
+      Terminal.puts(
+        :stderr,
+        "Saved extension actions have unknown outcomes; an effect may have happened. " <>
+          "They are never replayed automatically. Inspect before retrying."
+      )
+    end
+
+    if info.question_recovery == :managed_question_withheld do
+      Terminal.puts(
+        :stderr,
+        "A saved question depends on managed context that cannot safely be restored or displayed. " <>
+          "Inspect the session before continuing."
+      )
     end
   end
 

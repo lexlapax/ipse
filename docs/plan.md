@@ -46,6 +46,16 @@ Qualified readiness retains its recorded human/live limits.
 | [P32: voice and media](#p32-voice-and-realtime-media) | Deferred; unimplemented; formerly P31 | Select media contracts and device/service validation in a later increment |
 | [Apache-2.0 transition](#license-transition) | Complete at `7bb642b` | Preserve runtime, dependency and extension license boundaries |
 
+[Saved-session diagnosis](operator/recovery.md#find-the-original-session) reports
+an aggregate count of unknown extension actions and excludes a validated current
+pending question. Resume warns about unknown outcomes and withheld managed
+questions. Nine focused synthetic controls pass on the combined source; a
+managed test attempt on unsupported Btrfs failed during setup and its fixture is
+retained. An earlier filtered baseline finished with one native-helper boundary
+fixture failure; the final combined-source baseline remains open.
+Declined `recall_many`, opt-in native integrated cases and skipped platform
+coverage remain unqualified.
+
 ### Execution order for P30 and P31
 
 Work in the lanes below can proceed in parallel when their file ownership and
@@ -423,9 +433,13 @@ following limits until the end-to-end paths are qualified:
    matching the existing restore-plan rule; eleven focused restore tests pass.
    [Partial retirement operation binding](archive/2026-10-26-p30-p31-implementation/document-retirement-operation-20261106.md)
    records a native operation/invocation join on newly admitted heads; a synthetic
-   live Session control also joins its exact action and ledger receipt. Legacy
-   heads retain their prior encoding. Prior-owner quiescence and retained release
-   authority remain unproven, so interrupted recovery still refuses.
+   live Session control also joins its exact action and ledger receipt. The
+   [live-owner follow-up](archive/2026-10-26-p30-p31-implementation/document-retirement-live-owner-20261107.md)
+   refuses partial cleanup adoption by a resumed owner and conservatively limits
+   multi-stage legacy cleanup. The current candidate imports live Session, Writer
+   and source controls for the final switch; fresh synthetic positive Session and
+   two-lock/refusal controls pass. Owner-loss and interrupted recovery remain
+   unqualified, so an unconfirmed outcome still refuses automatic continuation.
    Ten host provenance controls, 24 domain/controller cases and the separate
    eight-test native migration file pass. This closes the bounded same-project
    increment, not changed-target recovery, installed migration, larger segmented
@@ -508,6 +522,12 @@ following limits until the end-to-end paths are qualified:
    A [synthetic Ollama tool-assisted control](archive/2026-10-26-p30-p31-implementation/ollama-tool-draft-20261107.md)
    also covers isolated native tool calls and results across cancellation and
    acceptance; live and installed qualification remain open.
+   [Synthetic provider carryover controls](archive/2026-10-26-p30-p31-implementation/p31i-provider-draft-carryover-20261107.md)
+   cover cancelled Chat Completions and xAI draft tool intervals through ordinary
+   continuation and same-ID restoration on isolated loopback fixtures. The
+   combined candidates pass eight projection and five Session controls.
+   One earlier malformed-fixture setup failed and remains recorded; installed, live
+   provider and final integrated qualification remain open.
 5. **Decision engines — P30A–E.** Complete the host protocol and protected
    consumer integration independently of document/graph work. Enforce the explicit
    finite allowance across the whole authorized experiment, using the existing
@@ -1362,14 +1382,13 @@ keeps out-of-range sums unmeasured rather than reporting an invalid or understat
 cost. Thirty-three pure controls pass; real costs and integrated qualification remain open.
 
 The [assessment route-binding follow-up](archive/2026-10-26-p30-p31-implementation/p30-assessment-route-binding-20261107.md)
-checks the frozen public decision
-profile and selected main-route controls before new Session work, and checks the
-recorded decision execution before projecting a known result. Version-1 studies
-remain readable and scoreable. Thirty-seven direct synthetic controls and one
-fresh synthetic native Session assessment pass against the built runtime; the
-full baseline remains to be rerun for this change. Declared source/runtime
-digests and pre-dispatch rubric
-binding are not established by this increment, and quality remains unqualified.
+checks the frozen public decision profile and selected main-route controls before
+new Session work, and checks recorded decision execution before projecting a known
+result. Version-1 studies remain readable and scoreable. Thirty-seven direct
+synthetic controls and one fresh synthetic native Session assessment pass against
+the built runtime; a full baseline on the integrated source remains open. Declared
+source/runtime digests and pre-dispatch rubric binding are not established by this
+increment, and quality remains unqualified.
 
 **Authorized; typed/protocol and admitted-operation increments in progress.** P31 is the active delivery
 path. P30A/B can proceed independently; later
@@ -1459,6 +1478,28 @@ earlier failed CI result and the separate macOS uncertainty.
 The [knowledge-complete verifier repair](archive/2026-10-26-p30-p31-implementation/knowledge-complete-release-verifier-20261106.md)
 also passes fresh synthetic source and installed checks on the frozen 546869c8
 runtime. Later source and the separate macOS Memory failure remain unqualified.
+The later [consent and close controls](archive/2026-10-26-p30-p31-implementation/consent-and-close-controls-20261107.md)
+record 11 failures in a separate broad regression, followed by focused synthetic
+passes. The consent workload passed close to its timeout; the Collection close
+controls do not establish the cause of its unconfirmed cleanup. A passing final
+integrated baseline remains open.
+
+The [synthetic exact-action materializer](archive/2026-10-26-p30-p31-implementation/p30-exact-action-materializer-20261107.md)
+checks a frozen rubric and exact parent/request fence through one native terminal
+assessment and Saved reconstruction. A changed rubric refused in preflight, and
+synthetic labels remained unqualified. An independent audit checked retained
+journals, receipts and observed resource closure. An earlier materializer failed
+after its synthetic action, and an earlier cleanup removed lock identities for
+two fixtures with unmatched invocation intents; neither outcome may be replayed
+or inferred. On a combined-source candidate, fourteen focused fence, assessment
+and policy checks and seven synthetic Session approval and owner-loss checks pass.
+The synthetic materializer also passes with its observed source and runtime
+inventories checked against the frozen declaration before execution. These are
+point-in-time disk checks; they do not attest loaded code or prevent transient
+changes between checks.
+This evidence is limited to the fixed synthetic routes and does not
+establish general Session egress, live model quality, installed behavior or P30
+completion. The broader integrated baseline remains open.
 
 | Package | Output and prerequisites |
 | --- | --- |
@@ -1493,6 +1534,11 @@ integration evidence; consumer selection, live engines and quality remain open.
 
 ## P31: usable knowledge and prompt assistance
 
+The Research worker now checks captured-source time transitions before proposing
+a rerank and before constructing its result; [controlled-clock source tests](archive/2026-10-26-p30-p31-implementation/research-time-boundary-20261107.md)
+pass. Actual Host dispatch, later Session delivery and the final integrated
+baseline remain separate unqualified boundaries.
+
 The [v19 literal-bullet increment](archive/2026-10-26-p30-p31-implementation/word-bullet-v19-20261107.md)
 passes 51 focused extraction/citation tests and a synthetic Collection Session
 journey using the newly built artifact. General Word fidelity, installed use,
@@ -1516,7 +1562,9 @@ fit and the complete recipe remain unqualified.
 
 The [Graph query fence candidate](archive/2026-10-26-p30-p31-implementation/graph-query-fences-20261106.md)
 has synthetic source and built-artifact controls for captured-snapshot time and
-generation changes. A separate State Session journey passes on the earlier
+generation changes. A [worker result-time follow-up](archive/2026-10-26-p30-p31-implementation/graph-result-time-20261107.md)
+also checks eligibility after result preparation in fake-State and fake-MCP
+fixtures. A separate State Session journey passes on the earlier
 host SDK, without injecting those query races. Current-host native race tests,
 real MCP, installed and full integrated qualification remain open.
 

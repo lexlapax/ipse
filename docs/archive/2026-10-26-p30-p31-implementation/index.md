@@ -13,6 +13,12 @@ preserved section targets. Later decisions below amend this baseline explicitly.
 
 ## Authorization and external evidence
 
+The [synthetic exact-action materializer](p30-exact-action-materializer-20261107.md)
+records a fenced native assessment, its independent audit, earlier failed
+controls and retained unknown outcomes. It does not establish full P30 acceptance.
+The [consent workload and Collection close controls](consent-and-close-controls-20261107.md)
+record focused synthetic passes and the limits of the earlier failed regression.
+
 The implementation task covers both milestones, full tests, an adversarial
 post-implementation audit and a review handoff. It does not authorize publication.
 The developer selected these finite qualification limits in this conversation:
@@ -65,6 +71,7 @@ nor resource/offline qualification. No daemon configuration or existing model wa
 
 ## P31I planning and acceptance
 
+- [Synthetic provider draft carryover](p31i-provider-draft-carryover-20261107.md) records scoped Chat Completions and xAI Session/restore checks, the earlier failed fixture, and remaining integrated and live-route limits.
 - [Installed Ollama draft controls](ollama-draft-installed-20261103.md) pass synthetic packaged acceptance and cancellation through release eval, with live and public-chat limits.
 - [Ollama no-tool draft thinking](ollama-draft-thinking-20261103.md) records synthetic Session and terminal acceptance/cancellation checks while retaining stricter managed-source admission.
 - [Ollama draft recovery](ollama-draft-recovery-20261103.md) records focused synthetic cancellation, acceptance and resume controls, with full-suite and installed qualification still open.
@@ -137,7 +144,9 @@ nor resource/offline qualification. No daemon configuration or existing model wa
 - [Synthetic Word replacement Session check](document-replacement-session-20261107.md) covers one public replacement and retained old records; crash recovery, capacity and the complete lifecycle remain open.
 - [Synthetic Ollama tool-assisted draft withdrawal](ollama-tool-draft-20261107.md) covers bounded native call isolation and Session carryover; live and installed qualification remain open.
 - [Graph workspace and retirement recovery boundaries](graph-workspace-and-retirement-boundaries-20261107.md) identifies the missing cross-store provenance and owner-release joins; neither is implemented by that investigation.
+- [Graph worker result-time follow-up](graph-result-time-20261107.md) checks eligibility transitions after in-memory result preparation; actual transport and delivery remain unqualified.
 - [Partial retirement operation binding](document-retirement-operation-20261106.md) joins new heads to their local native operation and invocation; legacy cleanup remains separate and interrupted recovery still refuses.
+- [Partial retirement live-owner fence](document-retirement-live-owner-20261107.md) records same-ID resumed-owner counterexamples and scoped synthetic controls; native final-switch liveness and later-owner recovery remain open.
 - [Stopped local Word comparison](word-semantic-03-failure-20261106.md) preserves the known failed embedding attempt, all 152 undispatched result slots and failed idle check. Separate filesystem probes support a tmpfs requirement; no retrieval or quality pass is claimed.
 - [Budget reservation before service selection](budget-reservation-pre-slot-20261106.md) closes the observed post-admission service-slot failure gap, with 50 passing focused tests and an independent source review. Earlier preparation failures can still leave an unmatched admission that fails closed; broader regression and model qualification remain open.
 - [Interrupted 489-file source regression](source-regression-489-20261106.md) retains 13 known outer failure headers and two separate nested failures, with no final exit or totals. Later immutable-copy and independent host-neutral checks pass; the complete baseline remains unqualified.
@@ -165,7 +174,7 @@ nor resource/offline qualification. No daemon configuration or existing model wa
 - [Paired critical selection observations](p30-selection-paired-critical-20261106.md) reports known per-case membership losses without changing the unverified gate or disposition; 28 pure compatibility controls pass, with accepted real-input scoring still open.
 - [Unmeasured critical recall](p30-critical-unmeasured-20261107.md) preserves null rather than reporting refused or failed critical answers as measured recall; 31 synthetic source controls pass, with independent quality and integrated qualification still open.
 - [Bounded cost totals](p30-cost-safe-sums-20261107.md) retains exact representable totals and leaves missing or out-of-range sums unmeasured; 33 pure controls pass, without qualifying real costs or P30.
-- [Assessment route binding](p30-assessment-route-binding-20261107.md) records 34 synthetic controls for the dedicated evaluation owner's version-2 route checks; source/runtime authenticity, pre-dispatch rubric binding and native qualification remain open.
+- [Assessment route binding](p30-assessment-route-binding-20261107.md) checks the frozen decision profile and selected main-route controls; synthetic pure and native Session controls pass, while full integration and model quality remain open.
 
 - [Anthropic signed-thinking draft withdrawal](anthropic-signed-draft-20261106.md) adds bounded no-tool projection and pure request-body controls. A later synthetic Session/Saved fixture passed; native-terminal, installed and live qualification remain open.
 - [Anthropic tool-assisted draft withdrawal](anthropic-tool-draft-20261107.md) adds closed, matched tool groups and a synthetic Session/resume regression; installed and live qualification remain open.
@@ -178,6 +187,7 @@ nor resource/offline qualification. No daemon configuration or existing model wa
 
 - [Coalesced notes Worker-input observations](coalesced-worker-readview-20261104.md) record a fresh complete current build, 33 backend passes, one eight-source Worker pass, genuine native index/slot fallback and unchanged authority bounds; ordinary retained recall remains open.
 - [Fetched Research to State Corpus](research-fetched-state-20261104.md) records current-main ordinary MCP/State transfer, exact source attribution, same-body suppression, interrupted-write/no-replay and unchanged old presets; broader lineage and installed qualification remain open.
+- [Research worker time boundaries](research-time-boundary-20261107.md) records controlled-clock refusal before rerank proposal and worker result; Host dispatch and Session delivery remain unqualified.
 - [Research retention beside managed recall](research-managed-coexistence-20261104.md) passes one complete fresh native coexistence case with explicit user State approval, same-ID Corpus query/citations and a refused model-selected State write; earlier fixture failures and broader transfer gaps remain explicit.
 - [Completed-share timeout isolation](share-stale-timeout-20261104.md) reproduces and repairs a late-generation timer poisoning the next share, while preserving the separately failed retained read and its unresolved trigger.
 

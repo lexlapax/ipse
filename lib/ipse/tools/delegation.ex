@@ -36,8 +36,17 @@ defmodule Ipse.Tools.Delegation do
     end
   end
 
-  def run("delegate", host, args), do: run_serial(host, args)
-  def run("delegate_parallel", host, args), do: run_parallel(host, args)
+  def run("delegate", host, args) do
+    if enabled?(host.config),
+      do: run_serial(host, args),
+      else: {:error, "Delegation is disabled by the host."}
+  end
+
+  def run("delegate_parallel", host, args) do
+    if parallel?(host.config),
+      do: run_parallel(host, args),
+      else: {:error, "Delegation is disabled by the host."}
+  end
 
   @task_limit 8_192
   @context_limit 8_192
@@ -47,7 +56,10 @@ defmodule Ipse.Tools.Delegation do
 
   @doc "Whether delegation is explicitly enabled for this session."
   def enabled?(config) when is_map(config),
-    do: Map.get(config, :subagents, false) == true and is_nil(Map.get(config, :delegation_origin))
+    do:
+      Map.get(config, :subagents, false) == true and
+        is_nil(Map.get(config, :delegation_origin)) and
+        is_nil(Map.get(config, :exact_action_fence))
 
   def enabled?(_), do: false
 
@@ -211,6 +223,7 @@ defmodule Ipse.Tools.Delegation do
         :semantic_context,
         :semantic_contexts,
         :semantic_admission,
+        :exact_action_fence,
         :planning_cli_start,
         :extensions
       ])

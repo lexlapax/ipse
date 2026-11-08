@@ -1,5 +1,6 @@
 Code.require_file("../../support/stdio_probe.exs", __DIR__)
 Code.require_file("../../support/provider_fixture.ex", __DIR__)
+Code.require_file("../../support/cli_fixture.ex", __DIR__)
 
 defmodule Ipse.Extension.InvocationTest do
   use ExUnit.Case, async: false
@@ -198,7 +199,12 @@ defmodule Ipse.Extension.InvocationTest do
     home = Path.join(root, "home")
     {:ok, installed} = Artifact.import(source, Path.join(home, "extensions/artifacts"))
     refute File.exists?(marker)
-    on_exit(fn -> File.rm_rf!(root) end)
+
+    on_exit(fn ->
+      unless File.exists?(Path.join(root, "retain-cli-control")) or
+               File.exists?(Path.join(root, "retain-diagnosis")),
+             do: File.rm_rf!(root)
+    end)
 
     %{
       artifact_root: root,
@@ -214,6 +220,14 @@ defmodule Ipse.Extension.InvocationTest do
   end
 
   setup ctx do
+    if File.exists?(Path.join(ctx.artifact_root, "retain-cli-control")) do
+      raise "CLI control cleanup unconfirmed; synthetic artifact and session retained"
+    end
+
+    retain = Path.join(ctx.artifact_root, "retain-diagnosis")
+    if File.exists?(retain), do: raise("diagnosis fixture cleanup unconfirmed; root retained")
+    if ctx[:preserve_diagnosis], do: File.write!(retain, "cleanup unconfirmed\n", [:exclusive])
+
     for path <- [ctx.marker, ctx.called, ctx.pid_file], do: File.rm(path)
     File.rm_rf!(Path.join(ctx.home, "extension-state-v1"))
     root = Path.join(ctx.artifact_root, "session-#{Ipse.Usage.id()}")
@@ -269,7 +283,10 @@ defmodule Ipse.Extension.InvocationTest do
          config: ctx.config, cwd: ctx.root, state_dir: ctx.dir, subscriber: self(), id: id}
       )
 
-    on_exit(fn -> if Process.alive?(pid), do: Session.close(pid) end)
+    on_exit(fn ->
+      if ctx[:preserve_diagnosis] != true and Process.alive?(pid), do: Session.close(pid)
+    end)
+
     pid
   end
 
@@ -1887,6 +1904,7 @@ defmodule Ipse.Extension.InvocationTest do
     end
   end
 
+  @tag preserve_diagnosis: true
   test "unknown host operation commits no continuation or final callback and never replays on resume",
        ctx do
     pid = start(ctx)
@@ -1920,15 +1938,239 @@ defmodule Ipse.Extension.InvocationTest do
     assert result["outcome"] == %{"status" => "unknown", "value" => %{}}
     refute Enum.any?(events, &(&1["type"] == "extension_invocation_result"))
     assert length(String.split(File.read!(ctx.called), "\n", trim: true)) == 1
-    :ok = Session.close(pid)
+    :ok = Session.close_confirmed(pid)
     calls = File.read!(ctx.called)
     path = Path.join(ctx.dir, info.id <> ".jsonl")
     before = File.read!(path)
     resumed = start(ctx, info.id)
     assert Session.info(resumed).phase == :idle
+    resumed_info = Session.info(resumed)
+    assert resumed_info.startup_unknown_extension_action_count == 1
+
+    warning =
+      ExUnit.CaptureIO.capture_io(:stderr, fn -> Ipse.CLI.resume_warnings(resumed_info) end)
+
+    assert warning =~ "unknown outcomes"
+    assert warning =~ "never replayed automatically"
+    refute warning =~ "note"
     assert File.read!(ctx.called) == calls
     assert_idle_resume_journal(path, before, info.id)
     assert File.read!(file) == "{broken"
+    assert :ok = Session.close_confirmed(resumed)
+    File.rm!(Path.join(ctx.artifact_root, "retain-diagnosis"))
+  end
+
+  test "CLI warns before resumed input and fresh headless work without replaying an unknown action",
+       ctx do
+    retain = Path.join(ctx.artifact_root, "retain-cli-control")
+    File.write!(retain, "cleanup unconfirmed; preserve this synthetic root\n", [:exclusive])
+    config_path = Path.join(ctx.home, "config.json")
+    refute File.exists?(config_path)
+
+    config = %{
+      "version" => 1,
+      "extensions" => [
+        %{
+          "instance" => "sdk",
+          "artifact" => ctx.digest,
+          "enabled" => true,
+          "options" => %{},
+          "order" => 1,
+          "lifetime" => "persistent"
+        }
+      ],
+      "extension_trust" => [
+        %{
+          "artifact" => ctx.digest,
+          "capabilities" => ctx.capabilities,
+          "allow_project" => false,
+          "allow_children" => false
+        }
+      ]
+    }
+
+    File.write!(config_path, Jason.encode!(config))
+    File.chmod!(config_path, 0o600)
+    old_home = System.get_env("IPSE_HOME")
+
+    on_exit(fn ->
+      if old_home, do: System.put_env("IPSE_HOME", old_home), else: System.delete_env("IPSE_HOME")
+      unless File.exists?(retain), do: File.rm(config_path)
+    end)
+
+    System.put_env("IPSE_HOME", ctx.home)
+    {:ok, stderr} = Ipse.CLITest.IOFixture.start_link(self())
+    on_exit(fn -> if Process.alive?(stderr), do: GenServer.stop(stderr, :normal) end)
+    {:ok, stdio} = Ipse.CLITest.IOFixture.start_link(self(), stderr)
+    on_exit(fn -> if Process.alive?(stdio), do: GenServer.stop(stdio, :normal) end)
+    old_stderr = Process.whereis(:standard_error)
+
+    on_exit(fn ->
+      case Process.whereis(:standard_error) do
+        ^stderr ->
+          Process.unregister(:standard_error)
+
+          if is_pid(old_stderr) and Process.alive?(old_stderr),
+            do: Process.register(old_stderr, :standard_error)
+
+        nil ->
+          if is_pid(old_stderr) and Process.alive?(old_stderr),
+            do: Process.register(old_stderr, :standard_error)
+
+        _ ->
+          :ok
+      end
+    end)
+
+    true = Process.unregister(:standard_error)
+    true = Process.register(stderr, :standard_error)
+
+    {:ok, listener} =
+      :gen_tcp.listen(0, [:binary, active: false, reuseaddr: true, ip: {127, 0, 0, 1}])
+
+    on_exit(fn -> :gen_tcp.close(listener) end)
+    {:ok, {_, port}} = :inet.sockname(listener)
+    test_owner = self()
+
+    server =
+      Task.async(fn ->
+        {:ok, socket} = :gen_tcp.accept(listener, 30_000)
+
+        try do
+          boundary_output = Ipse.CLITest.IOFixture.output(stderr)
+          {_headers, payload} = Ipse.Test.ProviderFixture.request(socket, "")
+          send(test_owner, {:fresh_cli_request, self(), payload, boundary_output})
+
+          receive do
+            :reply ->
+              body =
+                Jason.encode!(%{
+                  "message" => %{"role" => "assistant", "content" => "fresh response"},
+                  "done" => true
+                }) <> "\n"
+
+              :ok =
+                :gen_tcp.send(
+                  socket,
+                  "HTTP/1.1 200 OK\r\ncontent-type: application/x-ndjson\r\ncontent-length: #{byte_size(body)}\r\nconnection: close\r\n\r\n" <>
+                    body
+                )
+          after
+            5000 -> flunk("fresh CLI request was not released")
+          end
+        after
+          :gen_tcp.close(socket)
+        end
+      end)
+
+    on_exit(fn -> if Process.alive?(server.pid), do: Process.exit(server.pid, :kill) end)
+
+    cli = fn suffix ->
+      Task.Supervisor.async_nolink(Ipse.Tasks, fn ->
+        Process.group_leader(self(), stdio)
+
+        Ipse.CLI.run(
+          [
+            "--provider",
+            "ollama",
+            "--model",
+            "fixture",
+            "--base-url",
+            "http://127.0.0.1:#{port}",
+            "--cwd",
+            ctx.root,
+            "--state-dir",
+            ctx.dir
+          ] ++ suffix
+        )
+      end)
+    end
+
+    seed = cli.(["chat"])
+    on_exit(fn -> if Process.alive?(seed.pid), do: Process.exit(seed.pid, :kill) end)
+    assert_receive {:io_waiting_snapshot, ^stdio, _}, 10_000
+    assert_receive {:io_waiting, ^stdio, _}, 10_000
+    [_, id] = Regex.run(~r/Session: ([a-f0-9]+)/, Ipse.CLITest.IOFixture.output(stderr))
+    [{pid, _}] = Elixir.Registry.lookup(Ipse.Registry, {Path.expand(ctx.dir), id})
+    identity = hd(:sys.get_state(pid).config.extensions).identity
+    {:ok, namespace} = Ipse.Extension.State.namespace(identity, "project", ctx.root, id)
+    root = Path.join(ctx.home, "extension-state-v1")
+
+    {:ok, _} =
+      Ipse.Extension.State.execute(
+        root,
+        namespace,
+        %{"op" => "state.get", "scope" => "project", "key" => "PRIVATE-RESUME-ACTION"},
+        Ipse.Usage.id()
+      )
+
+    file = Path.join([root, namespace, "state.json"])
+    File.write!(file, "{broken")
+    File.chmod!(file, 0o600)
+
+    :ok =
+      host_command(pid, %{
+        "op" => "state.get",
+        "scope" => "project",
+        "key" => "PRIVATE-RESUME-ACTION"
+      })
+
+    assert Enum.reduce_while(1..400, false, fn _, _ ->
+             if Session.info(pid).phase == :idle,
+               do: {:halt, true},
+               else:
+                 (
+                   Process.sleep(10)
+                   {:cont, false}
+                 )
+           end)
+
+    assert {:ok, events} = Journal.load(ctx.dir, id)
+    action = Enum.find(events, &(&1["type"] == "extension_action_intent"))
+    assert action["identity_sha256"] == Ipse.JSON.digest([identity])
+    assert action["namespace"] == namespace
+
+    assert Enum.any?(
+             events,
+             &(&1["type"] == "extension_action_result" and
+                 &1["operation_id"] == action["operation_id"] and
+                 get_in(&1, ["outcome", "status"]) == "unknown")
+           )
+
+    calls = File.read!(ctx.called)
+    Ipse.CLITest.IOFixture.feed(stdio, :eof)
+    assert 0 == Task.await(seed, 10_000)
+
+    offset = byte_size(Ipse.CLITest.IOFixture.output(stderr))
+    interactive = cli.(["--resume", id, "chat"])
+
+    on_exit(fn ->
+      if Process.alive?(interactive.pid), do: Process.exit(interactive.pid, :kill)
+    end)
+
+    assert_receive {:io_waiting_snapshot, ^stdio, boundary_output}, 10_000
+    assert_receive {:io_waiting, ^stdio, _}, 10_000
+    output = binary_part(boundary_output, offset, byte_size(boundary_output) - offset)
+    assert output =~ "Saved extension actions have unknown outcomes"
+    refute output =~ "PRIVATE-RESUME-ACTION"
+    assert File.read!(ctx.called) == calls
+    Ipse.CLITest.IOFixture.feed(stdio, :eof)
+    assert 0 == Task.await(interactive, 10_000)
+
+    offset = byte_size(Ipse.CLITest.IOFixture.output(stderr))
+    headless = cli.(["--resume", id, "run", "A fresh harmless request"])
+    on_exit(fn -> if Process.alive?(headless.pid), do: Process.exit(headless.pid, :kill) end)
+    assert_receive {:fresh_cli_request, server_pid, _payload, boundary_output}, 10_000
+    output = binary_part(boundary_output, offset, byte_size(boundary_output) - offset)
+    assert output =~ "Saved extension actions have unknown outcomes"
+    refute output =~ "PRIVATE-RESUME-ACTION"
+    assert File.read!(ctx.called) == calls
+    send(server_pid, :reply)
+    assert 0 == Task.await(headless, 10_000)
+    assert File.read!(ctx.called) == calls
+    assert File.read!(file) == "{broken"
+    assert :ok == Task.await(server, 5000)
+    File.rm!(retain)
   end
 
   defp question_request(checkpoint \\ %{"next" => "finish"}) do
@@ -1990,6 +2232,7 @@ defmodule Ipse.Extension.InvocationTest do
              )
   end
 
+  @tag preserve_diagnosis: true
   test "pending extension question resumes inertly and only an explicit answer starts continuation",
        ctx do
     if System.get_env("IPSE_TEST_STDIO_PROBE") == "1" do
@@ -2012,14 +2255,80 @@ defmodule Ipse.Extension.InvocationTest do
     calls = File.read!(ctx.called)
     path = Path.join(ctx.dir, session_id <> ".jsonl")
     before = File.read!(path)
+    assert {:ok, events} = Journal.load(ctx.dir, session_id)
+    assert {:ok, pending_state} = Ipse.Extension.Actions.restore(events)
+    assert is_map(pending_state.question)
+    assert Ipse.Extension.Actions.question?(pending_state.action["request"])
+    assert {:ok, pending_diagnosis} = Ipse.Session.Saved.inspect_saved(ctx.dir, session_id)
+    assert pending_diagnosis["unknown_extension_action_count"] == 0
+    refute Jason.encode!(pending_diagnosis) =~ "Choose a synthetic option"
+
+    question_index = Enum.find_index(events, &(&1["type"] == "extension_question"))
+    assert is_integer(question_index)
+    question = Enum.at(events, question_index)
+    prefix = Enum.take(events, question_index)
+    intent = pending_state.action
+
+    diagnose = fn label, records ->
+      dir = Path.join(ctx.root, label)
+      File.mkdir!(dir)
+
+      File.write!(
+        Path.join(dir, session_id <> ".jsonl"),
+        Enum.map_join(records, "\n", &Jason.encode!/1) <> "\n"
+      )
+
+      Ipse.Session.Saved.inspect_saved(dir, session_id)
+    end
+
+    assert {:ok, intent_only} = diagnose.("question-intent-only", prefix)
+    assert intent_only["unknown_extension_action_count"] == 1
+    cleared = prefix ++ [question, %{"type" => "cancelled"}]
+    assert {:ok, _} = Ipse.Extension.Actions.restore(cleared)
+    assert {:ok, historical} = diagnose.("question-cleared", cleared)
+    assert historical["unknown_extension_action_count"] == 1
+    refute Jason.encode!(intent_only) =~ "Choose a synthetic option"
+    refute Jason.encode!(historical) =~ "Choose a synthetic option"
+
+    assert {:ok, unknown} =
+             Ipse.Extension.Actions.result(intent, %{"status" => "unknown", "value" => %{}})
+
+    assert {:ok, explicit} = diagnose.("question-unknown", prefix ++ [question, unknown])
+    assert explicit["unknown_extension_action_count"] == 1
+    refute Jason.encode!(explicit) =~ "Choose a synthetic option"
+
+    forged = Map.put(question, "operation_id", Ipse.Usage.id())
+
+    forged =
+      Map.put(
+        forged,
+        "question_sha256",
+        Ipse.JSON.digest([Map.delete(forged, "question_sha256")])
+      )
+
+    assert {:error, _} = Ipse.Extension.Actions.restore(prefix ++ [forged])
+    assert {:error, _} = diagnose.("question-malformed", prefix ++ [forged])
+
     resumed = start(ctx, session_id)
     assert_receive {:ipse, ^resumed, {:question, ^id, _}}, 2000
+    resumed_info = Session.info(resumed)
+    assert resumed_info.startup_unknown_extension_action_count == 0
+    assert resumed_info.question_recovery == nil
+
+    assert ExUnit.CaptureIO.capture_io(:stderr, fn -> Ipse.CLI.resume_warnings(resumed_info) end) ==
+             ""
+
     assert_idle_resume_journal(path, before, session_id)
     assert File.read!(ctx.called) == calls
     :ok = Session.answer(resumed, id, answers())
     assert_receive {:ipse, ^resumed, {:done, :ok}}, 20_000
     assert host_outcome(resumed)["status"] == "answered"
+    assert {:ok, answered} = Ipse.Session.Saved.inspect_saved(ctx.dir, session_id)
+    assert answered["unknown_extension_action_count"] == 0
+    refute Jason.encode!(answered) =~ "fixture answer"
     assert length(String.split(File.read!(ctx.called), "\n", trim: true)) == 2
+    assert :ok = Session.close_confirmed(resumed)
+    File.rm!(Path.join(ctx.artifact_root, "retain-diagnosis"))
   end
 
   test "journal exhaustion preserves a pending extension question for diagnosis and handoff",
@@ -2391,6 +2700,7 @@ defmodule Ipse.Extension.InvocationTest do
     refute File.exists?(Path.join(ctx.home, "extension-state-v1"))
   end
 
+  @tag preserve_diagnosis: true
   test "cancelled extension question records no answer or executable continuation", ctx do
     pid = start(ctx)
     :ok = host_command(pid, question_request())
@@ -2406,6 +2716,10 @@ defmodule Ipse.Extension.InvocationTest do
 
     refute Enum.any?(events, &(&1["type"] == "extension_continuation_intent"))
     assert :ok = Ipse.Extension.Projection.validate_events(events)
+    assert {:ok, diagnosis} = Ipse.Session.Saved.inspect_saved(ctx.dir, Session.info(pid).id)
+    assert diagnosis["unknown_extension_action_count"] == 0
+    assert :ok = Session.close_confirmed(pid)
+    File.rm!(Path.join(ctx.artifact_root, "retain-diagnosis"))
   end
 
   test "unavailable operator questions stop without selecting recommendations", ctx do

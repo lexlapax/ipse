@@ -1814,6 +1814,88 @@ defmodule Ipse.CLI.Knowledge.Management do
   def full_facts_retention_effect_candidate(config, cwd, key, policy, reason),
     do: retention_candidate(config, cwd, key, policy, reason, true)
 
+  @doc false
+  def with_verified_lineage_retention_target(
+        config,
+        cwd,
+        history_dir,
+        owned,
+        key,
+        policy,
+        reason,
+        fun
+      )
+      when is_map(config) and is_map(owned) and is_function(fun, 2) do
+    with true <- owned[:journal_owner] === self() and is_pid(owned[:writer]),
+         {:ok, selected} <- acceptance_source_selection(config, cwd, history_dir, owned[:id]),
+         binding = selected.binding,
+         snapshot = selected.snapshot,
+         namespace = selected.context.config.semantic_admission["pin"]["namespace"],
+         context = %{
+           "session_id" => owned.id,
+           "job_id" => Usage.id(),
+           "client_id" => Usage.id(),
+           "project_id" => binding["project_id"],
+           "namespace" => namespace,
+           "binding_sha256" => binding["binding_sha256"],
+           "management_epoch" => snapshot["epoch"],
+           "management_sha256" =>
+             Consent.management_sha256(
+               binding["project_id"],
+               snapshot["epoch"],
+               snapshot["policy"]
+             ),
+           "original_pin" => nil,
+           "recipe" => selected.selection.recipe
+         },
+         {:ok, first} <-
+           review_target(
+             config[:home],
+             cwd,
+             key,
+             reason,
+             binding,
+             namespace,
+             selected.selection,
+             context,
+             &{:ok, &1},
+             policy,
+             nil,
+             :lineage
+           ) do
+      ManagedLifecycle.with_lineage_source(selected.context, first["facts"], fn _source, lease ->
+        review_target(
+          config[:home],
+          cwd,
+          key,
+          reason,
+          binding,
+          namespace,
+          selected.selection,
+          context,
+          fn current ->
+            if current["request"] === first["request"] and
+                 Map.drop(current["facts"], ~w(operation_id action_sha256)) ===
+                   Map.drop(first["facts"], ~w(operation_id action_sha256)),
+               do: fun.(first, lease),
+               else: @error
+          end,
+          policy,
+          nil,
+          :lineage
+        )
+      end)
+    else
+      _ -> @error
+    end
+  rescue
+    _ -> @error
+  catch
+    _, _ -> @error
+  end
+
+  def with_verified_lineage_retention_target(_, _, _, _, _, _, _, _), do: @error
+
   defp retention_candidate(config, cwd, "note." <> lineage = key, policy, reason, effect?)
        when is_map(config) and is_binary(cwd) and is_binary(reason) do
     overall = System.monotonic_time(:millisecond) + 120_000
@@ -2197,7 +2279,8 @@ defmodule Ipse.CLI.Knowledge.Management do
          context,
          fun,
          policy \\ nil,
-         expected \\ nil
+         expected \\ nil,
+         retention_scope \\ :selected
        ) do
     ProjectIdentity.with_existing_domain_auth(
       home,
@@ -2264,12 +2347,26 @@ defmodule Ipse.CLI.Knowledge.Management do
                                else: ManagedLifecycle.prepare(context, managed, reason)
                              ),
                            else:
-                             ManagedLifecycle.prepare_retention(
-                               context,
-                               managed,
-                               policy,
-                               reason
-                             )
+                             case retention_scope do
+                               :selected ->
+                                 ManagedLifecycle.prepare_retention(
+                                   context,
+                                   managed,
+                                   policy,
+                                   reason
+                                 )
+
+                               :lineage ->
+                                 ManagedLifecycle.prepare_lineage_retention(
+                                   context,
+                                   managed,
+                                   policy,
+                                   reason
+                                 )
+
+                               _ ->
+                                 @error
+                             end
                          )
                      ),
                    do: fun.(prepared)

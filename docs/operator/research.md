@@ -142,7 +142,8 @@ results. The options file contains all seven registries, including empty ones:
 
 Investigation search/fetch kinds must match. Every Research retrieval profile must be BM25.
 Corpus's dense/hybrid/graph/`mcp_query` profiles are not Research algorithms.
-Unknown/unused families and missing selected profiles refuse configuration.
+Invalid profile families and cross-profile references refuse configuration.
+An unknown profile name in an `investigate` command refuses that investigation.
 
 Validate configuration and start a credential-free scripted main session:
 
@@ -172,6 +173,11 @@ Observation equal to selected time is eligible; expiry equal to it is excluded.
 Future observations, expired text, and historical imports do not become current.
 Optional as-of time fixes eligibility/ranking/citations; omitting it uses current
 time after capture. Backdating proves no historical existence or trustworthiness.
+For current-time investigations, Research samples time before proposing a
+rerank and before returning its worker result. If a captured source reaches an
+eligibility boundary, or a later sample moves earlier than a preceding check,
+Research returns `query_time_changed` without evidence or claims. These checks
+do not fence an approval-delayed model dispatch or later Session delivery.
 
 A lexical match is not semantic support. Without attributed graph facts the claim
 stays open with `semantic_support_unassessed`. `evidence_indexes` are zero-based
@@ -625,7 +631,8 @@ file as `rerank-inference.json` in the same artifact root:
 ```
 
 Select your actual available model/profile explicitly. The generator accepts only
-profiles, embedding_profiles, and optional shared budget in this file; it never
+`profiles`, `embedding_profiles`, `inference_services`, and an optional shared
+`budget` in this file; it never
 borrows missing profiles from home configuration. Structured output requires a
 compatible host/native Ollama service. To use the original text contract with
 another provider, omit output_contract. Unsupported structured profiles refuse
@@ -647,8 +654,14 @@ IPSE_HOME="$IPSE_RESEARCH_HOME" ./bin/ipse extension import "$IPSE_RESEARCH_ARTI
 ```
 
 Inspect/validate it and start a fresh chat using operator-mcp-model.json plus the
-same MCP file. Invoke investigate with rerank set to ordered. Full model-egress
-approval is separate. It sends query and up to sixteen short candidate IDs,
+same MCP file. Select the configured reranker explicitly:
+
+```text
+/ext ext__research__investigate {"search":"web","fetch":"web","retrieval":"words","rerank":"ordered","query":"release quiescence","limits":{"max_sources":2,"max_body_bytes":8192,"timeout_ms":30000},"sources":[]}
+```
+
+Full model-egress approval is separate. Research sends the query and at most ten
+ranked candidate IDs (the adapter permits up to sixteen),
 canonical source references, and excerpts of at most 128 bytes. Input must fit
 4096 rendered bytes and output 8192 bytes, without silent truncation. The model
 must return every candidate ID exactly once; missing/duplicate/invented IDs fail
@@ -662,8 +675,9 @@ algorithm, or allowance. Unknown retrieval/model work may have run remotely,
 and an interrupted retention may have written State. An empty Corpus query does
 not prove that no immutable pages were written. Preserve the original journal,
 namespace and configuration and inspect the recorded outcomes before new work.
-Local cancellation cannot prove remote work stopped. A time_limit refusal needs
-a new reviewed invocation, never automatic replay.
+Local cancellation cannot prove remote work stopped. A `time_limit` or
+`query_time_changed` refusal needs a new reviewed invocation, never automatic
+replay; inspect the recorded rerank outcome first if work was interrupted.
 
 Idle resume starts no search, fetch, model, worker, or result scan. Saved results
 remain committed. Changed selection can refuse resume; restore original settings

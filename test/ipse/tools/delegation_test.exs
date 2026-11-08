@@ -66,6 +66,32 @@ defmodule Ipse.DelegationTest do
     assert schema["properties"]["task"]["maxLength"] == 8_192
   end
 
+  test "the exact-action fence cannot leak into an inherited child or be bypassed by delegation" do
+    task = %{"task" => "Inspect", "context" => ""}
+    call = %{"id" => "call"}
+
+    for fence <- [nil, %{"version" => 1}] do
+      parent = %{subagents: true, subagent_concurrency: 2, exact_action_fence: fence}
+      assert {:ok, child} = Ipse.Config.Profiles.child_config(parent, "origin", %{})
+      refute Map.has_key?(child, :exact_action_fence)
+
+      if is_nil(fence) do
+        assert Delegation.enabled?(parent)
+        assert :ok = Delegation.admit(parent, 0, call, task)
+        assert :ok = Delegation.admit_parallel(parent, 0, %{"tasks" => [task, task]})
+      else
+        refute Delegation.enabled?(parent)
+        assert [] = Delegation.definitions(parent)
+        assert {:error, _} = Delegation.admit(parent, 0, call, task)
+        assert {:error, _} = Delegation.admit_parallel(parent, 0, %{"tasks" => [task, task]})
+        assert {:error, _} = Delegation.run("delegate", %{config: parent}, task)
+
+        assert {:error, _} =
+                 Delegation.run("delegate_parallel", %{config: parent}, %{"tasks" => [task, task]})
+      end
+    end
+  end
+
   test "validates exact nonblank UTF-8 task and bounded context" do
     args = %{"task" => "Inspect the failing module", "context" => "Relevant constraints"}
     assert :ok = Delegation.validate(args)

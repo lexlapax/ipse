@@ -141,6 +141,37 @@ defmodule Ipse.Extension.CollectionManagedRetentionTest do
              )
   end
 
+  @tag :future_lineage
+  test "unconnected future-lineage choice cannot authorize either current or changed value" do
+    {candidate, value, anchor, live, first} = fixture()
+    at = first + @day
+    policy = %{"kind" => "duration", "duration_ms" => 2 * @day}
+    original = choice(candidate, value, policy, at)
+    future = original |> Map.put("version", 3) |> Map.put("kind", "native_lineage_management")
+    later_value = JSON.sha256("later same-lineage literal value")
+
+    packed_value =
+      later_value |> Base.decode16!(case: :lower) |> Base.url_encode64(padding: false)
+
+    live = live |> List.replace_at(1, packed_value) |> List.replace_at(5, number(at + 2 * @day))
+
+    assert {:error, _} =
+             Retention.metadata(candidate, later_value, %{anchor | "choice" => future}, live)
+
+    original_live =
+      live
+      |> List.replace_at(
+        1,
+        value |> Base.decode16!(case: :lower) |> Base.url_encode64(padding: false)
+      )
+
+    assert {:error, _} =
+             Retention.metadata(candidate, value, %{anchor | "choice" => future}, original_live)
+
+    assert {:error, _} =
+             Retention.metadata(candidate, later_value, %{anchor | "choice" => original}, live)
+  end
+
   test "relative previews, duration overflow and coverage reductions use the closed production policies" do
     assert Retention.deadline_rule(%{"kind" => "ordinary"}) ==
              %{"basis" => "native_confirmation_time", "duration_ms" => 90 * @day}

@@ -1,13 +1,14 @@
 defmodule Ipse.CLITest.IOFixture do
   use GenServer
 
-  def start_link(owner), do: GenServer.start_link(__MODULE__, owner)
+  def start_link(owner, witness \\ nil), do: GenServer.start_link(__MODULE__, {owner, witness})
   def feed(pid, line), do: GenServer.call(pid, {:feed, line})
   def output(pid), do: GenServer.call(pid, :output)
   def pending?(pid), do: GenServer.call(pid, :pending?)
 
   @impl true
-  def init(owner), do: {:ok, %{owner: owner, output: [], lines: [], pending: nil}}
+  def init({owner, witness}),
+    do: {:ok, %{owner: owner, witness: witness, output: [], lines: [], pending: nil}}
 
   @impl true
   def handle_call({:feed, line}, _from, %{pending: {reader, reply_as}} = state) do
@@ -28,6 +29,10 @@ defmodule Ipse.CLITest.IOFixture do
 
   @impl true
   def handle_info({:io_request, from, reply_as, {:get_line, _encoding, prompt}}, state) do
+    if state.witness do
+      send(state.owner, {:io_waiting_snapshot, self(), output(state.witness)})
+    end
+
     send(state.owner, {:io_waiting, self(), prompt})
     state = append(state, prompt)
 

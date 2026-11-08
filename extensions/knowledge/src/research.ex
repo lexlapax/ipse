@@ -619,15 +619,21 @@ defmodule IpseKnowledge.Research do
           if remaining < 1000 do
             finish(state, refused(:time_limit))
           else
-            advance(
-              Adapters.start(state.resolved, :rerank, %{
-                "profile" => state.ctx.args["rerank"],
-                "query" => state.ctx.args["query"],
-                "candidates" => Enum.take(ranked["evidence"], 16),
-                "timeout_ms" => remaining
-              }),
-              %{state | phase: :rerank, ctx: ctx}
-            )
+            case current_time_check(ctx, ctx.at) do
+              {:ok, checked_at} ->
+                advance(
+                  Adapters.start(state.resolved, :rerank, %{
+                    "profile" => state.ctx.args["rerank"],
+                    "query" => state.ctx.args["query"],
+                    "candidates" => Enum.take(ranked["evidence"], 16),
+                    "timeout_ms" => remaining
+                  }),
+                  %{state | phase: :rerank, ctx: Map.put(ctx, :checked_at, checked_at)}
+                )
+
+              :error ->
+                finish(state, refused(:query_time_changed))
+            end
           end
         end
 
@@ -637,6 +643,43 @@ defmodule IpseKnowledge.Research do
   end
 
   defp publish(state) do
+    case current_time_check(state.ctx, Map.get(state.ctx, :checked_at, state.ctx.at)) do
+      {:ok, checked_at} -> publish_ranked(state, checked_at)
+      :error -> finish(state, refused(:query_time_changed))
+    end
+  end
+
+  defp current_time_check(ctx, minimum) do
+    if Map.get(ctx.args, "as_of_ms") == nil do
+      now = System.system_time(:millisecond)
+      transition = next_source_transition(ctx.sources, ctx.at)
+
+      if now >= minimum and (is_nil(transition) or now < transition),
+        do: {:ok, now},
+        else: :error
+    else
+      {:ok, minimum}
+    end
+  end
+
+  defp next_source_transition(sources, selected) do
+    sources
+    |> Enum.flat_map(fn source ->
+      observed = source["observed_at_ms"]
+      expires = source["expires_at_ms"]
+
+      cond do
+        source["origin"]["historical"] -> []
+        is_integer(expires) and expires <= observed -> []
+        observed > selected -> [observed]
+        is_integer(expires) and expires > selected -> [expires]
+        true -> []
+      end
+    end)
+    |> Enum.min(fn -> nil end)
+  end
+
+  defp publish_ranked(state, checked_at) do
     ranked = state.ctx.ranked
 
     coverage =
@@ -655,10 +698,16 @@ defmodule IpseKnowledge.Research do
         do: elem(Evidence.classify(ranked["evidence"], [], state.ctx.args["query"]), 1),
         else: ranked["claims"]
 
-    finish(
-      state,
-      output(status, ranked["evidence"], claims, ranked["gaps"], coverage, nil)
-    )
+    result =
+      finish(
+        state,
+        output(status, ranked["evidence"], claims, ranked["gaps"], coverage, nil)
+      )
+
+    case current_time_check(state.ctx, checked_at) do
+      {:ok, _} -> result
+      :error -> finish(state, refused(:query_time_changed))
+    end
   end
 
   defp investigate_schema do
