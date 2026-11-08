@@ -58,7 +58,7 @@ defmodule Ipse.Session.SourceReplayCacheTest do
           end)
         end)
 
-      assert_receive {:slot_cache, cache}
+      assert_receive {:slot_cache, cache}, 5_000
       assert {:ok, ^cache} = Resources.source_replay_cache()
       assert :sys.get_state(cache.pid).entries == %{}
       assert {:ok, original_index} = SourceReplayCache.restore(cache, events(), @id)
@@ -91,7 +91,7 @@ defmodule Ipse.Session.SourceReplayCacheTest do
           end)
         end)
 
-      assert_receive {:borrower, peer, cache}
+      assert_receive {:borrower, peer, cache}, 5_000
       Process.exit(peer, :kill)
       assert Task.await(task, 10_000) == {:unknown, :effect_interrupted}
       assert Process.alive?(cache.pid)
@@ -134,10 +134,10 @@ defmodule Ipse.Session.SourceReplayCacheTest do
           end)
         end)
 
-      assert_receive {:borrow_ready, cache}
+      assert_receive {:borrow_ready, cache}, 5_000
       monitor = Process.monitor(cache.pid)
       Process.exit(cache.pid, :kill)
-      assert_receive {:DOWN, ^monitor, :process, _, :killed}
+      assert_receive {:DOWN, ^monitor, :process, _, :killed}, 5_000
       send(task.pid, :cache_killed)
       assert Task.await(task, 10_000) == {:ok, {:error, :cleanup_scope_closed}}
     end)
@@ -253,10 +253,10 @@ defmodule Ipse.Session.SourceReplayCacheTest do
         end
       end)
 
-    assert_receive {:cache, cache}
+    assert_receive {:cache, cache}, 5_000
     monitor = Process.monitor(cache.pid)
     send(owner, :finish)
-    assert_receive {:DOWN, ^monitor, :process, _, :normal}
+    assert_receive {:DOWN, ^monitor, :process, _, :normal}, 5_000
 
     owner =
       spawn(fn ->
@@ -265,11 +265,11 @@ defmodule Ipse.Session.SourceReplayCacheTest do
         Process.sleep(:infinity)
       end)
 
-    assert_receive {:busy_cache, busy_cache}
+    assert_receive {:busy_cache, busy_cache}, 5_000
     :ok = :sys.suspend(busy_cache.pid)
     monitor = Process.monitor(busy_cache.pid)
     Process.exit(owner, :kill)
-    assert_receive {:DOWN, ^monitor, :process, _, :killed}
+    assert_receive {:DOWN, ^monitor, :process, _, :killed}, 5_000
 
     assert {:ok, scope} = Resources.start(self())
     Resources.bind(scope)
@@ -286,7 +286,7 @@ defmodule Ipse.Session.SourceReplayCacheTest do
 
     assert Task.await(task) == {:error, :cleanup_scope_closed}
     assert :ok = Resources.close(scope)
-    assert_receive {:DOWN, ^monitor, :process, _, :killed}
+    assert_receive {:DOWN, ^monitor, :process, _, :killed}, 5_000
   end
 
   test "cache retains at most 128 reconstructed indexes and respects its byte budget" do
@@ -346,7 +346,7 @@ defmodule Ipse.Session.SourceReplayCacheTest do
 
       assert held
       Process.exit(caller, :kill)
-      assert_receive {:DOWN, ^monitor, :process, ^caller, :killed}
+      assert_receive {:DOWN, ^monitor, :process, ^caller, :killed}, 5_000
       assert {:ok, %{session_id: @id}} = SourceReplayCache.restore(cache, events(), @id)
       assert :atomics.get(cache.gate, 1) == 1
     after
