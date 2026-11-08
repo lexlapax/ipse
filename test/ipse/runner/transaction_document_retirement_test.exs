@@ -57,10 +57,42 @@ defmodule Ipse.Runner.TransactionDocumentRetirementTest do
 
     {:ok, first} = T.retained_share_identity(project)
     {:ok, second} = T.retained_share_identity(collection)
+    identities = [{first.device, first.inode}, {second.device, second.inode}]
+    controller = collection.controller
+    port = collection.port
+    controller_ref = Process.monitor(controller)
+    port_ref = :erlang.monitor(:port, port)
     operation = :crypto.strong_rand_bytes(16)
     deadline = System.monotonic_time(:millisecond) + 5_000
     bad = [{first.device, first.inode}, {second.device, second.inode + 1}]
-    refute :ok == T.document_retirement_arm(collection, operation, bad, deadline)
+
+    assert {:unknown, :transaction_lost} =
+             T.document_retirement_arm(collection, operation, bad, deadline)
+
+    assert_receive {:DOWN, ^controller_ref, :process, ^controller, _}, 5_000
+    assert_receive {:DOWN, ^port_ref, :port, ^port, _}, 5_000
+
+    [project_check, collection_check] =
+      Enum.map(paths, fn path ->
+        {:ok, cap} = T.acquire(path)
+        cap
+      end)
+
+    reacquired =
+      Enum.map([project_check, collection_check], fn cap ->
+        {:ok, identity} = T.retained_share_identity(cap)
+        {identity.device, identity.inode}
+      end)
+
+    assert reacquired === identities
+    check_controller = project_check.controller
+    check_port = project_check.port
+    check_controller_ref = Process.monitor(check_controller)
+    check_port_ref = :erlang.monitor(:port, check_port)
+    assert :ok = T.release(collection_check)
+    assert :ok = T.release(project_check)
+    assert_receive {:DOWN, ^check_controller_ref, :process, ^check_controller, _}, 5_000
+    assert_receive {:DOWN, ^check_port_ref, :port, ^check_port, _}, 5_000
   end
 
   test "a single-lock transaction cannot arm the two-lock mode", %{paths: [path | _]} do

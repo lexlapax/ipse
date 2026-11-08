@@ -454,8 +454,9 @@ Immutable reuse costs an actual `value.verify` mutation. It checks the current
 physical revision and decoded logical byte count/hash under the native lock;
 a matching read alone cannot advance progress. Include this operation, the
 tagged request, source guard and full version-two response in the effect and
-transport budgets. The shared C helper returns the native receipt on both known
-complete and partial results; unknown effects stop without a replay token.
+transport budgets. The shared Collection adapter returns the native receipt on
+both known complete and partial results; unknown effects stop without a replay
+token.
 
 At most eight heads can be live. Source reserves three of the sixteen transport
 slots and Projection reserves two, including when its first effect needs no

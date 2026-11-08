@@ -5945,6 +5945,7 @@ defmodule Ipse.KnowledgeCollectionAdapterSessionTest do
       @tag :draft_abort_resumed_owner
       @tag :draft_abort_release_owner
       @tag :document_retirement_switch_hook
+      @tag String.to_atom("retirement_switch_#{String.replace(phase, "-", "_")}")
       @tag timeout: 180_000
       test "Session loss at native retirement #{phase} keeps the outcome unknown", c do
         {_args, opened} = draft_abort_projection(c)
@@ -5964,7 +5965,29 @@ defmodule Ipse.KnowledgeCollectionAdapterSessionTest do
                      if metadata.generation === generation do
                        cap = Process.get({Ipse.Extension.Collection, :lock_held})
                        {:os_pid, native_pid} = Port.info(cap.port, :os_pid)
-                       send(parent, {:retirement_hook_controller, cap.controller, native_pid})
+
+                       {:ok, [project_cap, ^cap]} =
+                         Ipse.Runner.Transaction.document_retirement_stack()
+
+                       identities =
+                         Enum.map([project_cap, cap], fn held ->
+                           {:ok, identity} =
+                             Ipse.Runner.Transaction.retained_share_identity(held)
+
+                           {identity.device, identity.inode}
+                         end)
+
+                       send(
+                         parent,
+                         {:retirement_hook_controller, self(), cap.controller, cap.port,
+                          native_pid, identities}
+                       )
+
+                       receive do
+                         :continue_hook_switch -> :ok
+                       after
+                         10_000 -> Process.exit(self(), :kill)
+                       end
                      end
                    end,
                    nil
@@ -5981,6 +6004,34 @@ defmodule Ipse.KnowledgeCollectionAdapterSessionTest do
         guard = :sys.get_state(c.pid).lock_guard
         guard_ref = Process.monitor(guard)
 
+        assert :ok =
+                 Session.invoke_export(c.pid, :command, "ext__documents__put", %{
+                   "abort_head" => progress["head_id"],
+                   "kind" => progress["kind"]
+                 })
+
+        assert_receive {:ipse, pid,
+                        {:approval, approval, "extension:collection.store", proposed}},
+                       10_000
+
+        assert pid === c.pid
+        assert get_in(proposed, ["request", "request", "progress", "action"]) === "retire"
+        assert :ok = Session.approve(c.pid, approval, true)
+
+        assert_receive {:retirement_hook_controller, effect, controller, native_port, native_pid,
+                        identities},
+                       10_000
+
+        %{share_barrier: %{owner_port: owner_port, host_port: host_port, document_retirement: _}} =
+          :sys.get_state(c.pid)
+
+        assert Enum.all?([native_port, owner_port, host_port], &(Port.info(&1) != nil))
+        controller_ref = Process.monitor(controller)
+        effect_ref = Process.monitor(effect)
+        native_port_ref = :erlang.monitor(:port, native_port)
+        owner_port_ref = :erlang.monitor(:port, owner_port)
+        host_port_ref = :erlang.monitor(:port, host_port)
+
         watcher =
           Task.async(fn ->
             watched_owner = Process.monitor(c.pid)
@@ -5996,26 +6047,40 @@ defmodule Ipse.KnowledgeCollectionAdapterSessionTest do
             File.write!(proceed, "go")
           end)
 
-        assert :ok =
-                 Session.invoke_export(c.pid, :command, "ext__documents__put", %{
-                   "abort_head" => progress["head_id"],
-                   "kind" => progress["kind"]
-                 })
-
-        assert_receive {:ipse, pid,
-                        {:approval, approval, "extension:collection.store", proposed}},
-                       10_000
-
-        assert pid === c.pid
-        assert get_in(proposed, ["request", "request", "progress", "action"]) === "retire"
-        assert :ok = Session.approve(c.pid, approval, true)
-        assert_receive {:retirement_hook_controller, controller, native_pid}, 10_000
-        controller_ref = Process.monitor(controller)
+        send(effect, :continue_hook_switch)
         assert_receive {:DOWN, ^owner_ref, :process, _, :killed}, 10_000
         Task.await(watcher, 10_000)
         assert_receive {:DOWN, ^guard_ref, :process, ^guard, _}, 10_000
+        assert_receive {:DOWN, ^effect_ref, :process, ^effect, _}, 10_000
         assert_receive {:DOWN, ^controller_ref, :process, ^controller, _}, 10_000
+        assert_receive {:DOWN, ^native_port_ref, :port, ^native_port, _}, 10_000
+        assert_receive {:DOWN, ^owner_port_ref, :port, ^owner_port, _}, 10_000
+        assert_receive {:DOWN, ^host_port_ref, :port, ^host_port, _}, 10_000
         refute File.exists?("/proc/#{native_pid}")
+
+        paths = [
+          Path.join([c.home, "project-identities", ".lock"]),
+          Path.join([document.root, document.namespace, ".lock"])
+        ]
+
+        [project_check, collection_check] =
+          Enum.map(paths, fn path ->
+            {:ok, cap} = Ipse.Runner.Transaction.acquire(path, cwd: c.opts[:cwd])
+            cap
+          end)
+
+        check_controller = project_check.controller
+        check_port = project_check.port
+        check_controller_ref = Process.monitor(check_controller)
+        check_port_ref = :erlang.monitor(:port, check_port)
+
+        reacquired =
+          Enum.map([project_check, collection_check], fn cap ->
+            {:ok, identity} = Ipse.Runner.Transaction.retained_share_identity(cap)
+            {identity.device, identity.inode}
+          end)
+
+        assert reacquired === identities
         assert {:ok, %{"release_claim" => "unknown"}} = Session.Saved.inspect_saved(c.dir, c.id)
 
         if phase === "before-decision" do
@@ -6025,6 +6090,11 @@ defmodule Ipse.KnowledgeCollectionAdapterSessionTest do
           # survive. Retain the fixture; no retry or inferred outcome is safe.
           assert {:ok, _} = File.read(root_file)
         end
+
+        assert :ok = Ipse.Runner.Transaction.release(collection_check)
+        assert :ok = Ipse.Runner.Transaction.release(project_check)
+        assert_receive {:DOWN, ^check_controller_ref, :process, ^check_controller, _}, 5_000
+        assert_receive {:DOWN, ^check_port_ref, :port, ^check_port, _}, 5_000
       end
     end
   end
