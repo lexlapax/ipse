@@ -21,8 +21,9 @@ The base was `f9ccb3136bf5546dcec9d77929b15d22cdd01afd`. The exact
 [candidate patch](managed-read-replay-containment-20261103/candidate.patch),
 [preimage hashes](managed-read-replay-containment-20261103/preimages.sha256),
 [output hashes](managed-read-replay-containment-20261103/outputs.sha256)
-and [verified overlay](managed-read-replay-containment-20261103/overlay/) contain
-the one production module, focused tests and two reviewed manuals. The
+and verified overlay (removed from the archive on 2026-11-08; retrievable
+from commit `29cb7ac9`) contain the one production module, focused tests and
+two reviewed manuals. The
 [archived overlay manifest](managed-read-replay-containment-20261103/archived-overlay.sha256)
 uses `.md.txt` for the historical manual copies and verifies all four files.
 The

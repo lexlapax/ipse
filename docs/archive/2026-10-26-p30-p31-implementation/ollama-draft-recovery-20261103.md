@@ -22,9 +22,9 @@ sources, an isolated Mix/Hex home and a private fixture home. The nine
 matched the live overlay before snapshotting. The
 [post-format manifest](ollama-draft-recovery-20261103/post-format.sha256)
 matched the isolated files before and after the focused suite. Exact tested
-[Elixir overlays](ollama-draft-recovery-20261103/overlay/) are retained; the
-two manual copies there have a `.md.txt` suffix and match their corresponding
-manifest hashes. The [archived-overlay manifest](ollama-draft-recovery-20261103/archived-overlays.sha256)
+Elixir overlays were removed from the archive on 2026-11-08 and remain
+retrievable from commit `29cb7ac9`; the two manual copies there had a `.md.txt`
+suffix and matched their corresponding manifest hashes. The [archived-overlay manifest](ollama-draft-recovery-20261103/archived-overlays.sha256)
 can verify all nine copies directly from the evidence directory. These historical
 copies do not promote the implementation into the current runtime.
 
