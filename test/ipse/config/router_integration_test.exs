@@ -1,5 +1,6 @@
 defmodule Ipse.Config.RouterIntegrationTest do
   use ExUnit.Case, async: false
+  import Ipse.Test.ResumeAssertions
   alias Ipse.Config.Profiles
   alias Ipse.Extension.ModelCall
   alias Ipse.Usage.{Budget, Costs}
@@ -165,10 +166,7 @@ defmodule Ipse.Config.RouterIntegrationTest do
     assert {:ok, resumed_events} = Ipse.Journal.load(c.state, id)
     assert Enum.take(resumed_events, length(before_events)) == before_events
 
-    assert [%{"type" => "session_release_owner_started", "session_id" => ^id}] =
-             Enum.drop(resumed_events, length(before_events))
-
-    assert String.starts_with?(File.read!(path), bytes)
+    assert_idle_resume_journal(path, bytes, id)
     assert :ok = Ipse.Session.close_confirmed(pid)
     File.write!(path, "{\"type\"", [:append])
     torn = File.read!(path)

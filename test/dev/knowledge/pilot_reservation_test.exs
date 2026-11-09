@@ -14,6 +14,11 @@ defmodule Ipse.Development.Knowledge.PilotReservationTest do
 
   @id "6a505a8bc83441888b1997c7f0f941f0"
   @error {:error, :pilot_reservation_unavailable}
+  # The reservation requires the Linux-only retained protected header lock.
+  @linux_reservation if(:os.type() == {:unix, :linux},
+                       do: false,
+                       else: "Linux native retained header lock"
+                     )
 
   setup do
     home = Path.join(System.tmp_dir!(), "ipse-pilot-reservation-" <> Ipse.Usage.id())
@@ -59,6 +64,23 @@ defmodule Ipse.Development.Knowledge.PilotReservationTest do
     declaration = %{"case_hash" => "synthetic"}
     owner = self()
 
+    if :os.type() == {:unix, :linux} do
+      linux_reservation(c, declaration, owner)
+    else
+      # The retained header lock is Linux-only; elsewhere nothing is reserved.
+      assert @error =
+               Reservation.with_reservation_in_home(c.home, declaration, fn _ ->
+                 send(owner, :entered)
+                 {:ok, :done}
+               end)
+
+      refute_received :entered
+      refute File.exists?(Path.join(c.root, @id <> ".lock"))
+      refute File.exists?(Path.join(c.root, @id <> ".reservation"))
+    end
+  end
+
+  defp linux_reservation(c, declaration, owner) do
     assert {:ok, :done} =
              Reservation.with_reservation_in_home(c.home, declaration, fn guard ->
                assert :ok = guard.()
@@ -84,6 +106,7 @@ defmodule Ipse.Development.Knowledge.PilotReservationTest do
     assert {after_lock.major_device, after_lock.inode} == {before.major_device, before.inode}
   end
 
+  @tag skip: @linux_reservation
   test "the actual request wrapper uses the retained one-shot reservation", c do
     alias Ipse.Development.Knowledge.{LocalPilot, ReservationFakeModels}
     path = Path.join(c.home, "attempts.jsonl")
@@ -126,6 +149,7 @@ defmodule Ipse.Development.Knowledge.PilotReservationTest do
     end
   end
 
+  @tag skip: @linux_reservation
   test "a concurrent owner cannot acquire the retained lock or run a second callback", c do
     owner = self()
 
@@ -154,6 +178,7 @@ defmodule Ipse.Development.Knowledge.PilotReservationTest do
     assert_receive {:DOWN, ^monitor, :process, ^pid, :normal}, 5_000
   end
 
+  @tag skip: @linux_reservation
   test "owner death after reservation leaves the whole authorization consumed", c do
     owner = self()
 
@@ -195,6 +220,7 @@ defmodule Ipse.Development.Knowledge.PilotReservationTest do
              end)
   end
 
+  @tag skip: @linux_reservation
   test "removing a live reservation invalidates the guard and the retained lock blocks reset",
        c do
     assert @error =

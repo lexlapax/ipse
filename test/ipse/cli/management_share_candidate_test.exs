@@ -8,6 +8,15 @@ defmodule Ipse.CLI.ManagementShareCandidateTest do
   alias Ipse.Session.Resources
 
   test "unused owner-control cancellation requires its owner and an exact native acknowledgement" do
+    if :os.type() == {:unix, :linux} do
+      unused_owner_control_cancellation()
+    else
+      # Owner control is a Linux-only native facility and refuses elsewhere.
+      assert {:error, :owner_control_unavailable} = Runner.open_owner_control()
+    end
+  end
+
+  defp unused_owner_control_cancellation do
     assert {:ok, port} = Runner.open_owner_control()
     assert frame(port, ?R) == "owner-control-v1"
     deadline = System.monotonic_time(:millisecond) + 5_000

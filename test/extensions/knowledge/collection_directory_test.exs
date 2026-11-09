@@ -82,7 +82,7 @@ defmodule Ipse.KnowledgeCollectionDirectoryTest do
   end
 
   @tag :generation_paged_phase_budgets
-  @tag timeout: 120_000
+  @tag timeout: 300_000
   test "maximum metadata manifest and eight-run merge steps retain complete invocation budgets" do
     result = run_fixture("test/support/generation_paged_phases.exs")
     assert result["manifest"]["maximum_reads"] <= 512

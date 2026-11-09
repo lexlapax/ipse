@@ -387,6 +387,9 @@ defmodule Ipse.HandoffTest do
     journal = Path.join(c.dir, id <> ".jsonl")
     before = File.read!(journal)
     {:ok, original_events} = Journal.load(c.dir, id)
+    # Only the Linux release-receipt layout records owner markers and release
+    # intents; the portable legacy layout appends nothing on idle resume/close.
+    release_layout? = :os.type() == {:unix, :linux}
 
     Enum.reduce(
       [fn -> File.write!(path, "corrupt replacement") end, fn -> File.rm!(path) end],
@@ -399,9 +402,8 @@ defmodule Ipse.HandoffTest do
         assert String.starts_with?(File.read!(journal), previous)
         {:ok, events} = Journal.load(c.dir, id)
 
-        assert Enum.map(Enum.drop(events, count), & &1["type"]) == [
-                 "session_release_owner_started"
-               ]
+        assert Enum.map(Enum.drop(events, count), & &1["type"]) ==
+                 if(release_layout?, do: ["session_release_owner_started"], else: [])
 
         assert {:ok, ^live} = Session.restore_context(events)
         assert Enum.count(events, &(&1["type"] == "handoff_imported")) == 1
@@ -409,12 +411,17 @@ defmodule Ipse.HandoffTest do
         assert :ok = Session.close(resumed)
         {:ok, closed} = Journal.load(c.dir, id)
 
-        assert Enum.map(Enum.drop(closed, count), & &1["type"]) == [
-                 "session_release_owner_started",
-                 "session_release_intent"
-               ]
+        if release_layout? do
+          assert Enum.map(Enum.drop(closed, count), & &1["type"]) == [
+                   "session_release_owner_started",
+                   "session_release_intent"
+                 ]
 
-        assert {:ok, _} = Ipse.Session.ReleaseReceipt.intents(closed, id)
+          assert {:ok, _} = Ipse.Session.ReleaseReceipt.intents(closed, id)
+        else
+          assert closed == events
+        end
+
         {File.read!(journal), length(closed)}
       end
     )

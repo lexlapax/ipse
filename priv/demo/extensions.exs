@@ -147,9 +147,16 @@ defmodule Ipse.ExtensionDemo do
       suffix =
         binary_part(after_resume, byte_size(bytes), byte_size(after_resume) - byte_size(bytes))
 
-      [owner_line] = String.split(suffix, "\n", trim: true)
-      true = suffix == owner_line <> "\n"
-      true = Ipse.Session.ReleaseReceipt.valid_owner_marker?(Jason.decode!(owner_line), info.id)
+      # Fresh Linux sessions use the release-receipt layout, whose idle resume
+      # records only a new owner marker. The portable legacy layout appends nothing.
+      if :os.type() == {:unix, :linux} do
+        [owner_line] = String.split(suffix, "\n", trim: true)
+        true = suffix == owner_line <> "\n"
+        true = Ipse.Session.ReleaseReceipt.valid_owner_marker?(Jason.decode!(owner_line), info.id)
+      else
+        "" = suffix
+      end
+
       ^lifecycle = lifecycle_views(opts[:state_dir], info.id)
       :ok = Ipse.Session.close_confirmed(resumed)
 

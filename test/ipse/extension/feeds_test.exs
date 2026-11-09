@@ -1015,14 +1015,7 @@ defmodule Ipse.Extension.FeedsTest do
     {:ok, resumed} = resume(c, cfg, id)
     assert_receive {:ipse, ^resumed, {:question, ^question, _}}, 3_000
     assert File.read!(c.trace) == old
-    after_resume = File.read!(Path.join(c.dir, id <> ".jsonl"))
-    assert String.starts_with?(after_resume, bytes)
-
-    suffix =
-      binary_part(after_resume, byte_size(bytes), byte_size(after_resume) - byte_size(bytes))
-
-    [marker] = String.split(suffix, "\n", trim: true) |> Enum.map(&Jason.decode!/1)
-    assert Ipse.Session.ReleaseReceipt.valid_owner_marker?(marker, id)
+    assert_idle_resume_journal(Path.join(c.dir, id <> ".jsonl"), bytes, id)
     assert {:error, :invalid_answer} = Session.answer(resumed, question, %{})
     assert status(resumed)["enrolled"] == false
     :ok = Session.answer(resumed, question, %{"choice" => "explicit private answer"})

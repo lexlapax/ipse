@@ -6,6 +6,21 @@ defmodule Ipse.Session.StoredSourcesTest do
   alias Ipse.Session.{Input, Saved, SourceIndex, SourceWindow, StoredSources}
   alias Ipse.Test.ManagedPolicy, as: F
 
+  # Shareable original-source locks, owner controls and the session acceptance
+  # guard are Linux-only native facilities; elsewhere they refuse before use.
+  @linux_source_lease if(:os.type() == {:unix, :linux},
+                        do: false,
+                        else: "Linux native shareable source lease"
+                      )
+  @linux_owner_control if(:os.type() == {:unix, :linux},
+                         do: false,
+                         else: "Linux native owner control"
+                       )
+  @linux_acceptance_guard if(:os.type() == {:unix, :linux},
+                            do: false,
+                            else: "Linux native session acceptance guard"
+                          )
+
   defmodule LocalSourceOwner do
     use GenServer
 
@@ -360,6 +375,7 @@ defmodule Ipse.Session.StoredSourcesTest do
     |> Map.put(:source_binding, {:snapshot, purpose, JSON.sha256("bound result fixture")})
   end
 
+  @tag skip: @linux_source_lease
   test "grouped source leases hold both inactive sessions and preserve proof order", c do
     assert :verified =
              StoredSources.with_shareable_groups(
@@ -392,6 +408,7 @@ defmodule Ipse.Session.StoredSourcesTest do
     end
   end
 
+  @tag skip: @linux_source_lease
   test "active and inactive proof union preserves exact order and retains inactive owners", c do
     assert {:ok, owner} = LocalSourceOwner.start_link(:stable)
 
@@ -442,6 +459,7 @@ defmodule Ipse.Session.StoredSourcesTest do
     assert :ok = Runner.unlock(lock)
   end
 
+  @tag skip: @linux_source_lease
   test "source union refuses duplicates and handles active-only and inactive-only sets", c do
     assert {:ok, owner} = LocalSourceOwner.start_link(:stable)
 
@@ -506,6 +524,7 @@ defmodule Ipse.Session.StoredSourcesTest do
     end
   end
 
+  @tag skip: @linux_source_lease
   test "two grouped sources transfer and settle through one native collector", c do
     assert :transferred =
              StoredSources.with_shareable_groups(c.context, [c.proof, c.second_proof], fn _,
@@ -552,6 +571,7 @@ defmodule Ipse.Session.StoredSourcesTest do
              end)
   end
 
+  @tag skip: @linux_source_lease
   test "one shareable original lease covers exact proofs from the same session", c do
     assert :verified =
              StoredSources.with_shareable_verified_many(c.context, [c.proof, c.short_proof], fn
@@ -587,6 +607,7 @@ defmodule Ipse.Session.StoredSourcesTest do
     assert :ok = Runner.unlock(lock)
   end
 
+  @tag skip: @linux_source_lease
   test "grouped source identities cannot be swapped between original sessions", c do
     assert :ok =
              StoredSources.with_shareable_groups(c.context, [c.proof, c.second_proof], fn _,
@@ -608,6 +629,7 @@ defmodule Ipse.Session.StoredSourcesTest do
              end)
   end
 
+  @tag skip: @linux_source_lease
   test "display authority binds the retained transaction stack to exact source proofs", c do
     root = Path.join(c.context.history_dir, "source-display-authority")
     File.mkdir!(root)
@@ -694,6 +716,7 @@ defmodule Ipse.Session.StoredSourcesTest do
     Enum.each(Enum.reverse(caps), fn cap -> assert :ok = Ipse.Runner.Transaction.release(cap) end)
   end
 
+  @tag skip: @linux_source_lease
   test "a shared original lease refuses duplicate, cross-session and active-session proofs", c do
     owner = self()
 
@@ -743,6 +766,7 @@ defmodule Ipse.Session.StoredSourcesTest do
     assert :ok = Runner.unlock(lock)
   end
 
+  @tag skip: @linux_source_lease
   test "shareable source leases are bound to their owner and close with the source callback", c do
     assert {:ok, token} =
              StoredSources.with_shareable_verified(c.context, c.proof, fn source, token ->
@@ -781,6 +805,7 @@ defmodule Ipse.Session.StoredSourcesTest do
     assert :ok = Runner.unlock(lock)
   end
 
+  @tag skip: @linux_source_lease
   test "shareable original source settles an actual native lease transfer", c do
     assert :transferred =
              StoredSources.with_shareable_verified(c.context, c.proof, fn _, token ->
@@ -817,6 +842,7 @@ defmodule Ipse.Session.StoredSourcesTest do
     assert :ok = Runner.unlock(lock)
   end
 
+  @tag skip: @linux_source_lease
   test "native transaction retains the original source through a root decision", c do
     root = Path.join(c.context.history_dir, "transaction-source")
     File.mkdir!(root)
@@ -869,6 +895,7 @@ defmodule Ipse.Session.StoredSourcesTest do
     assert :ok = Runner.unlock(lock)
   end
 
+  @tag skip: @linux_source_lease
   test "native transaction retains two original sessions through a root decision", c do
     root = Path.join(c.context.history_dir, "transaction-two-sources")
     File.mkdir!(root)
@@ -929,6 +956,7 @@ defmodule Ipse.Session.StoredSourcesTest do
     |> Enum.each(fn cap -> assert :ok = Ipse.Runner.Transaction.release(cap) end)
   end
 
+  @tag skip: @linux_owner_control
   test "native transaction retains two original sources with both owner controls", c do
     root = Path.join(c.context.history_dir, "transaction-controlled-sources")
     File.mkdir!(root)
@@ -985,6 +1013,7 @@ defmodule Ipse.Session.StoredSourcesTest do
   end
 
   @tag :chat_acceptance_guard
+  @tag skip: @linux_acceptance_guard
   test "session acceptance guard permits one root decision under all three owners", c do
     alias Ipse.Runner.Transaction, as: T
     {caps, cap, directory} = chat_guard_fixture(c)
@@ -1014,6 +1043,7 @@ defmodule Ipse.Session.StoredSourcesTest do
   end
 
   @tag :chat_acceptance_guard
+  @tag skip: @linux_acceptance_guard
   test "session acceptance guard refuses unarmed root switching", c do
     alias Ipse.Runner.Transaction, as: T
     {_caps, cap, directory} = chat_guard_fixture(c)
@@ -1040,6 +1070,7 @@ defmodule Ipse.Session.StoredSourcesTest do
   end
 
   @tag :chat_acceptance_guard
+  @tag skip: @linux_acceptance_guard
   test "session acceptance guard refuses missing controls and extra sources", c do
     alias Ipse.Runner.Transaction, as: T
 
@@ -1086,6 +1117,7 @@ defmodule Ipse.Session.StoredSourcesTest do
   end
 
   @tag :chat_acceptance_guard
+  @tag skip: @linux_acceptance_guard
   test "session acceptance guard permits no second switch", c do
     alias Ipse.Runner.Transaction, as: T
     {_caps, cap, directory} = chat_guard_fixture(c)
@@ -1112,6 +1144,7 @@ defmodule Ipse.Session.StoredSourcesTest do
   end
 
   @tag :chat_acceptance_guard
+  @tag skip: @linux_acceptance_guard
   test "session acceptance source import refuses a substituted lock identity", c do
     alias Ipse.Runner.Transaction, as: T
     {_caps, cap, directory} = chat_guard_fixture(c)
@@ -1155,6 +1188,7 @@ defmodule Ipse.Session.StoredSourcesTest do
   end
 
   @tag :chat_acceptance_guard
+  @tag skip: @linux_acceptance_guard
   test "session acceptance guard refuses rearming, deadline widening and owner loss", c do
     alias Ipse.Runner.Transaction, as: T
 
@@ -1515,6 +1549,7 @@ defmodule Ipse.Session.StoredSourcesTest do
     assert File.read!(Path.join(directory, "root.json")) == "old"
   end
 
+  @tag skip: @linux_source_lease
   test "loss of either original session prevents a two-source root decision", c do
     for {lost_id, index} <- Enum.with_index([c.proof["session_id"], c.second_proof["session_id"]]) do
       root = Path.join(c.context.history_dir, "transaction-two-source-loss-#{index}")
@@ -1996,6 +2031,7 @@ defmodule Ipse.Session.StoredSourcesTest do
     assert :ok = Runner.unlock(lock)
   end
 
+  @tag skip: @linux_source_lease
   test "pending acceptance retains and verifies its original source under the matching project",
        c do
     context =

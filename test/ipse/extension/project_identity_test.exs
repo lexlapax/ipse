@@ -34,7 +34,7 @@ defmodule Ipse.Extension.ProjectIdentityTest do
       ~S'''
       #[path=__TRANSACTION__] mod ipse_transaction;
       #[path=__STORAGE__] mod ipse_storage;
-      #[path=__LEASE_TRANSFER__] mod ipse_lease_transfer;
+      #[cfg(target_os="linux")] #[path=__LEASE_TRANSFER__] mod ipse_lease_transfer;
       #[cfg(target_os="linux")] #[path=__LEASE_SINK__] mod ipse_lease_sink;
       #[cfg(target_os="linux")] #[path=__OWNER_CONTROL__] mod ipse_owner_control;
       use std::{env,fs,io::Write,process::{Command,exit},thread,time::Duration};

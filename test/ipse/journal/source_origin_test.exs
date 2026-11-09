@@ -200,9 +200,16 @@ defmodule Ipse.Journal.SourceOriginTest do
     before = File.read!(copied)
     copied_opts = Keyword.merge(opts, state_dir: c.copy, id: id)
 
-    # Resume first requires an existing lock inode. Exercise both the missing
-    # lock refusal and the separate copied-journal identity check.
-    assert {:error, "source lock unavailable"} =
+    # On Linux, resume first requires an existing lock inode. Exercise both the
+    # missing lock refusal and the separate copied-journal identity check.
+    # Elsewhere the legacy resume lock creates a missing lock file, so the
+    # copied-journal identity check is the first refusal.
+    first_refusal =
+      if :os.type() == {:unix, :linux},
+        do: {:error, "source lock unavailable"},
+        else: {:error, :journal_origin_unavailable}
+
+    assert ^first_refusal =
              DynamicSupervisor.start_child(Ipse.Sessions, {Ipse.Session, copied_opts})
 
     assert File.read!(copied) == before

@@ -293,15 +293,29 @@ defmodule Ipse.DelegationDemo do
       before_close = File.read!(path)
       :ok = Session.close_confirmed(pid)
       {:ok, closed_events} = Ipse.Journal.load(opts[:state_dir], id)
-      [closure, release] = Enum.drop(closed_events, length(events))
       true = Enum.take(closed_events, length(events)) == events
-      "lifecycle_epoch_closed" = closure["type"]
-      "close" = closure["closure"]
-      false = closure["cleanup_confirmed"]
-      {:ok, ^release} = Ipse.Session.ReleaseReceipt.current_intent(closed_events, id)
-      true = release["epoch_id"] == closure["epoch_id"]
-      true = release["closure_sha256"] == Ipse.JSON.digest([closure])
-      :signed_release_claim = Ipse.Session.ReleaseReceipt.inspect_current(opts[:state_dir], id)
+      # Fresh Linux sessions use the release-receipt layout: close leaves cleanup
+      # to a signed release intent, and idle resume records a new owner marker.
+      # The portable legacy layout confirms cleanup in its closure and resumes
+      # without appending.
+      release_layout = :os.type() == {:unix, :linux}
+
+      if release_layout do
+        [closure, release] = Enum.drop(closed_events, length(events))
+        "lifecycle_epoch_closed" = closure["type"]
+        "close" = closure["closure"]
+        false = closure["cleanup_confirmed"]
+        {:ok, ^release} = Ipse.Session.ReleaseReceipt.current_intent(closed_events, id)
+        true = release["epoch_id"] == closure["epoch_id"]
+        true = release["closure_sha256"] == Ipse.JSON.digest([closure])
+        :signed_release_claim = Ipse.Session.ReleaseReceipt.inspect_current(opts[:state_dir], id)
+      else
+        [closure] = Enum.drop(closed_events, length(events))
+        "lifecycle_epoch_closed" = closure["type"]
+        "close" = closure["closure"]
+        true = closure["cleanup_confirmed"]
+      end
+
       closed_bytes = File.read!(path)
       true = String.starts_with?(closed_bytes, before_close)
 
@@ -312,8 +326,6 @@ defmodule Ipse.DelegationDemo do
         :idle = Session.info(resumed).phase
         {:ok, resumed_events} = Ipse.Journal.load(opts[:state_dir], id)
         true = Enum.take(resumed_events, length(closed_events)) == closed_events
-        [owner] = Enum.drop(resumed_events, length(closed_events))
-        true = Ipse.Session.ReleaseReceipt.valid_owner_marker?(owner, id)
         after_resume = File.read!(path)
         true = String.starts_with?(after_resume, closed_bytes)
 
@@ -324,9 +336,16 @@ defmodule Ipse.DelegationDemo do
             byte_size(after_resume) - byte_size(closed_bytes)
           )
 
-        [owner_line] = String.split(suffix, "\n", trim: true)
-        ^owner = Jason.decode!(owner_line)
-        true = suffix == owner_line <> "\n"
+        if release_layout do
+          [owner] = Enum.drop(resumed_events, length(closed_events))
+          true = Ipse.Session.ReleaseReceipt.valid_owner_marker?(owner, id)
+          [owner_line] = String.split(suffix, "\n", trim: true)
+          ^owner = Jason.decode!(owner_line)
+          true = suffix == owner_line <> "\n"
+        else
+          true = resumed_events == closed_events
+          "" = suffix
+        end
       after
         Session.close_confirmed(resumed)
       end

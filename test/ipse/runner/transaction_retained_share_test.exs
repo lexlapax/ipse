@@ -1,5 +1,8 @@
 defmodule Ipse.Runner.TransactionRetainedShareTest do
   use ExUnit.Case, async: false
+  # Retained-share identity and transfer are compiled only into the Linux helper.
+  @moduletag skip:
+               if(:os.type() == {:unix, :linux}, do: false, else: "Linux native retained share")
   alias Ipse.Runner.Transaction, as: T
 
   setup do

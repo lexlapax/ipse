@@ -46,6 +46,8 @@ defmodule Ipse.Development.StorageContinuationTest do
     refute digest == Continuation.record_digest(put_in(rows, ["a", "value", "evidence", "v"], 2))
   end
 
+  # Pure computation: about 17 s on a fast Linux host, slower on shared CI runners.
+  @tag timeout: 180_000
   test "an offline checkpoint reconstructs unstarted actions without renewing note times" do
     {_, before_offline, [], 0} =
       Ipse.Development.StorageAnnual.regenerate(119, 0, "representative")

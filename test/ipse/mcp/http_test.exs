@@ -351,15 +351,31 @@ defmodule Ipse.MCP.HTTPTest do
     {:ok, closed_events} = Ipse.Journal.load(opts[:state_dir], id)
     assert Enum.take(closed_events, length(events)) == events
 
-    assert [
-             %{
-               "type" => "lifecycle_epoch_closed",
-               "session_id" => ^id,
-               "closure" => "close",
-               "cleanup_confirmed" => false
-             },
-             %{"type" => "session_release_intent", "session_id" => ^id}
-           ] = Enum.drop(closed_events, length(events))
+    # Only the Linux release-receipt layout defers cleanup confirmation to a
+    # signed release intent and records resumed owners; the portable legacy
+    # layout confirms cleanup in the closure and appends nothing on resume.
+    release_layout? = :os.type() == {:unix, :linux}
+
+    if release_layout? do
+      assert [
+               %{
+                 "type" => "lifecycle_epoch_closed",
+                 "session_id" => ^id,
+                 "closure" => "close",
+                 "cleanup_confirmed" => false
+               },
+               %{"type" => "session_release_intent", "session_id" => ^id}
+             ] = Enum.drop(closed_events, length(events))
+    else
+      assert [
+               %{
+                 "type" => "lifecycle_epoch_closed",
+                 "session_id" => ^id,
+                 "closure" => "close",
+                 "cleanup_confirmed" => true
+               }
+             ] = Enum.drop(closed_events, length(events))
+    end
 
     {:ok, resumed} =
       DynamicSupervisor.start_child(Ipse.Sessions, {Ipse.Session, Keyword.put(opts, :id, id)})
@@ -367,8 +383,12 @@ defmodule Ipse.MCP.HTTPTest do
     assert {:ok, resumed_events} = Ipse.Journal.load(opts[:state_dir], id)
     assert Enum.take(resumed_events, length(closed_events)) == closed_events
 
-    assert [%{"type" => "session_release_owner_started", "session_id" => ^id}] =
-             Enum.drop(resumed_events, length(closed_events))
+    if release_layout? do
+      assert [%{"type" => "session_release_owner_started", "session_id" => ^id}] =
+               Enum.drop(resumed_events, length(closed_events))
+    else
+      assert resumed_events == closed_events
+    end
 
     assert {:ok, _} = Ipse.Session.Saved.restore(resumed_events, id)
     assert :ok = Ipse.Session.close_confirmed(resumed)

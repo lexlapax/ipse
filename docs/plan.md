@@ -63,7 +63,7 @@ preserves the dated narrative previously kept here.
 
 | Order and lane | Next result | Closure evidence |
 | --- | --- | --- |
-| Verification | Local whole-source baseline passed at `b6df1b11` ([record](archive/2026-11-08-whole-source-baseline/index.md)); hosted CI partitions, other platforms, packages and installed checks remain | Rerun the baseline after each integrated change set; record platform, package and installed results separately |
+| Verification | Local whole-source baseline passed at `b6df1b11` ([record](archive/2026-11-08-whole-source-baseline/index.md)); hosted Ubuntu CI passed at `751e3724` with `:native_storage` tests excluded; macOS CI fixes are committed but unverified on macOS; other platforms, packages and installed checks remain | Rerun the baseline after each integrated change set; record platform, package and installed results separately |
 | Decisions → Verification | Qualified completion of P30's locally verified scope | Baseline plus a reviewed disposition for every engine and consumer; no qualified default |
 | Notes → C1a/E | Populated recall over a fresh 2,000-note native cohort, then one complete 40-turn/57-effect integrated day | Opt-in full-cohort run on current source with retained evidence; measured elapsed time and resources decide whether longer workloads are feasible |
 | Documents 3 → 2 → 1 | Declared replacement, retained history, cleanup and migration for the bounded source-runtime recipe | Measured native journal/allocation peaks under unchanged limits; a layout that fits the live-key and journal ceilings |

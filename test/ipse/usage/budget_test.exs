@@ -2,6 +2,7 @@ Code.require_file("../../../priv/demo/usage.exs", __DIR__)
 
 defmodule Ipse.BudgetTest do
   use ExUnit.Case, async: false
+  import Ipse.Test.ResumeAssertions
   alias Ipse.Usage.Budget
   alias Ipse.Usage
   alias Ipse.Session
@@ -165,8 +166,16 @@ defmodule Ipse.BudgetTest do
     [journal] = Path.wildcard(Path.join(c.dir, "*.jsonl"))
     id = journal |> Path.basename(".jsonl")
     assert {:ok, events} = Ipse.Journal.load(c.dir, id)
-    [marker] = Enum.filter(events, &(&1["type"] == "session_release_owner_started"))
-    assert Ipse.Session.ReleaseReceipt.valid_owner_marker?(marker, id)
+    owners = Enum.filter(events, &(&1["type"] == "session_release_owner_started"))
+
+    # Only the Linux release-receipt layout records a release owner.
+    if :os.type() == {:unix, :linux} do
+      [marker] = owners
+      assert Ipse.Session.ReleaseReceipt.valid_owner_marker?(marker, id)
+    else
+      assert owners == []
+    end
+
     assert File.ls!(budgets) == []
     refute_receive {:budget_provider, _, _, _}, 20
   end
@@ -535,14 +544,7 @@ defmodule Ipse.BudgetTest do
     journal = Path.join(c.dir, id <> ".jsonl")
     before = File.read!(journal)
     assert {:ok, resumed} = start(c, config, id)
-    after_start = File.read!(journal)
-    assert String.starts_with?(after_start, before)
-
-    suffix =
-      binary_part(after_start, byte_size(before), byte_size(after_start) - byte_size(before))
-
-    [marker] = String.split(suffix, "\n", trim: true) |> Enum.map(&Jason.decode!/1)
-    assert Ipse.Session.ReleaseReceipt.valid_owner_marker?(marker, id)
+    assert_idle_resume_journal(journal, before, id)
     assert :ok = Session.close(resumed)
     ledger = Path.join([c.dir, "budgets", id <> ".jsonl"])
     [header | _] = File.read!(ledger) |> String.split("\n", trim: true)
@@ -879,14 +881,7 @@ defmodule Ipse.BudgetTest do
     journal = Path.join(c.dir, id <> ".jsonl")
     before = File.read!(journal)
     assert {:ok, resumed} = start(c, config, id)
-    after_start = File.read!(journal)
-    assert String.starts_with?(after_start, before)
-
-    suffix =
-      binary_part(after_start, byte_size(before), byte_size(after_start) - byte_size(before))
-
-    [marker] = String.split(suffix, "\n", trim: true) |> Enum.map(&Jason.decode!/1)
-    assert Ipse.Session.ReleaseReceipt.valid_owner_marker?(marker, id)
+    assert_idle_resume_journal(journal, before, id)
     refute_receive {:budget_provider, _, _, _}, 50
     assert :ok = Session.close(resumed)
   end

@@ -2220,19 +2220,29 @@ defmodule Ipse.KnowledgeDocumentAcquisitionSessionTest do
   end
 
   defp assert_retained_after_close(run, id, retained, journal) do
-    assert {:ok, %{"release_claim" => "signed_release_claim"}} =
-             Session.Saved.inspect_saved(run.dir, id)
-
     assert {:ok, closed_events} = Journal.load(run.dir, id)
 
-    assert %{"type" => "session_release_intent", "operation_id" => operation} =
-             List.last(closed_events)
+    # Only the release-receipt layout (fresh Linux Sessions) signs a release
+    # claim; the portable legacy layout records no release intent or sidecar.
+    if hd(closed_events)["metadata"]["release_receipt_layout"] ==
+         Ipse.Session.ReleaseReceipt.layout() do
+      assert {:ok, %{"release_claim" => "signed_release_claim"}} =
+               Session.Saved.inspect_saved(run.dir, id)
 
-    release = Path.join(run.dir, ".release-" <> id <> "-" <> operation)
-    refute Map.has_key?(retained, release)
-    after_close = retained_files(run.opts[:config][:home])
-    assert Map.has_key?(after_close, release)
-    assert Map.drop(after_close, [journal, release]) == Map.delete(retained, journal)
+      assert %{"type" => "session_release_intent", "operation_id" => operation} =
+               List.last(closed_events)
+
+      release = Path.join(run.dir, ".release-" <> id <> "-" <> operation)
+      refute Map.has_key?(retained, release)
+      after_close = retained_files(run.opts[:config][:home])
+      assert Map.has_key?(after_close, release)
+      assert Map.drop(after_close, [journal, release]) == Map.delete(retained, journal)
+    else
+      assert {:ok, %{"release_claim" => "unknown"}} = Session.Saved.inspect_saved(run.dir, id)
+      refute Enum.any?(closed_events, &(&1["type"] == "session_release_intent"))
+      after_close = retained_files(run.opts[:config][:home])
+      assert Map.delete(after_close, journal) == Map.delete(retained, journal)
+    end
   end
 
   defp retained_files(home) do

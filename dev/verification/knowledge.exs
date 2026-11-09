@@ -518,9 +518,21 @@ defmodule IpseKnowledgeExample.Proof do
                   byte_size(journal) - byte_size(saved.journal)
                 )
 
-              [owner] = suffix |> String.split("\n", trim: true) |> Enum.map(&Jason.decode!/1)
-              "session_release_owner_started" = owner["type"]
-              true = owner["session_id"] == saved.id
+              resumed = suffix |> String.split("\n", trim: true) |> Enum.map(&Jason.decode!/1)
+
+              # Only release-receipt journals (created on Linux) start a resumed
+              # owner; legacy journals resume without appending.
+              [header | _] = String.split(saved.journal, "\n", parts: 2)
+              receipt = is_binary(Jason.decode!(header)["metadata"]["release_receipt_layout"])
+              ^receipt = :os.type() == {:unix, :linux}
+
+              if receipt do
+                [owner] = resumed
+                "session_release_owner_started" = owner["type"]
+                true = owner["session_id"] == saved.id
+              else
+                [] = resumed
+              end
 
               true = state_files(home) == saved.state
               events(pid, root, label)

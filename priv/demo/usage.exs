@@ -359,8 +359,15 @@ defmodule Ipse.UsageDemo do
           byte_size(resumed_journal) - byte_size(original_journal)
         )
 
-      [marker] = String.split(suffix, "\n", trim: true) |> Enum.map(&Jason.decode!/1)
-      true = Ipse.Session.ReleaseReceipt.valid_owner_marker?(marker, id)
+      # Fresh Linux sessions use the release-receipt layout, whose resume records
+      # only a new owner marker. The portable legacy layout appends nothing.
+      if :os.type() == {:unix, :linux} do
+        [marker] = String.split(suffix, "\n", trim: true) |> Enum.map(&Jason.decode!/1)
+        true = Ipse.Session.ReleaseReceipt.valid_owner_marker?(marker, id)
+      else
+        "" = suffix
+      end
+
       ^original_ledger = File.read!(ledger)
       3 = Agent.get(counter, & &1)
       :ok = Session.close(resumed)

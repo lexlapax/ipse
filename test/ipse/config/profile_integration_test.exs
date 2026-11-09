@@ -235,8 +235,17 @@ defmodule Ipse.ProfileSessionTest do
     assert {:ok, after_events} = Journal.load(c.dir, id)
     assert Enum.take(after_events, length(before_events)) == before_events
 
-    assert [%{"type" => "session_release_owner_started", "session_id" => ^id}, checkpoint] =
-             Enum.drop(after_events, length(before_events))
+    # Only the Linux release-receipt layout records a resumed owner marker.
+    checkpoint =
+      if :os.type() == {:unix, :linux} do
+        assert [%{"type" => "session_release_owner_started", "session_id" => ^id}, checkpoint] =
+                 Enum.drop(after_events, length(before_events))
+
+        checkpoint
+      else
+        assert [checkpoint] = Enum.drop(after_events, length(before_events))
+        checkpoint
+      end
 
     assert checkpoint["type"] == "execution_mode_resumed" and checkpoint["version"] === 2
     assert checkpoint["session_id"] == id

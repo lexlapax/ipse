@@ -1170,7 +1170,9 @@ defmodule Ipse.Development.Verification.Runtime do
 
   defp runtime_root!(false, options, inputs) do
     if Keyword.has_key?(options, :output), do: private_output!(options, inputs)
-    root = Path.join(System.tmp_dir!(), "ipse-verification-" <> id())
+    # Protected native locks refuse symlinked ancestors, such as macOS /var.
+    temporary = command!("/bin/sh", ["-c", "pwd -P"], System.tmp_dir!(), []) |> path_output!()
+    root = Path.join(temporary, "ipse-verification-" <> id())
     File.mkdir!(root)
     root
   end

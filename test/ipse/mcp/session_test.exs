@@ -1070,8 +1070,17 @@ defmodule Ipse.MCP.SessionTest do
 
     closure = Enum.find(Enum.reverse(events), &(&1["type"] == "lifecycle_epoch_closed"))
     assert closure["closure"] == "close"
-    assert closure["cleanup_confirmed"] == false
-    assert Enum.any?(events, &(&1["type"] == "session_release_intent"))
+
+    # The Linux release-receipt layout defers confirmation to a signed release
+    # intent; the portable legacy layout confirms cleanup in the closure itself.
+    if :os.type() == {:unix, :linux} do
+      assert closure["cleanup_confirmed"] == false
+      assert Enum.any?(events, &(&1["type"] == "session_release_intent"))
+    else
+      assert closure["cleanup_confirmed"] == true
+      assert List.last(events) == closure
+      refute Enum.any?(events, &(&1["type"] == "session_release_intent"))
+    end
 
     assert File.read!(Path.join(ctx.root, "calls.log")) == "write_note\n"
   end
