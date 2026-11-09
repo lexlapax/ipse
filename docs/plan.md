@@ -42,16 +42,16 @@ Qualified readiness retains its recorded human/live limits.
 | [P28: operator usability and release](#p28-operator-usability-and-release-readiness) | v0.1.0 published at `341e458` under qualified acceptance after semantic documentation remediation and exact asset inspection | Retain human/live qualifications; evaluate subsequent changes against their own scope |
 | [P29: provider registry, OpenRouter and Gemini](#p29-provider-registry-openrouter-and-gemini) | Original scope and repairs accepted for qualified readiness; added Grok routes pass automated checks | Preserve unverified Grok API/OAuth eligibility and Gemini foreign-history live acceptance |
 | [P31: usable knowledge and prompt assistance](#p31-usable-knowledge-and-prompt-assistance) | Implementation authorized; packages A–I in progress with scoped native controls | Populated recall and an integrated day, document capacity, Research dispatch and integrated P31J qualification |
-| [P30: decision engines](#p30-advisory-decision-engines) | Locally verifiable scope implemented; no qualified default consumer; hosted engines unverified | Current whole-source baseline and a reviewed qualified-completion record |
+| [P30: decision engines](#p30-advisory-decision-engines) | Locally verifiable scope implemented; no qualified default consumer; hosted engines unverified | A reviewed qualified-completion record |
 | [P32: voice and media](#p32-voice-and-realtime-media) | Deferred; unimplemented; formerly P31 | Select media contracts and device/service validation in a later increment |
 | [Apache-2.0 transition](#license-transition) | Complete at `7bb642b` | Preserve runtime, dependency and extension license boundaries |
 
 [Saved-session diagnosis](operator/recovery.md#find-the-original-session) reports
 an aggregate count of unknown extension actions and excludes a validated current
 pending question. Resume warns about unknown outcomes and withheld managed
-questions. No passing whole-source baseline exists yet for the current
-integration branch; the [execution order](#execution-order-for-p30-and-p31) names
-the next results.
+questions. The integration branch passed its first complete local source
+baseline at `b6df1b11` ([record](archive/2026-11-08-whole-source-baseline/index.md));
+the [execution order](#execution-order-for-p30-and-p31) names the next results.
 
 ### Execution order for P30 and P31
 
@@ -63,7 +63,7 @@ preserves the dated narrative previously kept here.
 
 | Order and lane | Next result | Closure evidence |
 | --- | --- | --- |
-| Verification | A passing whole-source baseline on the integration branch: build, formatting, warnings-as-errors compilation, demo and the default suite | Recorded counts and any isolated reruns; supported platform, package and installed checks follow |
+| Verification | Local whole-source baseline passed at `b6df1b11` ([record](archive/2026-11-08-whole-source-baseline/index.md)); hosted CI partitions, other platforms, packages and installed checks remain | Rerun the baseline after each integrated change set; record platform, package and installed results separately |
 | Decisions → Verification | Qualified completion of P30's locally verified scope | Baseline plus a reviewed disposition for every engine and consumer; no qualified default |
 | Notes → C1a/E | Populated recall over a fresh 2,000-note native cohort, then one complete 40-turn/57-effect integrated day | Opt-in full-cohort run on current source with retained evidence; measured elapsed time and resources decide whether longer workloads are feasible |
 | Documents 3 → 2 → 1 | Declared replacement, retained history, cleanup and migration for the bounded source-runtime recipe | Measured native journal/allocation peaks under unchanged limits; a layout that fits the live-key and journal ceilings |
@@ -851,7 +851,7 @@ No local engine, SDK, new dependency or live account eligibility is established.
 | Package | Current state | Remaining gate |
 | --- | --- | --- |
 | P30A | Versioned neutral text contract and pure OpenAI/System One wire subsets, with synthetic fixtures and finite experiment/benefit criteria | None for the local scope |
-| P30B | Operator-only profiles, bounded owned HTTP, `host.decision`, Session/replay bindings, v3 usage/prices and shared budgets; synthetic zero-egress refusal, hosted/compatible wire, tampering, owner-loss, inert-resume, cross-Session/cross-process allowance and child-approval controls; separate decision artifact and Linux package pass synthetic installed checks | Current whole-source baseline |
+| P30B | Operator-only profiles, bounded owned HTTP, `host.decision`, Session/replay bindings, v3 usage/prices and shared budgets; synthetic zero-egress refusal, hosted/compatible wire, tampering, owner-loss, inert-resume, cross-Session/cross-process allowance and child-approval controls; separate decision artifact and Linux package pass synthetic installed checks | None for the local scope; local baseline passed at `b6df1b11` |
 | P30C | Pure Knowledge planners and zero-call controls with independent pure-scope audits; planner-to-Session shadow mapping; fitting note sets bypass the decision call | None for the local scope |
 | P30D | Two bounded consumers: over-budget note-pack selection compared with the complete ordinary greedy baseline, and assessment of an actual main-tool pending proposal under a finite grant; source/get/release, accounting, Saved/close/idle and no-replay controls; [packaged synthetic CLI checkpoint](archive/2026-11-05-packaged-paired-cli/index.md) | Broader installed-user workflows |
 | P30E | Frozen declarations and scoring, protected answer projection, exact-action materializer with rubric/route binding, critical-recall and bounded-cost corrections that keep unsupported results unmeasured | Independent labels, matched real-input experiments and whole-task time/cost |
@@ -884,8 +884,8 @@ experiment needs real matched inputs, complete engine-free baselines, predeclare
 routes and finite shared limits, independent label custody, frozen first
 predictions and explicit whole-task timing and cost.
 
-**Next result:** a passing current whole-source baseline, followed by a reviewed
-qualified-completion record for the local scope. Live engine access and model
+**Next result:** a reviewed qualified-completion record for the local scope; the
+whole-source baseline it depends on passed at `b6df1b11`. Live engine access and model
 quality stay unverified until an operator supplies accounts and labels.
 
 ## P31: usable knowledge and prompt assistance
