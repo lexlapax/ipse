@@ -874,10 +874,10 @@ units with the retained FD's exact mount ID, an explicit
 `huge=never`/`huge=advise` mount policy and no forced global huge-page policy.
 Its units remain powers of two from 4,096 through 65,536 bytes.
 
-The added exact `7.2.11-arch1-1` x86_64 profile permits **tmpfs only**, with
+The added exact `7.2.11-arch1-1` and `7.2.14-arch1-1` x86_64 profile permits **tmpfs only**, with
 4096-byte page/block/fragment agreement, selected global shmem policy `advise`
 and a uniquely resolved actual-directory mount carrying exactly one
-`huge=advise` option. It does not admit Btrfs, another suffix or architecture,
+`huge=advise` option. It does not admit Btrfs, another release, suffix or architecture,
 or another huge-page/unit combination. Both profiles refuse observed nonzero
 directory blocks. Unknown kernels, filesystems, mount metadata and quota
 backends refuse without estimating or falling back. macOS has no admitted

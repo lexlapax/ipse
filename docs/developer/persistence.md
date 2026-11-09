@@ -678,8 +678,8 @@ separate seeded large-format fixtures from actual repeated writes.
 
 The finite selector resolves the filesystem from the retained directory FD,
 then checks its kernel-specific page/block and mount/global huge-page features.
-Exact `7.2.11-arch1-1` x86_64 is admitted only for the qualified tmpfs combination;
-its Btrfs path refuses before protected publication. The older profile keeps
+Exact `7.2.11-arch1-1` and `7.2.14-arch1-1` x86_64 are admitted only for the qualified
+tmpfs combination; their Btrfs path refuses before protected publication. The older profile keeps
 its separate reviewed scope. Rebuild the helper and its compile-pinned Runner
 together after changing the selector; an ambient helper path cannot replace the
 protected binary. The [operator storage procedure](../operator/arch-linux.md#check-protected-storage-admission)

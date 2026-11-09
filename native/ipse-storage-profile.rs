@@ -21,17 +21,17 @@ fn bounded(path: &Path, maximum: usize) -> Result<String, TransactionAllowanceEr
 
 #[cfg(any(all(target_os = "linux", target_pointer_width = "64"), test))]
 #[derive(Clone, Copy, Debug, PartialEq)]
-enum KernelProfile { Linux7210, Linux7211ArchTmpfs }
+enum KernelProfile { Linux7210, ArchTmpfs }
 
 #[cfg(any(all(target_os = "linux", target_pointer_width = "64"), test))]
 fn kernel_profile(release: &str) -> Option<KernelProfile> {
     let release = release.trim();
     if release == "7.2.10" || release.starts_with("7.2.10-") {
         Some(KernelProfile::Linux7210)
-    } else if release == "7.2.11-arch1-1" && cfg!(target_arch = "x86_64") {
-        // Qualified only for the exact tmpfs features checked below. In
-        // particular, this does not admit Btrfs on this newer kernel.
-        Some(KernelProfile::Linux7211ArchTmpfs)
+    } else if matches!(release, "7.2.11-arch1-1" | "7.2.14-arch1-1") && cfg!(target_arch = "x86_64") {
+        // Each exact release is qualified only for the tmpfs features checked
+        // below. In particular, this does not admit Btrfs on these kernels.
+        Some(KernelProfile::ArchTmpfs)
     } else { None }
 }
 
@@ -101,7 +101,7 @@ fn tmpfs_policy(profile: KernelProfile, unit: u64, page: i64, global: &str, fdin
     if page <= 0 || page as u64 != unit { return Err(TransactionAllowanceError::Unsupported); }
     let selected = selected_policy(global)?;
     let mounted = mount_policy(fdinfo, mounts)?;
-    if profile == KernelProfile::Linux7211ArchTmpfs &&
+    if profile == KernelProfile::ArchTmpfs &&
         (unit != 4096 || selected != "advise" || mounted != "advise") {
         return Err(TransactionAllowanceError::Unsupported);
     }
@@ -182,13 +182,15 @@ mod tests {
     }
     #[test]
     fn exact_new_kernel_admits_only_qualified_tmpfs_features() {
-        let p = KernelProfile::Linux7211ArchTmpfs;
+        let p = KernelProfile::ArchTmpfs;
         let fd = "pos:\t0\nmnt_id:\t42\n";
         let mount = "42 1 0:2 / /tmp rw - tmpfs tmpfs rw,huge=advise";
         if cfg!(target_arch = "x86_64") {
             assert_eq!(kernel_profile("7.2.11-arch1-1\n"), Some(p));
+            assert_eq!(kernel_profile("7.2.14-arch1-1\n"), Some(p));
         }
-        for release in ["7.2.11", "7.2.11-arch1-2", "7.2.11-arch2-1", "7.2.11-arch1-1-extra", "7.2.110-arch1-1"] {
+        for release in ["7.2.11", "7.2.11-arch1-2", "7.2.11-arch2-1", "7.2.11-arch1-1-extra", "7.2.110-arch1-1",
+            "7.2.12-arch1-1", "7.2.13-arch1-1", "7.2.14", "7.2.14-arch1-2", "7.2.140-arch1-1"] {
             assert_eq!(kernel_profile(release), None);
         }
         assert!(filesystem_supported(p, 0x0102_1994));

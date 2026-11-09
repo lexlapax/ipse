@@ -11,6 +11,7 @@ to start another review; use the [current review workflow](../operator/developme
 
 | Snapshot | Provenance | Current guidance and retained records |
 | --- | --- | --- |
+| [2026-11-09 kernel 7.2.14 tmpfs profile](2026-11-09-kernel-7214-tmpfs-profile/index.md) | Exact `7.2.14-arch1-1` x86_64 tmpfs admitted beside 7.2.11; full Linux suite with native storage: 4,399 passed, 0 failures | [Arch native storage](../operator/arch-linux.md#check-protected-storage-admission), [plan](../plan.md#execution-order-for-p30-and-p31) |
 | [2026-11-08 whole-source baseline](2026-11-08-whole-source-baseline/index.md) | First passing local source baseline on the P30/P31 branch at `b6df1b11`: 4,665 tests, 0 failures; three earlier failed runs and their dispositions retained | [Testing](../developer/testing.md#run-the-complete-source-baseline), [plan](../plan.md#execution-order-for-p30-and-p31) |
 | [2026-11-08 plan consolidation](2026-11-08-plan-consolidation/index.md) | Plan before its P30/P31 narrative was condensed into package status tables; acceptance gates unchanged | [Plan](../plan.md), [P30/P31 implementation archive](2026-10-26-p30-p31-implementation/index.md) |
 | [2026-11-06 Corpus namespace candidate](2026-10-26-p30-p31-implementation/corpus-namespace-fence-20261106.md) | Synthetic generation and batch controls; later State Session and local MCP verifier checks pass, with broader races open | [Corpus](../operator/corpus.md), [plan](../plan.md#p31-usable-knowledge-and-prompt-assistance) |

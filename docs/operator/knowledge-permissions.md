@@ -39,11 +39,11 @@ They require no separate embedding account or download.
 
 Protected writes also require the current native
 [allocation profile](../../native/README.md#publish-protected-state-through-its-lock-owner):
-the reviewed Linux `7.2.10` Btrfs/tmpfs profile, or exact `7.2.11-arch1-1` on
-x86_64 with qualified tmpfs features. Btrfs on the newer kernel and macOS remain
-unsupported for these writes. Follow the [storage-location checks](arch-linux.md#check-protected-storage-admission)
+the reviewed Linux `7.2.10` Btrfs/tmpfs profile, or exact `7.2.11-arch1-1` or
+`7.2.14-arch1-1` on x86_64 with qualified tmpfs features. Btrfs on the newer
+kernels and macOS remain unsupported for these writes. Follow the [storage-location checks](arch-linux.md#check-protected-storage-admission)
 for exact feature requirements. All protected locations must qualify; the
-default Btrfs home on the newer kernel still refuses. Tmpfs is volatile and is
+default Btrfs home on the newer kernels still refuses. Tmpfs is volatile and is
 never selected silently as a storage remedy. Installation alone does not
 establish this prerequisite.
 

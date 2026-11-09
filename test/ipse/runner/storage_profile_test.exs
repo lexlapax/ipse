@@ -6,7 +6,10 @@ defmodule Ipse.Runner.StorageProfileTest do
   alias Ipse.Session.Resources
 
   @available_host :os.type() == {:unix, :linux} and
-                    System.cmd("uname", ["-r"]) == {"7.2.11-arch1-1\n", 0}
+                    elem(System.cmd("uname", ["-r"]), 0) in [
+                      "7.2.11-arch1-1\n",
+                      "7.2.14-arch1-1\n"
+                    ]
   @explicit_btrfs System.get_env("IPSE_TEST_BTRFS_ROOT")
   @btrfs_root Path.expand(@explicit_btrfs || File.cwd!())
   @btrfs_available @available_host and
@@ -95,7 +98,7 @@ defmodule Ipse.Runner.StorageProfileTest do
   @tag skip:
          (cond do
             not @available_host ->
-              "requires exact qualified kernel 7.2.11-arch1-1"
+              "requires exact qualified kernel 7.2.11-arch1-1 or 7.2.14-arch1-1"
 
             not @btrfs_available and is_nil(@explicit_btrfs) ->
               "requires a Btrfs checkout or explicit IPSE_TEST_BTRFS_ROOT"

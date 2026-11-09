@@ -172,6 +172,39 @@ never acquired by a hosted runner (GitHub macOS capacity), as was partition 1
 in run 42651877515. A full macOS source suite has not run anywhere.
 Hosted run 42663715255 at `72ee4e63` then passed every Ubuntu and macOS job.
 
+## Verification after the second decisions (2026-11-09)
+
+- Kernel `7.2.14-arch1-1` tmpfs admitted; record in
+  `docs/archive/2026-11-09-kernel-7214-tmpfs-profile/`. Full Linux suite on
+  serenity with `IPSE_TEST_NATIVE_STORAGE=1`: 4,399 passed, 0 failures.
+- First full local macOS suite (OTP 29): 3,327 of 3,329. `ollama_context_test`
+  timed out under load and passes alone; `release_test:404` exposed macOS tar
+  AppleDouble `._*` entries (every file doubled in a locally built package),
+  fixed in `7736b5db` with `COPYFILE_DISABLE=1`.
+
+## Operator decisions (2026-11-09, second round)
+
+- Native storage: admit exact `7.2.14-arch1-1` x86_64 tmpfs (serenity) like
+  the 7.2.11 review; Btrfs stays refused.
+- P30: independent subagent review of a qualified-completion record, then the
+  operator signs off before the plan calls P30 complete.
+- Lanes in order: Notes (fresh 2,000-note rerun with populated recall and the
+  integrated day), Documents, Research. Fast-forward `main` (no force) once the
+  local baselines and hosted CI are green.
+- Documents: keep the shared group layout (Root2) at full size, split
+  build/finalization across Sessions at points with no pending write (reserve
+  each document invocation's worst-case journal space; stop cleanly with the
+  existing continuation token), **and** fold source heads into catalog pages
+  (Root3/head v3) now. Root3 migration (fold in place vs refuse and rebuild) is
+  still to be asked. Retain exactly one previous generation; replaced blocks
+  stay until explicit cleanup after selection behind the maintenance barrier;
+  one initial build plus one rebuild per Collection, documented as the limit.
+- Research (P31H): fence registered inference routes for provided-only source
+  sets with a host-computed complete-set digest journaled before approval and
+  rechecked at send, release and saved restore; ordinary per-call approval keeps
+  its documented behavior; saved guarded-result restore stays refused; no extra
+  native review of the set.
+
 ## Other open items
 
 - Operator decisions given 2026-11-08: cleanup of new synthetic fixtures with

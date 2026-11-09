@@ -128,7 +128,7 @@ stops the suite, so a missing or broken helper cannot silently exclude tests.
 Tag a new test `@tag :native_storage` (or `@moduletag` for a whole file) when it
 needs protected storage to succeed. To reproduce the hosted exclusion on a
 reviewed Linux host, point the temporary directory at an unqualified filesystem,
-for example Btrfs on kernel 7.2.11:
+for example Btrfs on kernel 7.2.11 or 7.2.14:
 
 ```sh
 IPSE_UNQUALIFIED_TMP=$(mktemp -d -p /var/tmp)

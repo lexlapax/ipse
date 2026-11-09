@@ -7,7 +7,10 @@ defmodule Ipse.Session.OllamaModelPinTest do
   alias Ipse.Test.ProviderFixture
 
   @available_host :os.type() == {:unix, :linux} and
-                    System.cmd("uname", ["-r"]) == {"7.2.11-arch1-1\n", 0} and
+                    elem(System.cmd("uname", ["-r"]), 0) in [
+                      "7.2.11-arch1-1\n",
+                      "7.2.14-arch1-1\n"
+                    ] and
                     System.cmd("stat", ["-f", "-c", "%T", System.tmp_dir!()]) == {"tmpfs\n", 0}
   @moduletag skip:
                if(@available_host,

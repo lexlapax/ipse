@@ -186,8 +186,8 @@ the storage error rather than removing stages to make a retry fit.
 
 An unsupported storage profile is a separate refusal. Check every protected
 location against [the native storage requirements](arch-linux.md#check-protected-storage-admission).
-Exact `7.2.11-arch1-1` qualifies only the checked tmpfs combination; a default
-Btrfs home still refuses on that kernel. Do not delete protected files, silently
+Exact `7.2.11-arch1-1` and `7.2.14-arch1-1` qualify only the checked tmpfs combination;
+a default Btrfs home still refuses on those kernels. Do not delete protected files, silently
 relocate them or treat volatile tmpfs as a durable migration fix.
 
 Do not enable again merely to recover a missing confirmation, delete retained
