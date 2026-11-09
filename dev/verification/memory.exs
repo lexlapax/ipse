@@ -132,9 +132,10 @@ defmodule Ipse.Development.Verification.Memory do
 
             {:ok, note} = Records.build(args, nil, 1000, 60)
 
+            # Sessions resolve symlinks in their home; write where they read.
             {:ok, _} =
               State.execute(
-                Path.join(home, "extension-state-v1"),
+                Path.join(Ipse.Config.home(home), "extension-state-v1"),
                 namespace,
                 %{
                   "op" => "state.put",

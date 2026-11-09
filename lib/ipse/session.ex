@@ -961,7 +961,12 @@ defmodule Ipse.Session do
   defp init_session(opts, lock_mode) do
     config = Keyword.fetch!(opts, :config)
     requested_cwd = Keyword.fetch!(opts, :cwd)
-    home = Map.get(config, :home) || System.get_env("IPSE_HOME") || Path.expand("~/.ipse")
+
+    home =
+      Ipse.Config.home(
+        Map.get(config, :home) || System.get_env("IPSE_HOME") || Path.expand("~/.ipse")
+      )
+
     config_has_fence? = Map.has_key?(config, :exact_action_fence)
     config = Map.put(config, :home, home)
     dir = Keyword.fetch!(opts, :state_dir) |> Path.expand()

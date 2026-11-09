@@ -1,8 +1,5 @@
 defmodule Ipse.Runner.StdioAdmissionTest do
   use ExUnit.Case, async: false
-  # Managed stdio startup admission is Linux-only; macOS refuses --admitted-stdio.
-  @moduletag skip:
-               if(:os.type() == {:unix, :linux}, do: false, else: "Linux managed stdio startup")
   alias Ipse.Runner
 
   @tag timeout: 30_000

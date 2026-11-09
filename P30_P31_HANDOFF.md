@@ -122,20 +122,39 @@ Not resolved:
 - Why macOS partition 1 exceeded 60 minutes is unknown; the gated 30-minute
   evaluation children may account for it.
 
-## Decisions waiting for the user
+## macOS regressions: operator decisions (2026-11-09)
 
-These are product regressions on macOS since `fbb207d5` (from `86c990c6`
-onward). The commit gates or adapts their tests; it does not restore behavior.
+These were product regressions on macOS since `fbb207d5` (from `86c990c6`
+onward). The operator decided, and the follow-up commit implements:
 
-1. Extension `mcp.call` over stdio no longer works on macOS: managed stdio
-   startup is refused before launch. Either implement and verify native start
-   deadlines on macOS or document the limit in `docs/operator/mcp.md`.
-2. Extension workflow shell (`tool.call` with managed admission) is refused on
-   macOS and reported as an unknown outcome rather than a clear refusal.
-3. Extension state refuses any `IPSE_HOME` with a symlinked ancestor (such as
-   macOS `/tmp` or `/var`) and reports unknown. Options: canonicalize the root at
-   config admission, or map pre-effect acquire refusals to a failed outcome with
-   `extension_state_unavailable`.
+1. Extension `mcp.call` over stdio: implemented. `native/ipse-stdio.rs` no
+   longer refuses `--admitted-stdio` on macOS; the start-deadline check runs in
+   `pre_exec` on every Unix (it reports errors without allocating after fork).
+2. Extension workflow shell: implemented the same way for `--admitted-shell` in
+   `native/ipse-runner.rs`. The Linux-only test gates for managed stdio/shell
+   were removed (`stdio_admission_test`, `protected_lease_test`,
+   `mcp_call_session_test`, three `invocation_test` and two
+   `dev/evaluation/runner_test` tests).
+3. Extension state under a symlinked `IPSE_HOME`: both parts implemented.
+   `Ipse.Config.home/1` resolves symlinks at `Config.runtime/2` admission and
+   at Session start. `Ipse.Extension.State` returns the known `failed` outcome
+   `{"code":"extension_state_unavailable"}` for any refusal before the
+   namespace lock is held (unsafe directory or lock file, busy lock, symlinked
+   ancestor, definite acquire error) and accepts it in outcome validation. The
+   verifier's `pwd -P` temp-root workaround is removed, so macOS installed
+   checks now run under the symlinked `/var`; the memory and documents
+   verifiers use `Ipse.Config.home/1` where they bypass a session.
+4. v0.1.0 OTP 27 dropped-keystroke exposure: not exposed; no release note.
+   v0.1.0 bundles OTP 27 (eager reader), but its source has no native terminal
+   reader (`native/ipse-operator.rs` came later) and no Port inherits the
+   terminal (`:nouse_stdio` absent, shell stdin null), so the VM was the only
+   terminal reader. Established from source; the Linux v0.1.0 bundle was not run.
+
+Verified: macOS local (OTP 29) all ungated managed shell/stdio files (115
+tests), state/config files, and a full CI platform-job replay with all 62
+commands passing (PDF build). Linux on `serenity` (Arch kernel 7.2.14): build,
+all 88 native runner tests, and the 15 affected files (191 tests, 0 failures).
+Not yet run: full source suites on either OS and hosted CI for this commit.
 
 ## Other open items
 
@@ -150,12 +169,15 @@ onward). The commit gates or adapts their tests; it does not restore behavior.
   rerun alone on the machine is still pending.
 - P30 needs a reviewed qualified-completion record; remaining P30/P31 gates are
   in `docs/plan.md`.
-- OTP 27 dropped-keystroke fix (`6e41801b`): whether released v0.1.0 is exposed
-  is unverified, so `docs/releases/v0.1.0.md` is unchanged. Ask the user.
 - The local baseline has not been rerun since these test changes. Rerun it, and
   hosted CI on both platforms, before claiming the branch green.
 - Commits `7841ceb5..308ef051` carry an AI co-author trailer contrary to
-  `AGENTS.md`; they are pushed and must not be rewritten.
+  `AGENTS.md`. On 2026-11-09 the operator had only `eb5f9cf2` reworded
+  (`ca0a2d03`) with an explicitly authorized force-push; leave the others.
+- The Linux host `serenity` (reachable by `ssh serenity`, checkout
+  `~/projects/lexlapax/ipse`) now runs kernel 7.2.14, which is not a reviewed
+  native storage profile, so `:native_storage` tests are excluded there too.
+  No reviewed host currently exercises native storage.
 
 ## Reproducing the hosted Linux exclusion locally
 

@@ -6,7 +6,6 @@ use std::fs::{OpenOptions, Permissions};
 use std::io::{self, Read, Write};
 use std::os::unix::fs::{OpenOptionsExt, PermissionsExt};
 use std::os::unix::io::AsRawFd;
-#[cfg(target_os = "linux")]
 use std::os::unix::process::CommandExt;
 use std::os::unix::process::ExitStatusExt;
 use std::process::{Command, Stdio};
@@ -115,8 +114,6 @@ fn run() -> Result<(), String> {
     let mut args: Vec<String> = env::args().collect();
     let admitted_shell = args.get(1).is_some_and(|arg| arg == "--admitted-shell");
     if admitted_shell { args.remove(1); }
-    #[cfg(not(target_os = "linux"))]
-    if admitted_shell { return Err("managed shell admission is unavailable on this platform".into()); }
     #[cfg(target_os = "linux")]
     if !args.get(1).is_some_and(|a| matches!(a.as_str(), "--measure-sequence" | "--measure-stage" | "--measure-cgroup")) {
         ipse_bound::scrub_ordinary();
@@ -323,15 +320,16 @@ fn run() -> Result<(), String> {
     } else { None };
     #[cfg(target_os = "linux")]
     let child_sandbox = sandbox.clone();
-    #[cfg(target_os = "linux")]
+    // Runs after fork and before exec, so it reports errors without allocating.
     unsafe {
         command.pre_exec(move || {
+            #[cfg(target_os = "linux")]
             if let Some(policy) = &child_sandbox {policy.apply()?;}
             if let Some(deadline) = _grant_deadline {
                 let now = SystemTime::now().duration_since(UNIX_EPOCH)
-                    .map_err(|_| io::Error::other("shell clock unavailable"))?.as_millis();
+                    .map_err(|_| io::Error::from(io::ErrorKind::Other))?.as_millis();
                 if now >= deadline as u128 {
-                    return Err(io::Error::other("shell admission expired before exec"));
+                    return Err(io::Error::from(io::ErrorKind::TimedOut));
                 }
             }
             Ok(())

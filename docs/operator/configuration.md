@@ -117,6 +117,8 @@ endpoint and allowlist rules. It does not launch servers or discover remote
 tools. Use the [MCP manual](mcp.md) to review those capabilities before a session.
 
 The default file is `IPSE_HOME/config.json`; `IPSE_HOME` defaults to `~/.ipse`.
+Ipse resolves symlinks in `IPSE_HOME` when it starts, so a home under a
+symlinked directory such as macOS `/tmp` or `/var` uses its real path.
 `--config PATH` overrides `IPSE_CONFIG`. An explicitly selected file must exist;
 an absent default file is allowed. Files allow at most 16 KiB. Unknown fields,
 duplicate keys and inline credentials refuse with a configuration error.

@@ -59,7 +59,6 @@ defmodule Ipse.Runner.ProtectedLeaseTest do
     refute File.exists?(c.marker)
   end
 
-  @tag skip: if(:os.type() == {:unix, :linux}, do: false, else: "Linux managed shell admission")
   test "managed shell admission ignores an alternate helper", c do
     assert {:ok, %{exit_code: 0}} =
              Runner.run("printf admitted > shell-result", c.root,
@@ -70,7 +69,6 @@ defmodule Ipse.Runner.ProtectedLeaseTest do
     refute File.exists?(c.marker)
   end
 
-  @tag skip: if(:os.type() == {:unix, :linux}, do: false, else: "Linux managed shell admission")
   test "ordinary admission starts with a bounded grant, while an expired grant cannot start", c do
     assert {:ok, %{exit_code: 0}} =
              Runner.run("printf ordinary > ordinary-result", c.root,

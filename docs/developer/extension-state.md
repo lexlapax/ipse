@@ -161,7 +161,12 @@ there is no file-server mutation fallback. Namespace directories must be private
 data files must be owned private regular single-link files. An owner-private
 read-only file can be read and replaced. Corrupt, duplicate-key, oversized,
 symlinked or unsafe storage refuses without repair, as does an older helper that
-lacks the native State protocol.
+lacks the native State protocol. A refusal before the namespace lock is held
+(an unsafe state directory or lock file, a busy lock, or a root under a
+symlinked ancestor) has read and written nothing, so it is the known `failed`
+outcome `{"code":"extension_state_unavailable"}` rather than `unknown`.
+`Ipse.Config.home/1` resolves symlinks in `IPSE_HOME` at admission and session
+start, which keeps ordinary macOS homes under `/tmp` or `/var` usable.
 
 Only admitted mutating calls reclaim abandoned private `.state-pending-` stages
 under that lock, with fixed count/byte limits. Reads preserve them, unrelated

@@ -288,7 +288,7 @@ defmodule Ipse.Extension.StateTest do
     case Ipse.Extension.State.execute(root,namespace,request,Ipse.Usage.id()) do
       {:ok, value} -> IO.puts(Jason.encode!(%{"status"=>"ok","value"=>value}))
       {:conflict, value} -> IO.puts(Jason.encode!(%{"status"=>"conflict","value"=>value}))
-      {:error, :extension_state_unavailable} -> IO.puts(Jason.encode!(%{"status"=>"contended"}))
+      {:failed, %{"code" => "extension_state_unavailable"}} -> IO.puts(Jason.encode!(%{"status"=>"contended"}))
       other -> raise inspect(other)
     end
     '''
@@ -433,6 +433,23 @@ defmodule Ipse.Extension.StateTest do
     assert Enum.sort(Map.keys(updated)) == ~w(generation record)
   end
 
+  test "a root under a symlinked ancestor fails before any state effect", ctx do
+    real = Path.join(ctx.root, "real")
+    File.mkdir_p!(real)
+    File.chmod!(ctx.root, 0o700)
+    File.chmod!(real, 0o700)
+    link = Path.join(ctx.root, "link")
+    File.ln_s!(real, link)
+    request = put("a", 0, %{"v" => 1})
+    id = Ipse.Usage.id()
+
+    assert {:failed, %{"code" => "extension_state_unavailable"} = value} =
+             State.execute(Path.join(link, "state"), ctx.namespace, request, id)
+
+    assert State.valid_outcome?(request, "failed", value, id)
+    refute File.exists?(Path.join([real, "state", ctx.namespace, "state.json"]))
+  end
+
   test "advisory contention never overwrites and preserves lock inode", ctx do
     assert {:ok, _} = execute(ctx, put("a", 0, %{}))
     lock_path = Path.join([ctx.root, ctx.namespace, ".lock"])
@@ -440,7 +457,8 @@ defmodule Ipse.Extension.StateTest do
     {:ok, lock} = Ipse.Runner.lock(lock_path)
 
     try do
-      assert {:error, _} = execute(ctx, put("a", 1, %{"lost" => true}))
+      assert {:failed, %{"code" => "extension_state_unavailable"}} =
+               execute(ctx, put("a", 1, %{"lost" => true}))
     after
       Ipse.Runner.unlock(lock)
     end

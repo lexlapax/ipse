@@ -2122,8 +2122,6 @@ else
   defmodule Ipse.KnowledgeEvaluationRunnerIsolationTest do
     use ExUnit.Case, async: false
 
-    @tag skip:
-           if(:os.type() == {:unix, :linux}, do: false, else: "Linux managed MCP stdio startup")
     @tag timeout: 1_800_000
     test "evaluation runner controls use a clean host VM" do
       run_child(
@@ -2132,8 +2130,6 @@ else
       )
     end
 
-    @tag skip:
-           if(:os.type() == {:unix, :linux}, do: false, else: "Linux managed MCP stdio startup")
     @tag :source_evaluation
     @tag timeout: 1_800_000
     test "source evaluation controls use a clean host VM" do

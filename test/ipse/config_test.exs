@@ -14,6 +14,15 @@ defmodule Ipse.ConfigTest do
     %{root: root, project: project, cwd: cwd, home: home}
   end
 
+  test "the Ipse home resolves symlinked ancestors and keeps a missing tail", c do
+    link = Path.join(c.root, "home-link")
+    File.ln_s!(c.home, link)
+    {:ok, real_home} = Ipse.Workspace.canonical_path(c.home)
+
+    assert Config.home(link) == real_home
+    assert Config.home(Path.join(link, "not-yet")) == Path.join(real_home, "not-yet")
+  end
+
   defp put(path, settings) do
     File.mkdir_p!(Path.dirname(path))
     File.write!(path, Jason.encode!(%{"version" => 1, "settings" => settings}))

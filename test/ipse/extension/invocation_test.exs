@@ -2940,7 +2940,6 @@ defmodule Ipse.Extension.InvocationTest do
     assert :ok = Ipse.Extension.Projection.validate_events(events)
   end
 
-  @tag skip: if(:os.type() == {:unix, :linux}, do: false, else: "Linux managed shell admission")
   test "workflow shell preserves completion status and refuses incomplete output", ctx do
     pid = start(%{ctx | config: Map.put(ctx.config, :approval, :allow)})
     :ok = host_command(pid, tool_request("shell", %{"command" => "printf fixture; exit 7"}))
@@ -2970,7 +2969,6 @@ defmodule Ipse.Extension.InvocationTest do
     assert_receive {:ipse, ^pid, {:done, :error}}, 3000
   end
 
-  @tag skip: if(:os.type() == {:unix, :linux}, do: false, else: "Linux managed shell admission")
   test "cancelling a workflow kills its linked tool task and actual shell group", ctx do
     pid = start(%{ctx | config: Map.put(ctx.config, :approval, :allow)})
 
@@ -2989,7 +2987,6 @@ defmodule Ipse.Extension.InvocationTest do
     assert :ok = Ipse.Extension.Projection.validate_events(events)
   end
 
-  @tag skip: if(:os.type() == {:unix, :linux}, do: false, else: "Linux managed shell admission")
   test "workflow close cannot confirm cleanup while its nested shell supervisor is stopped",
        ctx do
     pid = start(%{ctx | config: Map.put(ctx.config, :approval, :allow)})

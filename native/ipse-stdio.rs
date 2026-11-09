@@ -2,7 +2,6 @@
 use super::{frame, signal_group, GroupGuard};
 use std::io::{self, Read, Write};
 use std::os::unix::io::AsRawFd;
-#[cfg(target_os = "linux")]
 use std::os::unix::process::CommandExt;
 use std::os::unix::process::ExitStatusExt;
 use std::process::{Command, Stdio};
@@ -417,8 +416,6 @@ pub fn run(args: &[String]) -> Result<(), String> {
     }
     let listener_mode = args[1] == "--stdio-listener";
     let admitted = args[1] == "--admitted-stdio";
-    #[cfg(target_os = "macos")]
-    if admitted { return Err("managed stdio startup is unavailable on this platform".into()); }
     if args.len() > (if listener_mode { 263 } else { 261 }) || args.iter().map(String::len).sum::<usize>() > 131072 {
         return Err("stdio launch arguments exceed limit".into());
     }
@@ -513,21 +510,19 @@ pub fn run(args: &[String]) -> Result<(), String> {
     } else { None };
     #[cfg(target_os = "linux")]
     let child_sandbox = sandbox.clone();
-    #[cfg(not(target_os = "linux"))]
-    let _ = start_deadline;
-    #[cfg(target_os = "linux")]
     let child_cancelled = cancelled.clone();
-    #[cfg(target_os = "linux")]
+    // Runs after fork and before exec, so it reports errors without allocating.
     unsafe {
         command.pre_exec(move || {
+            #[cfg(target_os = "linux")]
             if let Some(policy) = &child_sandbox {
                 policy.apply()?;
             }
             if let Some(deadline) = start_deadline {
                 let now = SystemTime::now().duration_since(UNIX_EPOCH)
-                    .map_err(|_| io::Error::new(io::ErrorKind::Other, "stdio clock unavailable"))?.as_millis();
+                    .map_err(|_| io::Error::from(io::ErrorKind::Other))?.as_millis();
                 if child_cancelled.load(Ordering::SeqCst) || now >= u128::from(deadline) {
-                    return Err(io::Error::new(io::ErrorKind::TimedOut, "stdio startup deadline elapsed"));
+                    return Err(io::Error::from(io::ErrorKind::TimedOut));
                 }
             }
             Ok(())

@@ -245,8 +245,20 @@ defmodule Ipse.Config do
     end
   end
 
+  @doc """
+  Resolve symlinks in the Ipse home. Protected native locks refuse symlinked
+  ancestors, such as macOS `/tmp` and `/var`; an unresolvable home stays as given.
+  """
+  def home(home) when is_binary(home) do
+    case Ipse.Workspace.canonical_path(home) do
+      {:ok, canonical} -> canonical
+      _ -> Path.expand(home)
+    end
+  end
+
   @doc "Admit runtime resources after resolve/4; client supplies paths and interaction policy."
   def runtime(effective, client) do
+    client = Map.update!(client, :home, &home/1)
     settings = effective.settings
     {provider, _} = Map.fetch!(@providers, settings["provider"])
     sandbox = Map.fetch!(@sandboxes, settings["sandbox"])

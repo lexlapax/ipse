@@ -4,6 +4,7 @@ defmodule Ipse.Extension.State do
   alias Ipse.Runner.Transaction
   import Bitwise, only: [band: 2]
   @error {:error, :extension_state_unavailable}
+  @unavailable {:failed, %{"code" => "extension_state_unavailable"}}
   @bytes 1_048_576
   @records 256
   @max_revision 9_007_199_254_740_991
@@ -82,9 +83,16 @@ defmodule Ipse.Extension.State do
   end
 
   defp execute_locked(root, namespace, request, operation_id) do
-    with true <- is_binary(root) and Ipse.JSON.sha256?(namespace) and id?(operation_id),
-         :ok <- validate(request),
-         :ok <- directory(root),
+    if is_binary(root) and Ipse.JSON.sha256?(namespace) and id?(operation_id) and
+         validate(request) == :ok,
+       do: locked(root, namespace, request, operation_id),
+       else: @error
+  rescue
+    _ -> @error
+  end
+
+  defp locked(root, namespace, request, operation_id) do
+    with :ok <- directory(root),
          path = Path.join(root, namespace),
          :ok <- directory(path),
          lock_path = Path.join(path, ".lock"),
@@ -112,7 +120,10 @@ defmodule Ipse.Extension.State do
           {:unknown, %{}}
       end
     else
-      _ -> @error
+      # Nothing is read or written before the lock is held, so a refused
+      # directory, lock file or acquire is a definite failure.
+      {:unknown, _} -> {:unknown, %{}}
+      _ -> @unavailable
     end
   rescue
     _ -> @error
@@ -385,6 +396,9 @@ defmodule Ipse.Extension.State do
   end
 
   defp outcome?(_, status, value, _) when status in ~w(denied unknown), do: value == %{}
+
+  defp outcome?(request, "failed", %{"code" => "extension_state_unavailable"} = value, _),
+    do: validate(request) == :ok and map_size(value) == 1
 
   defp outcome?(
          %{"op" => "state.put", "write_before_ms" => _} = request,

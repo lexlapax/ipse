@@ -228,7 +228,8 @@ defmodule Ipse.Development.Verification.Documents do
     home = System.fetch_env!("IPSE_HOME")
     File.mkdir_p!(home)
     File.chmod!(home, 0o700)
-    {:ok, descriptor} = Ipse.DocumentParser.descriptor(home, System.tmp_dir!())
+    # The parser requires the resolved home that sessions use.
+    {:ok, descriptor} = Ipse.DocumentParser.descriptor(Ipse.Config.home(home), System.tmp_dir!())
 
     backend =
       case apply(IpseKnowledge.Documents, :extract_pdf, [pdf(), descriptor]) do

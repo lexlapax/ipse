@@ -5,12 +5,6 @@ Ipse.Development.Verification.Runtime.load_fixture!(:mcp)
 defmodule Ipse.Extension.MCPCallSessionTest do
   use ExUnit.Case, async: false
 
-  # Extension mcp.call starts stdio servers through the admitted native start,
-  # which the helper refuses outside Linux before launching the server.
-  @managed_stdio if(:os.type() == {:unix, :linux},
-                   do: false,
-                   else: "Linux managed stdio startup"
-                 )
   alias Ipse.{Session, Journal}
   alias Ipse.Extension.{Actions, Config, Registry, Artifact}
   alias IpseMCPExample.Fixture
@@ -256,7 +250,6 @@ defmodule Ipse.Extension.MCPCallSessionTest do
     assert :ok = Ipse.Extension.validate(Actions.resume(result))
   end
 
-  @tag skip: @managed_stdio
   test "overlapping secrets retain a verifiable legacy binding through approval and idle resume",
        ctx do
     first =
@@ -315,7 +308,6 @@ defmodule Ipse.Extension.MCPCallSessionTest do
     assert hd(events(ctx, resumed))["metadata"] == metadata
   end
 
-  @tag skip: @managed_stdio
   test "a diagnostic that becomes a configured secret after redaction remains unknown", ctx do
     File.write!(Path.join(ctx.root, "error-text"), "qzz")
     entry = Fixture.stdio_config(ctx.root, "tool_error")
@@ -345,7 +337,6 @@ defmodule Ipse.Extension.MCPCallSessionTest do
   end
 
   for transport <- [:stdio, :http] do
-    @tag skip: transport == :stdio and @managed_stdio
     test "#{transport}: a dispatched tool error retains its diagnostic and possible effect on resume",
          ctx do
       selected = server(ctx, unquote(transport), :tool_error)
@@ -372,7 +363,6 @@ defmodule Ipse.Extension.MCPCallSessionTest do
       assert Fixture.calls(ctx.root) == 1
     end
 
-    @tag skip: transport == :stdio and @managed_stdio
     test "#{transport}: legacy journals retain their binding scheme and resume without replay",
          ctx do
       selected = server(ctx, unquote(transport), :normal)
@@ -412,7 +402,6 @@ defmodule Ipse.Extension.MCPCallSessionTest do
       assert hd(events(ctx, resumed))["metadata"] === metadata
     end
 
-    @tag skip: transport == :stdio and @managed_stdio
     test "#{transport}: exact approval, durable source before descriptor and complete UTF8 windows without inference",
          ctx do
       selected = server(ctx, unquote(transport), :normal)
@@ -507,7 +496,6 @@ defmodule Ipse.Extension.MCPCallSessionTest do
   end
 
   for transport <- [:stdio, :http], kind <- [:resource, :prompt] do
-    @tag skip: transport == :stdio and @managed_stdio
     test "#{transport}: selected #{kind} dispatch returns a complete source through the extension",
          ctx do
       kind = unquote(kind)

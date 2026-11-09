@@ -30,7 +30,7 @@ defmodule Ipse.Extension.StateOwnerCrossProcessTest do
     status = case result do
       {:ok, _} -> "ok"
       {:conflict, _} -> "conflict"
-      {:error, :extension_state_unavailable} -> "contended"
+      {:failed, %{"code" => "extension_state_unavailable"}} -> "contended"
       other -> raise(inspect(other))
     end
     IO.puts(status)

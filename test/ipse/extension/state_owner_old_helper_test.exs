@@ -16,7 +16,7 @@ defmodule Ipse.Extension.StateOwnerOldHelperTest do
     }
 
     result = Ipse.Extension.State.execute(root, namespace, request, Ipse.Usage.id())
-    assert result in [{:error, :extension_state_unavailable}, {:unknown, %{}}]
+    assert result in [{:failed, %{"code" => "extension_state_unavailable"}}, {:unknown, %{}}]
     refute File.exists?(Path.join([root, namespace, "state.json"]))
   end
 end
