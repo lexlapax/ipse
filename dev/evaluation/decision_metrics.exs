@@ -14,7 +14,7 @@ defmodule Ipse.Development.Evaluation.DecisionMetrics do
   @max 9_007_199_254_740_991
   @fields ~w(cases supported abstentions critical_total critical_recalled citation_total citation_supported cost_nanos p95_ms)
   @gate_fields ~w(protocol quality_bars citation_integrity matched_workload finite_resources paired_critical)
-  @assessment_fields ~w(candidates abstentions false_total false_durable useful_total useful_kept critical_total critical_kept p95_ms)
+  @assessment_fields ~w(candidates abstentions false_total false_durable useful_total useful_kept critical_total critical_kept cost_nanos p95_ms)
   @assessment_gates ~w(protocol matched_workload finite_cost_cap)
 
   @doc "Compare the frozen P30 selection thresholds over independently supplied aggregates."
@@ -27,7 +27,8 @@ defmodule Ipse.Development.Evaluation.DecisionMetrics do
         "critical_recall" => compare_critical(baseline, candidate),
         "citation_precision" => compare_citations(baseline, candidate),
         "latency" => compare_latency(baseline, candidate),
-        "benefit" => compare_benefit(baseline, candidate)
+        "benefit" => compare_benefit(baseline, candidate),
+        "abstention" => compare_abstention(baseline, candidate, "cases")
       }
 
       {:ok, result(criteria, gates, baseline, candidate, "cases")}
@@ -52,7 +53,8 @@ defmodule Ipse.Development.Evaluation.DecisionMetrics do
         "false_durable_reduction" => false_reduction(baseline, candidate),
         "useful_capture" => capture_nonregression(baseline, candidate, "useful"),
         "critical_capture" => capture_nonregression(baseline, candidate, "critical"),
-        "latency" => compare_latency(baseline, candidate)
+        "latency" => compare_latency(baseline, candidate),
+        "cost" => compare_cost(baseline, candidate)
       }
 
       {:ok, result(criteria, gates, baseline, candidate, "candidates")}
@@ -149,7 +151,7 @@ defmodule Ipse.Development.Evaluation.DecisionMetrics do
             row[kind <> if(kind == "false", do: "_durable", else: "_kept")],
             row[kind <> "_total"]
           )
-      end) and nullable_uint?(row["p95_ms"])
+      end) and nullable_uint?(row["cost_nanos"]) and nullable_uint?(row["p95_ms"])
   end
 
   defp gates?(gates), do: gate_values?(gates, @gate_fields)
@@ -183,6 +185,17 @@ defmodule Ipse.Development.Evaluation.DecisionMetrics do
        do: status(candidate * 5 <= base * 6)
 
   defp compare_latency(_, _), do: "unverified"
+
+  # Abstaining more often than the baseline by over five percentage points fails.
+  defp compare_abstention(b, c, denominator),
+    do: status(100 * (c["abstentions"] - b["abstentions"]) <= 5 * b[denominator])
+
+  # Whole-task cost, including the decision call, may exceed the baseline by at most a fifth.
+  defp compare_cost(%{"cost_nanos" => base}, %{"cost_nanos" => candidate})
+       when is_integer(base) and base > 0 and is_integer(candidate),
+       do: status(candidate * 5 <= base * 6)
+
+  defp compare_cost(_, _), do: "unverified"
 
   defp false_reduction(%{"false_durable" => 0}, _), do: "unverified"
   defp false_reduction(b, c), do: status(c["false_durable"] * 5 <= b["false_durable"] * 4)

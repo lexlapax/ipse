@@ -325,9 +325,14 @@ change its text, origin, category, TTL, evidence or permission.
 
 For selection evaluation, `dev/evaluation/decision_metrics.exs` compares
 bounded aggregate counts using the frozen five-percentage-point supported-answer
-or 20% total-cost benefit, nonregression and p95 latency thresholds. For candidate
-assessment it compares false-durable reduction, useful and critical capture, and
-latency. The aggregate interface accepts independently defined labels; validate
+or 20% total-cost benefit, nonregression, p95 latency and abstention thresholds:
+the candidate may abstain on at most five percentage points more cases than the
+baseline. For candidate assessment it compares false-durable reduction, useful
+and critical capture, latency and whole-task cost. Candidate cost is each case's
+baseline cost plus its decision call, and may exceed the baseline total by at
+most a fifth; a missing or zero baseline cost leaves that criterion unverified.
+These bars are part of each frozen declaration, so a declaration made before a
+bar changed no longer verifies. The aggregate interface accepts independently defined labels; validate
 their meaning and relationships for the study before supplying counts.
 
 The supplied gate statuses cover protocol and matched workload, plus
@@ -337,7 +342,9 @@ those declarations. `critical_pairs/3` uses the existing paired-metric input to
 identify baseline successes lost on specific critical queries. Missing, failed
 or unmeasured pairs leave that gate unverified, even when aggregate recall is
 unchanged. Independently validate the supplied critical labels and verdicts. Both
-comparisons report baseline and candidate abstention counts with their denominator.
+comparisons report baseline and candidate abstention counts with their denominator;
+assessment reports abstentions without gating them, because abstaining keeps the
+baseline.
 Selection experiment reports also include a paired membership observation derived
 from the frozen rows and reference sets. A case recalls its critical set only
 when it contains every referenced member; the report lists known losses even

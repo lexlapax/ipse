@@ -19,6 +19,7 @@ defmodule Ipse.Development.Evaluation.CandidateAssessment do
     "useful_loss_percentage_points" => 2,
     "critical_loss_percentage_points" => 2,
     "p95_max_ratio" => [6, 5],
+    "whole_task_cost_max_ratio" => [6, 5],
     "minimum_probability" => 0.8,
     "minimum_margin" => 0.2
   }
@@ -211,6 +212,16 @@ defmodule Ipse.Development.Evaluation.CandidateAssessment do
 
     {:ok, p95} = Metrics.nearest_rank(Enum.filter(elapsed, &uint?/1), 0.95)
 
+    # The candidate runs the baseline flow plus its decision call.
+    costs =
+      Enum.map(cases, fn c ->
+        base = baselines[c["id"]]["cost_nanos"]
+
+        if kind === :baseline,
+          do: base,
+          else: Metrics.bounded_uint_sum([base, get_in(rows, [c["id"], "cost_nanos"])])
+      end)
+
     Enum.reduce(
       ~w(false useful critical),
       %{
@@ -224,7 +235,8 @@ defmodule Ipse.Development.Evaluation.CandidateAssessment do
                 &(not known?(rows[&1["id"]]) or rows[&1["id"]]["status"] !== "ok")
               )
           ),
-        "p95_ms" => if(Enum.all?(elapsed, &uint?/1), do: p95)
+        "p95_ms" => if(Enum.all?(elapsed, &uint?/1), do: p95),
+        "cost_nanos" => Metrics.bounded_uint_sum(costs)
       },
       fn label, acc ->
         selected = Enum.filter(cases, &(labels[&1["id"]][label] === true))

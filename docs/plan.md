@@ -854,7 +854,7 @@ No local engine, SDK, new dependency or live account eligibility is established.
 | P30B | Operator-only profiles, bounded owned HTTP, `host.decision`, Session/replay bindings, v3 usage/prices and shared budgets; synthetic zero-egress refusal, hosted/compatible wire, tampering, owner-loss, inert-resume, cross-Session/cross-process allowance and child-approval controls; separate decision artifact and Linux package pass synthetic installed checks | None for the local scope; local baseline passed at `b6df1b11` |
 | P30C | Pure Knowledge planners and zero-call controls with independent pure-scope audits; planner-to-Session shadow mapping; fitting note sets bypass the decision call | None for the local scope |
 | P30D | Two bounded consumers: over-budget note-pack selection compared with the complete ordinary greedy baseline, and assessment of an actual main-tool pending proposal under a finite grant; source/get/release, accounting, Saved/close/idle and no-replay controls; [packaged synthetic CLI checkpoint](archive/2026-11-05-packaged-paired-cli/index.md) | Broader installed-user workflows |
-| P30E | Frozen declarations and scoring, protected answer projection, exact-action materializer with rubric/route binding, critical-recall and bounded-cost corrections that keep unsupported results unmeasured | Independent labels, matched real-input experiments and whole-task time/cost |
+| P30E | Frozen declarations and scoring, protected answer projection, exact-action materializer with rubric/route binding, critical-recall and bounded-cost corrections that keep unsupported results unmeasured; frozen selection abstention and assessment whole-task cost bars | Independent labels, matched real-input experiments and whole-task time/cost |
 
 Acceptance requires exact result count/type/range/distribution validation, valid
 per-question refusal handling, uncertainty and malformed-output distinctions,
@@ -884,8 +884,10 @@ experiment needs real matched inputs, complete engine-free baselines, predeclare
 routes and finite shared limits, independent label custody, frozen first
 predictions and explicit whole-task timing and cost.
 
-**Next result:** a reviewed qualified-completion record for the local scope; the
-whole-source baseline it depends on passed at `b6df1b11`. Live engine access and model
+**Next result:** a reviewed qualified-completion record for the local scope. A
+[proposed record](archive/2026-11-09-p30-qualified-completion/index.md) passed an
+independent review with required changes and awaits operator sign-off; P30D's
+installed reruns on current source remain open. Live engine access and model
 quality stay unverified until an operator supplies accounts and labels.
 
 ## P31: usable knowledge and prompt assistance

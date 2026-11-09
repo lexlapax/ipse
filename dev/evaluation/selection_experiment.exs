@@ -13,6 +13,7 @@ defmodule Ipse.Development.Evaluation.SelectionExperiment do
   @resources ~w(operations model_calls input_bytes output_bytes download_bytes cost_nanos)
   @bars %{
     "supported_answer_gain_percentage_points" => 5,
+    "abstention_max_increase_percentage_points" => 5,
     "cost_max_ratio" => [4, 5],
     "p95_max_ratio" => [6, 5],
     "critical_recall" => "no_regression",

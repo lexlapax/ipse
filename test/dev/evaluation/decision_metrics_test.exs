@@ -99,11 +99,16 @@ defmodule Ipse.Development.Evaluation.DecisionMetricsTest do
     for changed <- [
           %{candidate | "critical_recalled" => 8},
           %{candidate | "citation_supported" => 94},
-          %{candidate | "p95_ms" => 1201}
+          %{candidate | "p95_ms" => 1201},
+          %{candidate | "abstentions" => 11}
         ] do
       assert {:ok, %{"disposition" => "evaluated_rejected"}} =
                DecisionMetrics.selection(base, changed, gates())
     end
+
+    # Five more percentage points of abstention is the inclusive limit.
+    assert {:ok, %{"disposition" => "useful_candidate", "criteria" => %{"abstention" => "pass"}}} =
+             DecisionMetrics.selection(base, %{candidate | "abstentions" => 10}, gates())
 
     assert {:ok, %{"disposition" => "evaluated_rejected"}} =
              DecisionMetrics.selection(base, candidate, %{gates() | "protocol" => "fail"})
@@ -196,6 +201,7 @@ defmodule Ipse.Development.Evaluation.DecisionMetricsTest do
       "useful_kept" => 95,
       "critical_total" => 50,
       "critical_kept" => 45,
+      "cost_nanos" => 1000,
       "p95_ms" => 1000
     }
 
@@ -204,6 +210,7 @@ defmodule Ipse.Development.Evaluation.DecisionMetricsTest do
       | "false_durable" => 8,
         "useful_kept" => 93,
         "critical_kept" => 44,
+        "cost_nanos" => 1200,
         "p95_ms" => 1200
     }
 
@@ -220,7 +227,8 @@ defmodule Ipse.Development.Evaluation.DecisionMetricsTest do
           %{candidate | "false_durable" => 9},
           %{candidate | "useful_kept" => 92},
           %{candidate | "critical_kept" => 43},
-          %{candidate | "p95_ms" => 1201}
+          %{candidate | "p95_ms" => 1201},
+          %{candidate | "cost_nanos" => 1201}
         ] do
       assert {:ok, %{"disposition" => "evaluated_rejected"}} =
                DecisionMetrics.assessment(baseline, changed, gates)
@@ -231,6 +239,18 @@ defmodule Ipse.Development.Evaluation.DecisionMetricsTest do
                gates
                | "finite_cost_cap" => "unverified"
              })
+
+    for cost <- [{nil, 1200}, {1000, nil}, {0, 0}] do
+      assert {:ok, %{"disposition" => "unverified", "criteria" => %{"cost" => "unverified"}}} =
+               DecisionMetrics.assessment(
+                 %{baseline | "cost_nanos" => elem(cost, 0)},
+                 %{candidate | "cost_nanos" => elem(cost, 1)},
+                 gates
+               )
+    end
+
+    assert {:error, :invalid_decision_metrics} =
+             DecisionMetrics.assessment(baseline, Map.delete(candidate, "cost_nanos"), gates)
 
     assert {:error, :invalid_decision_metrics} =
              DecisionMetrics.assessment(baseline, %{candidate | "useful_total" => 101}, gates)
@@ -253,6 +273,7 @@ defmodule Ipse.Development.Evaluation.DecisionMetricsTest do
       "useful_kept" => 20,
       "critical_total" => 80,
       "critical_kept" => 40,
+      "cost_nanos" => 100,
       "p95_ms" => 100
     }
 

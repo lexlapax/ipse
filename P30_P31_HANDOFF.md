@@ -195,10 +195,17 @@ Hosted run 42663715255 at `72ee4e63` then passed every Ubuntu and macOS job.
   build/finalization across Sessions at points with no pending write (reserve
   each document invocation's worst-case journal space; stop cleanly with the
   existing continuation token), **and** fold source heads into catalog pages
-  (Root3/head v3) now. Root3 migration (fold in place vs refuse and rebuild) is
-  still to be asked. Retain exactly one previous generation; replaced blocks
+  (Root3/head v3) now. Old version-4/5 roots are refused with
+  `document_layout_rebuild_required`; the operator rebuilds from sources (no
+  in-place fold, no dual-layout reader). Retain exactly one previous generation; replaced blocks
   stay until explicit cleanup after selection behind the maintenance barrier;
   one initial build plus one rebuild per Collection, documented as the limit.
+- P30 record (third round): consent disclosures accepted as a limitation;
+  frozen selection abstention and assessment whole-task cost bars added;
+  P30D closes with the same scripted journeys on current source (port the
+  selection checkpoint to a current verifier, rerun it and
+  `pending_shadow_installed.exs` on a current Linux package). Draft record:
+  `docs/archive/2026-11-09-p30-qualified-completion/`, awaiting sign-off.
 - Research (P31H): fence registered inference routes for provided-only source
   sets with a host-computed complete-set digest journaled before approval and
   rechecked at send, release and saved restore; ordinary per-call approval keeps
