@@ -202,7 +202,10 @@ defmodule Ipse.Development.VerificationTest do
     File.chmod!(launcher, 0o755)
     File.cp!(launcher, Path.join(release, "ipse"))
     archive = Path.join(root, "fixture.tar.gz")
-    {_, 0} = System.cmd("tar", ["-czf", archive, "-C", release, "."])
+
+    {_, 0} =
+      System.cmd("tar", ["-czf", archive, "-C", release, "."], env: [{"COPYFILE_DISABLE", "1"}])
+
     marker = Path.join(root, "host-compiler-ran")
     poisoned = Path.join(bin, "elixir")
     File.write!(poisoned, "#!/bin/sh\nprintf wrong > #{quote.(marker)}\nexit 1\n")

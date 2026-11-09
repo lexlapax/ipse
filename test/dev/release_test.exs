@@ -397,7 +397,10 @@ defmodule Ipse.Development.ReleaseTest do
 
   defp documentation_archive!(root, bundle) do
     archive = Path.join(root, "docs.tar.gz")
-    {_, 0} = System.cmd("tar", ["-czf", archive, "-C", bundle, "."])
+
+    {_, 0} =
+      System.cmd("tar", ["-czf", archive, "-C", bundle, "."], env: [{"COPYFILE_DISABLE", "1"}])
+
     archive
   end
 

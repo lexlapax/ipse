@@ -49,7 +49,8 @@ if [ "$IPSE_OS" = linux ]; then
 fi
 mkdir -p dist
 IPSE_ARCHIVE="dist/ipse-$IPSE_VERSION-$IPSE_OS-$IPSE_ARCH$IPSE_ABI.tar.gz"
-tar -czf "$IPSE_ARCHIVE" -C "$IPSE_RELEASE" .
+# macOS tar would otherwise add AppleDouble `._*` entries for extended attributes.
+COPYFILE_DISABLE=1 tar -czf "$IPSE_ARCHIVE" -C "$IPSE_RELEASE" .
 elixir -r dev/release.exs -e 'IO.puts(:json.encode(Ipse.Development.Release.verify_documentation_archive!(hd(System.argv()))))' -- "$IPSE_ARCHIVE"
 elixir -r dev/release.exs -e 'Ipse.Development.Release.write_checksum!(hd(System.argv()))' -- "$IPSE_ARCHIVE"
 printf 'Built %s\n' "$IPSE_ARCHIVE"
