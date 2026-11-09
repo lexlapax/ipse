@@ -170,6 +170,7 @@ failed only `test/ipse/mcp/catalog_session_test.exs:525` on a 5 s `:done`
 wait (now 15 s, matching the file's fresh-VM catalog budget); partition 2 was
 never acquired by a hosted runner (GitHub macOS capacity), as was partition 1
 in run 42651877515. A full macOS source suite has not run anywhere.
+Hosted run 42663715255 at `72ee4e63` then passed every Ubuntu and macOS job.
 
 ## Other open items
 
