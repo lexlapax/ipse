@@ -995,8 +995,15 @@ defmodule Ipse.Extension.DecisionSessionTest do
     suffix =
       binary_part(after_resume, byte_size(before), byte_size(after_resume) - byte_size(before))
 
-    [marker] = String.split(suffix, "\n", trim: true) |> Enum.map(&Jason.decode!/1)
-    assert Ipse.Session.ReleaseReceipt.valid_owner_marker?(marker, id)
+    # Only the Linux release-receipt layout records an owner marker on idle
+    # resume; the portable legacy layout appends nothing.
+    if :os.type() == {:unix, :linux} do
+      [marker] = String.split(suffix, "\n", trim: true) |> Enum.map(&Jason.decode!/1)
+      assert Ipse.Session.ReleaseReceipt.valid_owner_marker?(marker, id)
+    else
+      assert suffix == ""
+    end
+
     refute_receive {:decision_http, ^tag, _, _, _}, 100
   end
 

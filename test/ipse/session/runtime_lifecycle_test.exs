@@ -235,10 +235,16 @@ defmodule Ipse.LifecycleRuntimeTest do
     assert_receive {:ipse, ^pid, {:done, :ok}}, 2_000
     :ok = Session.close(pid)
     records = facts(load(c, id))
-    assert [_, ^wait, %{"outcome" => "denied"}, %{"cleanup_confirmed" => false}] = records
+    # Only the Linux release-receipt layout leaves cleanup to a signed release
+    # claim; the portable legacy layout confirms cleanup at close.
+    if :os.type() == {:unix, :linux} do
+      assert [_, ^wait, %{"outcome" => "denied"}, %{"cleanup_confirmed" => false}] = records
 
-    assert {:ok, %{"release_claim" => "signed_release_claim"}} =
-             Ipse.Session.Saved.inspect_saved(c.dir, id)
+      assert {:ok, %{"release_claim" => "signed_release_claim"}} =
+               Ipse.Session.Saved.inspect_saved(c.dir, id)
+    else
+      assert [_, ^wait, %{"outcome" => "denied"}, %{"cleanup_confirmed" => true}] = records
+    end
 
     assert {:ok, _} = RuntimeLifecycle.restore(records, id)
     refute File.exists?(Path.join(c.root, "effect.txt"))
@@ -330,26 +336,32 @@ defmodule Ipse.LifecycleRuntimeTest do
     after_resume = load(c, id)
     assert Enum.take(after_resume, length(before_resume)) == before_resume
 
-    assert [
-             %{
-               "type" => "session_release_owner_started",
-               "session_id" => ^id,
-               "owner_id" => owner
-             },
-             %{
-               "type" => "session_release_intent",
-               "session_id" => ^id,
-               "owner_id" => intent_owner,
-               "epoch_id" => nil,
-               "closure_sha256" => nil
-             }
-           ] =
-             Enum.drop(after_resume, length(before_resume))
+    # Only the Linux release-receipt layout records an owner marker and release
+    # intent; the portable legacy layout appends nothing on idle resume/close.
+    if :os.type() == {:unix, :linux} do
+      assert [
+               %{
+                 "type" => "session_release_owner_started",
+                 "session_id" => ^id,
+                 "owner_id" => owner
+               },
+               %{
+                 "type" => "session_release_intent",
+                 "session_id" => ^id,
+                 "owner_id" => intent_owner,
+                 "epoch_id" => nil,
+                 "closure_sha256" => nil
+               }
+             ] =
+               Enum.drop(after_resume, length(before_resume))
 
-    assert owner == intent_owner
+      assert owner == intent_owner
 
-    assert {:ok, %{"release_claim" => "signed_release_claim"}} =
-             Ipse.Session.Saved.inspect_saved(c.dir, id)
+      assert {:ok, %{"release_claim" => "signed_release_claim"}} =
+               Ipse.Session.Saved.inspect_saved(c.dir, id)
+    else
+      assert after_resume == before_resume
+    end
 
     assert facts(after_resume) == []
   end

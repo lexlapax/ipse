@@ -102,7 +102,23 @@ The runtime fails closed off Linux by design:
 - Timeouts raised for `storage_continuation_test` (180 s) and
   `collection_directory_test` (300 s); stack traces showed slow work, not hangs.
 
+Hosted run 42640023098 (`eb5f9cf2`, reworded as `ca0a2d03`): Ubuntu all green, including the PTY
+driver change. macOS partition 1 now finishes in time; its six failures
+(`protected_lease_test` x2, `runtime_lifecycle_test` x2,
+`workspace_integration_test`, `decision_session_test`) are fixed in the next
+commit and pass locally. The platform job reaches the MCP verifier (decision 1).
+
 Not resolved:
+- Five macOS failures seen only on hosted runners; each passes locally in
+  isolation and as whole files, on OTP 29 and twice on OTP 27.3.4:
+  `test/dev/evaluation/session_test.exs:161` (bad_open/bad_append get
+  `{:command_failed, "failed"}` with a 1 s driver timeout),
+  `test/ipse/extension/invocation_test.exs:2921` (session gone before
+  `Session.info`), `test/ipse/extension/services_test.exs:359` (no `:done`
+  within 3 s), `test/ipse/runner_storage_test.exs:43` (got
+  `{:cleanup_unconfirmed, :protected_staging_write_unavailable}`; this file's
+  partition passed at `eabff5e7`). Likely load or timing on 3-core hosted
+  runners; not classified.
 - Why macOS partition 1 exceeded 60 minutes is unknown; the gated 30-minute
   evaluation children may account for it.
 

@@ -486,8 +486,14 @@ defmodule Ipse.WorkspaceSessionTest do
       "snapshot" => %{"version" => 1, "cwd" => "/tmp/../../etc", "sources" => []}
     }
 
-    assert {:error, :journal_lock_owner_required} = Ipse.Journal.append(ctx.dir, id, forged)
-    File.write!(Path.join(ctx.dir, id <> ".jsonl"), Jason.encode!(forged) <> "\n", [:append])
+    # Release-receipt journals (Linux) refuse appends without the native owner,
+    # so forge the line directly; the portable legacy layout accepts the append.
+    if :os.type() == {:unix, :linux} do
+      assert {:error, :journal_lock_owner_required} = Ipse.Journal.append(ctx.dir, id, forged)
+      File.write!(Path.join(ctx.dir, id <> ".jsonl"), Jason.encode!(forged) <> "\n", [:append])
+    else
+      assert :ok = Ipse.Journal.append(ctx.dir, id, forged)
+    end
 
     assert {:error, _} =
              DynamicSupervisor.start_child(
