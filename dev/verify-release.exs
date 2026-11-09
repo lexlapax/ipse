@@ -223,9 +223,21 @@ try do
   after_resume = File.read!(path)
   true = String.starts_with?(after_resume, saved)
   suffix = binary_part(after_resume, byte_size(saved), byte_size(after_resume) - byte_size(saved))
-  [owner_line] = String.split(suffix, "\n", trim: true)
-  true = suffix == owner_line <> "\n"
-  true = Ipse.Session.ReleaseReceipt.valid_owner_marker?(Jason.decode!(owner_line), fresh_id)
+  [header | _] = String.split(saved, "\n", trim: true)
+
+  # A release-receipt journal records only a new owner marker on idle resume;
+  # the portable legacy layout appends nothing.
+  case get_in(Jason.decode!(header), ["metadata", "release_receipt_layout"]) do
+    nil ->
+      "" = suffix
+
+    layout ->
+      true = layout == Ipse.Session.ReleaseReceipt.layout()
+      [owner_line] = String.split(suffix, "\n", trim: true)
+      true = suffix == owner_line <> "\n"
+      true = Ipse.Session.ReleaseReceipt.valid_owner_marker?(Jason.decode!(owner_line), fresh_id)
+  end
+
   :ok = Ipse.Session.close_confirmed(resumed)
 
   {:error, :invalid_handoff} =

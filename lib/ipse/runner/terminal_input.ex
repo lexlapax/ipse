@@ -8,8 +8,8 @@ defmodule Ipse.Runner.TerminalInput do
   readable it starts a blocking read on a dirty IO scheduler and keeps any bytes
   for a later `IO.gets`. If a helper wins the bytes first, that read stays
   blocked in the kernel and takes the next line, or part of it, that the operator
-  types for a later helper. OTP releases whose reader runs only on request do not
-  register that name and need no action.
+  types for a later helper. OTP 28 and later still register that reader but
+  read only when `IO.gets` asks, so pausing it there removes no competing read.
 
   `claim/0` must succeed before a helper that reads the terminal is started. The
   first claim asks the reader to pause through the same request that OTP's

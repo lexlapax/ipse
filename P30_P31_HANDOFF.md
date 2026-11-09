@@ -33,13 +33,36 @@ milestones, their required tests, an adversarial audit and a reviewer handoff.
   `dev/verify.exs installed package` (memory `state.get` outcome unknown).
   `main` was green on macOS at `fbb207d5`, so these came in with this branch.
 
-## macOS fixes in this commit (not yet run on macOS)
+## macOS fixes (`eabff5e7` and its follow-up)
 
-Checked only on Linux: format, warnings-as-errors compile, compilation of all
-4,665 tests, each changed test file with `--max-cases 2`, and the subagents and
-extensions demos. None of the macOS branches has executed. First job on the Mac:
-run the changed test files below and the installed package verification, then
-push and watch hosted CI.
+Checked locally on macOS (Darwin 25.6.0, arm64) with Elixir 1.20.5 on OTP 29;
+hosted CI uses OTP 27. All 24 test files changed in `eabff5e7` pass (315 tests,
+47 skipped, 49 excluded) apart from the terminal-input pair fixed below. Every
+other `operator_pty` user passes (43 run; most are Linux-only or
+`:native_storage`). Replaying the CI platform job after the build step, 56 of
+62 commands pass, including `./bin/ipse demo` and the installed package,
+model-service, extension, model-call, embedding, saved-result, document and
+non-MCP knowledge verifiers. The six failures are the source and installed
+`mcp`, `knowledge-mcp` and `knowledge-research` verifiers, all from decision 1
+below: `Ipse.MCP.StdioTransport` exits during `initialize`, surfacing as a
+GenServer crash rather than a clear refusal. The full source suite has not run
+on the Mac.
+
+Follow-up fixes found on the Mac:
+
+- `test/support/operator_pty.rs` now makes the PTY the controlling terminal of
+  the child's session (`setsid` + `TIOCSCTTY`). Without one, macOS gives the
+  slave to the first new session leader the VM spawns (erts port children call
+  `setsid`) and revokes it when that child exits, so the VM's next write fails
+  with `EIO`. This was the `terminal_input_test` "child exits after the first
+  line" failure; a real login terminal is not affected.
+- OTP 28 and later register `user_drv_reader` but read only on request, so the
+  unclaimed control now decides eagerness by OTP release (eager below 28)
+  instead of by the registered name. Verified on OTP 27.3.4 (eager branch) and
+  OTP 29 locally.
+- `dev/verify-release.exs` handoff-resume check reads the journal header's
+  `release_receipt_layout`, like the other verifiers, so macOS's legacy layout
+  passes the installed package check.
 
 Most failures were Linux-only facilities whose tests lacked a platform gate.
 The runtime fails closed off Linux by design:
@@ -80,9 +103,6 @@ The runtime fails closed off Linux by design:
   `collection_directory_test` (300 s); stack traces showed slow work, not hangs.
 
 Not resolved:
-- `test/ipse/runner/terminal_input_test.exs` (2 tests): the PTY child VM exits
-  non-zero right after the first typed line on macOS, in claimed and unclaimed
-  modes. Unclassified; needs a Mac to diagnose.
 - Why macOS partition 1 exceeded 60 minutes is unknown; the gated 30-minute
   evaluation children may account for it.
 

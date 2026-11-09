@@ -29,8 +29,8 @@ defmodule Ipse.Runner.TerminalInputTest do
   test "an unclaimed eager VM reader takes lines meant for the inheriting child", c do
     output = run(c, "unclaimed")
 
-    if eager_reader_absent?(c) do
-      # Runtimes that read standard input only on request have nothing to pause.
+    if otp_release() >= 28 do
+      # OTP 28 and later read standard input only on request, so nothing competes.
       assert output =~ "TERMINAL_CHILD_1=synthetic café 日本語 1"
     else
       for n <- 1..3, do: assert(output =~ "TERMINAL_CHILD_#{n}=none")
@@ -77,22 +77,7 @@ defmodule Ipse.Runner.TerminalInputTest do
     output
   end
 
-  # The test VM itself does not run on a terminal, so ask a PTY child whether
-  # its runtime registers the eager reader.
-  defp eager_reader_absent?(c) do
-    {output, _} =
-      System.cmd(
-        c.driver,
-        [
-          System.find_executable("elixir"),
-          "-e",
-          ~S|IO.puts("EAGER=#{Process.whereis(:user_drv_reader) != nil}")|
-        ],
-        stderr_to_stdout: true
-      )
-
-    output =~ "EAGER=false"
-  end
+  defp otp_release, do: String.to_integer(System.otp_release())
 
   defp code_paths do
     :code.get_path()

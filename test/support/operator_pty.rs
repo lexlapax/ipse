@@ -5,6 +5,7 @@ use std::io::{Read, Write};
 use std::os::fd::FromRawFd;
 use std::os::unix::ffi::OsStrExt;
 use std::os::unix::fs::OpenOptionsExt;
+use std::os::unix::process::CommandExt;
 use std::process::{Command, Stdio};
 use std::time::{Duration, Instant};
 
@@ -14,12 +15,18 @@ struct Poll { fd: i32, events: i16, revents: i16 }
 type Count = usize;
 #[cfg(target_os = "macos")]
 type Count = u32;
+#[cfg(target_os = "linux")]
+const TIOCSCTTY: std::ffi::c_ulong = 0x540E;
+#[cfg(target_os = "macos")]
+const TIOCSCTTY: std::ffi::c_ulong = 0x2000_7461;
 extern "C" {
     fn posix_openpt(flags: i32) -> i32;
     fn grantpt(fd: i32) -> i32;
     fn unlockpt(fd: i32) -> i32;
     fn ptsname(fd: i32) -> *mut std::ffi::c_char;
     fn poll(fds: *mut Poll, count: Count, timeout: i32) -> i32;
+    fn setsid() -> i32;
+    fn ioctl(fd: i32, request: std::ffi::c_ulong, ...) -> i32;
 }
 
 fn assistant_review_ready(tail: &str) -> bool {
@@ -83,10 +90,21 @@ fn main() {
     let config_knowledge = args.first().is_some_and(|a| a == "--knowledge-config");
     if knowledge && !assertion { args.remove(0); }
     assert!(!args.is_empty());
-    let mut child = Command::new(&args[0]).args(&args[1..])
+    let mut command = Command::new(&args[0]);
+    command.args(&args[1..])
         .stdin(Stdio::from(slave.try_clone().unwrap()))
         .stdout(Stdio::from(slave.try_clone().unwrap()))
-        .stderr(Stdio::from(slave.try_clone().unwrap())).spawn().unwrap();
+        .stderr(Stdio::from(slave.try_clone().unwrap()));
+    // Like a login terminal, the PTY is the controlling terminal of the child's
+    // session. Otherwise macOS hands it to the first new session leader the
+    // child spawns and revokes it for everyone when that process exits.
+    unsafe {
+        command.pre_exec(|| {
+            if setsid() < 0 || ioctl(0, TIOCSCTTY, 0) < 0 { return Err(std::io::Error::last_os_error()); }
+            Ok(())
+        });
+    }
+    let mut child = command.spawn().unwrap();
     drop(slave);
     let deadline = Instant::now() + Duration::from_secs(if args.last().is_some_and(|a| a == "recall-many") { 300 } else { 60 });
     let mut output = Vec::new();
