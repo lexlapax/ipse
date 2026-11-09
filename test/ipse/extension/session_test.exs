@@ -386,10 +386,16 @@ defmodule Ipse.Extension.SessionTest do
     assert Enum.any?(events, &(&1["type"] == "extension_invocation_intent"))
     assert Enum.any?(events, &(&1["type"] == "extension_action_intent"))
 
+    # Hosts without a reviewed native storage profile refuse the state lock
+    # before any effect, which is the known extension_state_unavailable failure.
     assert Enum.any?(
              events,
              &(&1["type"] == "extension_action_result" and
-                 &1["outcome"]["status"] in ["ok", "error", "unknown"])
+                 (&1["outcome"]["status"] in ["ok", "error", "unknown"] or
+                    &1["outcome"] == %{
+                      "status" => "failed",
+                      "value" => %{"code" => "extension_state_unavailable"}
+                    }))
            )
 
     assert Enum.any?(
