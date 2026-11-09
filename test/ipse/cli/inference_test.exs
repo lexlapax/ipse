@@ -123,6 +123,7 @@ defmodule Ipse.CLI.InferenceTest do
 
   @tag :inference_tty
   @tag timeout: 120_000
+  @tag :native_storage
   test "native exact reconciliation and cancellation, stale, pipe and concurrent-revision refusal",
        c do
     driver = Path.join(c.root, "pty")

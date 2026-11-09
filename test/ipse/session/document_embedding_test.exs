@@ -409,6 +409,7 @@ defmodule Ipse.Session.DocumentEmbeddingTest do
   end
 
   @tag document_inline_native_v4: true
+  @tag :native_storage
   test "native slot observation and exact CAS refuse intervening writes and retained pending" do
     alias Ipse.Extension.Collection
     alias Ipse.Extension.Collection.DocumentStage

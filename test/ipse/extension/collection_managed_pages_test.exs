@@ -425,6 +425,7 @@ defmodule Ipse.Extension.CollectionManagedPagesNativeTest do
     }
   end
 
+  @tag :native_storage
   test "actual Identity signer binds raw body key kind operation and global generation", c do
     assert {:ok, records} =
              first(c, fn cap ->
@@ -557,6 +558,7 @@ defmodule Ipse.Extension.CollectionManagedPagesNativeTest do
     assert map_size(records) == 2
   end
 
+  @tag :native_storage
   test "authenticated but underfull old nonsingle leaf refuses before local repair", c do
     assert {:ok, :checked} =
              first(c, fn cap ->
@@ -572,6 +574,7 @@ defmodule Ipse.Extension.CollectionManagedPagesNativeTest do
              end)
   end
 
+  @tag :native_storage
   test "bounded actual directory refs support disjoint growth and exact removed revisions", c do
     assert {:ok, old} =
              first(c, fn cap ->
@@ -655,6 +658,7 @@ defmodule Ipse.Extension.CollectionManagedPagesNativeTest do
              )
   end
 
+  @tag :native_storage
   test "planner inserts into an authenticated four-thousand-entry clustered directory", c do
     pages =
       (1..3850 |> Enum.chunk_every(50)) ++ [Enum.to_list(3851..3904), Enum.to_list(3905..4000)]
@@ -764,6 +768,7 @@ defmodule Ipse.Extension.CollectionManagedPagesNativeTest do
              )
   end
 
+  @tag :native_storage
   test "native absence initializes one zero leaf but present missing sentinel and bad maps refuse",
        c do
     assert {:ok, :checked} =
@@ -800,6 +805,7 @@ defmodule Ipse.Extension.CollectionManagedPagesNativeTest do
              end)
   end
 
+  @tag :native_storage
   test "checked page edits refuse stale and occupied rows before producing a plan", c do
     assert {:ok, :checked} =
              first(c, fn cap ->
@@ -836,6 +842,7 @@ defmodule Ipse.Extension.CollectionManagedPagesNativeTest do
              end)
   end
 
+  @tag :native_storage
   test "live split retains exact historical hash dictionaries and refuses a changed root", c do
     assert {:ok, old} =
              first(c, fn cap ->

@@ -81,6 +81,7 @@ defmodule Ipse.Extension.Collection.DocumentInventoryTest do
   end
 
   @tag :document_inventory_native
+  @tag :native_storage
   test "native inventory uses only checked metadata, hides private keys and leaves storage unchanged" do
     dir = Path.join(System.tmp_dir!(), "ipse-document-inventory-" <> Usage.id())
     File.mkdir!(dir)

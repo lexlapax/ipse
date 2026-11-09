@@ -1,5 +1,6 @@
 defmodule Ipse.Session.ManagedSupersessionNativeTest do
   use ExUnit.Case, async: false
+  @moduletag :native_storage
   @moduletag timeout: 120_000
 
   test "native correction and temporal successor publish together and keep the old note noncurrent" do

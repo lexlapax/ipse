@@ -193,6 +193,7 @@ defmodule IpseKnowledge.KnowledgeSessionTest do
   end
 
   @tag :capture_parent_case
+  @tag :native_storage
   test "built native bundle captures an unattended source only as a protected pending proposal" do
     capture(false)
   end
@@ -334,6 +335,7 @@ defmodule IpseKnowledge.KnowledgeSessionTest do
   end
 
   @tag :capture_parent_case
+  @tag :native_storage
   test "read-only recall job rechecks an empty Collection through the Session" do
     capture(false, false, false, false, true)
   end
@@ -343,6 +345,7 @@ defmodule IpseKnowledge.KnowledgeSessionTest do
       capture(true, @fragment_child, @attack_child, @answer_child)
     end
   else
+    @tag :native_storage
     test "actual PTY input exercises the separately built native capture artifact" do
       root = Path.join(System.tmp_dir!(), "ipse-knowledge-native-pty-" <> Ipse.Usage.id())
       File.mkdir!(root)
@@ -402,6 +405,7 @@ defmodule IpseKnowledge.KnowledgeSessionTest do
       end
     end
 
+    @tag :native_storage
     test "native question answer reaches pending capture through the terminal and built worker" do
       root = Path.join(System.tmp_dir!(), "ipse-knowledge-answer-pty-" <> Ipse.Usage.id())
       File.mkdir!(root)

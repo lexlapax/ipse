@@ -30,6 +30,7 @@ defmodule Ipse.Runner.StorageProfileTest do
     %{root: root}
   end
 
+  @tag :native_storage
   test "the pinned production helper admits tmpfs quota and a protected publication without ambient bypass",
        c do
     # General shell helper selection must not widen protected storage admission.

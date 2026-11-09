@@ -1,5 +1,6 @@
 defmodule Ipse.Development.ManagedClockLifecycleTest do
   use ExUnit.Case, async: false
+  @moduletag :native_storage
   @moduletag timeout: 180_000
   @supported match?({:unix, :linux}, :os.type()) and
                String.contains?(to_string(:erlang.system_info(:system_architecture)), "x86_64") and

@@ -1,5 +1,6 @@
 defmodule Ipse.Session.ManagedCompactionDiagnosticTest do
   use ExUnit.Case, async: false
+  @moduletag :native_storage
 
   for scenario <- ~w(shared) do
     @tag timeout: 90_000

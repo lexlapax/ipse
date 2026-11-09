@@ -1,5 +1,6 @@
 defmodule Ipse.SharedProducerGuardSessionTest do
   use ExUnit.Case, async: false
+  @moduletag :native_storage
   import Ipse.Test.ResumeAssertions
   alias Ipse.{Journal, Session, Usage}
   alias Ipse.Extension.{Artifact, Collection, CollectionStore, Config, ProjectIdentity, Registry}

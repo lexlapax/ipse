@@ -57,6 +57,7 @@ defmodule Ipse.Extension.CollectionObservedReadTest do
     })
   end
 
+  @tag :native_storage
   test "get and snapshot return generic results and an exact root witness", c do
     assert {:ok, _} = commit(c, 0, "note.one", 0, %{"text" => "synthetic"})
 
@@ -78,6 +79,7 @@ defmodule Ipse.Extension.CollectionObservedReadTest do
     end
   end
 
+  @tag :native_storage
   test "absent and materialized empty roots produce distinct observations", c do
     request = %{"op" => "get", "key" => "missing"}
 
@@ -97,6 +99,7 @@ defmodule Ipse.Extension.CollectionObservedReadTest do
     assert present["value"]["generation"] == 2
   end
 
+  @tag :native_storage
   test "a later root produces a distinct observation even when a record is unchanged", c do
     assert {:ok, _} = commit(c, 0, "note.one", 0, %{"text" => "synthetic"})
     request = %{"op" => "get", "key" => "note.one"}
@@ -108,6 +111,7 @@ defmodule Ipse.Extension.CollectionObservedReadTest do
     assert first["result_sha256"] != second["result_sha256"]
   end
 
+  @tag :native_storage
   test "internal record-only observations preserve exact record bytes across unrelated writes",
        c do
     request = %{"op" => "get_record", "key" => "note.one"}
@@ -148,6 +152,7 @@ defmodule Ipse.Extension.CollectionObservedReadTest do
     assert deleted["witness"]["root_state"] == "present"
   end
 
+  @tag :native_storage
   test "record-only observed values can bind a fresh-root projection in the pure host model", c do
     assert {:ok, _} = commit(c, 0, "note.one", 0, %{"text" => "synthetic"})
     request = %{"op" => "get_record", "key" => "note.one"}
@@ -231,6 +236,7 @@ defmodule Ipse.Extension.CollectionObservedReadTest do
     end
   end
 
+  @tag :native_storage
   test "record binding refuses a readable noncanonical root witness", c do
     assert {:ok, _} = commit(c, 0, "note.one", 0, %{"text" => "synthetic"})
     path = Path.join([c.root, c.namespace, "root.json"])
@@ -252,6 +258,7 @@ defmodule Ipse.Extension.CollectionObservedReadTest do
              ObservedRead.record_dependency(request, observation, pin(c), validity)
   end
 
+  @tag :native_storage
   test "legacy v3 roots refuse observation while generic get remains available", c do
     assert {:ok, _} = commit(c, 0, "note.one", 0, %{"text" => "synthetic"})
     directory = Path.join(c.root, c.namespace)
@@ -282,6 +289,7 @@ defmodule Ipse.Extension.CollectionObservedReadTest do
              ObservedRead.read(c.root, c.namespace, request)
   end
 
+  @tag :native_storage
   test "snapshot does not read an unrelated corrupt value", c do
     assert {:ok, _} = commit(c, 0, "ipse.observation", 0, %{"text" => "synthetic"})
 
@@ -299,6 +307,7 @@ defmodule Ipse.Extension.CollectionObservedReadTest do
              ObservedRead.read(c.root, c.namespace, %{"op" => "get", "key" => "ipse.observation"})
   end
 
+  @tag :native_storage
   test "a stored reserved sidecar is never returned by an observation", c do
     request = %{
       "op" => "commit",
@@ -371,6 +380,7 @@ defmodule Ipse.Extension.CollectionObservedReadTest do
     refute File.exists?(c.root)
   end
 
+  @tag :native_storage
   test "visible scan matches pagination at the witnessed generation and refuses stale generations",
        c do
     assert {:ok, _} = commit(c, 0, "note.a", 0, %{"n" => 1})
@@ -412,6 +422,7 @@ defmodule Ipse.Extension.CollectionObservedReadTest do
     assert {:error, _} = Collection.close_view(view)
   end
 
+  @tag :native_storage
   test "visible scan refuses a changed root between pages", c do
     assert {:ok, _} = commit(c, 0, "note.a", 0, %{"n" => 1})
     assert {:ok, _} = commit(c, 1, "note.b", 0, %{"n" => 2})
@@ -424,6 +435,7 @@ defmodule Ipse.Extension.CollectionObservedReadTest do
              ObservedRead.read(c.root, c.namespace, %{first | "after" => "note.a"})
   end
 
+  @tag :native_storage
   test "lost native owner while scanning cannot publish an observation", c do
     assert {:ok, _} = commit(c, 0, "note.a", 0, %{"n" => 1})
     handler = {__MODULE__, make_ref()}
@@ -451,6 +463,7 @@ defmodule Ipse.Extension.CollectionObservedReadTest do
     end
   end
 
+  @tag :native_storage
   test "a lost native view owner cannot publish an observation", c do
     assert {:ok, _} = commit(c, 0, "note.one", 0, %{"text" => "synthetic"})
     owner = self()
@@ -475,6 +488,7 @@ defmodule Ipse.Extension.CollectionObservedReadTest do
     end
   end
 
+  @tag :native_storage
   test "a lost native view owner cannot publish a record-only observation", c do
     assert {:ok, _} = commit(c, 0, "note.one", 0, %{"text" => "synthetic"})
     handler = {__MODULE__, make_ref()}
@@ -498,6 +512,7 @@ defmodule Ipse.Extension.CollectionObservedReadTest do
     end
   end
 
+  @tag :native_storage
   test "a lost native owner cannot publish a metadata-only snapshot", c do
     assert {:ok, _} = commit(c, 0, "note.one", 0, %{"text" => "synthetic"})
     handler = {__MODULE__, make_ref()}

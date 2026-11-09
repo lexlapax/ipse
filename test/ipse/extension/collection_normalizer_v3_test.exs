@@ -200,6 +200,7 @@ end
 
 defmodule Ipse.Extension.CollectionNormalizerV3Test do
   use ExUnit.Case, async: false
+  @moduletag :native_storage
   alias Ipse.Extension.Collection.{NormalizerV3, ManagedPages, Migration}
   alias Ipse.Extension.ProjectIdentity, as: Identity
   alias Ipse.Test.NormalizerV3Fixture, as: F

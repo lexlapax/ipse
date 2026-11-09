@@ -1,5 +1,6 @@
 defmodule Ipse.CLI.ChatReofferTest do
   use ExUnit.Case, async: false
+  @moduletag :native_storage
   @moduletag timeout: 240_000
 
   @tag :chat_reoffer

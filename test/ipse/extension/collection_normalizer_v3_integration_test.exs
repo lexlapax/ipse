@@ -4,6 +4,7 @@ end
 
 defmodule Ipse.Extension.CollectionNormalizerV3IntegrationTest do
   use ExUnit.Case, async: false
+  @moduletag :native_storage
   alias Ipse.Extension.Collection, as: C
   alias Ipse.Extension.Collection.{ManagedPages, Migration, NormalizerV3, ObservedRead}
   alias Ipse.Extension.ManagedRecipe

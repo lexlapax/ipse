@@ -915,6 +915,7 @@ defmodule IpseKnowledge.KnowledgeRecallTest do
   """
 
   @tag :exunit_output_contract
+  @tag :native_storage
   test "bounded turn-local recall runs in an independent worker VM" do
     sdk = Application.app_dir(:ipse, "ebin")
     paths = Path.wildcard(Path.join(Path.dirname(Path.dirname(sdk)), "*/ebin"))

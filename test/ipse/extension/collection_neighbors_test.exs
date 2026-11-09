@@ -1,5 +1,6 @@
 defmodule Ipse.Extension.CollectionNeighborsTest do
   use ExUnit.Case, async: false
+  @moduletag :native_storage
   alias Ipse.Extension.Collection, as: C
   alias Ipse.{JSON, Session.Resources}
 

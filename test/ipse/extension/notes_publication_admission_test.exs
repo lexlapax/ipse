@@ -2,6 +2,7 @@ Code.require_file("collection_normalizer_v3_integration_test.exs", __DIR__)
 
 defmodule Ipse.Extension.NotesPublicationAdmissionTest do
   use ExUnit.Case, async: false
+  @moduletag :native_storage
   alias Ipse.Usage
   alias Ipse.Extension.{Collection, ProjectIdentity}
   alias Ipse.Extension.CollectionNormalizerV3IntegrationTest, as: Fixture

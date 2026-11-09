@@ -1,5 +1,6 @@
 defmodule Ipse.Session.OperatorAssertionIntegrationTest do
   use ExUnit.Case, async: false
+  @moduletag :native_storage
 
   setup_all do
     root = Path.join(System.tmp_dir!(), "ipse-assertion-driver-" <> Ipse.Usage.id())

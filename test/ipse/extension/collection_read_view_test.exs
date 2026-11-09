@@ -23,6 +23,7 @@ defmodule Ipse.Extension.CollectionReadViewTest do
   end
 
   @tag :coalesced_raw_bound
+  @tag :native_storage
   test "eight maximum notes values with maximum keys fit the unchanged raw reply bound", c do
     keys = for n <- 1..8, do: "maximum." <> String.pad_leading(Integer.to_string(n), 88, "0")
     value = %{"text" => String.duplicate("x", 6144 - byte_size(Jason.encode!(%{"text" => ""})))}
@@ -40,6 +41,7 @@ defmodule Ipse.Extension.CollectionReadViewTest do
   end
 
   @tag :coalesced_capacity
+  @tag :native_storage
   test "classified cache capacity separates valid size from invalid refs and native record count",
        c do
     view = seed(c)
@@ -163,6 +165,7 @@ defmodule Ipse.Extension.CollectionReadViewTest do
     assert :ok = ReadView.close(view)
   end
 
+  @tag :native_storage
   test "root-bound batches and cursor pages read in caller order without durable operations", c do
     view = seed(c)
     before = files(c)
@@ -190,6 +193,7 @@ defmodule Ipse.Extension.CollectionReadViewTest do
     assert :ok = C.close_view(replacement)
   end
 
+  @tag :native_storage
   test "managed v5 views expose selected storage records without minting eligibility", c do
     request = %{
       "op" => "commit",
@@ -219,6 +223,7 @@ defmodule Ipse.Extension.CollectionReadViewTest do
     assert :ok = C.close_view(view)
   end
 
+  @tag :native_storage
   test "an outer protected caller retains its stack while opening and reading a view", c do
     view = seed(c)
     assert :ok = C.close_view(view)
@@ -243,6 +248,7 @@ defmodule Ipse.Extension.CollectionReadViewTest do
     assert :ok = C.close_view(retained)
   end
 
+  @tag :native_storage
   test "unmaterialized and anchored materialized empty stores have distinct witnesses", c do
     assert {:ok, empty} = C.open_view(c.root, c.project)
     assert {:ok, absent} = get(empty, ["a"])
@@ -274,6 +280,7 @@ defmodule Ipse.Extension.CollectionReadViewTest do
     assert :ok = C.close_view(view)
   end
 
+  @tag :native_storage
   test "legacy manifests refuse without implicit adoption or changed files", c do
     view = seed(c)
     assert :ok = C.close_view(view)
@@ -304,6 +311,7 @@ defmodule Ipse.Extension.CollectionReadViewTest do
              C.execute(c.root, c.project, %{"op" => "get", "key" => "a"}, Ipse.Usage.id())
   end
 
+  @tag :native_storage
   test "metadata-only snapshot refuses a root changed after view creation", c do
     view = seed(c)
 
@@ -314,6 +322,7 @@ defmodule Ipse.Extension.CollectionReadViewTest do
     assert {:error, :collection_view_stale} = C.view_read(view, %{"op" => "snapshot"})
   end
 
+  @tag :native_storage
   test "root replacement makes the entire view stale and explicit reopen observes it", c do
     view = seed(c)
     assert {:ok, _} = commit(c, 1, [change("b", 1, %{"text" => "replacement"})])
@@ -325,6 +334,7 @@ defmodule Ipse.Extension.CollectionReadViewTest do
     assert :ok = C.close_view(fresh)
   end
 
+  @tag :native_storage
   test "selected objects are rehashed while unchanged-root unrelated manifest blocks stay cached",
        c do
     view = seed(c)
@@ -340,6 +350,7 @@ defmodule Ipse.Extension.CollectionReadViewTest do
     assert {:error, :collection_unavailable} = C.open_view(c.root, c.project)
   end
 
+  @tag :native_storage
   test "copied, forged and cross-task handles cannot grant caller authority", c do
     view = seed(c)
     assert inspect(view) == "#Collection.ReadView<private>"
@@ -371,6 +382,7 @@ defmodule Ipse.Extension.CollectionReadViewTest do
     assert :ok = C.close_view(view)
   end
 
+  @tag :native_storage
   test "closed request schemas refuse without consuming reads", c do
     view = seed(c)
 
@@ -390,6 +402,7 @@ defmodule Ipse.Extension.CollectionReadViewTest do
     assert :ok = C.close_view(view)
   end
 
+  @tag :native_storage
   test "private cache corruption of headers, selected refs or scan index fails closed", c do
     for mutate <- [
           fn s -> put_in(s, [:cache, "summary", "generation"], 2) end,
@@ -408,6 +421,7 @@ defmodule Ipse.Extension.CollectionReadViewTest do
     end
   end
 
+  @tag :native_storage
   test "absolute expiry and copied-handle read cap cannot be renewed", c do
     view = seed(c)
     :sys.replace_state(view.server, &%{&1 | reads: 511})
@@ -425,6 +439,7 @@ defmodule Ipse.Extension.CollectionReadViewTest do
     await_dead(expiring.server)
   end
 
+  @tag :native_storage
   test "encoded cache and ref-count capacity are enforced before reads", c do
     view = seed(c)
     cache = :sys.get_state(view.server).cache
@@ -481,6 +496,7 @@ defmodule Ipse.Extension.CollectionReadViewTest do
     assert :ok = C.close_view(view)
   end
 
+  @tag :native_storage
   test "8192 short-key refs fit while a forged summary or encoded overhead does not", c do
     view = seed(c)
     cache = :sys.get_state(view.server).cache
@@ -503,6 +519,7 @@ defmodule Ipse.Extension.CollectionReadViewTest do
     await_dead(forged.server)
   end
 
+  @tag :native_storage
   test "original owner death fences actual native work even with paused borrower alive", c do
     handler = "read-view-owner-loss-" <> Ipse.Usage.id()
     parent = self()
@@ -556,6 +573,7 @@ defmodule Ipse.Extension.CollectionReadViewTest do
     :telemetry.detach(handler)
   end
 
+  @tag :native_storage
   test "actual native owner loss yields unknown without selected data", c do
     view = seed(c)
     handler = "read-view-loss-" <> Ipse.Usage.id()
@@ -583,6 +601,7 @@ defmodule Ipse.Extension.CollectionReadViewTest do
     assert :ok = C.close_view(fresh)
   end
 
+  @tag :native_storage
   test "expiry during an actual native read discards its otherwise valid data", c do
     view = seed(c)
     handler = "read-view-expiry-" <> Ipse.Usage.id()
@@ -610,6 +629,7 @@ defmodule Ipse.Extension.CollectionReadViewTest do
     :telemetry.detach(handler)
   end
 
+  @tag :native_storage
   test "a lost borrowed file-effect worker invalidates its cache", c do
     view = seed(c)
 
@@ -624,6 +644,7 @@ defmodule Ipse.Extension.CollectionReadViewTest do
     assert {:error, :collection_view_unavailable} = get(view, ["a"])
   end
 
+  @tag :native_storage
   test "another VM shares the actual lock then invalidates the old root witness", c do
     view = seed(c)
     paths = Enum.flat_map(:code.get_path(), &["-pa", List.to_string(&1)])

@@ -2,6 +2,7 @@ defmodule Ipse.Extension.CollectionDocumentSourceUseIsolationTest do
   use ExUnit.Case, async: false
 
   @tag timeout: 120_000
+  @tag :native_storage
   test "document source controls do not load the Knowledge domain into the host" do
     before = :code.is_loaded(IpseKnowledge.Evidence)
 

@@ -1777,6 +1777,7 @@ defmodule Ipse.Extension.ManagedCollectionCallSessionTest do
   end
 
   @tag managed_display_owner: true
+  @tag :native_storage
   test "display preparation retains the actual Identity Consent and Collection owners", c do
     alias Ipse.Runner.Transaction
     alias Ipse.Session.ManagedUse
@@ -1844,6 +1845,7 @@ defmodule Ipse.Extension.ManagedCollectionCallSessionTest do
   end
 
   @tag managed_display_owner: true
+  @tag :native_storage
   test "a changed current root refuses display preparation before entering its adapter", c do
     alias Ipse.Extension.Collection
     alias Ipse.Extension.Collection.ObservedRead
@@ -1893,6 +1895,7 @@ defmodule Ipse.Extension.ManagedCollectionCallSessionTest do
          metadata_version: 3,
          registered_main: kind == :managed,
          capture_write: kind == :managed
+    @tag :native_storage
     test "protected #{kind} publication applies its admitted deadline policy", c do
       c = if unquote(kind) == :unmanaged, do: legacy_publisher(c), else: c
       mode = if unquote(kind) == :managed, do: "capture", else: "legacy_commit"
@@ -1928,6 +1931,7 @@ defmodule Ipse.Extension.ManagedCollectionCallSessionTest do
   end
 
   @tag state_lifetime_gate: true
+  @tag :native_storage
   test "ordinary extension State deadline and ordinary no-deadline State both work",
        c do
     pid = start(c, %{approval: :allow, approval_origin: :yes, headless: true})
@@ -1968,6 +1972,7 @@ defmodule Ipse.Extension.ManagedCollectionCallSessionTest do
   end
 
   @tag state_lifetime_gate: true
+  @tag :native_storage
   test "managed extension timed State remains refused before its intent", c do
     pid = start(c, %{approval: :allow, approval_origin: :yes, headless: true})
 
@@ -1994,6 +1999,7 @@ defmodule Ipse.Extension.ManagedCollectionCallSessionTest do
 
   for boundary <- [:revoke, :expiry] do
     @tag extension_question_recovery: true, wire_expiry: boundary == :expiry
+    @tag :native_storage
     test "interrupted legacy extension question withholds arguments after #{boundary}", c do
       pid = start(c, %{operator_questions: true})
 
@@ -2093,6 +2099,7 @@ defmodule Ipse.Extension.ManagedCollectionCallSessionTest do
   end
 
   @tag extension_question_ordinary: true
+  @tag :native_storage
   test "ordinary extension question resumes with its exact full parent", c do
     pid = start(c, %{operator_questions: true})
 
@@ -2147,6 +2154,7 @@ defmodule Ipse.Extension.ManagedCollectionCallSessionTest do
 
   for kind <- [:managed, :unmanaged], boundary <- [:current, :delayed_stage, :stopped_native] do
     @tag ordinary_publication_deadline: true, publication_deadline: true, metadata_version: 3
+    @tag :native_storage
     test "#{kind} ordinary publication fences #{boundary} at the actual native switch", c do
       c = if unquote(kind) == :unmanaged, do: legacy_publisher(c), else: c
       pid = start(c)
@@ -2298,6 +2306,7 @@ defmodule Ipse.Extension.ManagedCollectionCallSessionTest do
     @tag managed_host_repair: true,
          managed_host_service: op == "service.call",
          wire_expiry: boundary == :expiry
+    @tag :native_storage
     test "managed #{op} refuses #{boundary} with --yes before host publication", c do
       pid = start(c, %{approval: :allow, approval_origin: :yes, headless: true})
 
@@ -2330,6 +2339,7 @@ defmodule Ipse.Extension.ManagedCollectionCallSessionTest do
 
   for op <- ["state.put", "state.delete", "service.call"] do
     @tag managed_host_repair: true, managed_host_service: op == "service.call"
+    @tag :native_storage
     test "ordinary #{op} remains available with --yes", c do
       pid = start(c, %{approval: :allow, approval_origin: :yes, headless: true})
 
@@ -2356,6 +2366,7 @@ defmodule Ipse.Extension.ManagedCollectionCallSessionTest do
 
   @tag :worker_inherited_union
   @tag literal_v4_ab: true, metadata_version: 3
+  @tag :native_storage
   test "fresh B quote cannot discard genuine inherited A at the actual next Worker frame", c do
     seed = c.literal_seed
     generation = collection_read(c, %{"op" => "snapshot"})["generation"]
@@ -2455,6 +2466,7 @@ defmodule Ipse.Extension.ManagedCollectionCallSessionTest do
 
   @tag :worker_inherited_union
   @tag literal_v4_ab: true, metadata_version: 3, registered_main: true, capture_write: true
+  @tag :native_storage
   test "independent current B completes capture while unread A's original journal is unavailable",
        c do
     seed = c.literal_seed
@@ -2685,6 +2697,7 @@ defmodule Ipse.Extension.ManagedCollectionCallSessionTest do
        registered_main: true,
        capture_write: true,
        registered_capture_mode: "capture_ab_literal_publication"
+  @tag :native_storage
   test "current literal A remains in the causal union while a new B proposal publishes", c do
     seed = c.literal_seed
     before = collection_read(c, %{"op" => "snapshot"})
@@ -2742,6 +2755,7 @@ defmodule Ipse.Extension.ManagedCollectionCallSessionTest do
          capture_write: true,
          registered_capture_no_continuation: true,
          registered_capture_mode: "capture_ab_literal_publication_hold"
+    @tag :native_storage
     test "current-literal capture refuses #{boundary} loss after B input before publication", c do
       seed = c.literal_seed
       before = collection_read(c, %{"op" => "snapshot"})
@@ -2794,6 +2808,7 @@ defmodule Ipse.Extension.ManagedCollectionCallSessionTest do
        capture_write: true,
        registered_capture_no_continuation: true,
        registered_capture_mode: "capture_ab_literal_publication"
+  @tag :native_storage
   test "original A owner loss after staging prevents the native B publication and refunds nothing",
        c do
     owner = self()
@@ -2897,6 +2912,7 @@ defmodule Ipse.Extension.ManagedCollectionCallSessionTest do
        registered_main: true,
        capture_write: true,
        registered_ab_root_publication: true
+  @tag :native_storage
   test "publication cannot discard earlier stale root metadata while citing current source B",
        c do
     seed = c.literal_seed
@@ -3094,6 +3110,7 @@ defmodule Ipse.Extension.ManagedCollectionCallSessionTest do
   end
 
   @tag managed_question_ordinary: true
+  @tag :native_storage
   test "ordinary pending question still resumes with its complete arguments", c do
     pid = start(c, %{operator_questions: true, legacy_question_fixture: true})
     assert :ok = Session.prompt(pid, "An ordinary synthetic question")
@@ -3118,6 +3135,7 @@ defmodule Ipse.Extension.ManagedCollectionCallSessionTest do
 
   for boundary <- [:revoke, :expiry] do
     @tag managed_question_recovery: true, wire_expiry: boundary == :expiry
+    @tag :native_storage
     test "legacy managed pending question is inert after #{boundary} on real resume", c do
       pid = start(c, %{operator_questions: true, legacy_question_fixture: true})
 
@@ -3204,6 +3222,7 @@ defmodule Ipse.Extension.ManagedCollectionCallSessionTest do
 
   for boundary <- [:current, :root_change, :writer_loss] do
     @tag managed_host_display: true, nested_document: true
+    @tag :native_storage
     test "managed extension approval refuses full argument display after #{boundary}", c do
       pid = start(c, %{approval: :ask, approval_origin: :interactive, headless: false})
 
@@ -3264,6 +3283,7 @@ defmodule Ipse.Extension.ManagedCollectionCallSessionTest do
   end
 
   @tag managed_host_display: true, managed_host_non_document: true
+  @tag :native_storage
   test "ordinary untainted extension approval still shows complete proposed arguments", c do
     pid = start(c, %{approval: :ask, approval_origin: :interactive, headless: false})
 
@@ -3291,6 +3311,7 @@ defmodule Ipse.Extension.ManagedCollectionCallSessionTest do
          registered_main: true,
          ordinary_effect: true,
          managed_host_operation: operation
+    @tag :native_storage
     test "managed model call #{operation || "write approval"} cannot queue raw arguments or enter unqualified host IO",
          c do
       pid = start(c, %{approval: :ask, approval_origin: :interactive, headless: false})
@@ -3340,6 +3361,7 @@ defmodule Ipse.Extension.ManagedCollectionCallSessionTest do
 
   for approval <- [:allow, :ask] do
     @tag document_decision_gate: true, nested_document: true
+    @tag :native_storage
     test "managed document mutation refuses before intent under #{approval}", c do
       pid =
         start(c, %{approval: unquote(approval), approval_origin: :interactive, headless: false})
@@ -3369,6 +3391,7 @@ defmodule Ipse.Extension.ManagedCollectionCallSessionTest do
   for kind <- [:native, :mcp] do
     @tag :managed_nested_result
     @tag nested_mcp: kind == :mcp, managed_mcp: kind == :mcp
+    @tag :native_storage
     test "an explicitly allowed nested #{kind} effect returns through its actual managed Worker input",
          c do
       pid = start(c, %{approval: :allow, approval_origin: :yes, headless: true})
@@ -3433,6 +3456,7 @@ defmodule Ipse.Extension.ManagedCollectionCallSessionTest do
   for kind <- [:native, :mcp], boundary <- [:root_change, :revoke] do
     @tag :managed_nested_result
     @tag nested_mcp: kind == :mcp, managed_mcp: kind == :mcp
+    @tag :native_storage
     test "nested #{kind} result is withheld after #{boundary} between committed effect and Worker input",
          c do
       pid = start(c, %{approval: :allow, approval_origin: :yes, headless: true})
@@ -3536,6 +3560,7 @@ defmodule Ipse.Extension.ManagedCollectionCallSessionTest do
     @tag native_root_approval:
            if(boundary == :current, do: "nested_mcp", else: "nested_mcp_" <> to_string(boundary)),
          timeout: 90_000
+    @tag :native_storage
     test "nested managed MCP discovery is admitted before approval and #{boundary} is checked at effect entry",
          c do
       if @native_root_approval,
@@ -3549,6 +3574,7 @@ defmodule Ipse.Extension.ManagedCollectionCallSessionTest do
     @tag native_root_approval:
            "nested_native" <> if(boundary == :current, do: "", else: "_" <> to_string(boundary)),
          timeout: 90_000
+    @tag :native_storage
     test "native approval of a nested file tool preserves #{boundary} effect and recovery", c do
       if @native_root_approval,
         do: native_nested_effect_approval(c, :native, unquote(boundary)),
@@ -3557,6 +3583,7 @@ defmodule Ipse.Extension.ManagedCollectionCallSessionTest do
   end
 
   @tag nested_discovery: true, nested_mcp: true, managed_mcp: true
+  @tag :native_storage
   test "a subscriber without the native channel cannot display nested managed approval arguments",
        c do
     pid = start(c, %{approval: :ask, approval_origin: :interactive, headless: false})
@@ -3830,6 +3857,7 @@ defmodule Ipse.Extension.ManagedCollectionCallSessionTest do
            "helper_" <>
              to_string(kind) <> if(boundary == :current, do: "", else: "_" <> to_string(boundary)),
          timeout: 90_000
+    @tag :native_storage
     test "native approval of a managed #{kind} helper preserves #{boundary} dispatch and recovery",
          c do
       if @native_root_approval,
@@ -4205,6 +4233,7 @@ defmodule Ipse.Extension.ManagedCollectionCallSessionTest do
        managed_helper: true,
        managed_decision: true,
        experiment_decision: true
+  @tag :native_storage
   test "an imported artifact cannot impersonate the inventoried shadow bundle", c do
     [entry] = c.config.extensions
 
@@ -4223,6 +4252,7 @@ defmodule Ipse.Extension.ManagedCollectionCallSessionTest do
        managed_decision: true,
        experiment_decision: true,
        assess_alt: true
+  @tag :native_storage
   test "an admitted alternate artifact cannot read pending bytes using the shadow purpose", c do
     pid = start(c)
     id = Session.info(pid).id
@@ -4496,6 +4526,7 @@ defmodule Ipse.Extension.ManagedCollectionCallSessionTest do
 
   @tag :registered_capture_sequence
   @tag metadata_version: 3, registered_main: true, capture_write: true
+  @tag :native_storage
   test "a newly reviewed legacy reader cannot expose an existing managed namespace", c do
     capture = start(c)
     assert :ok = Session.prompt(capture, "Synthetic café observation")
@@ -4552,6 +4583,7 @@ defmodule Ipse.Extension.ManagedCollectionCallSessionTest do
   @tag :pending_original_source_boundary
   @tag :registered_capture_sequence
   @tag metadata_version: 3, registered_main: true, capture_write: true
+  @tag :native_storage
   test "a managed worker cannot read a pending proposal after its original source is missing",
        c do
     pending_source_boundary(c)
@@ -4563,6 +4595,7 @@ defmodule Ipse.Extension.ManagedCollectionCallSessionTest do
        registered_main: true,
        capture_write: true,
        pending_expired_fixture: true
+  @tag :native_storage
   test "a managed worker cannot read an expired pending proposal", c do
     pending_source_boundary(c)
   end
@@ -4573,6 +4606,7 @@ defmodule Ipse.Extension.ManagedCollectionCallSessionTest do
        registered_main: true,
        capture_write: true,
        pending_custom_fixture: true
+  @tag :native_storage
   test "a removed custom proposal recipe cannot expose its historical record by get or scan", c do
     pending_source_boundary(c)
   end
@@ -4922,6 +4956,7 @@ defmodule Ipse.Extension.ManagedCollectionCallSessionTest do
     put_in(c, [:config, :semantic_selections], selected)
   end
 
+  @tag :native_storage
   test "a live legacy reader rechecks managed namespace conversion at each actual operation", c do
     c = legacy_reader(c)
     root = SemanticAdmission.collection_root(c.home)
@@ -5031,6 +5066,7 @@ defmodule Ipse.Extension.ManagedCollectionCallSessionTest do
        registered_main: true,
        capture_write: true,
        registered_capture_count: 2
+  @tag :native_storage
   test "explicit V3 activates only after actual first publication and resumes without replay",
        c do
     pid = start(c)
@@ -5125,6 +5161,7 @@ defmodule Ipse.Extension.ManagedCollectionCallSessionTest do
        registered_main: true,
        capture_write: true,
        registered_capture_count: 3
+  @tag :native_storage
   test "saved-consent V3 publication refuses a full pending queue and settles its action", c do
     first = start(c)
     assert :ok = Session.prompt(first, "Synthetic café observation")
@@ -5211,21 +5248,25 @@ defmodule Ipse.Extension.ManagedCollectionCallSessionTest do
   end
 
   @tag :legacy_managed_refusal
+  @tag :native_storage
   test "legacy V2 publication remains unstarted with a full pending queue", c do
     legacy_managed_refusal(c, 64, false)
   end
 
   @tag metadata_version: 3, registered_main: true, capture_write: true, registered_competing: true
+  @tag :native_storage
   test "competing V3 saved-consent Sessions cannot both publish at 63 pending records", c do
     competing_pending(c)
   end
 
   @tag :legacy_managed_refusal
+  @tag :native_storage
   test "competing legacy V2 candidates cannot borrow the V3 publication grant", c do
     legacy_managed_refusal(c, 63, true)
   end
 
   @tag :legacy_managed_refusal
+  @tag :native_storage
   test "legacy V2 refusal precedes deferred publication and leaves no liability", c do
     legacy_managed_refusal(c, 0, false)
   end
@@ -5488,6 +5529,7 @@ defmodule Ipse.Extension.ManagedCollectionCallSessionTest do
   end
 
   @tag metadata_version: 3
+  @tag :native_storage
   test "V3 cannot initialize over an existing unsigned store or silently adopt V2 metadata", c do
     assert {:ok, _} =
              Ipse.Extension.Collection.execute(
@@ -5538,6 +5580,7 @@ defmodule Ipse.Extension.ManagedCollectionCallSessionTest do
        capture_write: true,
        registered_capture_count: 27
   @tag timeout: 180_000
+  @tag :native_storage
   test "V3 actual Session publications validate a nonzero live split fence", c do
     {:ok, initial} = Consent.snapshot(c.control, c.binding["project_id"])
 
@@ -5666,6 +5709,7 @@ defmodule Ipse.Extension.ManagedCollectionCallSessionTest do
        metadata_version: 3,
        registered_main: true,
        capture_write: true
+  @tag :native_storage
   test "headless protected capture journals exact outer and inner bindings and settles once", c do
     pid = start(c)
     assert :sys.get_state(pid).config.semantic_admission["status"] == "active"
@@ -5829,6 +5873,7 @@ defmodule Ipse.Extension.ManagedCollectionCallSessionTest do
     assert [_, _] = Task.await(c.provider_server, 5000)
   end
 
+  @tag :native_storage
   test "revoked outer permission refuses before worker entry", c do
     pid = start(c)
     {:ok, snapshot} = Consent.snapshot(c.control, c.binding["project_id"])
@@ -5838,6 +5883,7 @@ defmodule Ipse.Extension.ManagedCollectionCallSessionTest do
     refute File.exists?(c.trace)
   end
 
+  @tag :native_storage
   test "legacy active admission resumes inertly without adopting a new protected outer", c do
     pid = start(c)
     id = Session.info(pid).id
@@ -5863,6 +5909,7 @@ defmodule Ipse.Extension.ManagedCollectionCallSessionTest do
 
   for metadata_version <- [2, 3] do
     @tag metadata_version: metadata_version, legacy_origin: true
+    @tag :native_storage
     test "legacy journal origin cannot publish managed metadata V#{metadata_version}", c do
       pid = start(c)
       id = Session.info(pid).id
@@ -5946,6 +5993,7 @@ defmodule Ipse.Extension.ManagedCollectionCallSessionTest do
        registered_main: true,
        capture_write: true,
        registered_capture_mode: "capture_unobserved"
+  @tag :native_storage
   test "a current source can publish a new V3 candidate without a prior managed snapshot", c do
     pid = start(c)
     id = Session.info(pid).id
@@ -5986,6 +6034,7 @@ defmodule Ipse.Extension.ManagedCollectionCallSessionTest do
              Ipse.Session.Saved.inspect_saved(c.dir, id)
   end
 
+  @tag :native_storage
   test "the policy snapshot stays bounded and a low enclosing journal limit refuses before worker entry",
        c do
     pid = start(c)
@@ -6025,6 +6074,7 @@ defmodule Ipse.Extension.ManagedCollectionCallSessionTest do
          managed_decision: true,
          mixed_outer: true,
          metadata_version: 3
+    @tag :native_storage
     test "reviewed decision owner refuses and cannot replay #{mode}", c do
       pid = start(c, %{approval: :allow, approval_origin: :yes, headless: true})
       id = Session.info(pid).id
@@ -6076,6 +6126,7 @@ defmodule Ipse.Extension.ManagedCollectionCallSessionTest do
   end
 
   @tag read_only_export: true, metadata_version: 3
+  @tag :native_storage
   test "a read-only export enters headless planning but cannot publish or lend ordinary approval",
        c do
     read = start(c, %{execution_mode: :planning, fixture_export: "inspect", fixture_mode: "read"})
@@ -6219,6 +6270,7 @@ defmodule Ipse.Extension.ManagedCollectionCallSessionTest do
   end
 
   @tag registered_main: true
+  @tag :native_storage
   test "a registered native transport carries managed worker lineage into assistant output and replay",
        c do
     read = start(c, %{execution_mode: :planning, fixture_export: "inspect", fixture_mode: "read"})
@@ -6255,6 +6307,7 @@ defmodule Ipse.Extension.ManagedCollectionCallSessionTest do
   end
 
   @tag registered_main: true, opaque_refusal: true
+  @tag :native_storage
   test "a stale managed assistant with opaque continuation refuses before a third provider request",
        c do
     read = start(c, %{execution_mode: :planning, fixture_export: "inspect", fixture_mode: "read"})
@@ -6304,6 +6357,7 @@ defmodule Ipse.Extension.ManagedCollectionCallSessionTest do
   end
 
   @tag registered_main: true, plain_stale: true
+  @tag :native_storage
   test "a stale plain Ollama answer is withdrawn before the next provider request", c do
     read = start(c, %{execution_mode: :planning, fixture_export: "inspect", fixture_mode: "read"})
     assert :ok = Session.prompt(read, "Synthetic plain managed answer")
@@ -6351,6 +6405,7 @@ defmodule Ipse.Extension.ManagedCollectionCallSessionTest do
   end
 
   @tag metadata_version: 3, registered_main: true, capture_write: true
+  @tag :native_storage
   test "a self-writing V3 capture retains raw reads and binds its result to the authenticated successor",
        c do
     pid = start(c)
@@ -6422,6 +6477,7 @@ defmodule Ipse.Extension.ManagedCollectionCallSessionTest do
   for role <- [:notify, :text, :feed, :notify_required, :text_required] do
     @tag :managed_sink_input
     @tag managed_sink_role: role
+    @tag :native_storage
     test "ordinary #{role} private delivery retains its actual callback", c do
       pid =
         start(c, %{
@@ -6465,6 +6521,7 @@ defmodule Ipse.Extension.ManagedCollectionCallSessionTest do
 
     @tag :managed_sink_input
     @tag managed_sink_role: role, registered_main: true, ordinary_effect: true
+    @tag :native_storage
     test "managed #{role} private delivery refuses before its unqualified callback", c do
       pid = start(c, %{approval: :allow, approval_origin: :yes, headless: true})
       assert :ok = Session.prompt(pid, "Read the protected root and complete the synthetic work.")
@@ -6555,6 +6612,7 @@ defmodule Ipse.Extension.ManagedCollectionCallSessionTest do
 
   @tag :managed_sink_input
   @tag managed_sink_role: :text_required, registered_main: true, ordinary_registered_text: true
+  @tag :native_storage
   test "a required text consumer acknowledges an ordinary registered model answer", c do
     pid = start(c)
     assert :ok = Session.prompt(pid, "Return the synthetic ordinary registered answer.")
@@ -6576,6 +6634,7 @@ defmodule Ipse.Extension.ManagedCollectionCallSessionTest do
   for role <- [:notify_metadata, :feed_metadata] do
     @tag :managed_sink_input
     @tag managed_sink_role: role, registered_main: true, ordinary_effect: true
+    @tag :native_storage
     test "managed #{role} delivery remains metadata only and acknowledged", c do
       pid = start(c, %{approval: :allow, approval_origin: :yes, headless: true})
 
@@ -6602,6 +6661,7 @@ defmodule Ipse.Extension.ManagedCollectionCallSessionTest do
 
   @tag :managed_presentation_input
   @tag private_presentation: true
+  @tag :native_storage
   test "an ordinary answer still reaches its selected presentation callback", c do
     pid = start(c, %{provider_module: PresentationModel})
     assert :ok = Session.prompt(pid, "Return a synthetic ordinary answer.")
@@ -6621,6 +6681,7 @@ defmodule Ipse.Extension.ManagedCollectionCallSessionTest do
 
   @tag :managed_presentation_input
   @tag private_presentation: true, registered_main: true
+  @tag :native_storage
   test "managed answers refuse an unqualified presentation input before its Worker starts", c do
     pid = start(c)
     assert :ok = Session.prompt(pid, "Read the synthetic protected root and answer.")
@@ -6651,6 +6712,7 @@ defmodule Ipse.Extension.ManagedCollectionCallSessionTest do
   end
 
   @tag :managed_output_boundary
+  @tag :native_storage
   test "a root change during worker processing withholds the actual direct command payload", c do
     pid = start(c)
 
@@ -6695,6 +6757,7 @@ defmodule Ipse.Extension.ManagedCollectionCallSessionTest do
 
   @tag native_root_approval: "write", timeout: 90_000
   @tag registered_main: true, ordinary_effect: true
+  @tag :native_storage
   test "current managed native write starts after approval and releases one bound result", c do
     native_root_approval(c, "write")
   end
@@ -6702,6 +6765,7 @@ defmodule Ipse.Extension.ManagedCollectionCallSessionTest do
   for boundary <- [:root_change, :revoke, :expiry, :owner_loss] do
     @tag native_root_approval: "write_#{boundary}", native_root_fault: true, timeout: 90_000
     @tag registered_main: true, ordinary_effect: true, wire_expiry: boundary == :expiry
+    @tag :native_storage
     test "managed native write waiting on approval refuses #{boundary} without effect", c do
       native_root_approval(c, "write", unquote(boundary))
     end
@@ -6709,6 +6773,7 @@ defmodule Ipse.Extension.ManagedCollectionCallSessionTest do
 
   @tag native_root_approval: "shell", timeout: 90_000
   @tag registered_main: true, ordinary_effect: true, managed_shell: true
+  @tag :native_storage
   test "current managed shell admits the native spawn and releases one bound result", c do
     native_root_approval(c, "shell")
   end
@@ -6720,6 +6785,7 @@ defmodule Ipse.Extension.ManagedCollectionCallSessionTest do
          managed_shell: true,
          shell_pregrant_refusal: boundary != :owner_loss,
          wire_expiry: boundary == :expiry
+    @tag :native_storage
     test "managed shell waiting on approval refuses #{boundary} before native spawn", c do
       native_root_approval(c, "shell", unquote(boundary))
     end
@@ -6730,6 +6796,7 @@ defmodule Ipse.Extension.ManagedCollectionCallSessionTest do
        ordinary_effect: true,
        managed_shell: true,
        managed_shell_delay: true
+  @tag :native_storage
   test "source revocation while a managed shell runs withholds its buffered result", c do
     native_root_approval(c, "shell", :running_revoke)
   end
@@ -6739,12 +6806,14 @@ defmodule Ipse.Extension.ManagedCollectionCallSessionTest do
        ordinary_effect: true,
        managed_shell: true,
        managed_shell_delay: true
+  @tag :native_storage
   test "managed shell owner loss after spawn stops the process group and resumes inertly", c do
     native_root_approval(c, "shell", :running_kill)
   end
 
   @tag :root_subscriber_refusal
   @tag registered_main: true, ordinary_effect: true, managed_mcp: true
+  @tag :native_storage
   test "managed MCP approval arguments are withheld when source ownership cannot be displayed",
        c do
     pid = start(c, %{approval: :ask, approval_origin: :interactive, headless: false})
@@ -6776,6 +6845,7 @@ defmodule Ipse.Extension.ManagedCollectionCallSessionTest do
 
   @tag native_root_approval: "mcp", native_root_mcp_boundary: true, timeout: 90_000
   @tag registered_main: true, ordinary_effect: true, managed_mcp: true
+  @tag :native_storage
   test "current managed MCP call admits server start and its exact request", c do
     native_root_approval(c, "mcp")
   end
@@ -6786,6 +6856,7 @@ defmodule Ipse.Extension.ManagedCollectionCallSessionTest do
          ordinary_effect: true,
          managed_mcp: true,
          wire_expiry: boundary == :expiry
+    @tag :native_storage
     test "managed MCP call waiting on approval refuses #{boundary} without effect", c do
       native_root_approval(c, "mcp", unquote(boundary))
     end
@@ -6793,6 +6864,7 @@ defmodule Ipse.Extension.ManagedCollectionCallSessionTest do
 
   @tag native_root_approval: "mcp_start_revoke", native_root_mcp_boundary: true, timeout: 90_000
   @tag registered_main: true, ordinary_effect: true, managed_mcp: true, managed_gate: true
+  @tag :native_storage
   test "managed MCP request refuses revocation after admitted server start", c do
     native_root_approval(c, "mcp", :start_revoke)
   end
@@ -6802,6 +6874,7 @@ defmodule Ipse.Extension.ManagedCollectionCallSessionTest do
        native_root_http: true,
        timeout: 90_000
   @tag registered_main: true, ordinary_effect: true, managed_mcp: true, managed_http: true
+  @tag :native_storage
   test "current managed HTTP MCP call admits connection and exact request", c do
     native_root_approval(c, "http")
   end
@@ -6811,6 +6884,7 @@ defmodule Ipse.Extension.ManagedCollectionCallSessionTest do
        native_root_http: true,
        timeout: 90_000
   @tag registered_main: true, ordinary_effect: true, managed_mcp: true, managed_http: true
+  @tag :native_storage
   test "managed HTTP MCP request refuses revocation after admitted connection", c do
     native_root_approval(c, "http", :start_revoke)
   end
@@ -6823,6 +6897,7 @@ defmodule Ipse.Extension.ManagedCollectionCallSessionTest do
          managed_http: true,
          managed_http_prestart: true,
          wire_expiry: boundary == :expiry
+    @tag :native_storage
     test "managed HTTP MCP #{boundary} before approval opens no further connection", c do
       native_root_approval(c, "http", unquote(boundary))
     end
@@ -6834,6 +6909,7 @@ defmodule Ipse.Extension.ManagedCollectionCallSessionTest do
        managed_mcp: true,
        managed_http: true,
        managed_start_unknown: true
+  @tag :native_storage
   test "lost HTTP initialization response preserves possible startup as unknown", c do
     native_root_approval(c, "http", :lost_start)
   end
@@ -6844,6 +6920,7 @@ defmodule Ipse.Extension.ManagedCollectionCallSessionTest do
        managed_mcp: true,
        managed_http: true,
        managed_http_owner_loss: true
+  @tag :native_storage
   test "managed HTTP owner loss closes a held effect socket without replay", c do
     native_root_approval(c, "http", :held_loss)
   end
@@ -6854,6 +6931,7 @@ defmodule Ipse.Extension.ManagedCollectionCallSessionTest do
          managed_http: true,
          managed_mcp_tls: true,
          managed_mcp_tls_loss: loss
+    @tag :native_storage
     test "managed HTTPS #{loss} loss closes the held effect socket without replay", c do
       pid = start(c, %{approval: :allow, approval_origin: :interactive, headless: false})
       id = Session.info(pid).id
@@ -6905,6 +6983,7 @@ defmodule Ipse.Extension.ManagedCollectionCallSessionTest do
        managed_http: true,
        managed_mcp_tls: true,
        managed_mcp_tls_discovery_loss: true
+  @tag :native_storage
   test "nested managed HTTPS discovery loss stays incomplete and does not replay", c do
     pid = start(c, %{approval: :allow, approval_origin: :interactive, headless: false})
     id = Session.info(pid).id
@@ -6944,6 +7023,7 @@ defmodule Ipse.Extension.ManagedCollectionCallSessionTest do
        managed_http: true,
        managed_mcp_tls: true,
        managed_mcp_tls_effect_drop: true
+  @tag :native_storage
   test "nested managed HTTPS lost effect response remains unknown without replay", c do
     pid = start(c, %{approval: :allow, approval_origin: :interactive, headless: false})
     id = Session.info(pid).id
@@ -6986,6 +7066,7 @@ defmodule Ipse.Extension.ManagedCollectionCallSessionTest do
        managed_http: true,
        managed_mcp_tls: true,
        managed_mcp_tls_untrusted: true
+  @tag :native_storage
   test "nested managed HTTPS rejects an untrusted server without effect or replay", c do
     pid = start(c, %{approval: :allow, approval_origin: :interactive, headless: false})
     id = Session.info(pid).id
@@ -7024,6 +7105,7 @@ defmodule Ipse.Extension.ManagedCollectionCallSessionTest do
        managed_mcp: true,
        managed_held: true,
        managed_stdio_owner_loss: true
+  @tag :native_storage
   test "managed stdio owner loss stops a held server without replay", c do
     native_root_approval(c, "mcp", :held_loss)
   end
@@ -7046,6 +7128,7 @@ defmodule Ipse.Extension.ManagedCollectionCallSessionTest do
        ordinary_effect: true,
        managed_mcp: true,
        managed_helper_identity: true
+  @tag :native_storage
   test "managed stdio uses the build-pinned helper despite an override", c do
     native_root_approval(c, "mcp_pinned")
   end
@@ -7061,6 +7144,7 @@ defmodule Ipse.Extension.ManagedCollectionCallSessionTest do
   end
 
   @tag registered_main: true, postjournal_expiry: true
+  @tag :native_storage
   test "expiry during actual tool-message journal IO settles each call once and resumes withheld",
        c do
     pid = start(c, %{execution_mode: :planning})
@@ -7124,6 +7208,7 @@ defmodule Ipse.Extension.ManagedCollectionCallSessionTest do
   end
 
   @tag :managed_output_boundary
+  @tag :native_storage
   test "revocation during worker processing withholds the actual direct command payload", c do
     pid = start(c)
 
@@ -7145,6 +7230,7 @@ defmodule Ipse.Extension.ManagedCollectionCallSessionTest do
   end
 
   @tag :worker_input_capacity
+  @tag :native_storage
   test "managed page-input capacity refuses before source begin when its full reservation cannot fit",
        c do
     pid = start(c, %{journal: %{"max_bytes" => 65_536}})
@@ -7171,6 +7257,7 @@ defmodule Ipse.Extension.ManagedCollectionCallSessionTest do
 
   for dimension <- [:events, :bytes] do
     @tag :worker_input_capacity
+    @tag :native_storage
     test "managed output reservation covers its page inputs with competing #{dimension} capacity",
          c do
       pid = start(c)
@@ -7270,6 +7357,7 @@ defmodule Ipse.Extension.ManagedCollectionCallSessionTest do
 
   @tag :managed_output_boundary
   @tag :worker_input_boundary
+  @tag :native_storage
   test "current managed paged command output becomes readable only after its causal release", c do
     pid = start(c)
 
@@ -7363,6 +7451,7 @@ defmodule Ipse.Extension.ManagedCollectionCallSessionTest do
   end
 
   @tag :worker_input_boundary
+  @tag :native_storage
   test "revocation after the committed read prevents the actual next VM callback", c do
     pid = start(c)
     owner = self()
@@ -7417,6 +7506,7 @@ defmodule Ipse.Extension.ManagedCollectionCallSessionTest do
   end
 
   @tag :managed_output_owner_loss
+  @tag :native_storage
   test "owner loss during managed worker processing cannot release its payload", c do
     pid = start(c)
 
@@ -8514,6 +8604,7 @@ defmodule Ipse.Extension.ManagedCollectionCallSessionTest do
   end
 
   @tag registered_main: true, tls_main: true
+  @tag :native_storage
   test "managed ChatGPT subscription input uses the actual verified TLS adapter and owned publication",
        c do
     pid = start(c, %{execution_mode: :planning})
@@ -8545,6 +8636,7 @@ defmodule Ipse.Extension.ManagedCollectionCallSessionTest do
   end
 
   @tag registered_main: true, tls_main: true, tls_gate: :connect
+  @tag :native_storage
   test "revocation during actual ChatGPT TLS setup refuses before inference headers or body", c do
     pid = start(c, %{execution_mode: :planning})
     assert :ok = Session.prompt(pid, "Synthetic TLS revocation")
@@ -8561,6 +8653,7 @@ defmodule Ipse.Extension.ManagedCollectionCallSessionTest do
   end
 
   @tag registered_main: true, tls_main: true, tls_gate: :response
+  @tag :native_storage
   test "actual TLS generation releases policy locks and withholds managed text after root invalidation",
        c do
     pid = start(c, %{execution_mode: :planning})
@@ -8602,6 +8695,7 @@ defmodule Ipse.Extension.ManagedCollectionCallSessionTest do
   end
 
   @tag registered_main: true, tls_main: true, tls_gate: :owner_loss
+  @tag :native_storage
   test "killing the actual Session owner closes its managed TLS transport and releases no output",
        c do
     pid = start(c, %{execution_mode: :planning})
@@ -8615,6 +8709,7 @@ defmodule Ipse.Extension.ManagedCollectionCallSessionTest do
   end
 
   @tag registered_main: true, response_change: true
+  @tag :native_storage
   test "a root change during generation withholds buffered native output without retaining policy locks",
        c do
     pid = start(c, %{execution_mode: :planning, fixture_export: "inspect", fixture_mode: "read"})
@@ -8657,6 +8752,7 @@ defmodule Ipse.Extension.ManagedCollectionCallSessionTest do
   end
 
   @tag registered_main: true, response_change: true, wire_expiry: true
+  @tag :native_storage
   test "an actual managed inference response crossing the saved policy deadline releases no output",
        c do
     pid = start(c, %{execution_mode: :planning})
@@ -8681,6 +8777,7 @@ defmodule Ipse.Extension.ManagedCollectionCallSessionTest do
   end
 
   @tag registered_main: true, wire_budget: true
+  @tag :native_storage
   test "the managed wire barrier binds the actual output cap narrowed by the existing shared budget",
        c do
     pid =
@@ -8705,6 +8802,7 @@ defmodule Ipse.Extension.ManagedCollectionCallSessionTest do
 
   @tag registered_main: true, managed_helper: true
   @tag helper_withdrawal_boundary: true
+  @tag :native_storage
   test "a registered helper revalidates inherited worker reads before its actual native request",
        c do
     pid = start(c, %{approval: :allow, approval_origin: :yes})
@@ -10021,6 +10119,7 @@ defmodule Ipse.Extension.ManagedCollectionCallSessionTest do
   @tag registered_main: true, managed_helper: true, managed_decision: true
   @tag helper_withdrawal_boundary: true
   @tag :managed_current_decision
+  @tag :native_storage
   test "a current managed root permits the selected decision helper", c do
     pid = start(c, %{approval: :allow, approval_origin: :yes})
     assert :ok = Session.prompt(pid, "Synthetic current decision")
@@ -10054,6 +10153,7 @@ defmodule Ipse.Extension.ManagedCollectionCallSessionTest do
   @tag registered_main: true, managed_helper: true, managed_decision: true, helper_stale: true
   @tag helper_withdrawal_boundary: true
   @tag :managed_stale_decision
+  @tag :native_storage
   test "a changed managed root prevents decision helper egress", c do
     pid = start(c, %{approval: :allow, approval_origin: :yes})
     owner = self()
@@ -10104,6 +10204,7 @@ defmodule Ipse.Extension.ManagedCollectionCallSessionTest do
 
   @tag registered_main: true, managed_helper: true, managed_decision: true, response_change: true
   @tag :managed_decision_response_current
+  @tag :native_storage
   test "a current root accepts the held decision response", c do
     pid = start(c, %{approval: :allow, approval_origin: :yes})
     assert :ok = Session.prompt(pid, "Synthetic current held decision")
@@ -10126,6 +10227,7 @@ defmodule Ipse.Extension.ManagedCollectionCallSessionTest do
 
   @tag registered_main: true, managed_helper: true, managed_decision: true, response_change: true
   @tag :managed_decision_response_change
+  @tag :native_storage
   test "a root change during decision inference withholds the result", c do
     pid = start(c, %{approval: :allow, approval_origin: :yes})
     assert :ok = Session.prompt(pid, "Synthetic decision response boundary")
@@ -10174,6 +10276,7 @@ defmodule Ipse.Extension.ManagedCollectionCallSessionTest do
 
   @tag registered_main: true, managed_helper: true, managed_decision: true, response_change: true
   @tag :managed_decision_response_revoke
+  @tag :native_storage
   test "policy revocation during decision inference withholds the result", c do
     pid = start(c, %{approval: :allow, approval_origin: :yes})
     assert :ok = Session.prompt(pid, "Synthetic decision policy boundary")
@@ -10204,6 +10307,7 @@ defmodule Ipse.Extension.ManagedCollectionCallSessionTest do
 
   @tag registered_main: true, managed_helper: true, helper_stale: true
   @tag helper_withdrawal_boundary: true
+  @tag :native_storage
   test "a stale helper input refuses helper egress and leaves its continuation unknown",
        c do
     pid = start(c, %{approval: :allow, approval_origin: :yes})
@@ -10255,6 +10359,7 @@ defmodule Ipse.Extension.ManagedCollectionCallSessionTest do
 
   @tag registered_main: true
   @tag helper_withdrawal_boundary: true
+  @tag :native_storage
   test "a changed managed root withdraws actual worker text before native provider bytes and replays from its prior intent",
        c do
     read = start(c, %{execution_mode: :planning, fixture_export: "inspect", fixture_mode: "read"})
@@ -10328,6 +10433,7 @@ defmodule Ipse.Extension.ManagedCollectionCallSessionTest do
     assert :ok = Session.close_confirmed(read)
   end
 
+  @tag :native_storage
   test "a saved grant never admits an ordinary workspace write", c do
     pid = start(c, %{fixture_mode: "ordinary"})
     assert :ok = Session.prompt(pid, "Synthetic café observation")
@@ -10343,6 +10449,7 @@ defmodule Ipse.Extension.ManagedCollectionCallSessionTest do
        capture_write: true,
        registered_capture: true,
        registered_capture_mode: "paged"
+  @tag :native_storage
   test "SDK2 protected output retains version4 and the same original binding", c do
     pid = start(c, %{fixture_mode: "paged"})
     assert :ok = Session.prompt(pid, "Synthetic café observation")
@@ -10367,6 +10474,7 @@ defmodule Ipse.Extension.ManagedCollectionCallSessionTest do
     assert Enum.any?(continuation["messages"], &(&1["role"] == "tool"))
   end
 
+  @tag :native_storage
   test "a selected operator command uses its own protected outer receipt", c do
     pid = start(c)
 
@@ -10390,6 +10498,7 @@ defmodule Ipse.Extension.ManagedCollectionCallSessionTest do
        registered_capture: true,
        registered_capture_no_continuation: true,
        registered_capture_mode: "hold"
+  @tag :native_storage
   test "revocation after worker entry is rechecked before collection reservation", c do
     pid = start(c, %{fixture_mode: "hold"})
     assert :ok = Session.prompt(pid, "Synthetic café observation")
@@ -10420,6 +10529,7 @@ defmodule Ipse.Extension.ManagedCollectionCallSessionTest do
   end
 
   @tag protected_outer_cancel: true
+  @tag :native_storage
   test "cancellation queued before worker input completion confirms cleanup without replay", c do
     {pid, id, input, task} = held_input_thaw(c)
     [{scope, _}] = Elixir.Registry.lookup(Ipse.Registry, {Session.Resources, task})
@@ -10456,6 +10566,7 @@ defmodule Ipse.Extension.ManagedCollectionCallSessionTest do
   end
 
   @tag protected_outer_cancel: true
+  @tag :native_storage
   test "mismatched input interruption messages cannot suppress delivered input", c do
     {pid, id, input, _} = held_input_thaw(c)
     input_id = input.intent["input_id"]
@@ -10512,6 +10623,7 @@ defmodule Ipse.Extension.ManagedCollectionCallSessionTest do
   end
 
   @tag protected_outer_cancel: true
+  @tag :native_storage
   test "interrupted protected outer remains unknown and never replays on resume", c do
     pid = start(c, %{fixture_mode: "barrier"})
     assert :ok = Session.prompt(pid, "Synthetic café observation")
@@ -10539,6 +10651,7 @@ defmodule Ipse.Extension.ManagedCollectionCallSessionTest do
        registered_main: true,
        capture_write: true,
        registered_capture: true
+  @tag :native_storage
   test "ambiguous reviewed publication mappings refuse rather than choosing a stronger operation",
        c do
     {:ok, snapshot} = Consent.snapshot(c.control, c.binding["project_id"])
@@ -10603,6 +10716,7 @@ defmodule Ipse.Extension.ManagedCollectionCallSessionTest do
        registered_main: true,
        capture_write: true,
        registered_capture_modes: ["capture", "conflict_unobserved"]
+  @tag :native_storage
   test "a known conflict is recorded and conservatively settled once without retry", c do
     first = start(c)
     assert :ok = Session.prompt(first, "Synthetic café observation")
@@ -10640,6 +10754,7 @@ defmodule Ipse.Extension.ManagedCollectionCallSessionTest do
        registered_main: true,
        capture_write: true,
        registered_capture_count: 2
+  @tag :native_storage
   test "successive protected saves settle measured input and release only verified unused input",
        c do
     {:ok, initial} = Consent.snapshot(c.control, c.binding["project_id"])
@@ -10731,6 +10846,7 @@ defmodule Ipse.Extension.ManagedCollectionCallSessionTest do
   end
 
   @tag publication_fault: true, metadata_version: 3
+  @tag :native_storage
   test "native loss after normalization does not refund or publish a successful managed result",
        c do
     owner = self()
@@ -10783,6 +10899,7 @@ defmodule Ipse.Extension.ManagedCollectionCallSessionTest do
   end
 
   @tag metadata_version: 3
+  @tag :native_storage
   test "V3 loss of the native owner during first-publication postproof keeps the outcome unknown",
        c do
     owner = self()
@@ -10876,6 +10993,7 @@ defmodule Ipse.Extension.ManagedCollectionCallSessionTest do
        registered_main: true,
        capture_write: true,
        registered_capture_no_continuation: true
+  @tag :native_storage
   test "V3 outer Identity loss after checked deferred publication retains full liability across inert resume",
        c do
     owner = self()
@@ -11008,6 +11126,7 @@ defmodule Ipse.Extension.ManagedCollectionCallSessionTest do
   end
 
   @tag publication_fault: true, metadata_version: 3
+  @tag :native_storage
   test "owner loss during protected publication retains liability and cannot publish after cleanup",
        c do
     pid = start(c, %{fixture_mode: "hold"})
@@ -11062,6 +11181,7 @@ defmodule Ipse.Extension.ManagedCollectionCallSessionTest do
        registered_main: true,
        capture_write: true,
        registered_capture_mode: "hold"
+  @tag :native_storage
   test "an unrelated caller cannot use the actual current collection action or stale job reference",
        c do
     pid = start(c, %{fixture_mode: "hold"})

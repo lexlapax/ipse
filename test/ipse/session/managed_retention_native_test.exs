@@ -1,5 +1,6 @@
 defmodule Ipse.Session.ManagedRetentionNativeTest do
   use ExUnit.Case, async: false
+  @moduletag :native_storage
   @moduletag timeout: 120_000
 
   @tag :retention_deadline_fence

@@ -138,6 +138,7 @@ defmodule Ipse.Extension.ProjectIdentityTest do
     %{base: base, home: home, primary: primary, linked: linked, admin: admin}
   end
 
+  @tag :native_storage
   test "preview creates no binding and explicit folder scope never joins repository candidates",
        c do
     assert {:ok, %{"kind" => "primary_repository", "admitted" => false}} =
@@ -156,6 +157,7 @@ defmodule Ipse.Extension.ProjectIdentityTest do
     assert P.admit(c.home, c.primary, :folder) == {:ok, primary}
   end
 
+  @tag :native_storage
   test "reciprocal registration shares opaque project identity and binds each worktree separately",
        c do
     assert {:ok, primary} = P.admit(c.home, c.primary, :repository)
@@ -188,6 +190,7 @@ defmodule Ipse.Extension.ProjectIdentityTest do
     assert File.stat!(index(c)).mode |> Bitwise.band(0o777) == 0o600
   end
 
+  @tag :native_storage
   test "outward pointers, nonreciprocal backlinks and malformed records grant no inherited identity",
        c do
     assert {:ok, _} = P.admit(c.home, c.primary, :repository)
@@ -216,6 +219,7 @@ defmodule Ipse.Extension.ProjectIdentityTest do
     assert state(c)["bindings"] |> map_size() == 1
   end
 
+  @tag :native_storage
   test "symlinks, hardlinks and writable metadata are refused before sharing", c do
     assert {:ok, _} = P.admit(c.home, c.primary, :repository)
 
@@ -246,6 +250,7 @@ defmodule Ipse.Extension.ProjectIdentityTest do
     assert {:error, :project_identity_not_admitted} = P.resolve(c.home, c.linked)
   end
 
+  @tag :native_storage
   test "replaced common directories, registration directories and metadata do not inherit", c do
     assert {:ok, primary} = P.admit(c.home, c.primary, :repository)
     assert {:ok, linked} = P.resolve(c.home, c.linked)
@@ -270,6 +275,7 @@ defmodule Ipse.Extension.ProjectIdentityTest do
     refute P.with_binding(c.home, c.primary, primary, fn _ -> :unexpected end) == :unexpected
   end
 
+  @tag :native_storage
   test "moves and independent clones never inherit prior binding IDs", c do
     assert {:ok, primary} = P.admit(c.home, c.primary, :repository)
     assert {:ok, linked} = P.resolve(c.home, c.linked)
@@ -290,6 +296,7 @@ defmodule Ipse.Extension.ProjectIdentityTest do
     refute new["project_id"] == primary["project_id"]
   end
 
+  @tag :native_storage
   test "protected state, closed schemas and same-process lock ordering fail closed", c do
     for owner <- [Ipse.Extension.Consent, Ipse.Extension.Collection] do
       Process.put({owner, :lock_held}, true)
@@ -327,6 +334,7 @@ defmodule Ipse.Extension.ProjectIdentityTest do
     assert {:ok, _} = P.resolve(c.home, c.primary)
   end
 
+  @tag :native_storage
   test "two independent VMs race admission to one durable ID and retain the lock inode", c do
     body = ~S'''
     [home,cwd]=System.argv()
@@ -367,6 +375,7 @@ defmodule Ipse.Extension.ProjectIdentityTest do
     assert File.stat!(lock).inode == inode
   end
 
+  @tag :native_storage
   test "a callback holds the actual OS lock against a different VM", c do
     assert {:ok, _} = P.admit(c.home, c.primary, :repository)
     ready = Path.join(c.base, "ready")
@@ -398,6 +407,7 @@ defmodule Ipse.Extension.ProjectIdentityTest do
     assert {:ok, _} = P.resolve(c.home, c.primary)
   end
 
+  @tag :native_storage
   test "native nonblocking copy refuses a FIFO substituted after the source precheck", c do
     assert {:ok, _} = P.admit(c.home, c.primary, :repository)
 
@@ -411,6 +421,7 @@ defmodule Ipse.Extension.ProjectIdentityTest do
     end)
   end
 
+  @tag :native_storage
   test "metadata changed after one snapshot is fenced before durable worktree admission", c do
     assert {:ok, _} = P.admit(c.home, c.primary, :repository)
     git = Path.join(c.linked, ".git")
@@ -426,6 +437,7 @@ defmodule Ipse.Extension.ProjectIdentityTest do
     assert {:ok, _} = P.resolve(c.home, c.linked)
   end
 
+  @tag :native_storage
   test "owner loss during an unconfirmed copy retains its finite staging quarantine", c do
     assert {:ok, _} = P.admit(c.home, c.primary, :repository)
 
@@ -465,6 +477,7 @@ defmodule Ipse.Extension.ProjectIdentityTest do
     end)
   end
 
+  @tag :native_storage
   test "pointer dot segments cannot hide a symlink and stale previews cannot claim admission",
        c do
     assert {:ok, _} = P.admit(c.home, c.primary, :repository)
@@ -481,6 +494,7 @@ defmodule Ipse.Extension.ProjectIdentityTest do
     assert {:error, _} = P.admit("relative-home", c.primary, :folder)
   end
 
+  @tag :native_storage
   test "project count capacity refuses a new identity without evicting any existing binding", c do
     assert {:ok, first} = P.admit(c.home, c.primary, :repository)
     initial = state(c)
@@ -537,6 +551,7 @@ defmodule Ipse.Extension.ProjectIdentityTest do
     assert map_size(state(c)["projects"]) == 256
   end
 
+  @tag :native_storage
   test "a primary directory with an outward commondir override is unsupported and cannot reuse consent",
        c do
     path = Path.join(c.primary, ".git/commondir")
@@ -551,6 +566,7 @@ defmodule Ipse.Extension.ProjectIdentityTest do
              P.with_binding(c.home, c.primary, binding, fn _ -> :unexpected end)
   end
 
+  @tag :native_storage
   test "observed helper loss discards a callback result instead of returning recall", c do
     assert {:ok, binding} = P.admit(c.home, c.primary, :repository)
 
@@ -564,6 +580,7 @@ defmodule Ipse.Extension.ProjectIdentityTest do
     assert {:ok, ^binding} = eventually(fn -> P.resolve(c.home, c.primary) end)
   end
 
+  @tag :native_storage
   test "native helper death before index write refuses admission and preserves the old index",
        c do
     assert {:ok, _} = P.admit(c.home, c.primary, :repository)
@@ -575,6 +592,7 @@ defmodule Ipse.Extension.ProjectIdentityTest do
     end)
   end
 
+  @tag :native_storage
   test "native helper death after the index switch reports unknown rather than confirmed admission",
        c do
     with_probe(c, "kill_after_write", fn ->
@@ -593,6 +611,7 @@ defmodule Ipse.Extension.ProjectIdentityTest do
     end)
   end
 
+  @tag :native_storage
   test "the complete shared identity root counts against its three MiB staging budget", c do
     assert {:ok, _} = P.admit(c.home, c.primary, :repository)
     root = Path.join(c.home, "project-identities")
@@ -611,6 +630,7 @@ defmodule Ipse.Extension.ProjectIdentityTest do
     refute Enum.any?(File.ls!(root), &String.starts_with?(&1, ".pending-"))
   end
 
+  @tag :native_storage
   test "private index and retained lock require exact 0600 without repairing existing modes", c do
     assert {:ok, binding} = P.admit(c.home, c.primary, :repository)
 

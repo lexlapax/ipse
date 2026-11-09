@@ -1,5 +1,6 @@
 defmodule Ipse.SharedProducerSessionTest do
   use ExUnit.Case, async: false
+  @moduletag :native_storage
   alias Ipse.{Journal, Session, Usage}
   alias Ipse.Extension.{Artifact, Config, ProjectIdentity, Registry}
 

@@ -25,6 +25,7 @@ defmodule Ipse.CLI.ManagementShareCandidateTest do
              Runner.cancel_unused_owner_control(port, deadline)
   end
 
+  @tag :native_storage
   test "unused management controls acknowledge a pre-display refusal" do
     root = Path.join(System.tmp_dir!(), "ipse-management-refusal-" <> Usage.id())
     home = Path.join(root, "home")
@@ -48,6 +49,7 @@ defmodule Ipse.CLI.ManagementShareCandidateTest do
   end
 
   @tag timeout: 30_000
+  @tag :native_storage
   test "a retained lifecycle journal binds its latest intent to the same transaction owner" do
     root = Path.join(System.tmp_dir!(), "ipse-management-lifecycle-share-" <> Usage.id())
     home = Path.join(root, "home")
@@ -137,6 +139,7 @@ defmodule Ipse.CLI.ManagementShareCandidateTest do
   end
 
   @tag timeout: 30_000
+  @tag :native_storage
   test "original management journal lock shares in place and Writer thaws only after settlement" do
     root = Path.join(System.tmp_dir!(), "ipse-management-share-" <> Usage.id())
     home = Path.join(root, "home")
@@ -302,6 +305,7 @@ defmodule Ipse.CLI.ManagementShareCandidateTest do
   end
 
   @tag :management_controls
+  @tag :native_storage
   test "actual CLI and journal peers own independent native control senders", c do
     root = Path.join(System.tmp_dir!(), "ipse-management-controls-" <> Usage.id())
     home = Path.join(root, "home")
@@ -422,6 +426,7 @@ defmodule Ipse.CLI.ManagementShareCandidateTest do
   end
 
   @tag :management_control_replay
+  @tag :native_storage
   test "replayed management owner-control requests poison both senders" do
     root = Path.join(System.tmp_dir!(), "ipse-management-replay-" <> Usage.id())
     home = Path.join(root, "home")
@@ -499,6 +504,7 @@ defmodule Ipse.CLI.ManagementShareCandidateTest do
 
   @tag :management_control_stall
   @tag timeout: 20_000
+  @tag :native_storage
   test "stalled CLI transfer returns unknown at the original setup deadline" do
     root = Path.join(System.tmp_dir!(), "ipse-management-stall-" <> Usage.id())
     home = Path.join(root, "home")

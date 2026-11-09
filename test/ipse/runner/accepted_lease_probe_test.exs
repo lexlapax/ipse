@@ -1,5 +1,6 @@
 defmodule Ipse.Runner.AcceptedLeaseProbeTest do
   use ExUnit.Case, async: false
+  @moduletag :native_storage
 
   @moduletag skip: if(:os.type() == {:unix, :linux}, do: false, else: "Linux native terminal")
 

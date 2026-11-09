@@ -43,6 +43,7 @@ defmodule Ipse.CLI.DocumentsTest do
     end
   end
 
+  @tag :native_storage
   test "native setup, new session and disable preserve source and provider selections", c do
     for profile <- ~w(state collection),
         do: assert(scenario(c, profile, "--knowledge") =~ "DOCUMENT_SETUP_JOURNEY_PASSED")

@@ -460,6 +460,7 @@ defmodule Ipse.KnowledgeCollectionAdapterSessionTest do
 
   @tag :source_maintenance_epoch
   @tag timeout: 120_000
+  @tag :native_storage
   test "Source continuation freezes its opening epoch while a fresh source succeeds after close",
        c do
     args = %{
@@ -789,6 +790,7 @@ defmodule Ipse.KnowledgeCollectionAdapterSessionTest do
   @tag :generation_maintenance_session
   @tag :guarded_group_session
   @tag timeout: 180_000
+  @tag :native_storage
   test "shared Job keeps old work fenced and explicitly retires its exact old identity", c do
     seed_index_sources(c, [{"fixture:job-epoch-old", "Orion preserved source.", nil}])
 
@@ -845,6 +847,7 @@ defmodule Ipse.KnowledgeCollectionAdapterSessionTest do
     @tag :generation_maintenance_session
     @tag :guarded_group_session
     @tag timeout: 240_000
+    @tag :native_storage
     test "fresh epoch shared Job appends and selects #{action} through real guarded Session actions",
          c do
       source = "fixture:job-epoch-fresh"
@@ -1043,6 +1046,7 @@ defmodule Ipse.KnowledgeCollectionAdapterSessionTest do
 
   @tag :generation_maintenance_session
   @tag timeout: 180_000
+  @tag :native_storage
   test "partial shared Job retirement freezes its own epoch and cannot adopt old stages", c do
     {job, args, token} = large_job_retirement_fixture(c)
     fence = job_open_fence(c)
@@ -1108,6 +1112,7 @@ defmodule Ipse.KnowledgeCollectionAdapterSessionTest do
 
   @tag :generation_maintenance_session
   @tag timeout: 180_000
+  @tag :native_storage
   test "the exact returned shared Job retirement continues its real stage at the same epoch", c do
     {job, args, token} = large_job_retirement_fixture(c)
     fence = job_open_fence(c)
@@ -1151,6 +1156,7 @@ defmodule Ipse.KnowledgeCollectionAdapterSessionTest do
 
   @tag :public_shared_selected
   @tag :public_generation_job_compat
+  @tag :native_storage
   test "public generation begin and abort preserve the old selection under ordinary approvals",
        c do
     sources = seed_index_sources(c, [{"fixture:job-source", "Vega source fixture.", nil}])
@@ -1195,6 +1201,7 @@ defmodule Ipse.KnowledgeCollectionAdapterSessionTest do
   @tag :public_shared_selected
   @tag :public_generation_compact
   @tag :finalization_control
+  @tag :native_storage
   test "compact generation begin inspect and abort retain exact durable bytes and legacy output",
        c do
     sources = seed_index_sources(c, [{"fixture:compact", "Vega compact progress fixture.", nil}])
@@ -1270,6 +1277,7 @@ defmodule Ipse.KnowledgeCollectionAdapterSessionTest do
   @tag :finalization_control
   @tag :paged_finalization
   @tag timeout: 120_000
+  @tag :native_storage
   test "compact paged finalization preserves mode across drafts and selects the exact root", c do
     {c, args, expected} = prepare_shared_finalization(c)
     args = Map.put(args, "response", "compact_v1")
@@ -1295,6 +1303,7 @@ defmodule Ipse.KnowledgeCollectionAdapterSessionTest do
   @tag :finalization_control
   @tag :paged_finalization
   @tag timeout: 120_000
+  @tag :native_storage
   test "a known committed compact phase is inspected and continued in a fresh Session", c do
     {c, args, expected} = prepare_shared_finalization(c)
     args = Map.put(args, "response", "compact_v1")
@@ -1351,6 +1360,7 @@ defmodule Ipse.KnowledgeCollectionAdapterSessionTest do
   @tag :public_shared_selected
   @tag :recipe_journal_cost
   @tag timeout: 120_000
+  @tag :native_storage
   test "actual public source journal cost and known stage-free Session handoff are explicit", c do
     measure = fn context, source_id ->
       args = %{
@@ -1444,6 +1454,7 @@ defmodule Ipse.KnowledgeCollectionAdapterSessionTest do
   @tag :public_generation_finalization
   @tag :finalization_control
   @tag timeout: 120_000
+  @tag :native_storage
   test(
     "public finalization stages native reductions and selects the exact canonical root once",
     c,
@@ -1455,6 +1466,7 @@ defmodule Ipse.KnowledgeCollectionAdapterSessionTest do
   @tag :finalization_control
   @tag :paged_finalization
   @tag timeout: 120_000
+  @tag :native_storage
   test("explicit paged finalization replaces root1 with a canonical root2 and cited retrieval", c,
     do: assert_shared_finalization(c)
   )
@@ -1520,6 +1532,7 @@ defmodule Ipse.KnowledgeCollectionAdapterSessionTest do
   @tag :public_generation_finalization_stale
   @tag :finalization_control
   @tag timeout: 120_000
+  @tag :native_storage
   test "a changed native generation while the final approval waits refuses root selection", c do
     assert_shared_finalization_stale(c)
   end
@@ -1529,6 +1542,7 @@ defmodule Ipse.KnowledgeCollectionAdapterSessionTest do
   @tag :finalization_control
   @tag :paged_finalization
   @tag timeout: 120_000
+  @tag :native_storage
   test("root2 refuses a changed native generation while its final approval waits", c,
     do: assert_shared_finalization_stale(c)
   )
@@ -1559,6 +1573,7 @@ defmodule Ipse.KnowledgeCollectionAdapterSessionTest do
   @tag :public_generation_finalization_unknown
   @tag :finalization_control
   @tag timeout: 120_000
+  @tag :native_storage
   test "owner loss after native final selection retains unknown intent and never replays", c do
     assert_shared_finalization_unknown(c)
   end
@@ -1568,6 +1583,7 @@ defmodule Ipse.KnowledgeCollectionAdapterSessionTest do
   @tag :finalization_control
   @tag :paged_finalization
   @tag timeout: 120_000
+  @tag :native_storage
   test("root2 native publication before owner loss stays unknown without replay", c,
     do: assert_shared_finalization_unknown(c)
   )
@@ -1659,6 +1675,7 @@ defmodule Ipse.KnowledgeCollectionAdapterSessionTest do
   @tag :public_shared_selected
   @tag :public_paged_large_inspection
   @tag timeout: 120_000
+  @tag :native_storage
   test "maximum Job3 metadata is read and materialized through actual SDK2 result pages", c do
     {c, _, _} = prepare_shared_finalization(c)
     path = Path.join(c.fixture_root, "trusted-large-job-parent.json")
@@ -1773,6 +1790,7 @@ defmodule Ipse.KnowledgeCollectionAdapterSessionTest do
   @tag :public_guarded_finalization
   @tag :paged_finalization
   @tag timeout: 180_000
+  @tag :native_storage
   test "public dense Corpus finalizes captured groups with current-source admission", c do
     {c, args, expected} = prepare_shared_finalization(c)
     result = finish_shared_finalization(c, Map.put(args, "guard_sources", true))
@@ -1792,6 +1810,7 @@ defmodule Ipse.KnowledgeCollectionAdapterSessionTest do
   @tag :finalization_control
   @tag :paged_finalization
   @tag timeout: 180_000
+  @tag :native_storage
   test "public guarded finalization refuses a source changed while approval waits", c do
     {c, args, _} = prepare_shared_finalization(c)
     key = "source.notes." <> JSON.sha256("fixture:finalize")
@@ -1835,6 +1854,7 @@ defmodule Ipse.KnowledgeCollectionAdapterSessionTest do
   @tag :public_shared_selected
   @tag :public_shared_hydration
   @tag timeout: 120_000
+  @tag :native_storage
   test "public Corpus reads fully hydrated selected supplied projections with Word citations and current-source refusal",
        c do
     ids = for n <- 0..6, do: "fixture:selected-#{n}"
@@ -1927,6 +1947,7 @@ defmodule Ipse.KnowledgeCollectionAdapterSessionTest do
   @tag :public_shared_selected
   @tag :public_semantic_selected
   @tag timeout: 120_000
+  @tag :native_storage
   test "selected Collection dense and hybrid queries bind the encoder and preserve raw Word citations",
        c do
     word = partial_word_source(c)
@@ -2020,6 +2041,7 @@ defmodule Ipse.KnowledgeCollectionAdapterSessionTest do
   @tag :public_semantic_selected
   @tag semantic_query_calls: 1
   @tag timeout: 120_000
+  @tag :native_storage
   test "selected semantic query withholds all evidence after Collection changes during embedding approval",
        c do
     sources = seed_index_sources(c, [{"fixture:query-race", "Vega 雪 mission.", nil}])
@@ -2061,6 +2083,7 @@ defmodule Ipse.KnowledgeCollectionAdapterSessionTest do
   @tag :public_semantic_selected
   @tag semantic_query_calls: 1
   @tag timeout: 120_000
+  @tag :native_storage
   test "a source expiring during query approval cannot release selected semantic evidence", c do
     expires = System.system_time(:millisecond) + 8_000
     sources = seed_index_sources(c, [{"fixture:query-expiry", "Vega 雪 mission.", expires}])
@@ -2098,6 +2121,7 @@ defmodule Ipse.KnowledgeCollectionAdapterSessionTest do
   @tag :public_semantic_selected
   @tag semantic_query_calls: 0
   @tag timeout: 120_000
+  @tag :native_storage
   test "a supplied projection cannot use an unselected encoder recipe for query inference", c do
     sources = seed_index_sources(c, [{"fixture:wrong-query-recipe", "Vega mission.", nil}])
     facts = %{"kind" => "explicit", "profile" => nil, "version" => 1}
@@ -2130,6 +2154,7 @@ defmodule Ipse.KnowledgeCollectionAdapterSessionTest do
 
   @tag :shared_projection_preview
   @tag timeout: 120_000
+  @tag :native_storage
   test "current gated Session captures eight source bundles and previews lossless shared pages without publication",
        c do
     ids = for n <- 0..6, do: "fixture:shared-#{n}"
@@ -2185,6 +2210,7 @@ defmodule Ipse.KnowledgeCollectionAdapterSessionTest do
   end
 
   @tag :shared_directory_preview
+  @tag :native_storage
   test "actual Session binds directory lookup to captured catalog pages and refuses stale or forged bindings",
        c do
     ids = for n <- 0..7, do: "fixture:directory-#{n}"
@@ -2223,6 +2249,7 @@ defmodule Ipse.KnowledgeCollectionAdapterSessionTest do
     )
   end
 
+  @tag :native_storage
   test "ordinary SDK document writes succeed and historical deadline refusals remain closed",
        c do
     before = native_status(c)
@@ -2264,6 +2291,7 @@ defmodule Ipse.KnowledgeCollectionAdapterSessionTest do
 
   @tag :fused_value_session
   @tag timeout: 120_000
+  @tag :native_storage
   test "actual SDK packets fall back to one part and resume a known bounded partial write", c do
     opened = invoke(c, "put", %{"raw_value" => true, "effects_used" => 14})
     assert opened["status"] == "staged", inspect(opened)
@@ -2328,6 +2356,7 @@ defmodule Ipse.KnowledgeCollectionAdapterSessionTest do
 
   @tag :fused_value_unknown
   @tag timeout: 120_000
+  @tag :native_storage
   test "actual owner loss after fused final publication preserves intent and does not replay",
        c do
     guard = :sys.get_state(c.pid).lock_guard
@@ -2389,6 +2418,7 @@ defmodule Ipse.KnowledgeCollectionAdapterSessionTest do
 
   @tag :fused_word_session
   @tag timeout: 120_000
+  @tag :native_storage
   test "actual Word ingestion sends two-part packets and returns an exact source-local citation",
        c do
     args = %{"large_blocks" => true}
@@ -2432,6 +2462,7 @@ defmodule Ipse.KnowledgeCollectionAdapterSessionTest do
 
   @tag :packed_fact_session
   @tag timeout: 120_000
+  @tag :native_storage
   test "packed facts retain exact Word citations and warnings while their old selection remains available",
        c do
     put_args = %{"many" => true}
@@ -2515,6 +2546,7 @@ defmodule Ipse.KnowledgeCollectionAdapterSessionTest do
 
   @tag :guarded_fact_expiry
   @tag timeout: 120_000
+  @tag :native_storage
   test "a source expired at approval cannot publish a guarded fact projection", c do
     id = "fixture:fact-expired"
 
@@ -2559,6 +2591,7 @@ defmodule Ipse.KnowledgeCollectionAdapterSessionTest do
 
   @tag :guarded_fact_omission
   @tag timeout: 120_000
+  @tag :native_storage
   test "the selected producer cannot publish a fact root by omitting its source guard", c do
     id = "fixture:fact-omission"
     seed_index_sources(c, [{id, "Synthetic guarded fact evidence.", nil}])
@@ -2577,6 +2610,7 @@ defmodule Ipse.KnowledgeCollectionAdapterSessionTest do
 
   @tag :guarded_group_wrong_target
   @tag timeout: 120_000
+  @tag :native_storage
   test "the group guard refuses a staged fact projection in an actual Session", c do
     id = "fixture:wrong-group-target"
     seed_index_sources(c, [{id, "Synthetic guarded fact evidence.", nil}])
@@ -2594,6 +2628,7 @@ defmodule Ipse.KnowledgeCollectionAdapterSessionTest do
 
   @tag :guarded_group_session
   @tag timeout: 180_000
+  @tag :native_storage
   test "a live source permits guarded group append through the Session", c do
     id = "fixture:guarded-group"
 
@@ -2704,6 +2739,7 @@ defmodule Ipse.KnowledgeCollectionAdapterSessionTest do
 
   @tag :guarded_group_changed
   @tag timeout: 180_000
+  @tag :native_storage
   test "a source head changed during group approval refuses the guarded commit", c do
     id = "fixture:changed-group"
     seed_index_sources(c, [{id, "Synthetic changing group source.", nil}])
@@ -2756,6 +2792,7 @@ defmodule Ipse.KnowledgeCollectionAdapterSessionTest do
 
   @tag :guarded_selection_changed
   @tag timeout: 180_000
+  @tag :native_storage
   test "a source changed while final selection approval waits is refused", c do
     id = "fixture:selection-changed"
     seed_index_sources(c, [{id, "Synthetic selected source.", nil}])
@@ -2824,24 +2861,28 @@ defmodule Ipse.KnowledgeCollectionAdapterSessionTest do
 
   @tag :guarded_selection_multigroup
   @tag timeout: 240_000
+  @tag :native_storage
   test "guarded final selection authenticates two source groups", c do
     exercise_guarded_multigroup(c, false)
   end
 
   @tag :guarded_selection_multigroup_changed
   @tag timeout: 240_000
+  @tag :native_storage
   test "a changed source in the second group refuses final selection", c do
     exercise_guarded_multigroup(c, true)
   end
 
   @tag :guarded_selection_multigroup_interpose
   @tag timeout: 240_000
+  @tag :native_storage
   test "a source mutation between retained group reads refuses final selection", c do
     exercise_guarded_multigroup(c, :interpose)
   end
 
   @tag :guarded_selection_multigroup_expiry
   @tag timeout: 240_000
+  @tag :native_storage
   test "a second-group source expiring during final approval refuses selection", c do
     exercise_guarded_multigroup(c, :expiry)
   end
@@ -3008,6 +3049,7 @@ defmodule Ipse.KnowledgeCollectionAdapterSessionTest do
 
   @tag :guarded_group_omission
   @tag timeout: 180_000
+  @tag :native_storage
   test "a selected producer cannot advance a group without its source guard", c do
     id = "fixture:omitted-group-guard"
     seed_index_sources(c, [{id, "Synthetic group evidence.", nil}])
@@ -3071,6 +3113,7 @@ defmodule Ipse.KnowledgeCollectionAdapterSessionTest do
 
   @tag :guarded_fact_source_change
   @tag timeout: 120_000
+  @tag :native_storage
   test "a changed source head while final fact approval waits preserves the old projection", c do
     id = "fixture:fact-approval-source"
     seed_index_sources(c, [{id, "Synthetic source replacement evidence.", nil}])
@@ -3109,6 +3152,7 @@ defmodule Ipse.KnowledgeCollectionAdapterSessionTest do
 
   @tag :guarded_fact_expiry_delay
   @tag timeout: 120_000
+  @tag :native_storage
   test "a source expiring while final fact approval waits cannot publish", c do
     id = "fixture:fact-approval-expiry"
     expires = System.system_time(:millisecond) + 30_000
@@ -3160,6 +3204,7 @@ defmodule Ipse.KnowledgeCollectionAdapterSessionTest do
 
   @tag :packed_fact_catalog_race
   @tag timeout: 120_000
+  @tag :native_storage
   test "fact root selection refuses a catalog publication after the last owned-stage checks", c do
     seed_index_sources(c, [{"fixture:fact-race", "Rigel graph evidence.", nil}])
     args = %{"action" => "put", "source_id" => "fixture:fact-race"}
@@ -3227,6 +3272,7 @@ defmodule Ipse.KnowledgeCollectionAdapterSessionTest do
 
   @tag :packed_fact_unknown
   @tag timeout: 120_000
+  @tag :native_storage
   test "owner loss after packed fact root CAS preserves intent and cannot replay", c do
     seed_index_sources(c, [{"fixture:fact-unknown", "Rigel graph evidence.", nil}])
     args = %{"action" => "put", "source_id" => "fixture:fact-unknown"}
@@ -3297,6 +3343,7 @@ defmodule Ipse.KnowledgeCollectionAdapterSessionTest do
   end
 
   @tag :packed_vector_geometry
+  @tag :native_storage
   test "packed float32 pages preserve complete ordered vector identities within existing string limits",
        c do
     for module <- [IpseKnowledge.Evidence, IpseKnowledge.Store.Collection.Projection] do
@@ -3390,6 +3437,7 @@ defmodule Ipse.KnowledgeCollectionAdapterSessionTest do
 
   @tag :packed_vector_session
   @tag timeout: 120_000
+  @tag :native_storage
   test "actual Session stages packed vectors and atomically replaces their selected complete projection",
        c do
     seed_index_sources(c, [{"fixture:vectors", String.duplicate("Vega orbit ", 2000), nil}])
@@ -3438,6 +3486,7 @@ defmodule Ipse.KnowledgeCollectionAdapterSessionTest do
 
   @tag :projection_maintenance_progress
   @tag timeout: 120_000
+  @tag :native_storage
   test "vector progress refuses a forged native opening and reuses an old page only through a new native effect",
        c do
     [source] = seed_index_sources(c, [{"fixture:vector-progress", "Vega orbit evidence.", nil}])
@@ -3554,6 +3603,7 @@ defmodule Ipse.KnowledgeCollectionAdapterSessionTest do
   @tag :projection_maintenance_progress
   @tag :packed_fact_session
   @tag timeout: 120_000
+  @tag :native_storage
   test "facts after a fence bind prepared metadata and terminal publication to native progress",
        c do
     seed_index_sources(c, [{"fixture:fact-progress", "Orion links exact source evidence.", nil}])
@@ -3585,6 +3635,7 @@ defmodule Ipse.KnowledgeCollectionAdapterSessionTest do
 
   @tag :packed_vector_corruption
   @tag timeout: 120_000
+  @tag :native_storage
   test "actual projection hydration refuses missing, reordered and rehashed wrong-chunk vector pages",
        c do
     seed_index_sources(c, [{"fixture:vector-corrupt", String.duplicate("Vega orbit ", 2000), nil}])
@@ -3628,6 +3679,7 @@ defmodule Ipse.KnowledgeCollectionAdapterSessionTest do
 
   @tag :packed_vector_catalog_race
   @tag timeout: 120_000
+  @tag :native_storage
   test "queued projection publication refuses a changed catalog physical revision while old vectors remain selected",
        c do
     seed_index_sources(c, [{"fixture:vector-race", "Rigel vector evidence.", nil}])
@@ -3687,6 +3739,7 @@ defmodule Ipse.KnowledgeCollectionAdapterSessionTest do
 
   @tag :packed_vector_unknown
   @tag timeout: 120_000
+  @tag :native_storage
   test "interrupted vector root publication retains an unknown intent without replay", c do
     seed_index_sources(c, [{"fixture:vector-unknown", "Rigel vector evidence.", nil}])
     args = %{"action" => "put", "source_id" => "fixture:vector-unknown"}
@@ -3761,6 +3814,7 @@ defmodule Ipse.KnowledgeCollectionAdapterSessionTest do
 
   @tag :inline_collection_session
   @tag timeout: 120_000
+  @tag :native_storage
   test "negotiated inline source publication and namespace build retain bounded operation accounting",
        c do
     for id <- ["fixture:inline-one", "fixture:inline-two"] do
@@ -3824,6 +3878,7 @@ defmodule Ipse.KnowledgeCollectionAdapterSessionTest do
 
   @tag :inline_collection_fallback
   @tag timeout: 120_000
+  @tag :native_storage
   test "negotiation preserves legacy hosts and escaped oversized bodies retain bounded staged transport",
        c do
     args = %{
@@ -3897,6 +3952,7 @@ defmodule Ipse.KnowledgeCollectionAdapterSessionTest do
 
   @tag :inline_collection_unknown
   @tag timeout: 120_000
+  @tag :native_storage
   test "owner loss after inline native publication retains unknown intent and cannot replay", c do
     guard = :sys.get_state(c.pid).lock_guard
     guard_ref = Process.monitor(guard)
@@ -3948,6 +4004,7 @@ defmodule Ipse.KnowledgeCollectionAdapterSessionTest do
   end
 
   @tag :packed_document
+  @tag :native_storage
   test "packed Word source crosses explicit invocations and selected query returns exact cited revision",
        c do
     args = %{"generation" => 1, "expected_revision" => 0}
@@ -3990,6 +4047,7 @@ defmodule Ipse.KnowledgeCollectionAdapterSessionTest do
   end
 
   @tag :packed_document
+  @tag :native_storage
   test "embedded complete typed metadata survives packing and forged continuation cannot publish",
        c do
     args = %{"generation" => 1, "expected_revision" => 0, "many" => true}
@@ -4006,6 +4064,7 @@ defmodule Ipse.KnowledgeCollectionAdapterSessionTest do
   end
 
   @tag timeout: 120_000
+  @tag :native_storage
   test "catalog crosses its first page and selective hydration reads only requested sources", c do
     for n <- 1..17 do
       args = %{
@@ -4033,6 +4092,7 @@ defmodule Ipse.KnowledgeCollectionAdapterSessionTest do
   end
 
   @tag :packed_document
+  @tag :native_storage
   test "private staged metadata inspection is bound to the actual owning Session", c do
     args = %{
       "source_id" => "catalog:private",
@@ -4064,6 +4124,7 @@ defmodule Ipse.KnowledgeCollectionAdapterSessionTest do
   end
 
   @tag :packed_corruption
+  @tag :native_storage
   test "missing data and rehashed reordered multi-block source refuse actual selected query", c do
     args = %{"generation" => 1, "expected_revision" => 0, "large_blocks" => true}
     assert finish(c, args, invoke(c, "put", args))["status"] == "stored"
@@ -4102,6 +4163,7 @@ defmodule Ipse.KnowledgeCollectionAdapterSessionTest do
   end
 
   @tag :packed_unknown
+  @tag :native_storage
   test "unknown native packed write yields no continuation and saved Session never replays it",
        c do
     handler = "packed-source-unknown-" <> Usage.id()
@@ -4175,6 +4237,7 @@ defmodule Ipse.KnowledgeCollectionAdapterSessionTest do
 
   @tag :packed_lexical_run
   @tag timeout: 120_000
+  @tag :native_storage
   test "lossless source lexical runs publish atomically and refuse missing or reordered packed data",
        c do
     first = %{
@@ -4260,6 +4323,7 @@ defmodule Ipse.KnowledgeCollectionAdapterSessionTest do
 
   @tag :namespace_smoke
   @tag timeout: 120_000
+  @tag :native_storage
   test "namespace lexical generation publishes exact global BM25 and fences a changed catalog",
        c do
     for {id, text} <- [
@@ -4336,6 +4400,7 @@ defmodule Ipse.KnowledgeCollectionAdapterSessionTest do
 
   @tag :namespace_groups
   @tag timeout: 120_000
+  @tag :native_storage
   test "namespace postings cross catalog groups and match the full-source BM25 reference", c do
     sources =
       seed_index_sources(
@@ -4385,6 +4450,7 @@ defmodule Ipse.KnowledgeCollectionAdapterSessionTest do
 
   @tag :namespace_pages
   @tag timeout: 120_000
+  @tag :native_storage
   test "semantic posting pages use authenticated offsets and refuse missing, reordered or forged pages",
        c do
     text = Enum.map_join(1..700, " ", &"entry#{&1}")
@@ -4469,6 +4535,7 @@ defmodule Ipse.KnowledgeCollectionAdapterSessionTest do
 
   @tag :namespace_publication_race
   @tag timeout: 120_000
+  @tag :native_storage
   test "a catalog revision changed before the fresh publication snapshot refuses the index CAS",
        c do
     seed_index_sources(c, [{"fixture:race", "Rigel publication remains current.", nil}])
@@ -4553,6 +4620,7 @@ defmodule Ipse.KnowledgeCollectionAdapterSessionTest do
 
   @tag :namespace_unknown
   @tag timeout: 120_000
+  @tag :native_storage
   test "owner loss after native namespace publication preserves intent and never replays on resume",
        c do
     seed_index_sources(c, [{"fixture:unknown", "Vega exact namespace evidence.", nil}])
@@ -4634,6 +4702,7 @@ defmodule Ipse.KnowledgeCollectionAdapterSessionTest do
 
   @tag :collection_chunking_session
   @tag timeout: 120_000
+  @tag :native_storage
   test "Collection Source3 and retained Source1 share a namespace without changing legacy chunk identities",
        c do
     [legacy] = seed_index_sources(c, [{"fixture:legacy", "Legacy stable evidence.", nil}])
@@ -4695,6 +4764,7 @@ defmodule Ipse.KnowledgeCollectionAdapterSessionTest do
   end
 
   @tag :collection_legacy_consumer
+  @tag :native_storage
   test "the frozen legacy consumer reads its retained Source1 and refuses Source3 without reinterpretation",
        c do
     seed_index_sources(c, [{"fixture:legacy", "Legacy stable evidence.", nil}])
@@ -5085,6 +5155,7 @@ defmodule Ipse.KnowledgeCollectionAdapterSessionTest do
   @tag :public_shared_selected
   @tag :public_backup_identity
   @tag timeout: 120_000
+  @tag :native_storage
   test "public backup validation refuses a rehashed catalog and source identity mismatch", c do
     [source] = seed_index_sources(c, [{"backup:one", "Synthetic backup identity evidence.", nil}])
     original = source["source_key"]
@@ -5496,6 +5567,7 @@ defmodule Ipse.KnowledgeCollectionAdapterSessionTest do
   @tag :document_draft_abort
   @tag :document_draft_abort_three_slots
   @tag timeout: 180_000
+  @tag :native_storage
   test "one Source abort consumes all three prepared slots while the prior published source stays current",
        c do
     initial = %{
@@ -5572,6 +5644,7 @@ defmodule Ipse.KnowledgeCollectionAdapterSessionTest do
 
   @tag :document_draft_abort
   @tag timeout: 180_000
+  @tag :native_storage
   test "same-owner Source abort consumes real prepared stages and preserves published immutable values",
        c do
     {args, opened} = draft_abort_source(c)
@@ -5601,6 +5674,7 @@ defmodule Ipse.KnowledgeCollectionAdapterSessionTest do
 
   @tag :document_draft_abort
   @tag timeout: 180_000
+  @tag :native_storage
   test "a partial Source transport abort refuses foreign owners and wrong kind then releases its slots",
        c do
     {_args, opened} = draft_abort_source(c, true)
@@ -5633,6 +5707,7 @@ defmodule Ipse.KnowledgeCollectionAdapterSessionTest do
   @tag :packed_fact_session
   @tag :draft_abort_release_owner
   @tag timeout: 180_000
+  @tag :native_storage
   test "Projection abort freezes R after one known cleanup and cannot renew it across another fence",
        c do
     {args, opened} = draft_abort_projection(c)
@@ -5736,6 +5811,7 @@ defmodule Ipse.KnowledgeCollectionAdapterSessionTest do
   @tag :document_draft_abort
   @tag :packed_fact_session
   @tag timeout: 180_000
+  @tag :native_storage
   test "same-owner Projection abort consumes both actual prepared refs without changing selected roots",
        c do
     {args, opened} = draft_abort_projection(c)
@@ -5759,6 +5835,7 @@ defmodule Ipse.KnowledgeCollectionAdapterSessionTest do
   @tag :document_draft_abort
   @tag :packed_fact_session
   @tag timeout: 180_000
+  @tag :native_storage
   test "the same live Session may explicitly resume its known partial retirement", c do
     {_args, opened} = draft_abort_projection(c)
     progress = opened["continuation"]["progress"]
@@ -5788,6 +5865,7 @@ defmodule Ipse.KnowledgeCollectionAdapterSessionTest do
   @tag :document_draft_abort
   @tag :packed_fact_session
   @tag timeout: 180_000
+  @tag :native_storage
   test "retirement switches only after live Session and Writer controls are imported", c do
     {_args, opened} = draft_abort_projection(c)
     progress = opened["continuation"]["progress"]
@@ -5820,6 +5898,7 @@ defmodule Ipse.KnowledgeCollectionAdapterSessionTest do
   @tag :draft_abort_resumed_owner
   @tag :draft_abort_release_owner
   @tag timeout: 180_000
+  @tag :native_storage
   test "Session loss after retirement controls are imported does not switch the root", c do
     {_args, opened} = draft_abort_projection(c)
     progress = opened["continuation"]["progress"]
@@ -5880,6 +5959,7 @@ defmodule Ipse.KnowledgeCollectionAdapterSessionTest do
   @tag :draft_abort_resumed_owner
   @tag :draft_abort_release_owner
   @tag timeout: 180_000
+  @tag :native_storage
   test "retirement owner-control port loss stops the Session without switching the root", c do
     {_args, opened} = draft_abort_projection(c)
     progress = opened["continuation"]["progress"]
@@ -6124,6 +6204,7 @@ defmodule Ipse.KnowledgeCollectionAdapterSessionTest do
   @tag :document_draft_abort
   @tag :packed_fact_session
   @tag timeout: 180_000
+  @tag :native_storage
   test "a full live-retirement registry refuses before changing a new head", c do
     {_args, opened} = draft_abort_projection(c)
     progress = opened["continuation"]["progress"]
@@ -6143,6 +6224,7 @@ defmodule Ipse.KnowledgeCollectionAdapterSessionTest do
   @tag :draft_abort_resumed_owner
   @tag :draft_abort_release_owner
   @tag timeout: 180_000
+  @tag :native_storage
   test "a resumed owner cannot continue a partial retirement without prior-owner cleanup evidence",
        c do
     {_args, opened} = draft_abort_projection(c)
@@ -6201,6 +6283,7 @@ defmodule Ipse.KnowledgeCollectionAdapterSessionTest do
   @tag :draft_abort_resumed_owner
   @tag :draft_abort_release_owner
   @tag timeout: 180_000
+  @tag :native_storage
   test "public Corpus refuses partial retirement after its original owner dies", c do
     args = %{
       "source_id" => "fixture:public-owner-death",
@@ -6296,6 +6379,7 @@ defmodule Ipse.KnowledgeCollectionAdapterSessionTest do
   @tag :document_draft_abort
   @tag :public_shared_selected
   @tag timeout: 180_000
+  @tag :native_storage
   test "public Corpus abort requires ordinary approval and retires its own empty Source head",
        c do
     args = %{
@@ -6357,6 +6441,7 @@ defmodule Ipse.KnowledgeCollectionAdapterSessionTest do
 
   @tag :document_draft_abort
   @tag timeout: 180_000
+  @tag :native_storage
   test "an unknown abort effect stops without replay and same-ID idle never repeats it", c do
     {_args, opened} = draft_abort_source(c, true)
     p = opened["continuation"]["progress"]
@@ -6441,6 +6526,7 @@ defmodule Ipse.KnowledgeCollectionAdapterSessionTest do
 
   @tag :progress_retire_session
   @tag timeout: 120_000
+  @tag :native_storage
   test "explicit SDK retirement consumes an empty-stage Source head without deleting immutable bytes",
        c do
     assert invoke(c, "namespace", %{"query" => "Orion"})["status"] === "refused"
@@ -6544,6 +6630,7 @@ defmodule Ipse.KnowledgeCollectionAdapterSessionTest do
 
   @tag :document_progress_fault
   @tag timeout: 180_000
+  @tag :native_storage
   test "a controlled effect baseline returns authentic partial progress and resumes the exact transport",
        c do
     assert invoke(c, "namespace", %{"query" => "Nocturne"})["status"] === "refused"
@@ -6614,6 +6701,7 @@ defmodule Ipse.KnowledgeCollectionAdapterSessionTest do
 
   @tag :document_progress_fault
   @tag timeout: 180_000
+  @tag :native_storage
   test "unknown nonzero-epoch transport retains its native head and never returns a replay continuation",
        c do
     assert invoke(c, "namespace", %{"query" => "Nocturne"})["status"] === "refused"

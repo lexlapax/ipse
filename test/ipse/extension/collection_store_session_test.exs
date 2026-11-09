@@ -299,6 +299,7 @@ defmodule Ipse.Extension.CollectionStoreSessionTest do
   end
 
   @tag :document_decision_session
+  @tag :native_storage
   test "actual Session transports every bounded part, asks full mutation arguments and reconstructs exact large value",
        c do
     run = open(c)
@@ -330,6 +331,7 @@ defmodule Ipse.Extension.CollectionStoreSessionTest do
   end
 
   @tag :document_maintenance_session
+  @tag :native_storage
   test "actual SDK keeps old stages fenced after close while fresh approved publication succeeds",
        c do
     run = open(c)
@@ -470,6 +472,7 @@ defmodule Ipse.Extension.CollectionStoreSessionTest do
   end
 
   @tag :document_inventory_session
+  @tag :native_storage
   test "actual public read inventory binds the admitted project and replays bounded metadata receipts",
        c do
     run = open(c)
@@ -611,6 +614,7 @@ defmodule Ipse.Extension.CollectionStoreSessionTest do
   end
 
   @tag :document_layout_session
+  @tag :native_storage
   test "actual SDK layout read has no mutation approval and remains bound to its project", c do
     run = open(c, approval: :deny)
     namespace = CollectionStore.namespace(run.binding["project_id"])
@@ -752,6 +756,7 @@ defmodule Ipse.Extension.CollectionStoreSessionTest do
   end
 
   @tag :document_inventory_session
+  @tag :native_storage
   test "public inventory refuses stale generations and private cursors without mutation", c do
     for args <- [
           %{"mode" => "inventory", "generation_delta" => -1},
@@ -823,6 +828,7 @@ defmodule Ipse.Extension.CollectionStoreSessionTest do
     end
   end
 
+  @tag :native_storage
   test "store capability requires its separate operator grant and read namespace binding", c do
     run = open(c)
     [trust] = run.data["extension_trust"]
@@ -883,6 +889,7 @@ defmodule Ipse.Extension.CollectionStoreSessionTest do
   end
 
   @tag retain_collection_unknown: true
+  @tag :native_storage
   test "native publication uncertainty reaches the actual journal as unknown and resume does not replay",
        c do
     run = open(c)

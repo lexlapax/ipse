@@ -234,6 +234,7 @@ defmodule Ipse.InferenceDispatchTest do
     end)
   end
 
+  @tag :native_storage
   test "postqueue refusal retains its booking and a fresh admission cannot reuse it", c do
     config =
       config(c, "http://127.0.0.1:11434")
@@ -340,6 +341,7 @@ defmodule Ipse.InferenceDispatchTest do
              InferenceDispatch.selection(%{}, %{provider: :demo}, "main", nil)
   end
 
+  @tag :native_storage
   test "a retained pre-callback booking and a fresh admission use two requests for one HTTP call",
        c do
     {base, server} = ProviderFixture.start(text_body(), 200, "", :whole)
@@ -470,6 +472,7 @@ defmodule Ipse.InferenceDispatchTest do
     end)
   end
 
+  @tag :native_storage
   test "native embedding completion settles its service even when final budget liability rejects publication",
        c do
     body =

@@ -3,6 +3,7 @@ Code.require_file(Path.expand("../../support/transaction_fixture.exs", __DIR__))
 
 defmodule Ipse.Extension.ProjectDomainAuthTest do
   use ExUnit.Case, async: false
+  @moduletag :native_storage
   alias Ipse.Extension.ProjectIdentity, as: P
   alias Ipse.Extension.ProjectIdentity.DomainAuth, as: D
   alias Ipse.Runner.Transaction

@@ -4,6 +4,7 @@ end
 
 defmodule Ipse.Extension.CollectionExpiryNativeTest do
   use ExUnit.Case, async: false
+  @moduletag :native_storage
   alias Ipse.{JSON, Journal, Usage}
   alias Ipse.Extension.{Collection, ProjectIdentity}
   alias Ipse.Extension.Collection.{ManagedPages, NormalizerV3, ObservedRead}

@@ -1,5 +1,6 @@
 defmodule Ipse.Extension.CollectionUnmanagedTest do
   use ExUnit.Case, async: false
+  @moduletag :native_storage
   alias Ipse.Extension.Collection
 
   test "the legacy operation and managed-marker refusal share the current native transaction" do

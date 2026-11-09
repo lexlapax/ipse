@@ -166,6 +166,7 @@ defmodule Ipse.Extension.ManagedCollectionCallTest do
     assert ManagedCollectionCall.reservation(legacy)["input_bytes"] < charge["input_bytes"]
   end
 
+  @tag :native_storage
   test "private scan excludes metadata before selection and preserves exact public continuation" do
     parent = Path.join(System.tmp_dir!(), "ipse-sdk-visible-" <> Ipse.Usage.id())
     File.mkdir!(parent)

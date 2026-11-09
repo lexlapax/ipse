@@ -109,6 +109,32 @@ Mix sorts the complete test-file list and distributes it round-robin. All four
 partitions must pass on each OS; a single partition is not a complete baseline.
 Additional native, platform and installed checks run in the separate platform job. Local
 `mix test` still runs the complete default suite in one VM.
+
+Protected native storage runs only on reviewed kernel and filesystem profiles
+(`native/ipse-storage-profile.rs`) and refuses everywhere else. Before the suite
+starts, `test/test_helper.exs` asks the pinned helper whether the test temporary
+directory qualifies. On any other host, including hosted Ubuntu and macOS
+runners, it prints `Excluding :native_storage tests` and excludes every test
+tagged `:native_storage`. Those runs prove nothing about native storage; cover it
+on a reviewed host, where nothing is excluded. Require that coverage explicitly:
+
+```sh
+IPSE_TEST_NATIVE_STORAGE=1 mix test
+```
+
+The suite then refuses to start when the temporary directory does not qualify.
+Any probe result other than support or the unsupported-filesystem refusal also
+stops the suite, so a missing or broken helper cannot silently exclude tests.
+Tag a new test `@tag :native_storage` (or `@moduletag` for a whole file) when it
+needs protected storage to succeed. To reproduce the hosted exclusion on a
+reviewed Linux host, point the temporary directory at an unqualified filesystem,
+for example Btrfs on kernel 7.2.11:
+
+```sh
+IPSE_UNQUALIFIED_TMP=$(mktemp -d -p /var/tmp)
+TMPDIR="$IPSE_UNQUALIFIED_TMP" mix test
+```
+
 Nested fixture invocations do not pass `--partitions`, so an inherited
 `MIX_TEST_PARTITION` does not filter their explicit control sets. Preserve that
 distinction when adding a subprocess test.

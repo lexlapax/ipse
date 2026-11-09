@@ -1,5 +1,6 @@
 defmodule Ipse.Session.ManagedOutputNativeTest do
   use ExUnit.Case, async: false
+  @moduletag :native_storage
   @moduletag timeout: 120_000
 
   test "a genuinely reviewed short literal expires during an explicit worker read" do

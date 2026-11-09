@@ -26,6 +26,7 @@ defmodule Ipse.Extension.Collection.DocumentProfileTest do
     }
   end
 
+  @tag :native_storage
   test "legacy notes roots cannot be reinterpreted under the document profile", c do
     assert {:ok, _} =
              Collection.execute(c.root, c.project, commit(%{"text" => "legacy"}), Usage.id())
@@ -48,6 +49,7 @@ defmodule Ipse.Extension.Collection.DocumentProfileTest do
              Collection.execute(c.root, c.project, %{"op" => "status"}, Usage.id())
   end
 
+  @tag :native_storage
   test "document root profile is hashed and large blocks remain bounded selected reads", c do
     value = %{"parts" => for(n <- 1..10, do: "#{n}:" <> String.duplicate("x", 4096))}
     assert byte_size(Jason.encode!(value)) > 16_384

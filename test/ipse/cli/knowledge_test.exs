@@ -12,16 +12,19 @@ defmodule Ipse.CLI.KnowledgeTest do
     end
   end
 
+  @tag :native_storage
   test "native setup saves exact permission, activates a new headless session and revokes" do
     assert scenario("save", "--knowledge") =~ "KNOWLEDGE_NATIVE_SETUP_SAVE_DISABLE_PASSED"
   end
 
   @tag timeout: 90_000, knowledge_helper_route: true
+  @tag :native_storage
   test "native experiment review saves explicit helper route with final Knowledge identity" do
     assert scenario("experiment-helper", "--knowledge") =~ "KNOWLEDGE_NATIVE_HELPER_ROUTE_PASSED"
   end
 
   @tag timeout: 90_000, knowledge_helper_route: true
+  @tag :native_storage
   test "changing the helper profile during native review cannot save its old route" do
     assert scenario("experiment-helper-config", "--knowledge-config") =~
              "KNOWLEDGE_NATIVE_HELPER_ROUTE_CHANGED_REFUSED"
@@ -29,6 +32,7 @@ defmodule Ipse.CLI.KnowledgeTest do
 
   for input <- ~w(argv stdin) do
     @tag timeout: 90_000, headless_pending_cli: true
+    @tag :native_storage
     test "headless #{input} saves one attributed pending proposal without ordinary mutation authority" do
       assert scenario(unquote(input), "--knowledge", "headless_cli_untrusted_process.exs") =~
                "UNTRUSTED_CLI_#{String.upcase(unquote(input))}_PASSED"
@@ -36,30 +40,35 @@ defmodule Ipse.CLI.KnowledgeTest do
   end
 
   @tag timeout: 90_000, assistant_pending_direct: true
+  @tag :native_storage
   test "a completed assistant reply remains attributed and pending under saved consent" do
     assert scenario("assistant", "--knowledge", "headless_untrusted_capture.exs") =~
              "ASSISTANT_PROPOSAL_SIGNED_PENDING_PASSED"
   end
 
   @tag timeout: 90_000, assistant_pending_model: true
+  @tag :native_storage
   test "the main model can select its previous reply as a pending proposal" do
     assert scenario("assistant_model", "--knowledge", "headless_untrusted_capture.exs") =~
              "ASSISTANT_PROPOSAL_SIGNED_PENDING_PASSED"
   end
 
   @tag timeout: 90_000, assistant_pending_model: true
+  @tag :native_storage
   test "the main model cannot capture an invented quote from its previous reply" do
     assert scenario("assistant_model_bad_quote", "--knowledge", "headless_untrusted_capture.exs") =~
              "ASSISTANT_PROPOSAL_BAD_QUOTE_REFUSED"
   end
 
   @tag timeout: 120_000, assistant_pending_public_review: true
+  @tag :native_storage
   test "a model-selected assistant proposal can be reviewed with its original attribution" do
     assert scenario("assistant_model_review", "--knowledge", "headless_untrusted_capture.exs") =~
              "ASSISTANT_PROPOSAL_PUBLIC_REVIEW_PASSED"
   end
 
   @tag timeout: 120_000, assistant_pending_public_review: true
+  @tag :native_storage
   test "recall withholds an accepted assistant proposal when its original source is missing" do
     assert scenario(
              "assistant_model_source_lost",
@@ -70,12 +79,14 @@ defmodule Ipse.CLI.KnowledgeTest do
   end
 
   @tag timeout: 120_000, assistant_pending_resume: true
+  @tag :native_storage
   test "resuming the original Session refuses stale history before model dispatch" do
     assert scenario("assistant_model_resume", "--knowledge", "headless_untrusted_capture.exs") =~
              "ASSISTANT_PROPOSAL_PUBLIC_REVIEW_PASSED"
   end
 
   @tag knowledge_readiness: true
+  @tag :native_storage
   test "saved native permission distinguishes activation matching from unavailable capture" do
     output = scenario("readiness", "--knowledge")
     assert output =~ "KNOWLEDGE_NATIVE_READINESS_PUBLICATION_UNAVAILABLE"
@@ -83,6 +94,7 @@ defmodule Ipse.CLI.KnowledgeTest do
     assert output =~ "A new statement may be saved through separate native review"
   end
 
+  @tag :native_storage
   test "bare yes and a mismatched native challenge cannot grant permission" do
     for {name, mode} <- [{"cancel", "--knowledge-cancel"}, {"stale", "--knowledge-stale"}] do
       assert scenario(name, mode) =~ "KNOWLEDGE_NATIVE_REVIEW_CANCELLED"
@@ -93,10 +105,12 @@ defmodule Ipse.CLI.KnowledgeTest do
     assert scenario("pipe", nil) =~ "KNOWLEDGE_NATIVE_PIPE_REFUSED"
   end
 
+  @tag :native_storage
   test "a concurrent consent epoch change cannot be overwritten by a reviewed grant" do
     assert scenario("cas", "--knowledge-cas") =~ "KNOWLEDGE_NATIVE_REVIEW_CANCELLED"
   end
 
+  @tag :native_storage
   test "saved configuration changes during native review refuse instead of saving the old proposal" do
     for field <- ~w(model timeout malformed format) do
       assert scenario("config-" <> field, "--knowledge-config") =~
@@ -105,6 +119,7 @@ defmodule Ipse.CLI.KnowledgeTest do
   end
 
   @tag :knowledge_nomination_policy
+  @tag :native_storage
   test "review data binds actual bundled recipes and routes without creating consent" do
     root = private_root()
     home = Path.join(root, "home")
@@ -381,6 +396,7 @@ defmodule Ipse.CLI.KnowledgeTest do
     refute File.exists?(control)
   end
 
+  @tag :native_storage
   test "explicit helper route preserves finite experiment defaults and exact activation identity" do
     root = private_root()
     home = Path.join(root, "home")

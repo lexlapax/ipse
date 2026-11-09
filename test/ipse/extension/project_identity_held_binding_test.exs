@@ -1,5 +1,6 @@
 defmodule Ipse.Extension.ProjectIdentityHeldBindingTest do
   use ExUnit.Case, async: false
+  @moduletag :native_storage
   alias Ipse.Extension.ProjectIdentity
 
   test "only the exact same callback can reuse the retained native binding" do

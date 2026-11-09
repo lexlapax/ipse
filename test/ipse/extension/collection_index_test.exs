@@ -68,6 +68,7 @@ defmodule Ipse.Extension.CollectionIndexTest do
     end
   end
 
+  @tag :native_storage
   test "native metadata pages contain no values, fit 4KiB and cover every public key", c do
     keys = for n <- 1..32, do: "note." <> JSON.sha256(Integer.to_string(n))
     assert {:ok, _} = commit(c, 0, keys)
@@ -107,6 +108,7 @@ defmodule Ipse.Extension.CollectionIndexTest do
     assert walk.(walk, nil, []) == Enum.sort(keys)
   end
 
+  @tag :native_storage
   test "cursors bind the exact Session window, pin, prefix and current collection root", c do
     assert {:ok, _} = commit(c, 0, ["note.a", "note.b"])
     assert {:ok, first} = CollectionCall.index_observation(c.context, intent(c, request(nil, 1)))

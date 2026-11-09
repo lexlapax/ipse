@@ -3,6 +3,7 @@ Code.require_file("../../../dev/knowledge/native_notes_workload.ex", __DIR__)
 
 defmodule Ipse.Development.NativeQuotaClockTest do
   use ExUnit.Case, async: true
+  @moduletag :native_storage
   alias Ipse.Development.NativeNotesWorkload, as: Workload
   alias Ipse.Extension.Consent
   alias Ipse.{JSON, Usage}

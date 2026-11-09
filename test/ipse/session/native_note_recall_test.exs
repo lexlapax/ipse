@@ -2,11 +2,13 @@ defmodule Ipse.Session.NativeNoteRecallTest do
   use ExUnit.Case, async: false
 
   @tag timeout: 90_000
+  @tag :native_storage
   test "native reviewed notes respect competing context and withdraw after forget" do
     run("save")
   end
 
   @tag timeout: 90_000
+  @tag :native_storage
   test "a collection change after recall is fenced before the provider request" do
     run("save_race")
   end

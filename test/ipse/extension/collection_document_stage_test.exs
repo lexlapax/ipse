@@ -104,6 +104,7 @@ defmodule Ipse.Extension.Collection.DocumentStageTest do
   end
 
   @tag :document_layout_native
+  @tag :native_storage
   test "layout authenticates original physical parts independently of logical read slices", c do
     body = Jason.encode!(%{"text" => String.duplicate("Résumé 🌌 ", 80)})
     {first, second} = String.split_at(body, 17)
@@ -346,6 +347,7 @@ defmodule Ipse.Extension.Collection.DocumentStageTest do
   end
 
   @tag :inline_document
+  @tag :native_storage
   test "inline publication preserves complete original bytes in one bounded native operation",
        c do
     body = "{ \"text\" : \"" <> String.duplicate("x", 8177) <> "\" }"
@@ -385,6 +387,7 @@ defmodule Ipse.Extension.Collection.DocumentStageTest do
 
   @tag :inline_document
   @tag :document_decision_restoration
+  @tag :native_storage
   test "inline prepared values remain private until one consuming CAS and retain owner fencing",
        c do
     assert {:ok, old} = call(c, inline("{\"v\":0}", "inline.left"))
@@ -439,6 +442,7 @@ defmodule Ipse.Extension.Collection.DocumentStageTest do
 
   @tag :fused_document
   @tag :fused_document_large
+  @tag :native_storage
   test "fused parts publish complete original bytes in one CAS per bounded packet", c do
     body =
       "{ \"paragraphs\" : [" <>
@@ -490,6 +494,7 @@ defmodule Ipse.Extension.Collection.DocumentStageTest do
   end
 
   @tag :document_deadline_scope
+  @tag :native_storage
   test "inherited trusted deadlines cannot be cleared or extended and the scope restores exactly",
        c do
     key = {DocumentStage, :publish_before_ms}
@@ -583,6 +588,7 @@ defmodule Ipse.Extension.Collection.DocumentStageTest do
   end
 
   @tag :fused_document
+  @tag :native_storage
   test "fused preparation fences owner, mode, offsets and final digest until one consuming CAS",
        c do
     body = Jason.encode!(%{"paragraphs" => List.duplicate(String.duplicate("x", 4096), 4)})
@@ -617,6 +623,7 @@ defmodule Ipse.Extension.Collection.DocumentStageTest do
   end
 
   @tag :fused_document
+  @tag :native_storage
   test "fused closed requests and expired stages refuse without publication while abort stays available",
        c do
     invalid = "{\"a\":1,\"a\":2}"
@@ -671,6 +678,7 @@ defmodule Ipse.Extension.Collection.DocumentStageTest do
 
   @tag :inline_document
   @tag :inline_deadline
+  @tag :native_storage
   test "trusted deadline refuses before publication and does not leak to a later ordinary call",
        c do
     request = Map.put(inline("{\"v\":1}", "inline.deadline"), "generation", generation(c))
@@ -701,6 +709,7 @@ defmodule Ipse.Extension.Collection.DocumentStageTest do
   end
 
   @tag :document_decision_expiry
+  @tag :native_storage
   test "expiry while the synced pointer is held refuses selection and preserves the old value",
        c do
     assert {:ok, old} = call(c, inline("{\"v\":0}", "inline.staged"))
@@ -758,6 +767,7 @@ defmodule Ipse.Extension.Collection.DocumentStageTest do
   end
 
   @tag :document_decision_restoration
+  @tag :native_storage
   test "large value crosses bounded parts, remains unselected until one consuming CAS and slots reuse",
        c do
     body =
@@ -822,6 +832,7 @@ defmodule Ipse.Extension.Collection.DocumentStageTest do
     assert current["revision"] == replacement["generation"]
   end
 
+  @tag :native_storage
   test "offset, changed owner, malformed body and digest refuse without selected publication",
        c do
     body = Jason.encode!(%{"text" => "exact"})
@@ -906,6 +917,7 @@ defmodule Ipse.Extension.Collection.DocumentStageTest do
   end
 
   @tag :document_decision_restoration
+  @tag :native_storage
   test "expired slots refuse continuation but explicit admitted reclaim releases every retained part",
        c do
     body = Jason.encode!(%{"text" => "retained"})
@@ -969,6 +981,7 @@ defmodule Ipse.Extension.Collection.DocumentStageTest do
   end
 
   @tag :workspace_publication_guard
+  @tag :native_storage
   test "the trusted publication callback gates inline, fused and staged commits", c do
     body = Jason.encode!(%{"kind" => "synthetic_source_head"})
     observer = self()

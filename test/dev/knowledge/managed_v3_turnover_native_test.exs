@@ -1,5 +1,6 @@
 defmodule Ipse.Development.ManagedV3TurnoverNativeTest do
   use ExUnit.Case, async: false
+  @moduletag :native_storage
   @moduletag timeout: 120_000
 
   test "typed correction and historical expiry record actual review and simulated as-of separately" do

@@ -3,6 +3,7 @@ defmodule Ipse.Extension.CollectionDeadlineGateTest do
   alias Ipse.Extension.Collection
 
   @tag gate_compatibility: true
+  @tag :native_storage
   test "strict deadline entry refuses before callback/staging while ordinary storage remains available" do
     root = Path.join(System.tmp_dir!(), "ipse-deadline-gate-" <> Ipse.Usage.id())
     File.mkdir!(root)

@@ -1,5 +1,6 @@
 defmodule Ipse.Extension.CollectionReviewGateTest do
   use ExUnit.Case, async: true
+  @moduletag :native_storage
   alias Ipse.Extension.Collection
   alias Ipse.JSON
 

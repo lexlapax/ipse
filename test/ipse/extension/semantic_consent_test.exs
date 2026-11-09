@@ -135,6 +135,7 @@ defmodule Ipse.Extension.SemanticConsentTest do
     refute Map.has_key?(request, "class")
   end
 
+  @tag :native_storage
   test "an experiment's finite decision pool cannot cross its accounting reset", c do
     [main] = c.selection["routes"]
 

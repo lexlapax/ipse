@@ -1,5 +1,6 @@
 defmodule IpseKnowledge.ShadowCrossSessionTest do
   use ExUnit.Case, async: false
+  @moduletag :native_storage
 
   for {name, scenario} <- [
         {"shared limit", "save_managed_approval_cross_session"},

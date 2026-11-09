@@ -1,5 +1,6 @@
 defmodule Ipse.Session.ManagedSupersessionSessionTest do
   use ExUnit.Case, async: false
+  @moduletag :native_storage
 
   for scenario <-
         ~w(current cross_session pin_history relation_cancel revoke old_missing terminal terminal_cancel terminal_unknown terminal_effect_unknown terminal_deadline shared disabled) do

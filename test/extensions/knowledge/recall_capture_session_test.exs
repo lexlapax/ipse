@@ -2,6 +2,7 @@ Code.require_file("../../support/provider_fixture.ex", __DIR__)
 
 defmodule IpseKnowledge.RecallCaptureSessionTest do
   use ExUnit.Case, async: false
+  @moduletag :native_storage
   alias Ipse.{JSON, Journal, Session}
 
   alias Ipse.Extension.{

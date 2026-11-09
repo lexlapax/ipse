@@ -1,5 +1,6 @@
 defmodule Ipse.Session.ManagedHistoryUseSessionTest do
   use ExUnit.Case, async: false
+  @moduletag :native_storage
 
   for scenario <- ~w(current) do
     @tag timeout: 90_000

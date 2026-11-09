@@ -1,5 +1,6 @@
 defmodule Ipse.Extension.ConsentTest do
   use ExUnit.Case, async: true
+  @moduletag :native_storage
   alias Ipse.Extension.Consent, as: C
 
   setup do

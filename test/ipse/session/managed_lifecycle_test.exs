@@ -1,5 +1,6 @@
 defmodule Ipse.Session.ManagedLifecycleTest do
   use ExUnit.Case, async: false
+  @moduletag :native_storage
 
   @moduletag timeout: 120_000
   test "actual native-reviewed Core forget retains signed suppression and rejects recapture/old import" do

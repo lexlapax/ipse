@@ -1,5 +1,6 @@
 defmodule IpseKnowledge.ShadowCrossProcessSessionTest do
   use ExUnit.Case, async: false
+  @moduletag :native_storage
 
   for {name, scenario} <- [{"cross-process limit", "save_managed_approval_cross_session"}] do
     @tag timeout: 180_000

@@ -56,6 +56,7 @@ defmodule Ipse.Extension.ConsentExistingTest do
     refute File.exists?(c.root)
   end
 
+  @tag :native_storage
   test "valid and malformed existing reads preserve pending bytes; ordinary recovery still reclaims",
        c do
     assert {:ok, _} = grant(c)
@@ -89,6 +90,7 @@ defmodule Ipse.Extension.ConsentExistingTest do
     assert File.read!(file) == bytes
   end
 
+  @tag :native_storage
   test "missing retained lock and a changed control object refuse without repair", c do
     assert {:ok, _} = grant(c)
     file = Path.join(path(c), "control.json")
@@ -117,6 +119,7 @@ defmodule Ipse.Extension.ConsentExistingTest do
     assert File.read!(file) == bytes
   end
 
+  @tag :native_storage
   test "exact policy refuses changed pins, expiry, invalid callbacks and native owner loss", c do
     assert {:ok, _} = grant(c)
     sha = Ipse.JSON.digest([c.policy])
@@ -146,6 +149,7 @@ defmodule Ipse.Extension.ConsentExistingTest do
              end)
   end
 
+  @tag :native_storage
   test "a valid but quarantined existing ledger cannot report a ready policy", c do
     assert {:ok, _} = grant(c)
     reserved = Map.put(C.zero(), "operations", 1)
@@ -183,6 +187,7 @@ defmodule Ipse.Extension.ConsentExistingTest do
              )
   end
 
+  @tag :native_storage
   test "missing ancillary writer refuses unchanged, while an explicit mutation recreates it", c do
     assert {:ok, _} = grant(c)
     writer = Path.join(path(c), ".writer.lock")
@@ -207,6 +212,7 @@ defmodule Ipse.Extension.ConsentExistingTest do
     assert {:ok, %{"policy" => nil}} = C.existing_snapshot(c.root, c.project)
   end
 
+  @tag :native_storage
   test "unsafe or replaced ancillary writer refuses existing policy data", c do
     assert {:ok, _} = grant(c)
     writer = Path.join(path(c), ".writer.lock")

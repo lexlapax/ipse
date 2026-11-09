@@ -1,5 +1,6 @@
 defmodule Ipse.Extension.CollectionHeldReadTest do
   use ExUnit.Case, async: false
+  @moduletag :native_storage
   alias Ipse.Extension.Collection
   alias Ipse.JSON
 

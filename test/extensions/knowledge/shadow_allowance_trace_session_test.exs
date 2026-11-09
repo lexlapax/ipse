@@ -1,5 +1,6 @@
 defmodule IpseKnowledge.ShadowAllowanceTraceSessionTest do
   use ExUnit.Case, async: false
+  @moduletag :native_storage
 
   for {name, scenario} <- [{"traced shared limit", "save_managed_approval_cross_session"}] do
     @tag timeout: 180_000

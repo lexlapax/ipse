@@ -1,5 +1,6 @@
 defmodule IpseKnowledge.PendingAssessmentCurrentUseTest do
   use ExUnit.Case, async: false
+  @moduletag :native_storage
   @moduletag timeout: 180_000
   @day 86_400_000
 

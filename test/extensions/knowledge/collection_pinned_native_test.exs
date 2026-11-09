@@ -1,5 +1,6 @@
 defmodule Ipse.CollectionPinnedNativeTest do
   use ExUnit.Case, async: false
+  @moduletag :native_storage
   @compile {:no_warn_undefined, IpseKnowledge.Store.Collection}
   alias Ipse.{JSON, Usage}
   alias Ipse.Extension.Collection

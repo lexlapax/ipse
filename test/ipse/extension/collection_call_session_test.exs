@@ -1,5 +1,6 @@
 defmodule Ipse.Extension.CollectionCallSessionTest do
   use ExUnit.Case, async: false
+  @moduletag :native_storage
   alias Ipse.{Session, Journal, JSON}
 
   alias Ipse.Extension.{

@@ -1662,6 +1662,7 @@ else
         ] do
       @tag tag
       @tag timeout: 180_000
+      @tag :native_storage
       test description, %{artifact: artifact} do
         tag = unquote(tag)
 

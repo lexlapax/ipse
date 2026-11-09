@@ -1,5 +1,6 @@
 defmodule Ipse.Extension.ConsentManagementReadTest do
   use ExUnit.Case, async: false
+  @moduletag :native_storage
   alias Ipse.Extension.Consent
   alias Ipse.JSON
 

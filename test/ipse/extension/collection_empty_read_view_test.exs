@@ -1,5 +1,6 @@
 defmodule Ipse.Extension.CollectionEmptyReadViewTest do
   use ExUnit.Case, async: false
+  @moduletag :native_storage
   alias Ipse.Extension.Collection, as: C
   alias Ipse.Extension.Collection.ReadView
   alias Ipse.JSON

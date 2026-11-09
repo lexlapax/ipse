@@ -1,5 +1,6 @@
 defmodule Ipse.CLI.ChatReviewTest do
   use ExUnit.Case, async: false
+  @moduletag :native_storage
 
   @moduletag timeout: 180_000
 

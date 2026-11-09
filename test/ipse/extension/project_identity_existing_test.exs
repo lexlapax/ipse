@@ -50,6 +50,7 @@ defmodule Ipse.Extension.ProjectIdentityExistingTest do
     refute File.exists?(missing)
   end
 
+  @tag :native_storage
   test "existing primary is unchanged and unadmitted linked worktree is never joined", c do
     assert {:ok, binding} = Identity.admit(c.home, c.primary, :repository)
     before = inventory(c.home)
@@ -58,6 +59,7 @@ defmodule Ipse.Extension.ProjectIdentityExistingTest do
     assert inventory(c.home) == before
   end
 
+  @tag :native_storage
   test "admitted linked revalidation preserves exact native witnesses and cleans its transient capture",
        c do
     assert {:ok, _} = Identity.admit(c.home, c.primary, :repository)
@@ -70,6 +72,7 @@ defmodule Ipse.Extension.ProjectIdentityExistingTest do
     assert {:error, _} = Identity.existing(c.home, c.linked)
   end
 
+  @tag :native_storage
   test "unsafe present state or missing retained lock refuses without repair", c do
     assert {:ok, _} = Identity.admit(c.home, c.primary, :folder)
     path = Path.join(c.home, "project-identities/index.json")
@@ -90,6 +93,7 @@ defmodule Ipse.Extension.ProjectIdentityExistingTest do
     assert inventory(c.home) == before
   end
 
+  @tag :native_storage
   test "a checked candidate is published only after exact host authorization", c do
     assert {:ok, primary} = Identity.admit(c.home, c.primary, :repository)
     before = inventory(c.home)
@@ -115,6 +119,7 @@ defmodule Ipse.Extension.ProjectIdentityExistingTest do
     assert {:ok, ^linked} = Identity.existing(c.home, c.linked)
   end
 
+  @tag :native_storage
   test "existing-bound callback preserves pending data and refuses stale identity; ordinary recovery reclaims",
        c do
     assert {:ok, binding} = Identity.admit(c.home, c.primary, :repository)
@@ -144,6 +149,7 @@ defmodule Ipse.Extension.ProjectIdentityExistingTest do
     refute File.exists?(pending)
   end
 
+  @tag :native_storage
   test "an existing-bound advisory result cannot escape after native owner loss", c do
     assert {:ok, binding} = Identity.admit(c.home, c.primary, :repository)
     before = inventory(c.home)
@@ -161,6 +167,7 @@ defmodule Ipse.Extension.ProjectIdentityExistingTest do
     assert inventory(c.home) == before
   end
 
+  @tag :native_storage
   test "missing ancillary writer refuses every existing path unchanged; ordinary resolve recreates it",
        c do
     assert {:ok, binding} = Identity.admit(c.home, c.primary, :repository)
@@ -184,6 +191,7 @@ defmodule Ipse.Extension.ProjectIdentityExistingTest do
     assert {:ok, ^binding} = Identity.existing(c.home, c.primary)
   end
 
+  @tag :native_storage
   test "unsafe or replaced ancillary writer never yields advisory data", c do
     assert {:ok, binding} = Identity.admit(c.home, c.primary, :repository)
     writer = Path.join(c.home, "project-identities/.writer.lock")
@@ -240,6 +248,7 @@ defmodule Ipse.Extension.ProjectIdentityExistingTest do
     assert File.read!(Path.join(c.home, "project-identities/index.json")) == index
   end
 
+  @tag :native_storage
   test "ordinary roots and a foreign clone never call authorization or gain membership", c do
     assert {:ok, _} = Identity.admit(c.home, c.primary, :repository)
     folder = Path.join(c.root, "folder")
@@ -265,6 +274,7 @@ defmodule Ipse.Extension.ProjectIdentityExistingTest do
     assert inventory(c.home) == before
   end
 
+  @tag :native_storage
   test "a poisoned reciprocal backlink refuses before authorization", c do
     assert {:ok, _} = Identity.admit(c.home, c.primary, :repository)
     before = inventory(c.home)
@@ -277,6 +287,7 @@ defmodule Ipse.Extension.ProjectIdentityExistingTest do
     assert inventory(c.home) == before
   end
 
+  @tag :native_storage
   test "native owner loss after authorization cannot publish a candidate", c do
     assert {:ok, _} = Identity.admit(c.home, c.primary, :repository)
     before = inventory(c.home)
@@ -295,6 +306,7 @@ defmodule Ipse.Extension.ProjectIdentityExistingTest do
     assert {:ok, nil} = Identity.existing(c.home, c.linked)
   end
 
+  @tag :native_storage
   test "caller death or scope cancellation while host authorization is paused cannot join", c do
     assert {:ok, _} = Identity.admit(c.home, c.primary, :repository)
     before = inventory(c.home)

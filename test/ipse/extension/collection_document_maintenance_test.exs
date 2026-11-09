@@ -1,5 +1,6 @@
 defmodule Ipse.Extension.Collection.DocumentMaintenanceTest do
   use ExUnit.Case, async: false
+  @moduletag :native_storage
   @moduletag :document_maintenance
   alias Ipse.{JSON, Usage}
   alias Ipse.Extension.{Collection, CollectionStore}

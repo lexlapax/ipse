@@ -1,5 +1,6 @@
 defmodule Ipse.Extension.ConsentExpiryTest do
   use ExUnit.Case, async: false
+  @moduletag :native_storage
   alias Ipse.{JSON, Usage}
   alias Ipse.Extension.Consent
 

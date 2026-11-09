@@ -1,5 +1,6 @@
 defmodule Ipse.Extension.Collection.DocumentDraftAdmissionTest do
   use ExUnit.Case, async: false
+  @moduletag :native_storage
 
   alias Ipse.{JSON, Usage}
   alias Ipse.Extension.{Collection, CollectionStore}

@@ -2,6 +2,7 @@ Code.require_file("../../support/managed_policy.exs", __DIR__)
 
 defmodule Ipse.CLI.ManagementAcceptanceSelectionTest do
   use ExUnit.Case, async: false
+  @moduletag :native_storage
 
   alias Ipse.{JSON, Usage}
   alias Ipse.CLI.Knowledge.Management

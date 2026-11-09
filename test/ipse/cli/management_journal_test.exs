@@ -4,6 +4,7 @@ defmodule Ipse.CLI.ManagementJournalTest do
   @moduletag skip: if(:os.type() == {:unix, :linux}, do: false, else: "Linux native owner")
 
   @tag timeout: 60_000
+  @tag :native_storage
   test "standalone management creates native-owned journals and refuses unsafe directories" do
     caller("MANAGEMENT_JOURNAL_NATIVE_CALLER_PASSED")
   end

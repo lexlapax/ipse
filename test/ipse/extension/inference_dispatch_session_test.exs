@@ -547,6 +547,7 @@ defmodule Ipse.Extension.InferenceDispatchSessionTest do
   end
 
   @tag :registered_budget_positive
+  @tag :native_storage
   test "a registered embedding reserves once, dispatches once and reopens idle", c do
     budgeted_embedding(c, true)
   end

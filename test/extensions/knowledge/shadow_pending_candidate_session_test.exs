@@ -1,5 +1,6 @@
 defmodule IpseKnowledge.ShadowPendingCandidateSessionTest do
   use ExUnit.Case, async: false
+  @moduletag :native_storage
 
   for {name, scenario} <- [
         {"approved", "save_managed_approval_root_shadow"},

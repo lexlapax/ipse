@@ -1,5 +1,6 @@
 defmodule Ipse.Config.ActivationSessionTest do
   use ExUnit.Case, async: false
+  @moduletag :native_storage
   @tag timeout: 120_000
   test "actual protected activation uses private packaged bytes and exact fresh/resume selections" do
     root = Path.join(System.tmp_dir!(), "ipse-activation-runtime-" <> Ipse.Usage.id())

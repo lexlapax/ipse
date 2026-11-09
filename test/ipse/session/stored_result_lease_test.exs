@@ -2,6 +2,7 @@ Code.require_file("../../support/managed_policy.exs", __DIR__)
 
 defmodule Ipse.Session.StoredResultLeaseTest do
   use ExUnit.Case, async: false
+  @moduletag :native_storage
   alias Ipse.{JSON, Journal, Runner, Session, Usage}
   alias Ipse.Extension.{Artifact, Config, ProjectIdentity, Registry}
   alias Ipse.Session.StoredSources

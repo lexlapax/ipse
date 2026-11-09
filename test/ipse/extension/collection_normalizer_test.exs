@@ -450,6 +450,7 @@ defmodule Ipse.Extension.CollectionNormalizerTest do
     end
   end
 
+  @tag :native_storage
   test "actual native collection atomically writes host metadata and keeps expiry suppression after removal" do
     parent = Path.join(System.tmp_dir!(), "ipse-normalizer-native-" <> Ipse.Usage.id())
     File.mkdir!(parent)

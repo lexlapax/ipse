@@ -1,5 +1,6 @@
 defmodule Ipse.Extension.ConsentManagementNativeTest do
   use ExUnit.Case, async: false
+  @moduletag :native_storage
 
   setup_all do
     root = Path.join(System.tmp_dir!(), "ipse-consent-management-" <> Ipse.Usage.id())

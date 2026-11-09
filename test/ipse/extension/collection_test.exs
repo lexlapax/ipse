@@ -26,6 +26,7 @@ defmodule Ipse.Extension.CollectionTest do
       "advance_floor" => floor
     }
 
+  @tag :native_storage
   test "immutable IDs resolve committed effects after receipt loss and cannot execute again", c do
     id = Ipse.Usage.id()
     r = commit(0, [change("a", 0, %{"text" => "original"})])
@@ -46,6 +47,7 @@ defmodule Ipse.Extension.CollectionTest do
              run(c, %{"op" => "get", "key" => "a"})
   end
 
+  @tag :native_storage
   test "unshipped v2 manifests upgrade atomically while preserving semantic receipts", c do
     operation = Ipse.Usage.id()
     assert {:ok, receipt} = run(c, commit(0, [change("a", 0, %{"text" => "legacy"})]), operation)
@@ -85,6 +87,7 @@ defmodule Ipse.Extension.CollectionTest do
     refute File.exists?(legacy_path)
   end
 
+  @tag :native_storage
   test "nonzero legacy floors without applied ancestry are refused without rewriting their root",
        c do
     assert {:ok, _} = run(c, commit(0, [change("a", 0, %{"text" => "legacy support"})], true))
@@ -115,6 +118,7 @@ defmodule Ipse.Extension.CollectionTest do
     assert File.read!(file) == bytes
   end
 
+  @tag :native_storage
   test "known logical lock helper loss before publication returns unknown without exposing staging",
        c do
     assert {:ok, _} = run(c, commit(0, [change("retained", 0, %{"text" => "original"})]))
@@ -162,6 +166,7 @@ defmodule Ipse.Extension.CollectionTest do
     if self() == expected, do: Port.close(Process.get({C, :lock_held}).port)
   end
 
+  @tag :native_storage
   test "a live Collection transaction refuses reentry and reverse control acquisitions before worker creation",
        c do
     owner = self()
@@ -209,6 +214,7 @@ defmodule Ipse.Extension.CollectionTest do
     end
   end
 
+  @tag :native_storage
   test "forget floors block pre-forget imports after physical reclamation", c do
     assert {:ok, _} = run(c, commit(0, [change("note", 0, %{"text" => "forgotten"})]))
     assert {:ok, backup} = run(c, %{"op" => "snapshot"})
@@ -224,6 +230,7 @@ defmodule Ipse.Extension.CollectionTest do
     assert {:ok, %{"floor" => 2}} = run(c, %{request | "floor" => 2})
   end
 
+  @tag :native_storage
   test "complete 2000-note maximum values fit without raising legacy State limits", c do
     # The whole JSON value is exactly 6144 bytes, including the evidence label.
     base = %{"text" => "", "evidence" => "bounded admitted support"}
@@ -259,6 +266,7 @@ defmodule Ipse.Extension.CollectionTest do
              })
   end
 
+  @tag :native_storage
   test "staged crash objects and manifests cannot become visible and are reclaimed", c do
     assert {:ok, _} = run(c, commit(0, [change("a", 0, %{"text" => "visible"})]))
     dir = Path.join(c.root, c.project)
@@ -277,6 +285,7 @@ defmodule Ipse.Extension.CollectionTest do
              run(c, %{"op" => "get", "key" => "a"})
   end
 
+  @tag :native_storage
   test "an unreadable authoritative metadata block refuses before orphan reclamation or publication",
        c do
     assert {:ok, _} = run(c, commit(0, [change("retained", 0, %{"text" => "support"})]))
@@ -303,6 +312,7 @@ defmodule Ipse.Extension.CollectionTest do
              run(c, %{"op" => "get", "key" => "retained"})
   end
 
+  @tag :native_storage
   test "record byte capacity warns and refuses a new observation without evicting existing records",
        c do
     value = %{"text" => String.duplicate("x", 6133)}
@@ -342,6 +352,7 @@ defmodule Ipse.Extension.CollectionTest do
              )
   end
 
+  @tag :native_storage
   test "closed requests and unsafe single-link, mode, canonical and hash paths fail closed", c do
     for r <- [
           commit(0, [change("../bad", 0, %{})]),
@@ -370,6 +381,7 @@ defmodule Ipse.Extension.CollectionTest do
     assert {:error, :collection_unavailable} = run(c, %{"op" => "snapshot"})
   end
 
+  @tag :native_storage
   test "retained lock inode survives contention and separate VM CAS prevents two publications",
        c do
     assert {:ok, _} = run(c, %{"op" => "snapshot"})
@@ -420,6 +432,7 @@ defmodule Ipse.Extension.CollectionTest do
   end
 
   @tag timeout: 30_000
+  @tag :native_storage
   test "killing a publishing OS VM exposes only a complete generation and permits reclamation",
        c do
     assert {:ok, _} = run(c, commit(0, [change("original", 0, %{"text" => "retained"})]))

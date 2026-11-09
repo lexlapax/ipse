@@ -652,6 +652,7 @@ defmodule Ipse.KnowledgeDocumentAcquisitionSessionTest do
 
   for preset <- ~w(state-documents collection-documents) do
     @tag row_context_preset: preset
+    @tag :native_storage
     test "same-row context uses current source citations (#{preset})", c do
       run = open(c, c.row_context_preset)
 
@@ -742,6 +743,7 @@ defmodule Ipse.KnowledgeDocumentAcquisitionSessionTest do
   for preset <- ~w(state-documents collection-documents) do
     @tag :workspace_current_query
     @tag current_query_preset: preset
+    @tag :native_storage
     test "#{preset} withholds changed, renamed, deleted and redirected workspace documents", c do
       run = open(c, c.current_query_preset)
       original = document("Vega migration requires an audit.")
@@ -1079,6 +1081,7 @@ defmodule Ipse.KnowledgeDocumentAcquisitionSessionTest do
   for preset <- ~w(state-documents collection-documents) do
     @tag :many_paragraph_document
     @tag packing_preset: preset
+    @tag :native_storage
     test "many short blocks acquire through bounded stages and retain original citation positions (#{preset})",
          c do
       run = open(c, c.packing_preset)
@@ -1167,6 +1170,7 @@ defmodule Ipse.KnowledgeDocumentAcquisitionSessionTest do
   for preset <- ~w(state-documents collection-documents) do
     @tag :docx_numbering_session
     @tag numbering_preset: preset
+    @tag :native_storage
     test "numbered Word source retains its source-bound locator after resume (#{preset})", c do
       run = open(c, c.numbering_preset)
       bytes = numbered_document()
@@ -1236,6 +1240,7 @@ defmodule Ipse.KnowledgeDocumentAcquisitionSessionTest do
   for preset <- ~w(state-documents collection-documents) do
     @tag :docx_annotation_session
     @tag annotation_preset: preset
+    @tag :native_storage
     test "linked Word annotations retain complete coverage and cited locations (#{preset})", c do
       run = open(c, c.annotation_preset)
       word = "http://schemas.openxmlformats.org/wordprocessingml/2006/main"
@@ -1708,6 +1713,7 @@ defmodule Ipse.KnowledgeDocumentAcquisitionSessionTest do
   @tag :public_collection_document
   @tag :public_collection_refusal
   @tag :namespace_public
+  @tag :native_storage
   test "public Collection preset authenticates paused Word storage and returns typed selected citation",
        c do
     run = open(c, "collection-documents")
@@ -1834,6 +1840,7 @@ defmodule Ipse.KnowledgeDocumentAcquisitionSessionTest do
   end
 
   @tag :public_collection_document
+  @tag :native_storage
   test "public Collection provided source continues without extra authority and old presets keep grants",
        c do
     run = open(c, "collection-documents")
@@ -1944,6 +1951,7 @@ defmodule Ipse.KnowledgeDocumentAcquisitionSessionTest do
   end
 
   @tag :collection_chunking_public
+  @tag :native_storage
   test "public Collection Word uses explicit paragraph-local recipe2 through namespace citations",
        c do
     run = open(c, "collection-documents")
@@ -2004,6 +2012,7 @@ defmodule Ipse.KnowledgeDocumentAcquisitionSessionTest do
   end
 
   @tag :public_collection_unknown
+  @tag :native_storage
   test "public Collection continuation owner loss retains an unknown fused write without replay",
        c do
     run = open(c, "collection-documents")
