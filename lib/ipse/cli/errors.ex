@@ -12,6 +12,9 @@ defmodule Ipse.CLI.Errors do
     collection_deadline_fence_unavailable:
       {"Protected collection publication is temporarily unavailable for this request shape. No publication was started. Use the supported native knowledge commands, keep existing records and inspect saved receipts; --yes cannot bypass this gate.",
        "inspect-unconfirmed-protected-knowledge"},
+    journal_capacity_insufficient:
+      {"This Session's journal cannot hold another worst-case document Collection invocation. No extension callback or host call was started. Close this Session and repeat the command with the same Job continuation in a new Session; do not edit the continuation.",
+       "recover-a-corpus-query-or-document-operation"},
     invalid_handoff:
       {"Invalid handoff: expected one closed version-1 UTF-8 artifact of at most 16 KiB with consistent unknown-effect provenance. No session was started; review the artifact before importing it.",
        "continue-in-a-fresh-session"},

@@ -246,6 +246,9 @@ defmodule Ipse.Extension.CollectionStoreSessionTest do
       compact: false
     }
 
+    config =
+      if journal = options[:journal], do: Map.put(config, :journal, journal), else: config
+
     opts = [config: config, cwd: cwd, state_dir: Path.join(home, "sessions"), subscriber: self()]
     assert {:ok, pid} = DynamicSupervisor.start_child(Ipse.Sessions, {Session, opts})
     on_exit(fn -> if Process.alive?(pid), do: Session.close_confirmed(pid) end)
@@ -826,6 +829,37 @@ defmodule Ipse.Extension.CollectionStoreSessionTest do
       if opts[:admit] == false,
         do: assert({:ok, nil} = ProjectIdentity.existing(run.home, run.opts[:cwd]))
     end
+  end
+
+  test "insufficient journal capacity refuses before any intent and a fresh Session admits the same command",
+       c do
+    for journal <- [%{"max_bytes" => 1_048_576}, %{"max_events" => 1_000}] do
+      run = open(c, journal: journal)
+      assert :ok = Session.invoke_export(run.pid, :command, "ext__documents__exercise", %{})
+      pid = run.pid
+      assert_receive {:ipse, ^pid, {:error, error}}, 20_000
+      assert error =~ "cannot hold another worst-case document Collection invocation"
+      assert error =~ "#recover-a-corpus-query-or-document-operation"
+      assert_receive {:ipse, ^pid, {:done, :error}}, 5_000
+      {:ok, events} = Journal.load(run.dir, run.id, journal)
+
+      refute Enum.any?(
+               events,
+               &(&1["type"] in ~w(extension_invocation_intent extension_action_intent))
+             )
+
+      assert Path.wildcard(Path.join(CollectionStore.root(run.home), "*/root.json")) == []
+      assert :ok = Session.close_confirmed(pid)
+    end
+
+    # The default journal has room for the whole bound, so the same command is
+    # admitted (its invocation intent is journaled); denial keeps the rest of
+    # the run free of native storage.
+    fresh = open(c, approval: :deny)
+    assert :ok = Session.invoke_export(fresh.pid, :command, "ext__documents__exercise", %{})
+    wait(fresh, 0, true)
+    {:ok, events} = Journal.load(fresh.dir, fresh.id)
+    assert Enum.count(events, &(&1["type"] == "extension_invocation_intent")) == 1
   end
 
   @tag :native_storage

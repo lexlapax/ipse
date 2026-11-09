@@ -22,6 +22,14 @@ defmodule Ipse.Session.Invocation do
   alias Ipse.Session.Turn
 
   @document_retirement_limit 32_768
+  # Encoded record limits plus the JSONL newline: Invocation intent/result
+  # validators, Actions.bounded?/1 and ManagedReads receipts.
+  @intent_line_bytes 65_537
+  @result_line_bytes 131_073
+  @action_line_bytes 65_537
+  # Fixed-shape exact_action_fence_attempt: 32-hex IDs, five SHA-256 digests and
+  # an operation of at most 64 characters encode below 1,024 bytes.
+  @fence_attempt_line_bytes 1_025
 
   defstruct parent: nil,
             request: nil,
@@ -191,7 +199,8 @@ defmodule Ipse.Session.Invocation do
              approval,
              s.invocation.semantic_binding
            ),
-         :ok <- Invocation.validate_intent(intent) do
+         :ok <- Invocation.validate_intent(intent),
+         :ok <- journal_capacity(s, entry.identity) do
       entry = Map.merge(entry, %{host_config: s.config, host_cwd: s.cwd})
       {clock, entry} = output_clock(entry, descriptor["stage"], ref)
       Session.record(s, intent)
@@ -206,7 +215,100 @@ defmodule Ipse.Session.Invocation do
            extension_mcp_context: nil
        }}
     else
+      {:error, :journal_capacity_insufficient} = error -> {:reply, error, s}
       _ -> {:reply, {:error, :extension_admission_refused}, s}
+    end
+  end
+
+  # A document Collection invocation (one holding host.collection.store) is
+  # admitted only while the journal can still hold every record it may write.
+  # This probe runs in the Session owner before the invocation intent, so a
+  # refusal leaves no intent and starts no callback or host call. The probe is
+  # released at once: the invocation's records use ordinary appends, which a
+  # held reservation would charge twice.
+  defp journal_capacity(s, identity) do
+    case journal_bound(s, identity) do
+      nil ->
+        :ok
+
+      capacity ->
+        case Writer.reserve(s.journal_writer, capacity) do
+          {:ok, token} ->
+            case Writer.release(s.journal_writer, token) do
+              :ok -> :ok
+              {:error, reason} -> Session.journal_failed(s, reason)
+            end
+
+          {:error, reason}
+          when reason in [:journal_reservation_unavailable, :journal_limit_reached] ->
+            {:error, :journal_capacity_insufficient}
+
+          {:error, reason} ->
+            Session.journal_failed(s, reason)
+        end
+    end
+  end
+
+  @doc """
+  Worst-case journal capacity of one document Collection invocation, or nil for
+  other invocations. Every count comes from a bound enforced on the record:
+
+    * its invocation intent (at most 65,536 bytes) and result (131,072 bytes);
+    * per admitted host call, an action intent and result (65,536 bytes each),
+      plus one managed receipt: a read receipt (65,536 bytes) when the identity
+      also reads Collections, otherwise a fixed-size withheld-output receipt;
+    * one exact-action fence attempt when a fence is installed;
+    * one draft-lineage marker per intent while a draft lineage is active.
+
+  Each line adds its newline. The host-call count is `Actions.limit/1`.
+  """
+  def journal_bound(s, identity) do
+    if "host.collection.store" in identity["capabilities"] do
+      calls = Actions.limit(identity)
+      receipt = managed_receipt_bytes(identity)
+
+      {marker_events, marker_bytes} =
+        case Map.get(s, :draft_lineages, []) do
+          [] ->
+            {0, 0}
+
+          lineages ->
+            marker =
+              Ipse.Session.DraftLineage.extension_intent(
+                s.id,
+                s.turn_id,
+                %{"type" => "extension_invocation_intent"},
+                lineages
+              )
+
+            {calls + 1, (calls + 1) * (byte_size(Jason.encode!(marker)) + 1)}
+        end
+
+      {fence_events, fence_bytes} =
+        if match?(%{fence: fence} when is_map(fence), exact_action_state(s)),
+          do: {1, @fence_attempt_line_bytes},
+          else: {0, 0}
+
+      %{
+        events: 2 + calls * 3 + marker_events + fence_events,
+        bytes:
+          @intent_line_bytes + @result_line_bytes + calls * (2 * @action_line_bytes + receipt) +
+            marker_bytes + fence_bytes
+      }
+    end
+  end
+
+  defp managed_receipt_bytes(identity) do
+    if "host.collection.read" in identity["capabilities"] do
+      @action_line_bytes
+    else
+      id = String.duplicate("0", 32)
+
+      %{"parent_invocation_id" => id, "operation_id" => id}
+      |> Ipse.Session.ManagedToolUse.action_withheld()
+      |> Jason.encode!()
+      |> byte_size()
+      |> Kernel.+(1)
     end
   end
 

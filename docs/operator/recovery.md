@@ -285,6 +285,15 @@ file before deciding on new work. Do not assume an unknown read or another
 previously approved action did not happen. These checks do not hold the file
 through later use.
 
+A long document build uses more journal than one Session holds. Before each
+document Collection command starts, Ipse checks that the Session journal can
+still hold that command's worst-case records. When it cannot, the command stops
+with "This Session's journal cannot hold another worst-case document Collection
+invocation" and nothing is started or written. Close the Session, then repeat
+the same command with its unchanged Job continuation in a new Session. The
+continuation is bound to the Job and Collection revisions, not to the Session,
+so the new Session resumes where the refused command would have started.
+
 For an interrupted document build or restore, preserve its Session, draft,
 operation IDs and saved result references. Inspect the current Collection
 status and the exact draft before choosing an available continuation or abort.

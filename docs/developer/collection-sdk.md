@@ -709,10 +709,31 @@ At a positive epoch these are Job4→Job6 transitions, retaining Root2.
 
 Continuation tokens bind job ID, physical job/root revisions, captured catalog,
 complete plan digest, unit position and exact stage progress. They are inspected
-data, not capabilities. Resuming at a later position still verifies every required
-immutable predecessor. Each invocation retains 512 reads and sixteen effects;
+data, not capabilities, and are not bound to a Session. Resuming at a later
+position still verifies every required immutable predecessor. Each invocation
+retains 512 reads and sixteen effects;
 known partial progress yields an explicit next command, and unknown stops without
 one. Do not edit a token to skip work or automatically replay a failed phase.
+
+A complete build does not fit one Session journal, so it is split across
+Sessions between invocations, where no write is pending. Before journaling the
+intent of an invocation whose identity holds `host.collection.store`,
+`Ipse.Session.Invocation.begin/6` asks the journal Writer to reserve
+`journal_bound/2` and releases the probe at once. The bound charges the
+invocation intent (64 KiB) and result (128 KiB), then each of the identity's
+`Actions.limit/1` host calls (528 with `host.actions.mixed`) at its 64-KiB action
+intent and result plus one managed receipt. Draft-lineage markers and an exact
+fence attempt are added when present; each line includes its newline. For the
+documents profile this is 1,586 events and 69,553,634 bytes. If the Writer
+cannot hold it, the Session refuses with `:journal_capacity_insufficient` before
+any intent, callback or host call; the operator repeats the same continuation
+in a new Session. Exercise it with
+[the capacity tests](../../test/ipse/session/invocation_journal_capacity_test.exs)
+and the document-store Session test that sets a 1-MiB journal. The probe is not
+held during the invocation: Session-wide feed delivery records, SDK2 result
+pages (which reserve their own capacity when opened) and question, inference or
+MCP records of identities with those additional capabilities are outside the
+bound.
 
 An explicit abort may reduce an exact older job after maintenance closes. It
 keeps that job's identity and epoch, discards its normal publication checkpoint

@@ -381,6 +381,17 @@ defmodule Ipse.Extension.InvocationTest do
     assert_idle_resume_journal(Path.join(ctx.dir, info.id <> ".jsonl"), bytes, info.id)
   end
 
+  test "a small journal does not refuse invocations without the document store capability",
+       ctx do
+    refute "host.collection.store" in ctx.capabilities
+    journal = %{"max_bytes" => 1_048_576, "max_events" => 1_000}
+    pid = start(put_in(ctx, [:config, :journal], journal))
+    assert :ok = Session.invoke_export(pid, :command, "ext__sdk__echo", %{"text" => "operator"})
+    assert_receive {:ipse, ^pid, {:extension_result, display}}, 2000
+    assert display["value"]["text"] == "invoke.command: operator"
+    assert_receive {:ipse, ^pid, {:done, :ok}}, 2000
+  end
+
   test "wrong result schemas stop work with an unknown receipt instead of retry", ctx do
     ctx = %{ctx | config: Map.put(ctx.config, :tool_args, %{"text" => "hello", "wrong" => true})}
     pid = run_tool(ctx)
