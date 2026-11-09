@@ -530,7 +530,8 @@ defmodule Ipse.MCP.CatalogSessionTest do
     :ok = Ipse.Session.close(denied)
     allowed = session(ctx, approval: :allow)
     :ok = Ipse.Session.prompt(allowed, "inspect catalog")
-    assert_receive {:ipse, ^allowed, {:done, :ok}}, 5_000
+    # Catalog discovery starts a fresh VM before both content reads.
+    assert_receive {:ipse, ^allowed, {:done, :ok}}, 15_000
     id = Ipse.Session.info(allowed).id
     before = content_calls(ctx)
     assert length(before) == 2

@@ -118,9 +118,16 @@ Not resolved:
   within 3 s), `test/ipse/runner_storage_test.exs:43` (got
   `{:cleanup_unconfirmed, :protected_staging_write_unavailable}`; this file's
   partition passed at `eabff5e7`). Likely load or timing on 3-core hosted
-  runners; not classified.
-- Why macOS partition 1 exceeded 60 minutes is unknown; the gated 30-minute
-  evaluation children may account for it.
+  runners; not classified. In run 42657426801 (`8f8753f8`) macOS partitions 3
+  and 4 passed `services_test` and `runner_storage_test`; partition 2
+  (`session_test`, `invocation_test`) did not run.
+- macOS partition 1 finished within the limit in runs 42640023098 and
+  42657426801; the earlier 60-minute overrun did not recur.
+- Also intermittent on hosted macOS only, passing locally and on the next run:
+  `test/ipse/session/draft_acceptance_test.exs:250` (operator channel stopped)
+  and the installed lab proof (`extension_admission_refused`, possibly the
+  5 s `Registry.revalidate` bound in `Ipse.Session.start_link`), both in run
+  42651877515.
 
 ## macOS regressions: operator decisions (2026-11-09)
 
@@ -154,7 +161,15 @@ Verified: macOS local (OTP 29) all ungated managed shell/stdio files (115
 tests), state/config files, and a full CI platform-job replay with all 62
 commands passing (PDF build). Linux on `serenity` (Arch kernel 7.2.14): build,
 all 88 native runner tests, and the 15 affected files (191 tests, 0 failures).
-Not yet run: full source suites on either OS and hosted CI for this commit.
+Full Linux source suite on `serenity` at `b6351f62`: 3,489 of 3,490 passed;
+the one failure (witnessed draft lineage accepting the new failed state
+outcome) is fixed in `8f8753f8`. Hosted run 42657426801 at `8f8753f8`: every
+Ubuntu job and the macOS platform job passed (all installed proofs, including
+MCP, under the symlinked `/var`); macOS partitions 1 and 3 passed; partition 4
+failed only `test/ipse/mcp/catalog_session_test.exs:525` on a 5 s `:done`
+wait (now 15 s, matching the file's fresh-VM catalog budget); partition 2 was
+never acquired by a hosted runner (GitHub macOS capacity), as was partition 1
+in run 42651877515. A full macOS source suite has not run anywhere.
 
 ## Other open items
 
