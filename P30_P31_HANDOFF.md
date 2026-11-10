@@ -206,6 +206,19 @@ Hosted run 42663715255 at `72ee4e63` then passed every Ubuntu and macOS job.
   selection checkpoint to a current verifier, rerun it and
   `pending_shadow_installed.exs` on a current Linux package). Draft record:
   `docs/archive/2026-11-09-p30-qualified-completion/`, awaiting sign-off.
+- Documents (fourth round): Root3 head folding is **dropped**. Without the
+  separate head record a source cannot be found by key; scanning costs about
+  330 MB of journal per 1,000-source build and a key index about 5,000
+  operations (more than the ~4,500 left). Keep Root2 with the multi-Session
+  split and explicit cleanup; record Root3 as future work. Rebuilding a
+  near-capacity Collection uses reviewed retire-then-rebuild with existing
+  document retirement; add a test that retirement frees the keys. No cleanup
+  operation for replaced blocks exists yet; it must be built.
+- Cohort overlap: the fresh 2,000-note run (root
+  `/tmp/ipse-native-seed-integrated-full-02a7af4db6f3072e6ce6ab71dd8e14af`,
+  started 15:07 PST) overlapped from about 15:20 to 15:47 with selection
+  verifier runs in `~/scratch/ipse-p30d-sel` during its seed phase. Seed-phase
+  timing is not a clean single-workload measurement.
 - Research (P31H): fence registered inference routes for provided-only source
   sets with a host-computed complete-set digest journaled before approval and
   rechecked at send, release and saved restore; ordinary per-call approval keeps
