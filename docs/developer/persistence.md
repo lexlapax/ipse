@@ -757,7 +757,12 @@ from a project that already has a master for another namespace.
 The callback crypto lease lasts five seconds without renewal and permits at most
 16 seals, 128 verifications and 1 MiB of page-crypto input. Each body is at most
 6,144 bytes; each call charges its 64-byte canonical context digest plus body.
-The call-count/body bounds are tighter than the aggregate limit. A late callback
+The call-count/body bounds are tighter than the aggregate limit. The verification
+allowance counts distinct verifications per lease. An exact repeat of a context,
+body and tag that already verified under the same lease passes every other lease
+check again and then returns true without spending a call or input bytes. A
+failed verification is never remembered and always counts, and seals are never
+deduplicated. A late callback
 return becomes unknown; this is not hard preemption of arbitrary Core IO. Losing
 the original owner, scope or native transaction also withholds the outer result.
 Nested protected operations remain inline and follow Identity → Consent →

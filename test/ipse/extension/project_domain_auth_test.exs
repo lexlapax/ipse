@@ -466,7 +466,7 @@ defmodule Ipse.Extension.ProjectDomainAuthTest do
              end)
   end
 
-  test "exact caller check rejects a copied capability and verify count is bounded", c do
+  test "exact caller check rejects a copied capability and an oversized body", c do
     {record, entry} = pure_key()
     scope = c.scope
 
@@ -478,22 +478,85 @@ defmodule Ipse.Extension.ProjectDomainAuthTest do
              end)
 
     assert :ok =
-             D.with_auth(
-               record,
-               entry,
-               c.binding["project_id"],
-               Map.take(scope, [:namespace, :format]),
-               :verify,
-               fn cap, _ ->
-                 for _ <- 1..128, do: assert(D.verify(cap, context(scope), "body", tag))
-                 assert {:error, _} = D.verify(cap, context(scope), "body", tag)
+             verifying(c, fn cap ->
+               assert true === D.verify(cap, context(scope), "body", tag)
 
-                 assert {:error, _} =
-                          D.verify(cap, context(scope), String.duplicate("x", 6145), tag)
+               assert {:error, _} =
+                        D.verify(cap, context(scope), String.duplicate("x", 6145), tag)
 
-                 :ok
-               end
-             )
+               :ok
+             end)
+  end
+
+  test "a lease admits 128 distinct verifications and answers exact repeats of a success", c do
+    large = :binary.copy(<<7>>, 6144)
+    bodies = [large | Enum.map(1..128, &("body-" <> Integer.to_string(&1)))]
+    [{context, body, tag} = first | rest] = sealed(c, bodies)
+    {further, [{extra_context, extra_body, extra_tag}]} = Enum.split(rest, 127)
+
+    assert {:ok, cap} =
+             verifying(c, fn cap ->
+               # Charged every time, these repeats alone would exceed both the
+               # call allowance and the 1-MiB input allowance.
+               for _ <- 1..200, do: assert(true === D.verify(cap, context, body, tag))
+
+               for {context, body, tag} <- further,
+                   do: assert(true === D.verify(cap, context, body, tag))
+
+               assert {:error, _} = D.verify(cap, extra_context, extra_body, extra_tag)
+
+               for {context, body, tag} <- [first, List.last(further)],
+                   do: assert(true === D.verify(cap, context, body, tag))
+
+               # The same body and tag under another context is another input.
+               assert {:error, _} = D.verify(cap, %{context | "revision" => 2}, body, tag)
+               {:ok, cap}
+             end)
+
+    assert {:error, _} = D.verify(cap, context, body, tag)
+  end
+
+  test "a failed verification is never remembered and always counts", c do
+    [{context, body, tag}] = sealed(c, ["body"])
+    wrong = :binary.copy(<<0>>, 32)
+
+    assert :ok =
+             verifying(c, fn cap ->
+               for _ <- 1..128, do: assert(false === D.verify(cap, context, body, wrong))
+               assert {:error, _} = D.verify(cap, context, body, wrong)
+               assert {:error, _} = D.verify(cap, context, body, tag)
+               :ok
+             end)
+
+    assert :ok =
+             verifying(c, fn cap ->
+               assert false === D.verify(cap, context, body, wrong)
+               for _ <- 1..3, do: assert(true === D.verify(cap, context, body, tag))
+               for _ <- 1..126, do: assert(false === D.verify(cap, context, body, wrong))
+               assert {:error, _} = D.verify(cap, context, body, wrong)
+               assert true === D.verify(cap, context, body, tag)
+               :ok
+             end)
+  end
+
+  test "a repeat is refused from another process and after the lease deadline", c do
+    [{context, body, tag}] = sealed(c, ["body"])
+
+    assert {:unknown, :project_domain_callback_expired} =
+             verifying(c, fn cap ->
+               for _ <- 1..2, do: assert(true === D.verify(cap, context, body, tag))
+
+               for copied <- [
+                     fn -> D.verify(cap, context, body, tag) end,
+                     fn -> cap.verify.(context, body, tag) end
+                   ],
+                   do: assert({:error, _} = Task.await(Task.async(copied)))
+
+               assert true === D.verify(cap, context, body, tag)
+               Process.sleep(5_010)
+               assert {:error, _} = D.verify(cap, context, body, tag)
+               {:ok, :expired}
+             end)
   end
 
   test "fixed canonical domain/context digest and exact raw binary body have a stable tag" do
@@ -923,6 +986,35 @@ defmodule Ipse.Extension.ProjectDomainAuthTest do
         File.mkdir!(path)
         File.chmod!(path, 0o700)
       )
+
+  defp verifying(c, fun) do
+    {record, entry} = pure_key()
+    scope = Map.take(c.scope, [:namespace, :format])
+
+    D.with_auth(record, entry, c.binding["project_id"], scope, :verify, fn cap, _ -> fun.(cap) end)
+  end
+
+  # One publication lease seals at most sixteen bodies; the namespace key is
+  # the same for every lease of this fixed record, entry and project.
+  defp sealed(c, bodies) do
+    {record, entry} = pure_key()
+    context = context(c.scope)
+
+    bodies
+    |> Enum.chunk_every(16)
+    |> Enum.flat_map(fn chunk ->
+      assert {:ok, tags} =
+               D.with_auth(record, entry, c.binding["project_id"], c.scope, :publish, fn cap, _ ->
+                 {:ok,
+                  Enum.map(chunk, fn body ->
+                    assert {:ok, tag} = D.seal(cap, context, body)
+                    tag
+                  end)}
+               end)
+
+      Enum.zip_with(chunk, tags, &{context, &1, &2})
+    end)
+  end
 
   defp pure_key do
     {%{

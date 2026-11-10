@@ -30,6 +30,8 @@ defmodule Ipse.Extension.ProjectIdentity.DomainAuth do
   end
 
   @doc false
+  # verify_calls counts distinct verifications per lease: an exact repeat of one
+  # that already succeeded under the lease spends neither a call nor input bytes.
   def limits,
     do: %{
       namespaces: @namespaces,
@@ -205,7 +207,14 @@ defmodule Ipse.Extension.ProjectIdentity.DomainAuth do
       fixed =
         Map.merge(derivation, %{"domain" => "ipse.managed.page", "fence_id" => entry["fence_id"]})
 
-      Process.put(@slot, %{ref: ref, deadline: now() + @lifetime, verify: 0, seal: 0, bytes: 0})
+      Process.put(@slot, %{
+        ref: ref,
+        deadline: now() + @lifetime,
+        verify: 0,
+        seal: 0,
+        bytes: 0,
+        verified: MapSet.new()
+      })
 
       verify = fn context, body, tag ->
         crypto(owner, upstream, ref, fixed, key, :verify, scope, context, body, tag)
@@ -260,19 +269,43 @@ defmodule Ipse.Extension.ProjectIdentity.DomainAuth do
          true <- now() < lease.deadline,
          true <- context?(context) and is_binary(body) and byte_size(body) in 1..@body_bytes,
          true <- action != :seal or context["operation_id"] == scope.operation_id,
-         true <- action != :verify or (is_binary(tag) and byte_size(tag) == 32),
-         limit = if(action == :seal, do: 16, else: 128),
-         input_size = 64 + byte_size(body),
-         true <- lease[action] < limit and lease.bytes + input_size <= @input_bytes do
-      Process.put(
-        @slot,
-        lease |> Map.update!(action, &(&1 + 1)) |> Map.update!(:bytes, &(&1 + input_size))
-      )
+         true <- action != :verify or (is_binary(tag) and byte_size(tag) == 32) do
+      digest = JSON.digest([fixed, context])
+      # The digest and tag have fixed sizes, so this names one exact triple.
+      mark = if action == :verify, do: :crypto.hash(:sha256, [digest, tag, body])
 
-      expected = :crypto.mac(:hmac, :sha256, key, [JSON.digest([fixed, context]), body])
-      if action == :seal, do: {:ok, expected}, else: :crypto.hash_equals(tag, expected)
+      # Under one lease key the same context, body and tag is the same
+      # computation. A repeat of a success is answered after every check above
+      # without spending the allowance, which counts distinct verifications.
+      if mark && MapSet.member?(lease.verified, mark),
+        do: true,
+        else: charged(lease, key, action, digest, body, tag, mark)
     else
       _ -> @error
+    end
+  end
+
+  defp charged(lease, key, action, digest, body, tag, mark) do
+    limit = if(action == :seal, do: 16, else: 128)
+    input_size = 64 + byte_size(body)
+
+    if lease[action] < limit and lease.bytes + input_size <= @input_bytes do
+      lease = lease |> Map.update!(action, &(&1 + 1)) |> Map.update!(:bytes, &(&1 + input_size))
+      Process.put(@slot, lease)
+      expected = :crypto.mac(:hmac, :sha256, key, [digest, body])
+
+      case action do
+        :seal ->
+          {:ok, expected}
+
+        :verify ->
+          # Only a success is remembered; a failed verification always counts.
+          valid = :crypto.hash_equals(tag, expected)
+          if valid, do: Process.put(@slot, Map.update!(lease, :verified, &MapSet.put(&1, mark)))
+          valid
+      end
+    else
+      @error
     end
   end
 
