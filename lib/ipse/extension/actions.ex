@@ -311,6 +311,7 @@ defmodule Ipse.Extension.Actions do
       )
 
     :ok = Ipse.Journal.validate_limit_events(events)
+    :ok = Ipse.Session.ProvidedSourceSet.validate_events(events)
     {:ok, _} = Ipse.Session.RuntimeLifecycle.restore(events)
     :ok = validate_release_receipts(events, metadata)
     :ok = Ipse.Observability.validate_events(events)
@@ -460,6 +461,14 @@ defmodule Ipse.Extension.Actions do
       else: @error
   end
 
+  # ProvidedSourceSet.validate_events/1 owns these records' order and binding.
+  defp validate_event(%{"type" => type, "parent_invocation_id" => id}, state, _)
+       when type in ~w(provided_source_set_intent provided_source_set_release) do
+    if is_map(state.parent) and state.parent["invocation_id"] == id and is_nil(state.action),
+      do: {:ok, state},
+      else: @error
+  end
+
   defp validate_event(%{"type" => "journal_limit_reached"} = event, state, _),
     do: if(Ipse.Journal.valid_limit_receipt?(event), do: {:ok, state}, else: @error)
 
@@ -521,12 +530,17 @@ defmodule Ipse.Extension.Actions do
             | parent: nil,
               output_release: if(state.output_release, do: %{state.output_release | raw: event}),
               last_display:
-                if(
+                cond do
+                  Ipse.Session.ProvidedSourceSet.contract?(event["descriptor"]) ->
+                    Ipse.Session.ProvidedSourceSet.display(event)
+
                   is_nil(state.output_release) and
-                    event["descriptor"]["stage"] in ~w(invoke.command invoke.service),
-                  do: Ipse.Session.ManagedOutput.display(event, "current", []),
-                  else: state.last_display
-                ),
+                      event["descriptor"]["stage"] in ~w(invoke.command invoke.service) ->
+                    Ipse.Session.ManagedOutput.display(event, "current", [])
+
+                  true ->
+                    state.last_display
+                end,
               managed_outputs:
                 Map.put(state.managed_outputs, event["invocation_id"], state.managed_dependencies)
           }},

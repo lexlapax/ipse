@@ -19,7 +19,7 @@ defmodule Ipse.Session.Invocation do
     ResultSource
   }
 
-  alias Ipse.Session.Turn
+  alias Ipse.Session.{ProvidedSourceSet, Turn}
 
   @document_retirement_limit 32_768
   # Encoded record limits plus the JSONL newline: Invocation intent/result
@@ -44,6 +44,7 @@ defmodule Ipse.Session.Invocation do
             document_context: nil,
             document_embedding_context: nil,
             document_producer: nil,
+            provided_set: nil,
             interrupted: false
 
   @type t :: %__MODULE__{
@@ -200,16 +201,24 @@ defmodule Ipse.Session.Invocation do
              s.invocation.semantic_binding
            ),
          :ok <- Invocation.validate_intent(intent),
+         {:ok, provided} <- provided_set(descriptor, intent),
          :ok <- journal_capacity(s, entry.identity) do
       entry = Map.merge(entry, %{host_config: s.config, host_cwd: s.cwd})
       {clock, entry} = output_clock(entry, descriptor["stage"], ref)
       Session.record(s, intent)
+      # The set intent is durable before the worker receives its payload, so it
+      # precedes every approval, dispatch intent and send for this invocation.
+      if provided, do: Session.record(s, elem(provided, 0))
       s = Session.managed_event(s, intent)
 
       {:reply, {:ok, intent, entry},
        %{
          s
-         | invocation: %CurrentInvocation{parent: intent, request: s.invocation.request},
+         | invocation: %CurrentInvocation{
+             parent: intent,
+             request: s.invocation.request,
+             provided_set: if(provided, do: elem(provided, 1))
+           },
            extension_output_clock: clock,
            extension_invocations: s.extension_invocations + 1,
            extension_mcp_context: nil
@@ -217,6 +226,19 @@ defmodule Ipse.Session.Invocation do
     else
       {:error, :journal_capacity_insufficient} = error -> {:reply, error, s}
       _ -> {:reply, {:error, :extension_admission_refused}, s}
+    end
+  end
+
+  # A declared provided-set command is admitted only when the host can capture
+  # its complete closed source set; the worker never supplies the set facts.
+  defp provided_set(descriptor, intent) do
+    if ProvidedSourceSet.contract?(descriptor) do
+      case ProvidedSourceSet.begin(intent, System.system_time(:millisecond)) do
+        {:ok, event, fence} -> {:ok, {event, fence}}
+        _ -> :error
+      end
+    else
+      {:ok, nil}
     end
   end
 
@@ -747,6 +769,7 @@ defmodule Ipse.Session.Invocation do
          true <- output_timely?(s),
          true <- not s.invocation.interrupted,
          true <- Ipse.Extension.Registry.live?(parent["identity"]),
+         true <- provided_action?(s, request),
          true <- Actions.allowed?(parent["identity"], request, s.invocation.results),
          true <-
            Actions.readable?(request, s.invocation.effect_sources, s.invocation.results),
@@ -929,6 +952,40 @@ defmodule Ipse.Session.Invocation do
     end
   end
 
+  # A fenced invocation can obtain no source beyond its captured arguments: its
+  # only host call is model.complete, and only over a registered inference
+  # route. This refuses before the ordinary approval prompt.
+  defp provided_action?(s, request) do
+    not ProvidedSourceSet.active?(s) or
+      (ModelCall.operation?(request) and Session.managed_empty?(s) and
+         provided_route?(s.config, request))
+  end
+
+  defp provided_inference(s, message, request) do
+    cond do
+      not ProvidedSourceSet.active?(s) ->
+        {:ok, s}
+
+      message == :extension_model_begin and provided_action?(s, request) ->
+        ProvidedSourceSet.check(s)
+
+      true ->
+        :error
+    end
+  end
+
+  defp provided_route?(config, request) do
+    with {:ok, runtime, _} <- prepare_inference(config, request),
+         {:ok, %{route: route}} when is_map(route) <-
+           Ipse.InferenceDispatch.selection(config, runtime, request["op"], request["profile"]) do
+      true
+    else
+      _ -> false
+    end
+  rescue
+    _ -> false
+  end
+
   defp exact_action_attempt(s, parent, intent) do
     fence = exact_action_state(s)
 
@@ -1015,6 +1072,7 @@ defmodule Ipse.Session.Invocation do
          true <- s.steps < Map.get(s.config, :max_steps, 30),
          true <- Ipse.Usage.capacity?(s.accounting),
          {:ok, config, execution} <- prepare_inference(s.config, intent["request"]),
+         {:ok, s} <- provided_inference(s, message, intent["request"]),
          true <-
            not EmbeddingCall.operation?(intent["request"]) or
              EmbeddingCall.valid_identity?(
@@ -1663,7 +1721,7 @@ defmodule Ipse.Session.Invocation do
           Map.put(s.managed_outputs, event["invocation_id"], s.invocation.managed_reads)
     }
 
-    s = %{s | invocation: %{s.invocation | parent: nil, request: nil}}
+    s = %{s | invocation: %{s.invocation | parent: nil, request: nil, provided_set: nil}}
 
     if s.phase == :tool do
       Turn.accept_tool_result(s, hd(s.calls), Invocation.tool_message(event))
@@ -2222,9 +2280,32 @@ defmodule Ipse.Session.Invocation do
     end
   end
 
+  # A fenced result is delivered inline only while its set is current, after a
+  # durable current release. Otherwise a withheld release is recorded instead.
+  defp provided_release(s, event) do
+    if ProvidedSourceSet.active?(s) do
+      intent = s.invocation.provided_set.intent
+      now = System.system_time(:millisecond)
+
+      case ProvidedSourceSet.check(s, now) do
+        {:ok, next} ->
+          Session.record(next, ProvidedSourceSet.release(intent, "current", now, event))
+          {:ok, next}
+
+        :error ->
+          Session.record(s, ProvidedSourceSet.release(intent, "withheld", now, nil))
+          {:withheld, s}
+      end
+    else
+      {:ok, s}
+    end
+  end
+
   @doc false
   def publish_saved_result(s, delivery) do
     with intent when is_map(intent) <- s.invocation.parent,
+         # Saved pages would outlive the fence; a fenced result must fit inline.
+         false <- ProvidedSourceSet.active?(s),
          true <- s.extension_output != nil and s.extension_output_clock != nil,
          true <- output_timely?(s) and is_nil(s.invocation.action),
          true <- not s.invocation.interrupted,
@@ -2264,9 +2345,19 @@ defmodule Ipse.Session.Invocation do
              s.invocation.results
            ),
          true <- expected == event and Ipse.Extension.Registry.live?(intent["identity"]) do
-      Session.record(s, event)
-      s = Ipse.Session.PendingNomination.record_result(s, intent, event)
-      {:noreply, complete_invocation_result(s, event)}
+      case provided_release(s, event) do
+        {:ok, s} ->
+          Session.record(s, event)
+          s = Ipse.Session.PendingNomination.record_result(s, intent, event)
+          {:noreply, complete_invocation_result(s, event)}
+
+        {:withheld, s} ->
+          {:noreply,
+           Turn.fail(
+             s,
+             "Provided sources changed, reached an eligibility boundary or the clock moved backward before delivery; the result was withheld and nothing was replayed."
+           )}
+      end
     else
       _ ->
         {:noreply,

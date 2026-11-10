@@ -16,6 +16,7 @@ defmodule IpseKnowledge.Research do
             do: [entry("ledger", "Inspect or assert a provided claim ledger", ledger_schema())],
             else: [
               entry("investigate", "Explicit bounded source investigation", investigate_schema()),
+              provided_entry(),
               entry("ledger", "Inspect or assert a provided claim ledger", ledger_schema())
             ]
           ) ++ retention_exports() ++ recovery_exports(),
@@ -56,6 +57,10 @@ defmodule IpseKnowledge.Research do
   defp invoke(_, %{invalid: code} = state), do: finish(state, refused(code))
   defp invoke(%{"id" => "investigate", "arguments" => args}, state), do: investigate(args, state)
   defp invoke(%{"id" => "ledger", "arguments" => args}, state), do: ledger(args, state)
+
+  defp invoke(%{"id" => "investigate_provided", "arguments" => args}, state)
+       when @preset != "state-fetched",
+       do: investigate_provided(args, state)
 
   defp invoke(%{"id" => "retain", "arguments" => args}, state) when @preset == "state-retained",
     do: retain(args, state)
@@ -243,6 +248,33 @@ defmodule IpseKnowledge.Research do
     else
       _ -> finish(state, refused(:invalid_provided_transfer))
     end
+  end
+
+  # The host captures this command's complete source set from its arguments and
+  # fences any rerank dispatch and the result delivery. The worker accepts only
+  # a non-empty provided-only set and makes no search or fetch call.
+  defp investigate_provided(args, state) do
+    with true <- is_map(args) and is_list(args["sources"]) and args["sources"] != [],
+         {:ok, search} <- Profiles.lookup(state.resolved, "search", args["search"]),
+         {:ok, fetch} <- Profiles.lookup(state.resolved, "fetch", args["fetch"]),
+         true <- search["kind"] == "provided" and fetch["kind"] == "provided" do
+      investigate(args, state)
+    else
+      _ -> finish(state, refused(:invalid_provided_sources))
+    end
+  end
+
+  defp provided_entry do
+    "investigate_provided"
+    |> entry(
+      "Provided-only investigation whose source set the host fences through delivery",
+      provided_schema()
+    )
+    |> Map.put("source_contract", %{"version" => 1, "kind" => "provided_set"})
+  end
+
+  defp provided_schema do
+    put_in(investigate_schema(), ["properties", "sources", "minItems"], 1)
   end
 
   defp investigate(args, state) do

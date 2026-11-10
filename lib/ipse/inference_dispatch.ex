@@ -302,6 +302,15 @@ defmodule Ipse.InferenceDispatch do
         send(worker, {ref, challenge, response})
         await(task, ref, route, gate, emit, deadline, original, context)
 
+      {^ref, :provided_wire, worker, challenge, facts} ->
+        response =
+          if provided?(context) and mono() < deadline,
+            do: Ipse.Session.InferenceDispatch.send(context, facts, fn -> :ok end),
+            else: {:error, :inference_dispatch_refused}
+
+        send(worker, {ref, challenge, response})
+        await(task, ref, route, gate, emit, deadline, original, context)
+
       {^ref, :document_wire, worker, challenge, facts} ->
         response =
           if context[:document_source] != nil and mono() < deadline,
@@ -318,7 +327,7 @@ defmodule Ipse.InferenceDispatch do
       {monitor, {:dispatch_result, {:ok, result}, _, chunks}} when monitor == task.ref ->
         Process.demonitor(task.ref, [:flush])
 
-        if managed?(context) and match?({:ok, _, _}, result) do
+        if (managed?(context) or provided?(context)) and match?({:ok, _, _}, result) do
           released =
             Ipse.Session.InferenceDispatch.release(context, result, fn ->
               Enum.each(chunks, &emit.({:text, &1}))
@@ -351,9 +360,53 @@ defmodule Ipse.InferenceDispatch do
   end
 
   defp managed?(context), do: match?(%{managed: %{dependencies: [_ | _]}}, context)
+  defp provided?(context), do: context[:provided_set] === true
 
   defp managed_execute(context, runtime, kind, target, timeout, fun, caller, ref, buffer_key) do
     cond do
+      provided?(context) ->
+        if managed?(context) or context[:document_source] != nil or not is_map(context[:wire]) do
+          {:error, "Combined provided-source and managed or document inference is unavailable."}
+        else
+          wire = context.wire
+
+          expected = %{
+            kind: wire["kind"],
+            target_sha256: wire["target_sha256"],
+            body_sha256: wire["body_sha256"],
+            deadline_ms: mono() + timeout,
+            upstream: context.owner
+          }
+
+          # The Session owner re-derives the set and checks its clock floor and
+          # transition immediately before the transport writes the exact body.
+          {result, status} =
+            Ipse.Provider.EgressGate.capture(
+              expected,
+              fn facts ->
+                challenge = make_ref()
+                monitor = Process.monitor(caller)
+                send(caller, {ref, :provided_wire, self(), challenge, facts})
+
+                try do
+                  receive do
+                    {^ref, ^challenge, response} -> response
+                    {:DOWN, ^monitor, :process, ^caller, _} -> {:error, :dispatch_owner_lost}
+                  after
+                    5_000 -> {:error, :inference_dispatch_refused}
+                  end
+                after
+                  Process.demonitor(monitor, [:flush])
+                end
+              end,
+              fun
+            )
+
+          if status == :authorized,
+            do: result,
+            else: {:error, "Provided-source inference was refused before its body was sent."}
+        end
+
       context[:document_source] != nil ->
         if managed?(context) do
           {:error, "Combined document and managed-note inference is unavailable."}

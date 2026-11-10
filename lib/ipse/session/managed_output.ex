@@ -258,7 +258,9 @@ defmodule Ipse.Session.ManagedOutput do
              s.managed_lineage,
              parent["invocation_id"],
              s.invocation.managed_reads
-           ) do
+           ),
+         # A provided-set fence is never combined with managed dependencies.
+         true <- deps == [] or not Ipse.Session.ProvidedSourceSet.active?(s) do
       if deps == [] do
         {:reply, {:ok, :ordinary}, s}
       else

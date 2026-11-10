@@ -35,6 +35,35 @@ defmodule Ipse.Extension.CatalogTest do
     assert {:error, _} = Catalog.validate(Map.delete(exports(), "commands"), ["invoke.tool"])
   end
 
+  test "only a command may declare the exact provided-set source contract" do
+    fenced = Map.put(descriptor(), "source_contract", Catalog.source_contract())
+    commands = Map.put(Catalog.empty(), "commands", [fenced])
+    assert :ok = Catalog.validate(commands, ["invoke.command"])
+    assert {:error, _} = Catalog.validate(exports([fenced]), ["invoke.tool"])
+
+    for contract <- [
+          %{"version" => 2, "kind" => "provided_set"},
+          %{"version" => 1, "kind" => "fetched_set"},
+          Map.put(Catalog.source_contract(), "extra", true),
+          nil
+        ] do
+      bad =
+        Map.put(Catalog.empty(), "commands", [Map.put(descriptor(), "source_contract", contract)])
+
+      assert {:error, _} = Catalog.validate(bad, ["invoke.command"])
+    end
+
+    entry = %{identity: %{"instance" => "probe"}, exports: commands}
+    assert {:ok, %{"entries" => [snapshot]}} = Catalog.snapshot(%{extensions: [entry]})
+    assert snapshot["source_contract"] == Catalog.source_contract()
+
+    assert {:error, _} =
+             Catalog.validate_snapshot(%{
+               "version" => 1,
+               "entries" => [%{snapshot | "stage" => "invoke.tool"}]
+             })
+  end
+
   test "IDs, descriptions, JSON-only schemas and repeated exports are independently bounded" do
     for d <- [
           Map.put(descriptor(), "id", "../read"),

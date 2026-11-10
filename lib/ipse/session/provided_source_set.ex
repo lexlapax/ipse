@@ -19,7 +19,7 @@ defmodule Ipse.Session.ProvidedSourceSet do
   """
   alias Ipse.JSON
 
-  @contract %{"version" => 1, "kind" => "provided_set"}
+  @contract Ipse.Extension.Catalog.source_contract()
   @domain "ipse.session.provided-source-set.v1"
   @intent_type "provided_source_set_intent"
   @release_type "provided_source_set_release"
@@ -217,10 +217,10 @@ defmodule Ipse.Session.ProvidedSourceSet do
       release["parent_invocation_id"] == event["parent_invocation_id"] and
       release["intent_sha256"] == JSON.digest([event]) and
       JSON.safe_uint?(release["checked_at_ms"]) and
-      release["checked_at_ms"] >= event["selected_at_ms"] and
       case release["decision"] do
         "current" ->
-          JSON.sha256?(release["result_sha256"]) and
+          release["checked_at_ms"] >= event["selected_at_ms"] and
+            JSON.sha256?(release["result_sha256"]) and
             (is_nil(event["transition_ms"]) or release["checked_at_ms"] < event["transition_ms"])
 
         "withheld" ->

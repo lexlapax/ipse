@@ -2,6 +2,7 @@ defmodule Ipse.Session.InferenceDispatch do
   @moduledoc false
   alias Ipse.{JSON, Session}
   alias Ipse.Extension.{Consent, Mode, ProjectIdentity, SemanticAdmission}
+  alias Ipse.Session.ProvidedSourceSet
   @event_type "inference_dispatch_intent"
   @phases ~w(model compaction model.complete embedding.create decision.create)
   @hashes ~w(admission_sha256 input_sha256 tools_sha256 source_sha256 mode_sha256 pin_sha256 route_sha256)
@@ -25,6 +26,9 @@ defmodule Ipse.Session.InferenceDispatch do
       wire: wire(runtime, input, tools, phase),
       managed: managed_snapshot(s, phase),
       document_source: document_source(s, phase),
+      # The owner re-derives a fenced provided set at the gate, physical send and
+      # model-output release; this flag carries no set facts or authority.
+      provided_set: phase == "model.complete" and ProvidedSourceSet.active?(s),
       # Attribution for ordinary Sessions grants no project identity or consent.
       project_id:
         JSON.digest([get_in(s.config, [:semantic_admission, "pin", "project_id"]) || s.cwd]),
@@ -87,7 +91,8 @@ defmodule Ipse.Session.InferenceDispatch do
              runtime,
              operation(phase),
              profile(phase, admission)
-           ) do
+           ),
+         {:ok, s} <- ProvidedSourceSet.guard(s, phase) do
       {:reply, :ok, s}
     else
       _ -> {:reply, {:error, :inference_dispatch_refused}, s}
@@ -163,7 +168,8 @@ defmodule Ipse.Session.InferenceDispatch do
          true <- caller == s.task.pid or Session.Resources.authorized_effect?(s.task.pid, caller),
          {:ok, _, _, _, ^admission} <- view(s, phase),
          true <- binding_current?(s, phase, expected),
-         true <- JSON.sha256?(result_sha) do
+         true <- JSON.sha256?(result_sha),
+         {:ok, s} <- ProvidedSourceSet.guard(s, phase) do
       seal = %{
         request_id: admission["request_id"],
         phase: phase,
@@ -182,10 +188,11 @@ defmodule Ipse.Session.InferenceDispatch do
   @doc false
   def consume_result(s, phase, result) do
     required =
-      case Session.managed_dependencies(s, phase) do
-        {:ok, %{dependencies: []}} -> false
-        _ -> true
-      end
+      (phase == "model.complete" and ProvidedSourceSet.active?(s)) or
+        case Session.managed_dependencies(s, phase) do
+          {:ok, %{dependencies: []}} -> false
+          _ -> true
+        end
 
     admission =
       if phase in ["model", "compaction"],
@@ -303,6 +310,7 @@ defmodule Ipse.Session.InferenceDispatch do
   def commit(s, caller, phase, admission, expected, facts) do
     with true <- not is_nil(s.task),
          true <- caller == s.task.pid or Session.Resources.authorized_effect?(s.task.pid, caller),
+         {:ok, s} <- ProvidedSourceSet.guard(s, phase),
          {:ok, runtime, input, tools, current} <- view(s, phase),
          true <- current === admission,
          true <- expected(s, input, tools, current, phase) === expected,

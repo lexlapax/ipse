@@ -17,7 +17,7 @@ defmodule IpseKnowledge.PackagesIsolationTest do
     test "three independent descriptors have closed command catalogs" do
       for {module, commands, tools} <- [
         {IpseKnowledge.Corpus, ~w(source query index), ~w(query)},
-        {IpseKnowledge.Research, ~w(investigate ledger), ~w(investigate)},
+        {IpseKnowledge.Research, ~w(investigate investigate_provided ledger), ~w(investigate)},
         {IpseKnowledge.Graph, ~w(source extract identity query), ~w(query capture)}
       ] do
         descriptor = module.describe()
@@ -569,6 +569,30 @@ defmodule IpseKnowledge.PackagesIsolationTest do
       end)
     end
 
+    test "the fenced provided investigation declares its contract and needs a non-empty provided set" do
+      {:ok, state} = IpseKnowledge.Research.init(offline_options())
+      descriptor = IpseKnowledge.Research.describe()
+      entry = Enum.find(descriptor["exports"]["commands"], &(&1["id"] == "investigate_provided"))
+      assert entry["source_contract"] == %{"version" => 1, "kind" => "provided_set"}
+      assert entry["arguments_schema"]["properties"]["sources"]["minItems"] == 1
+      refute Enum.any?(descriptor["exports"]["tools"], &Map.has_key?(&1, "source_contract"))
+      source = %{"source_id" => "dev:locks", "generation" => 1, "title" => "Locks",
+        "text" => "Session lock files remain on disk. Releasing the OS lock preserves inode identity.",
+        "uri" => "local:locks", "observed_at_ms" => 1_700_000_000_000,
+        "event_at_ms" => nil, "expires_at_ms" => nil}
+      args = investigation([source]) |> Map.put("as_of_ms", 1_700_000_000_001)
+      run = fn id, arguments ->
+        {:ok, %{"kind" => "result", "value" => value}, _} =
+          IpseKnowledge.Research.handle("invoke.command", %{"id" => id, "arguments" => arguments}, state)
+        value
+      end
+      assert run.("investigate_provided", args) == run.("investigate", args)
+      assert run.("investigate_provided", args)["status"] == "ok"
+      empty = run.("investigate_provided", Map.put(args, "sources", []))
+      assert empty["status"] == "refused" and empty["evidence"] == []
+      assert [%{"code" => "invalid_provided_sources"}] = empty["gaps"]
+    end
+
     test "research returns ten cited sources and refuses an eleventh" do
       sources = Enum.map(1..11, fn n ->
         %{"source_id" => "s#{n}", "generation" => 1, "title" => "Locks",
@@ -1047,7 +1071,7 @@ defmodule IpseKnowledge.PackagesIsolationTest do
   end
 
   result = ExUnit.run()
-  System.halt(if(result.failures == 0 and result.total == 33 and result.skipped == 0 and result.excluded == 0, do: 0, else: 1))
+  System.halt(if(result.failures == 0 and result.total == 34 and result.skipped == 0 and result.excluded == 0, do: 0, else: 1))
   """
 
   test "packages run in a separate VM without loading domain modules into host" do

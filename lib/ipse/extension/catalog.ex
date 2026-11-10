@@ -9,6 +9,10 @@ defmodule Ipse.Extension.Catalog do
     "jobs" => "event.job"
   }
   @error {:error, :invalid_extension_catalog}
+  @source_contract %{"version" => 1, "kind" => "provided_set"}
+
+  @doc "The only declarable source contract: a host-fenced provided-only source set."
+  def source_contract, do: @source_contract
 
   def capabilities,
     do:
@@ -67,6 +71,8 @@ defmodule Ipse.Extension.Catalog do
 
              is_list(records) and length(records) <= 8 and
                Enum.all?(records, &descriptor?/1) and unique?(Enum.map(records, & &1["id"])) and
+               (group == "commands" or
+                  not Enum.any?(records, &Map.has_key?(&1, "source_contract"))) and
                records != [] == capability in capabilities
            end),
          :ok <-
@@ -137,6 +143,8 @@ defmodule Ipse.Extension.Catalog do
                is_binary(export["instance"]) and
                Regex.match?(~r/\A[a-z][a-z0-9_-]{0,63}\z/, export["instance"]) and
                descriptor?(Map.drop(export, ~w(instance stage name))) and
+               (export["stage"] == "invoke.command" or
+                  not Map.has_key?(export, "source_contract")) and
                export["name"] == name(export["instance"], export["id"]) and
                byte_size(export["name"]) <= 64
            end),
@@ -245,8 +253,13 @@ defmodule Ipse.Extension.Catalog do
 
   defp name(instance, id), do: "ext__" <> instance <> "__" <> id
 
+  # A command may declare the exact provided-set contract. The declaration only
+  # asks the host to fence the invocation; it grants no host call or route.
   defp descriptor?(descriptor) when is_map(descriptor) do
-    Enum.sort(Map.keys(descriptor)) == ~w(arguments_schema description id result_schema) and
+    Enum.sort(Map.keys(Map.delete(descriptor, "source_contract"))) ==
+      ~w(arguments_schema description id result_schema) and
+      (not Map.has_key?(descriptor, "source_contract") or
+         descriptor["source_contract"] === @source_contract) and
       is_binary(descriptor["id"]) and
       Regex.match?(~r/\A[a-z][a-z0-9_-]{0,31}\z/, descriptor["id"]) and
       is_binary(descriptor["description"]) and String.valid?(descriptor["description"]) and
