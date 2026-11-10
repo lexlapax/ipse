@@ -522,22 +522,28 @@ defmodule Ipse.Session.Turn do
              Ipse.Session.Context.publishers(s),
              tools,
              s.messages
-           ) do
-      s =
-        Enum.reduce(events, s, fn event, current ->
-          Session.record(current, event)
+           ),
+         # Lineage is advanced on a copy first. A reference whose dependencies the
+         # host cannot bind is refused before any of its records is journaled, so
+         # the saved Session never holds an envelope it cannot replay.
+         next =
+           Enum.reduce(events, s, fn event, current ->
+             messages =
+               if event["type"] == "reference_envelope" do
+                 {:ok, projected} = Ipse.Session.Reference.project(current.messages, event)
+                 projected
+               else
+                 current.messages
+               end
 
-          messages =
-            if event["type"] == "reference_envelope" do
-              {:ok, projected} = Ipse.Session.Reference.project(current.messages, event)
-              projected
-            else
-              current.messages
-            end
-
-          current = Session.managed_event(current, event, messages)
-          %{current | messages: messages}
-        end)
+             current = Session.managed_event(current, event, messages)
+             %{current | messages: messages}
+           end),
+         true <-
+           not is_struct(s.managed_lineage) or is_struct(next.managed_lineage) or
+             {:error, :managed_reference_refused} do
+      Enum.each(events, &Session.record(s, &1))
+      s = next
 
       occurrences =
         Enum.reduce(appended, s.reference_occurrences, fn message, acc ->

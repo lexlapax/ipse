@@ -788,7 +788,12 @@ bytes ([`ManagedReference.limits/0`](../../lib/ipse/session/managed_reference.ex
 A literal dependency encodes to about 1,546 bytes, so the byte bound binds
 first, near 80 literals. In the recall fixture, whose reference message also
 carries six source dependencies, a turn over 81 literals completes and a turn
-over 82 ends in error before dispatch.
+over 82 ends in error before dispatch. `Turn.prepare_reference/1` advances
+lineage for the prepared reference before it journals any of its records, so a
+refused reference leaves neither `reference_admitted` nor `reference_envelope`
+behind. The saved Session restores and takes further turns; the next reference
+is admitted once the published set fits. `reference_bound_test.exs` forces the
+byte bound with fewer than 128 dependencies and covers that recovery.
 
 Run `mix test test/ipse/session/native_note_recall_test.exs` with native storage
 when changing this path. Its reuse control counts the records of each native
