@@ -293,7 +293,14 @@ Hosted run 42663715255 at `72ee4e63` then passed every Ubuntu and macOS job.
   `~/projects/lexlapax/ipse`) runs kernel 7.2.14, admitted as a reviewed tmpfs
   profile on 2026-11-09. At `adfe6773` the provided-set fence session test, both
   inference dispatch tests and the document draft native capacity test pass
-  there with `IPSE_TEST_NATIVE_STORAGE=1` (33 tests).
+  there with `IPSE_TEST_NATIVE_STORAGE=1` (33 tests). At `453d2723`, after the
+  second review's fixes, the fence unit and session tests and the inference
+  dispatch test pass there (33 tests), including the registered send and the
+  send-to-release transition, which report NOT RUN on macOS.
+- The provided-set fence's last check before a request leaves runs before the
+  connection opens. A request can therefore cross a source's transition on the
+  wire; its output and result are withheld. Bounding the send itself would
+  need a transport change shared with the document path and is not planned.
 
 ## Reproducing the hosted Linux exclusion locally
 
