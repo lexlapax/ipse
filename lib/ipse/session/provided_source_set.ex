@@ -10,12 +10,15 @@ defmodule Ipse.Session.ProvidedSourceSet do
   none of these facts and cannot extend the set: a fenced invocation may make
   only `model.complete` host calls, and only over a registered inference route.
 
-  A content-free intent is journaled before the worker starts, so it precedes
-  every approval and send. The set is re-derived and compared, and the wall
-  clock is checked against the recorded high-water and the earliest eligibility
-  transition, before the dispatch intent, at the physical send, when model
-  output returns to the worker and before inline delivery. Restore validates the
-  same records and never redelivers a fenced result; it is historical only.
+  A content-free intent is appended with the invocation intent, against one
+  journal reservation and before any feed or observation sees the parent, so it
+  precedes every approval and send. The set is re-derived and compared, and the
+  wall clock is checked against the recorded high-water and the earliest
+  eligibility transition, before the dispatch intent, at the physical send, when
+  model output returns to the worker and before inline delivery. Delivery also
+  requires the result's reported `coverage.as_of_ms` to lie inside the fenced
+  interval. Restore validates the same records and never redelivers a fenced
+  result; it is historical only.
   """
   alias Ipse.JSON
 
@@ -165,7 +168,7 @@ defmodule Ipse.Session.ProvidedSourceSet do
   # Session owner only. Re-derive the set from the journaled parent, then require
   # the clock to be at or after the high-water and before the earliest
   # transition. Success raises the high-water to this observation.
-  def check(s, now \\ System.system_time(:millisecond))
+  def check(s), do: check(s, now(s))
 
   def check(%{invocation: %{provided_set: nil}} = s, _now), do: {:ok, s}
 
@@ -179,6 +182,15 @@ defmodule Ipse.Session.ProvidedSourceSet do
   end
 
   def check(_, _), do: :error
+
+  @doc false
+  # The fence's wall clock. A production fence carries no clock, so this is the
+  # system time; focused tests install a fixed clock in a fence to drive the
+  # boundary checks deterministically.
+  def now(%{invocation: %{provided_set: %{clock: clock}}}) when is_function(clock, 0),
+    do: clock.()
+
+  def now(_), do: System.system_time(:millisecond)
 
   @doc false
   def active?(%{invocation: %{provided_set: fence}}), do: is_map(fence)
@@ -199,6 +211,36 @@ defmodule Ipse.Session.ProvidedSourceSet do
       JSON.safe_uint?(now) and JSON.safe_uint?(high_water) and
         high_water >= event["selected_at_ms"] and now >= high_water and
         (is_nil(event["transition_ms"]) or now < event["transition_ms"])
+
+  @doc """
+  Whether a fenced result value reports an evidence time inside the fence.
+
+  The value carries `coverage.as_of_ms`. With an explicit investigation time it
+  must equal that time. Otherwise it must lie at or after selection, at or
+  before the release check and strictly before the earliest transition. Only a
+  refusal with no evidence and no claims, which carries no source content, may
+  omit it.
+  """
+  def result_as_of?(parent, event, value, checked_at) do
+    as_of = get_in(value, ["coverage", "as_of_ms"])
+
+    cond do
+      JSON.safe_uint?(as_of) and Map.has_key?(parent["payload"]["arguments"], "as_of_ms") ->
+        as_of === event["as_of_ms"]
+
+      JSON.safe_uint?(as_of) ->
+        as_of >= event["selected_at_ms"] and as_of <= checked_at and
+          (is_nil(event["transition_ms"]) or as_of < event["transition_ms"])
+
+      is_nil(as_of) ->
+        value["status"] == "refused" and value["evidence"] == [] and value["claims"] == []
+
+      true ->
+        false
+    end
+  rescue
+    _ -> false
+  end
 
   def release(event, decision, now, result) when decision in ~w(current withheld),
     do: %{
@@ -248,21 +290,28 @@ defmodule Ipse.Session.ProvidedSourceSet do
   @doc """
   Validate fence records in journal order.
 
-  A contract invocation intent must be followed immediately by its set intent.
-  Its only actions are `model.complete` calls and its result must be inline and
-  bound by a current release. An intent without a result stays interrupted; it
-  is never completed or replayed here.
+  A contract invocation intent is followed by its set intent before any action,
+  release or result of that invocation; unrelated records, such as a feed
+  delivery intent, may fall between them. A contract intent whose set intent
+  never follows was interrupted before its worker started and may have no later
+  action, release or result. A fenced invocation's only actions are
+  `model.complete` calls, and its result must be inline, report a fenced as-of
+  time and be bound by a current release. An intent without a result stays
+  interrupted; it is never completed or replayed here.
   """
   def validate_events(events) when is_list(events) do
     events
-    |> Enum.reduce_while({:ok, %{expect: nil, active: nil}}, fn event, {:ok, state} ->
-      case step(state, event) do
-        {:ok, next} -> {:cont, {:ok, next}}
-        :error -> {:halt, :error}
+    |> Enum.reduce_while(
+      {:ok, %{expect: nil, active: nil, unstarted: MapSet.new()}},
+      fn event, {:ok, state} ->
+        case if(unstarted_use?(state, event), do: :error, else: step(state, event)) do
+          {:ok, next} -> {:cont, {:ok, next}}
+          :error -> {:halt, :error}
+        end
       end
-    end)
+    )
     |> case do
-      {:ok, %{expect: nil}} -> :ok
+      {:ok, _} -> :ok
       _ -> {:error, :invalid_provided_source_set}
     end
   rescue
@@ -271,17 +320,37 @@ defmodule Ipse.Session.ProvidedSourceSet do
 
   def validate_events(_), do: {:error, :invalid_provided_source_set}
 
-  defp step(%{expect: parent} = state, event) when is_map(parent) do
-    if event["type"] == @intent_type and event["parent_invocation_id"] == parent["invocation_id"] and
-         valid_intent?(event, parent),
-       do: {:ok, %{state | expect: nil, active: %{parent: parent, intent: event, release: nil}}},
-       else: :error
+  # An action, release or result of a contract invocation whose set intent was
+  # never journaled would mean its worker ran unfenced.
+  defp unstarted_use?(state, event) do
+    ids = unstarted(state)
+
+    case event do
+      %{"type" => type, "parent_invocation_id" => id}
+      when type in ["extension_action_intent", @release_type] ->
+        MapSet.member?(ids, id)
+
+      %{"type" => "extension_invocation_result", "invocation_id" => id} ->
+        MapSet.member?(ids, id)
+
+      _ ->
+        false
+    end
   end
 
+  defp unstarted(%{expect: nil, unstarted: ids}), do: ids
+  defp unstarted(%{expect: parent, unstarted: ids}), do: MapSet.put(ids, parent["invocation_id"])
+
+  defp step(%{expect: parent} = state, %{"type" => @intent_type} = event) when is_map(parent) do
+    if event["parent_invocation_id"] == parent["invocation_id"] and valid_intent?(event, parent),
+      do: {:ok, %{state | expect: nil, active: %{parent: parent, intent: event, release: nil}}},
+      else: :error
+  end
+
+  # A new invocation ends any still-expected contract intent as never started.
   defp step(state, %{"type" => "extension_invocation_intent"} = event) do
-    if contract?(event["descriptor"]),
-      do: {:ok, %{state | expect: event, active: nil}},
-      else: {:ok, %{state | active: nil}}
+    expect = if contract?(event["descriptor"]), do: event
+    {:ok, %{state | expect: expect, active: nil, unstarted: unstarted(state)}}
   end
 
   defp step(_, %{"type" => @intent_type}), do: :error
@@ -303,7 +372,7 @@ defmodule Ipse.Session.ProvidedSourceSet do
   end
 
   defp step(
-         %{active: %{parent: parent, release: release}} = state,
+         %{active: %{parent: parent, intent: intent, release: release}} = state,
          %{"type" => "extension_invocation_result"} = event
        ) do
     cond do
@@ -311,7 +380,8 @@ defmodule Ipse.Session.ProvidedSourceSet do
         :error
 
       event["version"] in [1, 3] and is_map(release) and release["decision"] == "current" and
-          release["result_sha256"] == JSON.digest([event]) ->
+        release["result_sha256"] == JSON.digest([event]) and
+          result_as_of?(parent, intent, event["value"], release["checked_at_ms"]) ->
         {:ok, %{state | active: nil}}
 
       true ->

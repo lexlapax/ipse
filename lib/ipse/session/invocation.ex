@@ -202,13 +202,10 @@ defmodule Ipse.Session.Invocation do
            ),
          :ok <- Invocation.validate_intent(intent),
          {:ok, provided} <- provided_set(descriptor, intent),
-         :ok <- journal_capacity(s, entry.identity) do
+         :ok <- journal_capacity(s, entry.identity),
+         :ok <- record_begin(s, intent, provided) do
       entry = Map.merge(entry, %{host_config: s.config, host_cwd: s.cwd})
       {clock, entry} = output_clock(entry, descriptor["stage"], ref)
-      Session.record(s, intent)
-      # The set intent is durable before the worker receives its payload, so it
-      # precedes every approval, dispatch intent and send for this invocation.
-      if provided, do: Session.record(s, elem(provided, 0))
       s = Session.managed_event(s, intent)
 
       {:reply, {:ok, intent, entry},
@@ -228,6 +225,15 @@ defmodule Ipse.Session.Invocation do
       _ -> {:reply, {:error, :extension_admission_refused}, s}
     end
   end
+
+  defp record_begin(s, intent, nil), do: Session.record(s, intent)
+
+  # The set intent is durable before the worker receives its payload, so it
+  # precedes every approval, dispatch intent and send for this invocation. Both
+  # records share one reservation, so a full journal refuses the invocation
+  # with neither written, and feeds and observation see the parent only after
+  # its set intent.
+  defp record_begin(s, intent, {event, _fence}), do: Session.record_adjacent(s, [intent, event])
 
   # A declared provided-set command is admitted only when the host can capture
   # its complete closed source set; the worker never supplies the set facts.
@@ -334,8 +340,11 @@ defmodule Ipse.Session.Invocation do
     end
   end
 
+  # Saved output would outlive a provided-source fence, so a fenced invocation
+  # opens, extends and seals none; its result must fit inline.
   def open_output(s, offer) do
-    with false <-
+    with false <- ProvidedSourceSet.active?(s),
+         false <-
            get_in(s.invocation.parent || %{}, ["semantic_binding", "class"]) ===
              "nomination.select",
          true <- output_timely?(s) and s.extension_output_clock != nil,
@@ -387,7 +396,8 @@ defmodule Ipse.Session.Invocation do
   end
 
   def push_output(s, output_id, reply, active) do
-    with true <- output_timely?(s),
+    with false <- ProvidedSourceSet.active?(s),
+         true <- output_timely?(s),
          true <- Ipse.Extension.Registry.live?(s.invocation.parent["identity"]) do
       {:ok, current} = ResultSource.source(s.extension_result_sources, output_id)
 
@@ -415,7 +425,8 @@ defmodule Ipse.Session.Invocation do
   end
 
   def seal_output(s, proof, active) do
-    with true <- output_timely?(s),
+    with false <- ProvidedSourceSet.active?(s),
+         true <- output_timely?(s),
          true <- Ipse.Extension.Registry.live?(s.invocation.parent["identity"]),
          {:ok, event, _source, index} <-
            ResultSource.index_accept_verified(s.extension_result_sources, active.id, proof) do
@@ -2280,21 +2291,30 @@ defmodule Ipse.Session.Invocation do
     end
   end
 
-  # A fenced result is delivered inline only while its set is current, after a
-  # durable current release. Otherwise a withheld release is recorded instead.
+  # A fenced result is delivered inline only while its set is current and its
+  # reported as-of time lies inside the fence, after a durable current release.
+  # Otherwise a withheld release is recorded instead.
   defp provided_release(s, event) do
     if ProvidedSourceSet.active?(s) do
       intent = s.invocation.provided_set.intent
-      now = System.system_time(:millisecond)
+      now = ProvidedSourceSet.now(s)
 
-      case ProvidedSourceSet.check(s, now) do
-        {:ok, next} ->
-          Session.record(next, ProvidedSourceSet.release(intent, "current", now, event))
-          {:ok, next}
-
-        :error ->
+      with {:ok, next} <- ProvidedSourceSet.check(s, now),
+           true <-
+             ProvidedSourceSet.result_as_of?(s.invocation.parent, intent, event["value"], now) do
+        Session.record(next, ProvidedSourceSet.release(intent, "current", now, event))
+        {:ok, next}
+      else
+        failure ->
           Session.record(s, ProvidedSourceSet.release(intent, "withheld", now, nil))
-          {:withheld, s}
+
+          {:withheld, s,
+           if(failure == false,
+             do:
+               "The fenced result reported an as-of time outside its provided source set; the result was withheld and nothing was replayed.",
+             else:
+               "A provided source reached its observation or expiry time, or the clock moved backward, before delivery; the result was withheld and nothing was replayed."
+           )}
       end
     else
       {:ok, s}
@@ -2351,12 +2371,8 @@ defmodule Ipse.Session.Invocation do
           s = Ipse.Session.PendingNomination.record_result(s, intent, event)
           {:noreply, complete_invocation_result(s, event)}
 
-        {:withheld, s} ->
-          {:noreply,
-           Turn.fail(
-             s,
-             "Provided sources changed, reached an eligibility boundary or the clock moved backward before delivery; the result was withheld and nothing was replayed."
-           )}
+        {:withheld, s, message} ->
+          {:noreply, Turn.fail(s, message)}
       end
     else
       _ ->

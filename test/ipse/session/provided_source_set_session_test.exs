@@ -11,9 +11,7 @@ defmodule Ipse.Session.ProvidedSourceSetSessionTest do
 
   setup_all do
     root = Path.join(System.tmp_dir!(), "ipse-provided-fence-fixture-" <> Usage.id())
-    File.mkdir_p!(Path.join(root, "ebin"))
-    module = "Independent.ProvidedFenceFixture#{System.unique_integer([:positive])}"
-    caps = ~w(invoke.command host.actions host.model host.embedding)
+    caps = ~w(invoke.command invoke.result.pages host.actions host.model host.embedding)
 
     command = %{
       "id" => "investigate",
@@ -27,38 +25,92 @@ defmodule Ipse.Session.ProvidedSourceSetSessionTest do
 
     # The worker never states its sources to the host. A null rerank finishes
     # at once; "judge" asks for one model call and "embed" for an embedding.
-    source = """
-    defmodule #{module} do
-      @behaviour Ipse.Extension
-      def describe, do: %{"sdk" => 1, "capabilities" => #{inspect(caps)}, "exports" => #{inspect(exports)}}
-      def init(options), do: {:ok, options}
+    # "stale" reports an as-of time before selection and "saved" offers a paged
+    # saved result. Every other result reports the worker's current time.
+    probe =
+      build(Path.join(root, "probe"), "provided-fence", 2, caps, exports, nil, fn module ->
+        """
+        defmodule #{module} do
+          @behaviour Ipse.Extension
+          def describe, do: %{"sdk" => 2, "capabilities" => #{inspect(caps)}, "exports" => #{inspect(exports)}}
+          def init(options), do: {:ok, options}
 
-      def handle("invoke.command", %{"arguments" => args}, state) do
-        case args["rerank"] do
-          "judge" ->
-            {:ok, %{"api_version" => 1, "kind" => "host_call", "request" => %{
-              "op" => "model.complete", "version" => 1, "profile" => "answer",
-              "instruction" => "Order the candidates", "input" => args["query"],
-              "max_output_bytes" => 1024, "timeout_ms" => 3000}}, state}
+          def handle("invoke.command", %{"arguments" => args}, state) do
+            case args["rerank"] do
+              "judge" ->
+                {:ok, %{"api_version" => 1, "kind" => "host_call", "request" => %{
+                  "op" => "model.complete", "version" => 1, "profile" => "answer",
+                  "instruction" => "Order the candidates", "input" => args["query"],
+                  "max_output_bytes" => 1024, "timeout_ms" => 3000}}, state}
 
-          "embed" ->
-            {:ok, %{"api_version" => 1, "kind" => "host_call", "request" => %{
-              "op" => "embedding.create", "version" => 1, "profile" => "search",
-              "inputs" => [args["query"]], "timeout_ms" => 3000}}, state}
+              "embed" ->
+                {:ok, %{"api_version" => 1, "kind" => "host_call", "request" => %{
+                  "op" => "embedding.create", "version" => 1, "profile" => "search",
+                  "inputs" => [args["query"]], "timeout_ms" => 3000}}, state}
 
-          _ ->
-            {:ok, %{"api_version" => 1, "kind" => "result",
-              "value" => %{"status" => "ok", "query" => args["query"]}}, state}
+              "stale" ->
+                result(%{"status" => "ok", "query" => args["query"], "coverage" => %{"as_of_ms" => 1}}, state)
+
+              "saved" ->
+                {:ok, reply} = Ipse.Extension.ResultPublication.prepare_paged(value(%{"query" => args["query"]}))
+                {:ok, reply, state}
+
+              _ ->
+                result(value(%{"status" => "ok", "query" => args["query"]}), state)
+            end
+          end
+
+          def handle("host.actions", payload, state),
+            do: result(value(%{"outcome" => payload["outcome"]}), state)
+
+          defp value(value), do: Map.put(value, "coverage", %{"as_of_ms" => System.system_time(:millisecond)})
+          defp result(value, state), do: {:ok, %{"api_version" => 1, "kind" => "result", "value" => value}, state}
         end
-      end
+        """
+      end)
 
-      def handle("host.actions", payload, state),
-        do: {:ok, %{"api_version" => 1, "kind" => "result", "value" => %{"outcome" => payload["outcome"]}}, state}
-    end
-    """
+    # A separate metadata feed observes every admitted invocation.
+    admitted = %{
+      "id" => "admitted",
+      "event" => "extension.invocation_admitted",
+      "event_version" => 1,
+      "view" => "metadata",
+      "mode" => "feed",
+      "queue_events" => 8
+    }
 
+    feed =
+      build(
+        Path.join(root, "feed"),
+        "provided-feed",
+        1,
+        ["event.feed"],
+        Catalog.empty(),
+        [admitted],
+        fn module ->
+          """
+          defmodule #{module} do
+            @behaviour Ipse.Extension
+            def describe, do: %{"sdk" => 1, "capabilities" => ["event.feed"], "subscriptions" => #{inspect([admitted])}, "exports" => #{inspect(Catalog.empty())}}
+            def init(options), do: {:ok, options}
+
+            def handle("event.feed", payload, state),
+              do: {:ok, %{"api_version" => 1, "kind" => "ack", "handle" => payload["handle"],
+                "sequence" => payload["sequence"], "event_id" => payload["event"]["event_id"]}, state}
+          end
+          """
+        end
+      )
+
+    on_exit(fn -> File.rm_rf!(root) end)
+    %{artifact: probe, feed_artifact: feed, capabilities: caps}
+  end
+
+  defp build(root, id, sdk, caps, exports, subscriptions, source) do
+    File.mkdir_p!(Path.join(root, "ebin"))
+    module = "Independent.ProvidedFenceFixture#{System.unique_integer([:positive])}"
     file = Path.join(root, "fixture.ex")
-    File.write!(file, source)
+    File.write!(file, source.(module))
 
     {log, status} =
       System.cmd(
@@ -73,9 +125,9 @@ defmodule Ipse.Session.ProvidedSourceSetSessionTest do
 
     manifest = %{
       "format" => 1,
-      "id" => "fixture/provided-fence",
+      "id" => "fixture/" <> id,
       "version" => "0.1.0",
-      "sdk" => 1,
+      "sdk" => sdk,
       "protocol" => 1,
       "backend" => "elixir_worker",
       "entrypoint" => module,
@@ -95,9 +147,11 @@ defmodule Ipse.Session.ProvidedSourceSetSessionTest do
         end)
     }
 
+    manifest =
+      if subscriptions, do: Map.put(manifest, "subscriptions", subscriptions), else: manifest
+
     File.write!(Path.join(root, "extension.json"), Jason.encode!(manifest))
-    on_exit(fn -> File.rm_rf!(root) end)
-    %{artifact: root, capabilities: caps}
+    root
   end
 
   setup do
@@ -122,29 +176,35 @@ defmodule Ipse.Session.ProvidedSourceSetSessionTest do
 
   defp no_connection!(socket), do: assert({:error, :timeout} = :gen_tcp.accept(socket, 0))
 
-  defp config(c, base, registered) do
-    {:ok, artifact} = Artifact.import(c.artifact, Path.join(c.home, "extensions/artifacts"))
+  defp config(c, base, registered, feed \\ false) do
+    selected =
+      [{"probe", c.artifact, c.capabilities, "persistent"}] ++
+        if(feed, do: [{"feed", c.feed_artifact, ["event.feed"], "session"}], else: [])
 
-    data = %{
-      "extensions" => [
-        %{
-          "instance" => "probe",
-          "artifact" => artifact.digest,
-          "enabled" => true,
-          "options" => %{},
-          "order" => 1,
-          "lifetime" => "persistent"
-        }
-      ],
-      "extension_trust" => [
-        %{
-          "artifact" => artifact.digest,
-          "capabilities" => c.capabilities,
-          "allow_project" => false,
-          "allow_children" => false
-        }
-      ]
-    }
+    {extensions, trust} =
+      selected
+      |> Enum.with_index(1)
+      |> Enum.map(fn {{instance, path, caps, lifetime}, order} ->
+        {:ok, artifact} = Artifact.import(path, Path.join(c.home, "extensions/artifacts"))
+
+        {%{
+           "instance" => instance,
+           "artifact" => artifact.digest,
+           "enabled" => true,
+           "options" => %{},
+           "order" => order,
+           "lifetime" => lifetime
+         },
+         %{
+           "artifact" => artifact.digest,
+           "capabilities" => caps,
+           "allow_project" => false,
+           "allow_children" => false
+         }}
+      end)
+      |> Enum.unzip()
+
+    data = %{"extensions" => extensions, "extension_trust" => trust}
 
     {:ok, selected} =
       Config.resolve([%{scope: "operator", path: Path.join(c.home, "o.json"), data: data}], [])
@@ -246,10 +306,8 @@ defmodule Ipse.Session.ProvidedSourceSetSessionTest do
     assert :ok = Session.invoke_export(pid, :command, @name, args(nil, [source()]))
     assert {:ok, []} = settle(pid)
 
-    assert Session.info(pid).extension_result["value"] == %{
-             "status" => "ok",
-             "query" => "quiescence"
-           }
+    assert %{"status" => "ok", "query" => "quiescence", "coverage" => %{"as_of_ms" => as_of}} =
+             Session.info(pid).extension_result["value"]
 
     assert :ok = Session.close_confirmed(pid)
 
@@ -258,6 +316,7 @@ defmodule Ipse.Session.ProvidedSourceSetSessionTest do
     set = Enum.at(events, parent + 1)
     assert set["type"] == "provided_source_set_intent"
     assert ProvidedSourceSet.valid_intent?(set, Enum.at(events, parent))
+    assert set["selected_at_ms"] <= as_of
     assert set["transition_ms"] == nil and set["source_count"] == 1
     release = index(events, &(&1["type"] == "provided_source_set_release"))
     result = index(events, &(&1["type"] == "extension_invocation_result"))
@@ -421,5 +480,244 @@ defmodule Ipse.Session.ProvidedSourceSetSessionTest do
       refute Enum.any?(events, &(&1["type"] == "inference_dispatch_intent"))
       IO.puts("#{inspect(__MODULE__)}: unsupported service filesystem; registered send NOT RUN")
     end
+  end
+
+  test "a feed observing the admitted parent records its delivery after the set intent", c do
+    {_, base} = listener()
+    config = config(c, base, false, true)
+    pid = start(c, config)
+    id = Session.info(pid).id
+    assert :ok = Session.invoke_export(pid, :command, @name, args(nil, [source()]))
+    assert {:ok, []} = settle(pid)
+    assert :ok = Session.close_confirmed(pid)
+
+    {:ok, events} = Journal.load(c.sessions, id)
+    parent = index(events, &(&1["type"] == "extension_invocation_intent"))
+    assert Enum.at(events, parent + 1)["type"] == "provided_source_set_intent"
+    feed = index(events, &(&1["type"] == "extension_feed_delivery_intent"))
+    assert is_integer(feed) and feed > parent + 1
+    assert :ok = ProvidedSourceSet.validate_events(events)
+    assert {:ok, _} = Session.Saved.restore(events, id)
+
+    {:ok, resumed} =
+      DynamicSupervisor.start_child(
+        Ipse.Sessions,
+        {Session, config: config, cwd: c.cwd, state_dir: c.sessions, id: id, subscriber: self()}
+      )
+
+    assert Session.info(resumed).extension_result["value"]["historical_receipt"] == true
+    assert :ok = Session.close_confirmed(resumed)
+  end
+
+  test "a journal ending after a bare contract intent resumes as never started", c do
+    {_, base} = listener()
+    config = config(c, base, false)
+    pid = start(c, config)
+    id = Session.info(pid).id
+    assert :ok = Session.invoke_export(pid, :command, @name, args(nil, [source()]))
+    assert {:ok, []} = settle(pid)
+    assert :ok = Session.close_confirmed(pid)
+
+    # Simulate a crash between the two appends: keep every line through the
+    # invocation intent and nothing after it.
+    path = Path.join(c.sessions, id <> ".jsonl")
+    lines = path |> File.read!() |> String.split("\n", trim: true)
+
+    parent =
+      Enum.find_index(lines, &(Jason.decode!(&1)["type"] == "extension_invocation_intent"))
+
+    File.write!(path, Enum.map_join(Enum.take(lines, parent + 1), &(&1 <> "\n")))
+    {:ok, truncated} = Journal.load(c.sessions, id)
+    assert List.last(truncated)["type"] == "extension_invocation_intent"
+    assert :ok = ProvidedSourceSet.validate_events(truncated)
+    assert {:ok, _} = Session.Saved.restore(truncated, id)
+
+    {:ok, resumed} =
+      DynamicSupervisor.start_child(
+        Ipse.Sessions,
+        {Session, config: config, cwd: c.cwd, state_dir: c.sessions, id: id, subscriber: self()}
+      )
+
+    assert Session.info(resumed).phase == :idle
+    assert :ok = Session.close_confirmed(resumed)
+    {:ok, reopened} = Journal.load(c.sessions, id)
+
+    refute Enum.any?(
+             reopened,
+             &(&1["type"] in ~w(provided_source_set_intent provided_source_set_release extension_invocation_result))
+           )
+
+    assert :ok = ProvidedSourceSet.validate_events(reopened)
+  end
+
+  test "a journal without room for both begin records writes neither", c do
+    {_, base} = listener()
+    probe = start(c, config(c, base, false))
+    probe_id = Session.info(probe).id
+    assert :ok = Session.invoke_export(probe, :command, @name, args(nil, [source()]))
+    assert {:ok, []} = settle(probe)
+    assert :ok = Session.close_confirmed(probe)
+    {:ok, events} = Journal.load(c.sessions, probe_id)
+    before = index(events, &(&1["type"] == "extension_invocation_intent"))
+
+    # Around the limit that fits only the invocation intent and its quota
+    # marker, the pair is either written together or refused with neither.
+    for slack <- -1..3 do
+      config = Map.put(config(c, base, false), :journal, %{"max_events" => before + 2 + slack})
+      pid = start(c, config)
+      id = Session.info(pid).id
+      monitor = Process.monitor(pid)
+      assert :ok = Session.invoke_export(pid, :command, @name, args(nil, [source()]))
+
+      receive do
+        {:ipse, ^pid, {:done, _}} -> :ok
+        {:DOWN, ^monitor, :process, ^pid, _} -> :ok
+      after
+        15_000 -> flunk("limited invocation did not settle")
+      end
+
+      if Process.alive?(pid), do: Session.close_confirmed(pid)
+      {:ok, saved} = Journal.load(c.sessions, id)
+
+      case index(saved, &(&1["type"] == "extension_invocation_intent")) do
+        nil -> refute Enum.any?(saved, &(&1["type"] == "provided_source_set_intent"))
+        parent -> assert Enum.at(saved, parent + 1)["type"] == "provided_source_set_intent"
+      end
+
+      assert :ok = ProvidedSourceSet.validate_events(saved)
+    end
+  end
+
+  test "a result reporting an as-of time before selection is withheld", c do
+    {_, base} = listener()
+    pid = start(c, config(c, base, false))
+    id = Session.info(pid).id
+    assert :ok = Session.invoke_export(pid, :command, @name, args("stale", [source()]))
+    assert {:error, []} = settle(pid)
+    assert_received {:ipse, ^pid, {:error, message}}
+    assert message =~ "as-of time outside its provided source set"
+    assert :ok = Session.close_confirmed(pid)
+    {:ok, events} = Journal.load(c.sessions, id)
+    release = Enum.find(events, &(&1["type"] == "provided_source_set_release"))
+    assert release["decision"] == "withheld"
+    refute Enum.any?(events, &(&1["type"] == "extension_invocation_result"))
+    assert :ok = ProvidedSourceSet.validate_events(events)
+    assert {:ok, _} = Session.Saved.restore(events, id)
+  end
+
+  test "a fenced invocation cannot open saved output pages", c do
+    {_, base} = listener()
+    pid = start(c, config(c, base, false))
+    id = Session.info(pid).id
+    assert :ok = Session.invoke_export(pid, :command, @name, args("saved", [source()]))
+    assert {:error, []} = settle(pid)
+    assert :ok = Session.close_confirmed(pid)
+    {:ok, events} = Journal.load(c.sessions, id)
+    assert Enum.any?(events, &(&1["type"] == "provided_source_set_intent"))
+
+    refute Enum.any?(
+             events,
+             &(&1["type"] in ~w(extension_output_begin extension_output_chunk extension_output_seal extension_invocation_result provided_source_set_release))
+           )
+
+    assert :ok = ProvidedSourceSet.validate_events(events)
+    assert {:ok, _} = Session.Saved.restore(events, id)
+  end
+
+  test "owner inference boundaries apply the fence clock exactly", c do
+    {socket, base} = listener()
+    pid = start(c, config(c, base, true))
+    expires = System.system_time(:millisecond) + 3_600_000
+    assert :ok = Session.invoke_export(pid, :command, @name, args("judge", [source(expires)]))
+    assert_receive {:ipse, ^pid, {:approval, ref, "extension:model.complete", _}}, 15_000
+    test = self()
+
+    # The boundaries run in the Session owner against a copy of its state; the
+    # owner keeps its original state and the pending approval is then denied.
+    :sys.replace_state(pid, fn owner ->
+      send(test, {:boundaries, boundaries(owner, expires)})
+      owner
+    end)
+
+    assert_receive {:boundaries, results}, 15_000
+    assert :ok = Session.approve(pid, ref, false)
+    settle(pid)
+    no_connection!(socket)
+
+    assert Enum.map(results, &elem(&1, 0)) ==
+             ~w(begin_inference commit wire_use result_admit)a
+
+    for {boundary, checks} <- results do
+      assert checks == %{rollback: :refused, transition: :refused, before: :admitted},
+             "#{boundary}: #{inspect(checks)}"
+    end
+  end
+
+  # Drives each owner boundary with one state at three fence clock readings:
+  # below the high-water, exactly at the transition and one millisecond before
+  # it. Only the clock differs between the three calls.
+  defp boundaries(owner, transition) do
+    action = owner.invocation.action
+    intent = Map.put(action.intent, "approval", "approved")
+
+    s = %{
+      owner
+      | invocation: %{owner.invocation | action: %{action | intent: intent}},
+        task: %{owner.task | pid: self()}
+    }
+
+    # Record the approved action exactly as an approval would.
+    s = Session.record_extension_action(s, intent)
+
+    at = fn s, now ->
+      fence = Map.put(s.invocation.provided_set, :clock, fn -> now end)
+      %{s | invocation: %{s.invocation | provided_set: fence}}
+    end
+
+    before = transition - 1
+    label = fn admitted -> if admitted, do: :admitted, else: :refused end
+
+    check = fn name, s, call, admitted? ->
+      {name,
+       Map.new([rollback: before - 1, transition: transition, before: before], fn {key, now} ->
+         {key, label.(admitted?.(call.(at.(s, now))))}
+       end)}
+    end
+
+    # begin_inference journals accounting when it admits, so its refused cases
+    # run first and its single admitted call, which raises the high-water to
+    # `before`, supplies the state for the later boundaries.
+    begin = &Session.Invocation.begin_inference(&1, :extension_model_begin, intent)
+    begun? = &match?({:reply, {:ok, _, _, _}, _}, &1)
+    selected = s.invocation.provided_set.intent["selected_at_ms"]
+    rollback = label.(begun?.(begin.(at.(s, selected - 1))))
+    at_transition = label.(begun?.(begin.(at.(s, transition))))
+    {:reply, {:ok, _, admission, dispatch}, s} = begin.(at.(s, before))
+    phase = "model.complete"
+    expected = dispatch.expected
+
+    {:ok, %{route: route}} =
+      Ipse.InferenceDispatch.selection(s.config, dispatch.runtime, phase, "answer")
+
+    commit =
+      &Session.InferenceDispatch.commit(&1, self(), phase, admission, expected, %{
+        "route" => route,
+        "reservation_id" => Usage.id()
+      })
+
+    wire =
+      &Session.InferenceDispatch.wire_use(&1, self(), phase, admission, expected, dispatch.wire)
+
+    digest = Ipse.JSON.sha256("model output")
+
+    result =
+      &Session.InferenceDispatch.result_admit(&1, self(), phase, admission, expected, digest)
+
+    [
+      {:begin_inference, %{rollback: rollback, transition: at_transition, before: :admitted}},
+      check.(:commit, s, commit, &match?({:reply, {:ok, _}, _}, &1)),
+      check.(:wire_use, s, wire, &match?({:reply, :ok, _}, &1)),
+      check.(:result_admit, s, result, &match?({:reply, :ok, _}, &1))
+    ]
   end
 end

@@ -7808,11 +7808,9 @@ defmodule Ipse.Session do
     record_extension_lineage(s, event)
 
     result =
-      if event["type"] not in ~w(input_received reference_admitted reference_refresh reference_epoch reference_envelope) and
-           ((s.observation != nil and s.observation.policy["mode"] != "off") or
-              Feeds.active?(s.feeds)),
-         do: Writer.append_observed(s.journal_writer, event),
-         else: Writer.append(s.journal_writer, event)
+      if observed_record?(s, event),
+        do: Writer.append_observed(s.journal_writer, event),
+        else: Writer.append(s.journal_writer, event)
 
     case result do
       :ok -> :ok
@@ -7820,6 +7818,64 @@ defmodule Ipse.Session do
       {:error, reason} -> journal_failed(s, reason)
     end
   end
+
+  @doc false
+  # Appends records, with any draft-lineage markers, contiguously against one
+  # journal reservation. A refused reservation writes none of them. Observation
+  # and feeds see the records only after the last append, so no feed delivery
+  # intent can fall between them.
+  def record_adjacent(s, events) do
+    lines =
+      Enum.flat_map(events, fn event ->
+        if s.draft_lineages != [] and Ipse.Session.DraftLineage.extension_target?(event),
+          do: [
+            {:marker,
+             Ipse.Session.DraftLineage.extension_intent(s.id, s.turn_id, event, s.draft_lineages)},
+            {:record, event}
+          ],
+          else: [{:record, event}]
+      end)
+
+    capacity = %{
+      bytes: Enum.sum(Enum.map(lines, fn {_, line} -> byte_size(Jason.encode!(line)) + 1 end)),
+      events: length(lines)
+    }
+
+    case Writer.reserve(s.journal_writer, capacity) do
+      {:ok, token} ->
+        offers =
+          Enum.flat_map(lines, fn {kind, event} ->
+            result =
+              if kind == :record and observed_record?(s, event),
+                do: Writer.append_reserved_observed(s.journal_writer, token, event),
+                else: Writer.append_reserved(s.journal_writer, token, event)
+
+            case result do
+              :ok -> []
+              {:ok, source} -> [{source, event}]
+              {:error, reason} -> journal_failed(s, reason)
+            end
+          end)
+
+        case Writer.release(s.journal_writer, token) do
+          :ok -> Enum.each(offers, fn {source, event} -> offer_record(s, source, event) end)
+          {:error, reason} -> journal_failed(s, reason)
+        end
+
+      {:error, reason}
+      when reason in [:journal_reservation_unavailable, :journal_limit_reached] ->
+        {:error, :journal_capacity_insufficient}
+
+      {:error, reason} ->
+        journal_failed(s, reason)
+    end
+  end
+
+  defp observed_record?(s, event),
+    do:
+      event["type"] not in ~w(input_received reference_admitted reference_refresh reference_epoch reference_envelope) and
+        ((s.observation != nil and s.observation.policy["mode"] != "off") or
+           Feeds.active?(s.feeds))
 
   @doc false
   def record_source(s, event) do

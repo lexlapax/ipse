@@ -240,7 +240,11 @@ defmodule Ipse.Session.ProvidedSourceSetTest do
     {:ok, event, _} = Set.begin(good, @selected)
 
     result =
-      Map.merge(good, %{"type" => "extension_invocation_result", "version" => 1, "value" => %{}})
+      Map.merge(good, %{
+        "type" => "extension_invocation_result",
+        "version" => 1,
+        "value" => %{"coverage" => %{"as_of_ms" => @selected + 2}}
+      })
 
     release = Set.release(event, "current", @selected + 5, result)
 
@@ -248,6 +252,8 @@ defmodule Ipse.Session.ProvidedSourceSetTest do
       "type" => "extension_action_intent",
       "parent_invocation_id" => good["invocation_id"]
     }
+
+    feed = %{"type" => "extension_feed_delivery_intent", "sequence" => 1}
 
     complete = [
       good,
@@ -258,24 +264,114 @@ defmodule Ipse.Session.ProvidedSourceSetTest do
     ]
 
     assert Set.validate_events(complete) == :ok
+    assert Set.validate_events([good, feed, event | Enum.drop(complete, 2)]) == :ok
 
     assert Set.validate_events([good, event]) == :ok
     assert Set.validate_events([good, event, Set.release(event, "withheld", 2_000, nil)]) == :ok
 
+    # A contract intent without its set intent was interrupted before the worker
+    # started: restore accepts it, and a later invocation may follow.
+    other = parent([source("two")]) |> Map.put("invocation_id", String.duplicate("e", 32))
+    other = put_in(other, ["payload", "invocation_id"], other["invocation_id"])
+    {:ok, other_event, _} = Set.begin(other, @selected)
+    assert Set.validate_events([good]) == :ok
+    assert Set.validate_events([good, feed, %{"type" => "message"}]) == :ok
+    assert Set.validate_events([good, other, other_event]) == :ok
+
+    stale = fn value ->
+      stale = %{result | "value" => value}
+      [good, event, Set.release(event, "current", @selected + 5, stale), stale]
+    end
+
     for bad <- [
-          [good],
-          [good, %{"type" => "message"}, event],
           [event],
           [good, Map.put(event, "set_sha256", String.duplicate("0", 64))],
+          [good, Map.put(model, "request", %{"op" => "model.complete"})],
+          [good, feed, release],
+          [good, result],
+          [good, other, event],
+          [good, other, other_event, Map.put(model, "request", %{"op" => "model.complete"})],
+          [good, other, other_event, result],
           [good, event, Map.put(model, "request", %{"op" => "state.put"}), release, result],
           [good, event, result],
           [good, event, Set.release(event, "withheld", 2_000, nil), result],
           [good, event, release, Map.put(result, "value", %{"forged" => true})],
           [good, event, release, %{result | "version" => 2}],
-          [good, event, release, release, result]
+          [good, event, release, release, result],
+          stale.(%{"coverage" => %{"as_of_ms" => @selected - 1}}),
+          stale.(%{"coverage" => %{"as_of_ms" => @selected + 6}}),
+          stale.(%{"coverage" => %{}}),
+          stale.(%{})
         ] do
       assert Set.validate_events(bad) == {:error, :invalid_provided_source_set}
     end
+  end
+
+  test "a delivered value must report an as-of time inside the fence" do
+    good = parent([source("one", %{"expires_at_ms" => 2_000})])
+    {:ok, event, _} = Set.begin(good, @selected)
+    at = &%{"coverage" => %{"as_of_ms" => &1}}
+
+    assert Set.result_as_of?(good, event, at.(@selected), 1_500)
+    assert Set.result_as_of?(good, event, at.(1_500), 1_500)
+    refute Set.result_as_of?(good, event, at.(@selected - 1), 1_500)
+    refute Set.result_as_of?(good, event, at.(1_501), 1_500)
+    refute Set.result_as_of?(good, event, at.(2_000), 2_500)
+    refute Set.result_as_of?(good, event, at.(-1), 1_500)
+    refute Set.result_as_of?(good, event, %{"coverage" => %{"as_of_ms" => "1500"}}, 1_500)
+    refute Set.result_as_of?(good, event, %{"status" => "ok"}, 1_500)
+
+    refusal = %{"status" => "refused", "evidence" => [], "claims" => [], "coverage" => %{}}
+    assert Set.result_as_of?(good, event, refusal, 1_500)
+    refute Set.result_as_of?(good, event, %{refusal | "evidence" => [%{}]}, 1_500)
+
+    # An explicit investigation time must be reported exactly, whatever the clock.
+    explicit = put_in(good, ["payload", "arguments", "as_of_ms"], 5_000)
+    {:ok, explicit_event, _} = Set.begin(explicit, @selected)
+    assert explicit_event["transition_ms"] == nil
+    assert Set.result_as_of?(explicit, explicit_event, at.(5_000), 1_500)
+    refute Set.result_as_of?(explicit, explicit_event, at.(1_500), 1_500)
+  end
+
+  test "an installed fence clock drives every boundary check deterministically" do
+    good = parent([source("one", %{"expires_at_ms" => 2_000})])
+    {:ok, _, fence} = Set.begin(good, @selected)
+
+    clocked = fn now ->
+      %{invocation: %{parent: good, provided_set: Map.put(fence, :clock, fn -> now end)}}
+    end
+
+    assert Set.now(clocked.(1_999)) == 1_999
+    assert {:ok, next} = Set.guard(clocked.(1_999), "model.complete")
+    assert next.invocation.provided_set.high_water == 1_999
+    assert Set.guard(clocked.(2_000), "model.complete") == :error
+    assert Set.guard(clocked.(@selected - 1), "model.complete") == :error
+    assert Set.guard(clocked.(1_500), "embedding.create") == :error
+    unclocked = %{invocation: %{parent: good, provided_set: fence}}
+    assert_in_delta Set.now(unclocked), System.system_time(:millisecond), 5_000
+  end
+
+  test "dispatch refuses a fenced call that selects an unregistered route before any IO" do
+    parent = self()
+    execute = fn _, _, _ -> send(parent, :executed) && {:ok, "sent", %{}} end
+
+    run =
+      &Ipse.InferenceDispatch.run(
+        %{},
+        %{provider: :demo},
+        "main",
+        nil,
+        &1,
+        fn _ -> :ok end,
+        fn _ -> :ok end,
+        execute
+      )
+
+    assert {:error, message} = run.(%{admission: %{}, provided_set: true})
+    assert message =~ "registered inference route"
+    refute_received :executed
+    assert {:ok, "sent", _} = run.(%{admission: %{}, provided_set: false})
+    assert_received :executed
   end
 
   test "restored fenced results display only a historical receipt" do
