@@ -3,6 +3,7 @@ import ExUnit.Assertions
 {:ok, _} = Application.ensure_all_started(:ipse)
 Code.require_file(Path.expand("provider_fixture.ex", __DIR__))
 Code.require_file(Path.expand("native_recall_filler.exs", __DIR__))
+Code.require_file(Path.expand("native_recall_reuse.exs", __DIR__))
 
 for key <- ~w(IPSE_PROVIDER IPSE_MODEL IPSE_CONFIG IPSE_PROFILE IPSE_SANDBOX IPSE_SUBAGENTS),
     do: System.delete_env(key)
@@ -163,7 +164,7 @@ defmodule NativeNoteRecall do
 end
 
 [root, mode] = System.argv()
-assert mode in ~w(save save_race)
+assert mode in ~w(save save_race save_reuse save_reuse_seed)
 home = Path.join(root, "home")
 cwd = Path.join(root, "work")
 
@@ -273,6 +274,139 @@ assert {:ok, first_events} = Ipse.Journal.load(dir, id)
 NativeNoteRecall.chronology(first_events, 1)
 NativeNoteRecall.recall_reads(first_events)
 refute Enum.any?(first_events, &(&1["type"] in ~w(extension_inference_intent decision_intent)))
+
+# Worker input may reuse a native record result only at the identical root.
+# Count the records each native batch reads; every check that follows the
+# read still decides the outcome.
+if mode in ~w(save_reuse save_reuse_seed) do
+  alias Ipse.Extension.{Collection, Consent, SemanticAdmission}
+  state = :sys.get_state(session)
+  context = %{config: state.config, cwd: cwd, session_id: state.id, history_dir: dir}
+  keys = Enum.map(page["records"], & &1["key"])
+  dependencies = NativeRecallReuse.literals(first_events)
+  assert Enum.sort(Enum.map(dependencies, & &1["subject"]["key"])) == Enum.sort(keys)
+
+  # The expiry control continues from this state in a second runtime whose
+  # wall clock starts just before the only note deadline.
+  if mode == "save_reuse_seed" do
+    facts = Path.join(root, "reuse-expiry.json")
+    saved = %{"session" => id, "dependencies" => dependencies}
+    File.write!(facts, Jason.encode!(saved), [:exclusive])
+    File.chmod!(facts, 0o600)
+    assert :ok = Ipse.Session.close_confirmed(session)
+    Task.shutdown(server, :brutal_kill)
+    IO.puts("NATIVE_NOTE_RECALL_REUSE_SEEDED")
+    System.halt(0)
+  end
+
+  counter = NativeRecallReuse.start()
+  input = &NativeRecallReuse.input(counter, &1, &2)
+  root_of = fn result -> result.current |> Enum.map(& &1["collection"]) |> Enum.uniq() end
+
+  # At an unchanged root each protected pass natively reads one record and
+  # reproduces the complete earlier result.
+  assert {{:ok, expected}, _, true} = input.(context, dependencies)
+  assert length(expected.current) == 3
+  assert [before_root] = root_of.(expected)
+  assert {{:ok, ^expected}, [1, 1], true} = input.(context, dependencies)
+
+  # An unrelated commit changes the root. The first pass finds the difference
+  # with its one native read and reads the other records again.
+  assert {:ok, current} =
+           Collection.execute(
+             collection,
+             pin["namespace"],
+             %{"op" => "snapshot"},
+             Ipse.Usage.id()
+           )
+
+  assert {:ok, _} =
+           Collection.execute(
+             collection,
+             pin["namespace"],
+             %{
+               "op" => "commit",
+               "expected_generation" => current["generation"],
+               "advance_floor" => false,
+               "changes" => [
+                 %{
+                   "key" => "fixture.post_recall_change",
+                   "expected_revision" => 0,
+                   "value" => %{"synthetic" => true}
+                 }
+               ]
+             },
+             Ipse.Usage.id()
+           )
+
+  assert {{:ok, changed}, [1, 2, 1], true} = input.(context, dependencies)
+  assert [changed_root] = root_of.(changed)
+  assert changed_root["generation"] == current["generation"] + 1
+  assert changed_root != before_root
+  assert changed.proofs == expected.proofs
+
+  assert Enum.map(changed.current, &Map.delete(&1, "collection")) ==
+           Enum.map(expected.current, &Map.delete(&1, "collection"))
+
+  assert {{:ok, ^changed}, [1, 1], true} = input.(context, dependencies)
+
+  # Reused records still need their original source. Withdrawing it at the
+  # unchanged root withholds the input after the same single native read.
+  journal = Path.join(dir, source_id <> ".jsonl")
+  File.rename!(journal, journal <> ".held")
+
+  try do
+    assert {refused, [1], false} = input.(context, dependencies)
+    refute match?({:ok, _}, refused)
+  after
+    File.rename!(journal <> ".held", journal)
+  end
+
+  assert {{:ok, ^changed}, [1, 1], true} = input.(context, dependencies)
+
+  # A Session policy that no longer matches the protected one refuses before
+  # any record is read or reused, and leaves the remembered results usable.
+  narrowed =
+    put_in(
+      context,
+      [:config, :semantic_admission, "policy", "settings", "sources", "categories"],
+      []
+    )
+
+  assert {refused, [], false} = input.(narrowed, dependencies)
+  refute match?({:ok, _}, refused)
+  assert {{:ok, ^changed}, [1, 1], true} = input.(context, dependencies)
+
+  # Forgetting a note changes the root and removes a dependency. The old set
+  # refuses; the remaining records are natively read again at the new root.
+  preference = Enum.find(page["records"], &(&1["value"]["category"] == "preference"))
+  assert Ipse.CLI.run(["knowledge", "forget", preference["key"]] ++ cli_args) == 0
+  assert {refused, forgotten_batches, false} = input.(context, dependencies)
+  refute match?({:ok, _}, refused)
+  assert forgotten_batches in [[1], [1, 2]]
+
+  remaining =
+    NativeRecallReuse.union(
+      Enum.reject(dependencies, &(&1["subject"]["key"] == preference["key"]))
+    )
+
+  assert {{:ok, kept}, [1, 1, 1], true} = input.(context, remaining)
+  assert [kept_root] = root_of.(kept)
+  assert kept_root["generation"] > changed_root["generation"]
+  assert length(kept.current) == 2
+  assert {{:ok, ^kept}, [1, 1], true} = input.(context, remaining)
+
+  # Revoked consent refuses before any record is read or reused.
+  control = SemanticAdmission.control_root(home)
+  assert {:ok, policy} = Consent.snapshot(control, pin["project_id"])
+  assert {:ok, _} = Consent.revoke(control, pin["project_id"], policy["epoch"])
+  assert {refused, [], false} = input.(context, remaining)
+  refute match?({:ok, _}, refused)
+  if Process.alive?(session), do: Ipse.Session.close(session)
+  Task.shutdown(server, :brutal_kill)
+  IO.puts("NATIVE_NOTE_RECALL_REUSE_PASSED")
+  System.halt(0)
+end
 
 if mode == "save_race" do
   assert {:ok, raced} = DynamicSupervisor.start_child(Ipse.Sessions, {Ipse.Session, opts})

@@ -17,7 +17,8 @@ defmodule Ipse.Session.ManagedUse do
     Mode,
     ProjectIdentity,
     SemanticAdmission,
-    SemanticConsent
+    SemanticConsent,
+    ValidatedMemo
   }
 
   alias Ipse.Session.{ManagedReference, PendingAcceptance, Resources, StoredSources}
@@ -312,7 +313,7 @@ defmodule Ipse.Session.ManagedUse do
 
     with {:ok, first} <-
            protected(context, dependencies, fn cap, catalog, _ ->
-             observe(context, dependencies, cap, catalog, journals, true)
+             observe(context, dependencies, cap, catalog, journals, :coalesced)
            end),
          true <- length(first.proofs) <= @max_sources do
       use = fn _ ->
@@ -320,7 +321,8 @@ defmodule Ipse.Session.ManagedUse do
           checked_observation(
             use_deadline(policy, first.current),
             fn ->
-              with {:ok, ^first} <- observe(context, dependencies, cap, catalog, journals, true),
+              with {:ok, ^first} <-
+                     observe(context, dependencies, cap, catalog, journals, :coalesced),
                    true <-
                      Enum.all?(Enum.zip(dependencies, first.current), fn {old, current} ->
                        ManagedReference.current?(old, current, System.system_time(:millisecond))
@@ -494,7 +496,7 @@ defmodule Ipse.Session.ManagedUse do
 
           with {:ok, first} <-
                  protected(context, dependencies, fn cap, catalog, _ ->
-                   observe(context, dependencies, cap, catalog, journals, purpose == :worker)
+                   observe(context, dependencies, cap, catalog, journals, observation(purpose))
                  end),
                true <- length(first.proofs) <= @max_sources do
             use = fn _sources, leases, active ->
@@ -514,7 +516,7 @@ defmodule Ipse.Session.ManagedUse do
                   journals,
                   journal_leases,
                   fun,
-                  purpose == :worker
+                  observation(purpose)
                 )
               else
                 @error
@@ -547,10 +549,10 @@ defmodule Ipse.Session.ManagedUse do
          journals,
          journal_leases,
          fun,
-         batch_v4
+         observation
        ) do
     protected(context, dependencies, fn cap, catalog, policy ->
-      with {:ok, ^first} <- observe(context, dependencies, cap, catalog, journals, batch_v4),
+      with {:ok, ^first} <- observe(context, dependencies, cap, catalog, journals, observation),
            policy = use_deadline(policy, first.current),
            deadline = min(policy["expires_at_ms"], System.system_time(:millisecond) + 5_000),
            true <- System.system_time(:millisecond) < deadline,
@@ -1153,11 +1155,19 @@ defmodule Ipse.Session.ManagedUse do
     end
   end
 
-  defp observe(c, dependencies, cap, catalog, journals, batch_v4 \\ false) do
+  # Worker input ends in a native owner that rechecks the observed root while it
+  # holds the Collection, so it may reuse an earlier native read at that root.
+  # Display and approval share the retained path but keep reading natively.
+  defp observation(:worker), do: :reused
+  defp observation(_), do: :each
+
+  defp observe(c, dependencies, cap, catalog, journals, observation \\ :each) do
     observed =
-      if batch_v4,
-        do: observe_all_coalesced(c, dependencies, cap, catalog, journals),
-        else: observe_all(c, dependencies, cap, catalog, journals)
+      case observation do
+        :each -> observe_all(c, dependencies, cap, catalog, journals)
+        :coalesced -> observe_all_coalesced(c, dependencies, cap, catalog, journals, false)
+        :reused -> observe_all_coalesced(c, dependencies, cap, catalog, journals, true)
+      end
 
     with {:ok, results} <- observed do
       Enum.reduce_while(dependencies, {:ok, %{current: [], proofs: []}}, fn dependency,
@@ -1179,21 +1189,27 @@ defmodule Ipse.Session.ManagedUse do
   # This changes internal observation and failure order: v4 reads run before
   # v3/v5/v6/v7 reads. Their current root identity can satisfy v3 comparisons in
   # this same pass. Each collection scope closes before other observations;
-  # no authority or results are shared between the two independent passes.
-  defp observe_all_coalesced(c, dependencies, cap, catalog, journals) do
+  # no authority is shared between the two independent passes. Ordinary use
+  # shares no results either; worker input may reuse exact native record
+  # results under the rule at `observe_v4_reused/6`.
+  defp observe_all_coalesced(c, dependencies, cap, catalog, journals, reuse) do
     pin = c.config[:semantic_admission]["pin"]
     root = SemanticAdmission.collection_root(c.config[:home])
+    v4 = Enum.filter(dependencies, &(&1["version"] == 4))
 
     batched =
-      dependencies
-      |> Enum.filter(&(&1["version"] == 4))
-      |> Enum.chunk_every(32)
-      |> Enum.reduce_while({:ok, %{}}, fn chunk, {:ok, cache} ->
-        case observe_v4_chunk(c, root, pin, chunk, cap, catalog, cache) do
-          {:ok, cache} -> {:cont, {:ok, cache}}
-          _ -> {:halt, @error}
-        end
-      end)
+      if reuse and v4 != [] do
+        observe_v4_reused(c, root, pin, v4, cap, catalog)
+      else
+        v4
+        |> Enum.chunk_every(32)
+        |> Enum.reduce_while({:ok, %{}}, fn chunk, {:ok, cache} ->
+          case observe_v4_chunk(c, root, pin, chunk, cap, catalog, cache) do
+            {:ok, cache} -> {:cont, {:ok, cache}}
+            _ -> {:halt, @error}
+          end
+        end)
+      end
 
     with {:ok, cache} <- batched do
       {results, _cache} =
@@ -1216,50 +1232,133 @@ defmodule Ipse.Session.ManagedUse do
       |> Enum.reject(&Map.has_key?(cache, observation_key(&1)))
       |> Enum.uniq_by(&observation_key/1)
 
-    if pending == [] do
+    with {:ok, specs} <- v4_specs(c, pending),
+         {:ok, {cache, _records}} <-
+           read_v4_specs(c, root, pin, specs, cap, catalog, {cache, %{}}) do
       {:ok, cache}
     else
-      with {:ok, specs} <- v4_specs(c, pending),
-           {:ok, records} <-
-             ObservedRead.managed_records_coalesced(
-               root,
-               pin["namespace"],
-               Enum.map(specs, fn {_dependency, request, recipe} -> {request, recipe} end),
-               cap,
-               catalog
-             ),
-           true <- length(records) == length(specs) do
-        Enum.zip(specs, records)
-        |> Enum.reduce_while({:ok, cache}, fn {{dependency, request, recipe}, record},
-                                              {:ok, acc} ->
-          case finish_v4_observation(c, pin, request, recipe, record) do
-            {:ok, current, _} = result ->
-              # This native-checked batch already observed this exact root in
-              # the current pass. Reuse only its identity, never its authority.
-              # Conflicting batch roots refuse; the next protected pass starts
-              # with a new cache and the final native owner rechecks the root.
-              root = {:ok, current["collection"]}
+      _ -> @error
+    end
+  end
 
-              case Map.get(acc, :root, root) do
-                ^root ->
-                  {:cont,
-                   {:ok,
-                    acc
-                    |> Map.put(:root, root)
-                    |> Map.put(observation_key(dependency), result)}}
+  # One native coalesced read of at most 32 admitted specs. `records` keeps the
+  # exact native results by observation key beside the checked dependencies.
+  defp read_v4_specs(_, _, _, [], _, _, acc), do: {:ok, acc}
 
-                _ ->
-                  {:halt, @error}
+  defp read_v4_specs(c, root, pin, specs, cap, catalog, acc) do
+    with {:ok, read} <-
+           ObservedRead.managed_records_coalesced(
+             root,
+             pin["namespace"],
+             Enum.map(specs, fn {_dependency, request, recipe} -> {request, recipe} end),
+             cap,
+             catalog
+           ),
+         true <- length(read) == length(specs) do
+      Enum.zip(specs, read)
+      |> Enum.reduce_while({:ok, acc}, fn {{dependency, _, _} = spec, record},
+                                          {:ok, {cache, records}} ->
+        case finish_v4_spec(c, pin, spec, record, cache) do
+          {:ok, cache} ->
+            {:cont, {:ok, {cache, Map.put(records, observation_key(dependency), record)}}}
+
+          _ ->
+            {:halt, @error}
+        end
+      end)
+    else
+      _ -> @error
+    end
+  end
+
+  # Current time, policy and source categories are applied to every record in
+  # every pass, whether its native result was read now or reused. All records
+  # of one pass must name one root. Reuse only its identity, never its
+  # authority: conflicting roots refuse and the final native owner rechecks it.
+  defp finish_v4_spec(c, pin, {dependency, request, recipe}, record, cache) do
+    with {:ok, current, _} = result <- finish_v4_observation(c, pin, request, recipe, record),
+         root = {:ok, current["collection"]},
+         ^root <- Map.get(cache, :root, root) do
+      {:ok, cache |> Map.put(:root, root) |> Map.put(observation_key(dependency), result)}
+    else
+      _ -> @error
+    end
+  end
+
+  # Worker input repeats the same growing dependency set on every delivery. A
+  # managed record result is a deterministic function of the Collection state
+  # committed by its root identity, the recipe and the authenticated catalog,
+  # so a result read earlier at the identical root and catalog is the result a
+  # new native read would return. The root of a pass is never taken from
+  # memory: every pass natively reads, with this pass's domain-auth capability,
+  # all records it does not hold or else one that it holds, and remembered
+  # results are used only when that fresh read names the remembered root and
+  # reproduces the remembered record. Any difference reads every record again.
+  defp observe_v4_reused(c, root, pin, dependencies, cap, catalog) do
+    slot = {__MODULE__, root, pin["namespace"], pin["project_id"], JSON.digest([pin])}
+    key = fn {dependency, _, _} -> observation_key(dependency) end
+
+    with {:ok, specs} <- v4_specs(c, Enum.uniq_by(dependencies, &observation_key/1)) do
+      {tag, known} =
+        case ValidatedMemo.fetch(slot) do
+          {:ok, {_identity, ^catalog} = tag, known} when is_map(known) -> {tag, known}
+          _ -> {nil, %{}}
+        end
+
+      {held, pending} = Enum.split_with(specs, &Map.has_key?(known, key.(&1)))
+      {probe, held} = if pending == [], do: Enum.split(held, 1), else: {[], held}
+
+      with {:ok, {cache, fresh}} <-
+             read_v4_chunks(c, root, pin, pending ++ probe, cap, catalog, {%{}, %{}}),
+           {:ok, identity} <- Map.fetch!(cache, :root) do
+        same =
+          tag === {identity, catalog} and
+            Enum.all?(probe, &(Map.fetch!(fresh, key.(&1)) === Map.fetch!(known, key.(&1))))
+
+        observed =
+          if same do
+            held
+            |> Enum.reduce_while({:ok, cache}, fn spec, {:ok, cache} ->
+              case finish_v4_spec(c, pin, spec, Map.fetch!(known, key.(spec)), cache) do
+                {:ok, cache} -> {:cont, {:ok, cache}}
+                _ -> {:halt, @error}
               end
-
-            _ ->
-              {:halt, @error}
+            end)
+            |> case do
+              {:ok, cache} -> {:ok, {cache, Map.merge(known, fresh)}}
+              _ -> @error
+            end
+          else
+            read_v4_chunks(c, root, pin, held, cap, catalog, {cache, fresh})
           end
-        end)
-      else
-        _ -> @error
+
+        with {:ok, {cache, records}} <- observed do
+          # Only native results of a pass whose every v4 record passed its
+          # checks are remembered. A changed root or catalog replaces the
+          # whole map; the map never exceeds one bounded dependency set.
+          records =
+            if map_size(records) > @max_sources,
+              do: Map.take(records, Enum.map(specs, key)),
+              else: records
+
+          if not same or pending != [],
+            do: ValidatedMemo.put(slot, {identity, catalog}, records)
+
+          {:ok, cache}
+        end
       end
     end
+  end
+
+  defp read_v4_chunks(c, root, pin, specs, cap, catalog, acc) do
+    specs
+    |> Enum.chunk_every(32)
+    |> Enum.reduce_while({:ok, acc}, fn chunk, {:ok, acc} ->
+      case read_v4_specs(c, root, pin, chunk, cap, catalog, acc) do
+        {:ok, acc} -> {:cont, {:ok, acc}}
+        _ -> {:halt, @error}
+      end
+    end)
   end
 
   defp v4_specs(c, dependencies) do

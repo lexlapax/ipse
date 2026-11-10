@@ -13,6 +13,56 @@ defmodule Ipse.Session.NativeNoteRecallTest do
     run("save_race")
   end
 
+  @tag timeout: 90_000
+  @tag :native_storage
+  test "worker input reuses native record results only at an identical root" do
+    run("save_reuse")
+  end
+
+  # The second runtime starts with its wall clock twenty seconds before the
+  # only note deadline; dev/fixtures/process_clock.rs fixes that offset
+  # before the runtime starts.
+  @tag timeout: 180_000
+  @tag :native_storage
+  test "a remembered record that expires at an unchanged root withholds worker input" do
+    {root, paths} = run("save_reuse_seed")
+    library = Path.join(root, "clock.so")
+
+    assert {"", 0} =
+             System.cmd(
+               "rustc",
+               ["--edition=2021", "-D", "warnings", "dev/fixtures/process_clock.rs"] ++
+                 ["--crate-type=cdylib", "-o", library],
+               stderr_to_stdout: true
+             )
+
+    %{"dependencies" => dependencies} =
+      root |> Path.join("reuse-expiry.json") |> File.read!() |> Jason.decode!()
+
+    assert [deadline] =
+             for(
+               dependency <- dependencies,
+               value = get_in(dependency, ["subject", "validity", "valid_until_ms"]),
+               is_integer(value),
+               do: value
+             )
+
+    offset = deadline - System.system_time(:millisecond) - 20_000
+    assert offset > 0
+
+    {output, status} =
+      System.cmd(
+        System.find_executable("elixir"),
+        ["--erl", "+S 2:2 +C multi_time_warp"] ++
+          paths ++ [Path.expand("test/support/native_recall_reuse_expiry.exs"), root],
+        stderr_to_stdout: true,
+        env: [{"LD_PRELOAD", library}, {"IPSE_TEST_CLOCK_OFFSET_MS", Integer.to_string(offset)}]
+      )
+
+    assert status == 0, String.slice(output, -8000, 8000)
+    assert output =~ "NATIVE_NOTE_RECALL_REUSE_EXPIRY_PASSED"
+  end
+
   @tag timeout: 300_000
   @tag :recall_many
   @tag skip:
@@ -101,6 +151,12 @@ defmodule Ipse.Session.NativeNoteRecallTest do
         "save_race" ->
           "NATIVE_NOTE_RECALL_RACE_PASSED"
 
+        "save_reuse" ->
+          "NATIVE_NOTE_RECALL_REUSE_PASSED"
+
+        "save_reuse_seed" ->
+          "NATIVE_NOTE_RECALL_REUSE_SEEDED"
+
         "recall-many" ->
           "NATIVE_NOTE_RECALL_MANY_PASSED"
 
@@ -116,5 +172,7 @@ defmodule Ipse.Session.NativeNoteRecallTest do
 
       IO.puts("NATIVE_NOTE_RECALL_RACE #{outcome}")
     end
+
+    {root, paths}
   end
 end

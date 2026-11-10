@@ -1,11 +1,11 @@
 defmodule Ipse.Extension.ValidatedMemo do
   @moduledoc """
-  Bounded reuse of pure validation over exact, freshly read protected bytes.
+  Bounded reuse of deterministic results over exact, freshly established inputs.
 
-  Protected owners still acquire their native locks and read and hash every
-  byte they read before this memo is consulted. Only the deterministic work on
-  those verified inputs is reused. Each owner names a slot and tags its value
-  with the hash of the exact input:
+  The validating owners still acquire their native locks and read and hash
+  every byte they read before this memo is consulted. Only the deterministic
+  work on those verified inputs is reused. Each owner names a slot and tags its
+  value with the hash of the exact input:
 
     * Collection: block unpacking, canonical re-encoding and state validation.
       The slot is the directory, project and storage profile; the tag is the
@@ -17,6 +17,21 @@ defmodule Ipse.Extension.ValidatedMemo do
       the SHA-256 of the installed cache's deterministic encoding.
     * Consent: control-ledger decoding and validation. The slot is the project;
       the tag is the SHA-256 of the exact `control.json` bytes.
+
+  One owner reuses the result of an authenticated native read instead of a
+  validation of bytes it has just read:
+
+    * Worker-input managed records (`Ipse.Session.ManagedUse`): the exact
+      native record results of the dependencies delivered to a worker, by
+      observation key. The slot is the Collection root path, project and pin;
+      the tag is the Collection root identity and the authenticated catalog.
+      The root identity commits to every stored page and value, so a result
+      read at that identity is what a new read would return. The owner never
+      takes the root from here: each protected pass natively reads at least
+      one record with its own capability and uses a remembered result only
+      when that read names this tag. Time, policy and source checks run on
+      every result in every pass, and the final native owner rechecks the
+      root while it holds the Collection.
 
   A slot holds one value. Admitting a value for a different tag replaces the
   previous one, so a superseded Collection state, including a record removed
@@ -45,6 +60,27 @@ defmodule Ipse.Extension.ValidatedMemo do
       table ->
         case :ets.lookup(table, slot) do
           [{^slot, ^tag, value}] -> {:ok, value}
+          _ -> :error
+        end
+    end
+  rescue
+    ArgumentError -> :error
+  end
+
+  @doc """
+  Return the slot's tag and value so an owner can plan which inputs to read.
+
+  The value is not yet usable: the owner must establish the same tag from a
+  fresh protected read before relying on it.
+  """
+  def fetch(slot) do
+    case :ets.whereis(@table) do
+      :undefined ->
+        :error
+
+      table ->
+        case :ets.lookup(table, slot) do
+          [{^slot, tag, value}] -> {:ok, tag, value}
           _ -> :error
         end
     end
