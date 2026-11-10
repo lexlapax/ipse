@@ -643,7 +643,8 @@ defmodule IpseKnowledge.Research do
       {:ok, ranked} ->
         ctx = Map.put(state.ctx, :ranked, ranked)
 
-        if state.ctx.args["rerank"] == nil do
+        # With nothing to order there is no request worth an approval.
+        if state.ctx.args["rerank"] == nil or ranked["evidence"] == [] do
           publish(%{state | ctx: ctx})
         else
           remaining = remaining_ms(ctx)

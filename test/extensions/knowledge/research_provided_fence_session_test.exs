@@ -465,6 +465,13 @@ defmodule Ipse.KnowledgeResearchProvidedFenceSessionTest do
     assert Enum.at(events, at.set)["transition_ms"] == nil
     refute any?(events, ~w(extension_action_intent inference_dispatch_intent request_admitted))
 
+    # A selected reranker has no candidates, so no approval or request follows.
+    {settled, value, events} = investigate(c, config, args("ordered", [expired]))
+    assert settled == {:ok, []}
+    assert %{"status" => "abstain", "evidence" => [], "gaps" => ^stale} = value
+    fenced_delivery!(events, value, [expired])
+    refute any?(events, ~w(extension_action_intent inference_dispatch_intent request_admitted))
+
     # Beside a current source, only the current one is cited.
     sources = [expired, source(nil, "order", "Quiescence precedes release of the release.")]
     {settled, value, events} = investigate(c, config, args(nil, sources))

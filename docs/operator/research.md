@@ -668,7 +668,9 @@ ranked candidate IDs (the adapter permits up to sixteen),
 canonical source references, and excerpts of at most 128 bytes. Input must fit
 4096 rendered bytes and output 8192 bytes, without silent truncation. The model
 must return every candidate ID exactly once; missing/duplicate/invented IDs fail
-without repair. Usage and [budget reservations](resources.md) still apply.
+without repair. When no source is eligible there is nothing to order, so
+Research asks for no approval and sends no request. Usage and
+[budget reservations](resources.md) still apply.
 Conforming output proves no ranking improvement or factual support.
 
 ## Fence a supplied-source rerank through delivery
@@ -737,10 +739,12 @@ These cases refuse:
   the action refuses before any approval prompt and sends nothing.
 - The worker asks for any search, fetch, State, MCP, embedding or other host call,
   or the invocation would combine with managed notes.
-- The command supplies no sources, more than ten, an incomplete source or an
-  undocumented argument: Ipse refuses before the worker starts with `The
-  provided source set was refused before the extension started.` Nothing is
-  journaled, approved or sent. Correct the command and repeat it.
+- The command supplies no sources or more than ten: its argument schema refuses
+  with `Extension command unavailable, invalid, or busy.` A source that lacks a
+  field or carries an undocumented one passes that schema, and Ipse refuses
+  before the worker starts with `The provided source set was refused before the
+  extension started.` Either way nothing is journaled, approved or sent.
+  Correct the command and repeat it.
 - A selected search or fetch profile is not the provided one: Research returns
   `invalid_provided_sources`.
 - The session journal cannot hold both the invocation intent and the source-set
