@@ -762,14 +762,40 @@ path and final root check but still read every literal natively, as do
 `with_dependencies/3`, historical verdicts and publication, which have no
 retained Collection owner of their own to compare with the observed root.
 
-One domain-auth capability admits 128 verifications and each literal uses three.
-A pass that must natively read more than 42 literals, such as the first input
-after a root change or in a new runtime, therefore refuses; reuse does not
-raise that allowance.
+One domain-auth capability admits 128 distinct verifications. Each literal read
+verifies three pages: the format page, the live page that holds the record and
+the anchor page that holds its lineage. An exact repeat of a page that already
+verified under the lease is answered without spending the allowance, so a pass
+spends one verification for each distinct page, not three for each literal. In
+a 64-note Collection the notes occupy four live pages and one anchor page: a
+pass over all 64 literals asks for 192 verifications and spends six, and a warm
+worker-input pass spends three.
+
+The number of distinct pages depends on the Collection, not only on the pass. A
+live page holds 12 to 26 notes and splits at the midpoint when it overflows, so
+2,000 notes occupy about 77 to 167 live pages and several dozen anchor pages.
+These figures are derived from the page planner, not measured. A pass over `R`
+records spends at most `1 + 2R` verifications, so 63 records fit whatever the
+layout. A larger pass over a large Collection can still exceed 128 distinct
+pages or the five-second lease and then refuses as a whole; reuse and
+deduplication do not raise either allowance. Display, approval, publication and
+historical verdicts read one literal per native call and take about 20 to 40
+milliseconds per record on the Linux test host, where the coalesced worker-input
+and dispatch reads take about five.
+
+One message occurrence carries at most 128 dependencies and 131,072 encoded
+bytes ([`ManagedReference.limits/0`](../../lib/ipse/session/managed_reference.ex)).
+A literal dependency encodes to about 1,546 bytes, so the byte bound binds
+first, near 80 literals. In the recall fixture, whose reference message also
+carries six source dependencies, a turn over 81 literals completes and a turn
+over 82 ends in error before dispatch.
+
 Run `mix test test/ipse/session/native_note_recall_test.exs` with native storage
 when changing this path. Its reuse control counts the records of each native
 batch across a root change, a withdrawn source, a forgotten note and revoked
-consent. Its expiry control starts a second runtime under the
+consent. With `IPSE_TEST_RECALL_MANY=1` it also reads 64 literals in one turn
+and runs the cold and warm worker-input passes, `with_dependencies/3`, display,
+approval and publication over the full set. Its expiry control starts a second runtime under the
 [process clock fixture](testing.md#follow-literal-relations-and-process-clock-retention) just before
 a note deadline and requires the remembered record to withhold the input.
 

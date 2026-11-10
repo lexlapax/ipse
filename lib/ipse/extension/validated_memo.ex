@@ -34,8 +34,13 @@ defmodule Ipse.Extension.ValidatedMemo do
       root while it holds the Collection.
 
   A slot holds one value. Admitting a value for a different tag replaces the
-  previous one, so a superseded Collection state, including a record removed
-  by a later generation, does not stay here after its successor validates.
+  previous one. A validating owner admits on every successful validation, so
+  a superseded Collection state does not stay in its slot after its successor
+  validates. The worker-input slot is replaced only by the next worker-input
+  pass for that pin. A record removed by a later commit can therefore stay in
+  host memory until that pass or until eviction. It is never delivered: the
+  pass's own native read names a different root, so the remembered results
+  are not used.
 
   A caller admits a value only after its own complete validation succeeded;
   refusals are never stored. A missing table or process falls back to complete
