@@ -460,14 +460,15 @@ defmodule Ipse.Development.CollectionDocumentPeaks do
 
     run =
       Enum.reduce_while(~w(initial rebuild), run, fn name, run ->
-        case phase(%{run | phase: name, job: nil}) do
-          {:ok, run} ->
-            phases = Map.put_new(run.totals["phases"], name, new_phase())
-            totals = Map.put(run.totals, "phases", put_in(phases[name]["complete"], true))
-            {:cont, %{run | totals: totals}}
-
-          {:stop, run} ->
-            {:halt, run}
+        # A phase's last Session is closed, and its journal scanned, before the
+        # next phase starts, so each close is counted in the phase that wrote it.
+        with {:ok, run} <- phase(%{run | phase: name, job: nil}),
+             {:ok, run} <- close(run) do
+          phases = Map.put_new(run.totals["phases"], name, new_phase())
+          totals = Map.put(run.totals, "phases", put_in(phases[name]["complete"], true))
+          {:cont, %{run | totals: totals}}
+        else
+          {:stop, run} -> {:halt, run}
         end
       end)
 

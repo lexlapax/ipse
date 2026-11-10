@@ -435,6 +435,14 @@ defmodule Ipse.Development.CollectionDocumentPeaksTest do
 
       assert Enum.count(trace, &(&1["record"] == "session_open")) == 8
       assert Enum.count(trace, &(&1["record"] == "session_close")) == 8
+
+      opened =
+        for %{"record" => "session_open"} = row <- trace, do: {row["session"], row["phase"]}
+
+      closed =
+        for %{"record" => "session_close"} = row <- trace, do: {row["session"], row["phase"]}
+
+      assert closed == opened
     end
 
     test "publishes per source, assembles per group and appends in one Job Session", %{log: log} do
