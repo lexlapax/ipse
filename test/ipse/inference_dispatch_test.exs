@@ -643,4 +643,71 @@ defmodule Ipse.InferenceDispatchTest do
       assert receipt["status"] == "settled"
     end)
   end
+
+  # The provided-set physical-send check runs in the ordinary inference task.
+  # The owner admits only its worker and tracked file effects, so a direct call
+  # from that task is a fence refusal before any provider IO. This runs without
+  # a supported service ledger, unlike the Session journey that reaches it.
+  test "the provided-set physical-send check reaches the owner as a tracked effect" do
+    parent = self()
+
+    owner =
+      spawn(fn ->
+        {:ok, scope} = Ipse.Session.Resources.start(self())
+
+        worker =
+          spawn(fn ->
+            {owner, scope} = receive do: ({:start, owner, scope} -> {owner, scope})
+            Ipse.Session.Resources.bind(scope)
+
+            context = %{
+              config: %{},
+              cwd: System.tmp_dir!(),
+              session_id: Usage.id(),
+              history_dir: nil,
+              owner: owner,
+              job_ref: make_ref(),
+              phase: "model.complete",
+              admission: %{},
+              expected: %{},
+              managed: %{dependencies: []}
+            }
+
+            task =
+              Ipse.Session.Resources.async(fn ->
+                facts = %{"kind" => "text"}
+
+                {Ipse.Session.InferenceDispatch.send(context, facts, fn -> :ok end),
+                 InferenceDispatch.provided_wire(context, facts)}
+              end)
+
+            send(parent, {:wire_results, Task.await(task)})
+            receive do: (:stop -> :ok)
+          end)
+
+        :ok = Ipse.Session.Resources.attach(scope, worker)
+        send(worker, {:start, self(), scope})
+        send(parent, {:wire_owner, scope, worker})
+        wire_owner(worker)
+      end)
+
+    assert_receive {:wire_owner, scope, worker}
+
+    on_exit(fn ->
+      for pid <- [worker, owner, scope], Process.alive?(pid), do: Process.exit(pid, :kill)
+    end)
+
+    assert_receive {:wire_results, {direct, tracked}}, 5_000
+    assert direct == {:error, :inference_dispatch_refused}
+    assert tracked == :ok
+  end
+
+  defp wire_owner(worker) do
+    receive do
+      {:"$gen_call", {caller, _} = from, {:inference_wire_use, _, _, _, _, _}} ->
+        admitted = Ipse.Session.Resources.authorized_effect?(worker, caller)
+        GenServer.reply(from, if(admitted, do: :ok, else: {:error, :inference_dispatch_refused}))
+        wire_owner(worker)
+    end
+  end
 end

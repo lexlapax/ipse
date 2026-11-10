@@ -319,7 +319,7 @@ defmodule Ipse.InferenceDispatch do
       {^ref, :provided_wire, worker, challenge, facts} ->
         response =
           if provided?(context) and mono() < deadline,
-            do: Ipse.Session.InferenceDispatch.send(context, facts, fn -> :ok end),
+            do: provided_wire(context, facts),
             else: {:error, :inference_dispatch_refused}
 
         send(worker, {ref, challenge, response})
@@ -371,6 +371,18 @@ defmodule Ipse.InferenceDispatch do
     after
       max(deadline - mono(), 0) -> unknown(route, original)
     end
+  end
+
+  # The physical-send check for a provided set runs in this inference task, an
+  # ordinary tracked task that the Session owner does not admit as an effect
+  # caller. As for the release check, a tracked file effect makes the owner call.
+  @doc false
+  def provided_wire(context, facts) do
+    Resources.file_effect(fn ->
+      Ipse.Session.InferenceDispatch.send(context, facts, fn -> :ok end)
+    end)
+  catch
+    _, _ -> {:error, :inference_dispatch_refused}
   end
 
   defp managed?(context), do: match?(%{managed: %{dependencies: [_ | _]}}, context)

@@ -470,10 +470,30 @@ defmodule Ipse.Session.ProvidedSourceSetSessionTest do
     assert set < action and action < release
 
     if supported do
-      assert outcome["status"] == "ok"
+      # Name the failed stage: a refusal before the fixture saw a request is a
+      # fence or gate refusal; a failure after it is transport, parse or release.
+      Process.unlink(server.pid)
+
+      http =
+        case Task.yield(server, 6_000) do
+          {:ok, {headers, _}} -> headers
+          _ -> nil
+        end
+
+      stage =
+        cond do
+          not Enum.any?(events, &(&1["type"] == "inference_dispatch_intent")) -> :dispatch_gate
+          is_nil(http) -> :physical_send_refused
+          outcome["status"] != "ok" -> :after_send
+          true -> :released
+        end
+
+      assert stage == :released,
+             "registered send stopped at #{stage}: outcome=#{inspect(outcome)} " <>
+               "events=#{inspect(Enum.map(events, & &1["type"]))}"
+
       dispatch = index(events, &(&1["type"] == "inference_dispatch_intent"))
       assert action < dispatch and dispatch < release
-      assert [{http, _}] = [Task.await(server)]
       assert http =~ "POST /api/chat"
     else
       refute outcome["status"] == "ok"
