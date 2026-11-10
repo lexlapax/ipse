@@ -297,6 +297,18 @@ Hosted run 42663715255 at `72ee4e63` then passed every Ubuntu and macOS job.
   second review's fixes, the fence unit and session tests and the inference
   dispatch test pass there (33 tests), including the registered send and the
   send-to-release transition, which report NOT RUN on macOS.
+  At `7aa3d615` the built Research package runs `investigate_provided` through
+  a Session under the fence there, with and without its model reranker
+  (`research_provided_fence_session_test.exs`, 4 tests); the registered rerank
+  reports NOT RUN on macOS. An empty or oversized source list is refused by the
+  package's argument schema before the host's set capture.
+- Documents (2026-11-10): the operator chose a measurement ladder of 8, 64 and
+  250 sources before any full-size run. No harness existed that drives a sized
+  build through a Session on native storage; one is being built. Full size
+  stays unqualified until the ladder's measured per-action cost and peaks
+  exist. Decided by the implementing session: the per-source fact route
+  (publish, assemble, append), one rebuild with replaced facts, and Session
+  handoff only where no write is pending.
 - The provided-set fence's last check before a request leaves runs before the
   connection opens. A request can therefore cross a source's transition on the
   wire; its output and result are withheld. Bounding the send itself would
