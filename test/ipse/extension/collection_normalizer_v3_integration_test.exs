@@ -5218,7 +5218,7 @@ defmodule Ipse.Extension.CollectionNormalizerV3IntegrationTest do
           if :atomics.compare_exchange(flag, 1, 0, 1) == :ok do
             owner = Ipse.Session.Resources.file_effect_owner()
             [{view, _}] = Registry.lookup(Ipse.Registry, {C.ReadView, owner})
-            :sys.replace_state(view, fn state -> %{state | header_seal: "corrupted"} end)
+            :sys.replace_state(view, fn state -> %{state | header: %{"corrupted" => true}} end)
           end
         end,
         nil
