@@ -34,7 +34,6 @@ defmodule Ipse.Session.ProvidedSourceSet do
   @partition "research-provided"
 
   def contract, do: @contract
-  def types, do: [@intent_type, @release_type]
 
   @doc "Whether a catalog descriptor declares the exact provided-set contract."
   def contract?(descriptor),

@@ -221,8 +221,16 @@ defmodule Ipse.Session.Invocation do
            extension_mcp_context: nil
        }}
     else
-      {:error, :journal_capacity_insufficient} = error -> {:reply, error, s}
-      _ -> {:reply, {:error, :extension_admission_refused}, s}
+      {:error, reason} = error
+      when reason in [
+             :journal_capacity_insufficient,
+             :provided_set_journal_capacity_insufficient,
+             :provided_source_set_refused
+           ] ->
+        {:reply, error, s}
+
+      _ ->
+        {:reply, {:error, :extension_admission_refused}, s}
     end
   end
 
@@ -233,7 +241,15 @@ defmodule Ipse.Session.Invocation do
   # records share one reservation, so a full journal refuses the invocation
   # with neither written, and feeds and observation see the parent only after
   # its set intent.
-  defp record_begin(s, intent, {event, _fence}), do: Session.record_adjacent(s, [intent, event])
+  defp record_begin(s, intent, {event, _fence}) do
+    case Session.record_adjacent(s, [intent, event]) do
+      {:error, :journal_capacity_insufficient} ->
+        {:error, :provided_set_journal_capacity_insufficient}
+
+      other ->
+        other
+    end
+  end
 
   # A declared provided-set command is admitted only when the host can capture
   # its complete closed source set; the worker never supplies the set facts.
@@ -241,7 +257,7 @@ defmodule Ipse.Session.Invocation do
     if ProvidedSourceSet.contract?(descriptor) do
       case ProvidedSourceSet.begin(intent, System.system_time(:millisecond)) do
         {:ok, event, fence} -> {:ok, {event, fence}}
-        _ -> :error
+        _ -> {:error, :provided_source_set_refused}
       end
     else
       {:ok, nil}
@@ -444,7 +460,8 @@ defmodule Ipse.Session.Invocation do
   end
 
   def tool_context(s, request) do
-    with parent when is_map(parent) <- s.invocation.parent,
+    with false <- ProvidedSourceSet.active?(s),
+         parent when is_map(parent) <- s.invocation.parent,
          true <- Ipse.Extension.Registry.live?(parent["identity"]),
          {:ok, _} <-
            Actions.proposal(
@@ -503,7 +520,8 @@ defmodule Ipse.Session.Invocation do
   end
 
   def prepare_mcp(s, ref, request) do
-    with {:ok, limits} <- Ipse.Journal.normalize_limits(s.config[:journal]),
+    with false <- ProvidedSourceSet.active?(s),
+         {:ok, limits} <- Ipse.Journal.normalize_limits(s.config[:journal]),
          true <- Ipse.Extension.EffectResult.source_record_limit() <= limits["max_record_bytes"],
          {:ok, server, tool_id} <- extension_mcp_target(s, request),
          {:ok, next, resource} <-

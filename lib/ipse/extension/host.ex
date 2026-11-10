@@ -451,8 +451,13 @@ defmodule Ipse.Extension.Host do
            GenServer.call(owner, {:extension_invoke_begin, job_ref, stage, name, arguments}) do
       execute_export(entry, intent, stage, intent["payload"], owner, job_ref, [])
     else
-      {:error, :journal_capacity_insufficient} ->
-        {:unknown, Ipse.CLI.Errors.format(:journal_capacity_insufficient)}
+      {:error, reason}
+      when reason in [
+             :journal_capacity_insufficient,
+             :provided_set_journal_capacity_insufficient,
+             :provided_source_set_refused
+           ] ->
+        {:unknown, Ipse.CLI.Errors.format(reason)}
 
       _ ->
         invocation_unknown()

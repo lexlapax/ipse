@@ -712,8 +712,7 @@ one request to the registered service after you approve, and a result shaped lik
 delivery is still fenced.
 
 Before the worker starts, Ipse journals a content-free source-set intent beside
-the invocation intent. If the session journal cannot hold both, the command is
-refused before the worker starts and neither is written. The digest covers
+the invocation intent. The digest covers
 every source's ID, generation, body hash, observation and expiry time, origin
 and partition in order, plus the query, as-of time, artifact, options and parent
 invocation. The intent also records the earliest time at which any source
@@ -721,8 +720,12 @@ becomes eligible or expires. Ipse derives these facts from the command arguments
 it admitted, never from the worker. It re-derives the digest and requires the
 clock to be at or after its previous check and before that earliest transition
 before admitting the model request, before recording the dispatch intent,
-immediately before sending the request body, when model output returns to the
-worker and before showing the result. Before showing the result, Ipse also
+before opening the connection that carries the request, when model output
+returns to the worker and before showing the result. The last check before the
+request leaves runs before the connection opens, not when the body is written.
+A request that passed it can therefore still be on the wire when a source
+reaches its transition; Ipse then withholds the model output from the worker
+and withholds the result. Before showing the result, Ipse also
 requires its `coverage.as_of_ms` to fall between the selection time and that
 check, or to equal your explicit `as_of_ms`. With an explicit `as_of_ms` there
 is no transition, so only the digest, the backward-clock check and the as-of
@@ -734,13 +737,23 @@ These cases refuse:
   the action refuses before any approval prompt and sends nothing.
 - The worker asks for any search, fetch, State, MCP, embedding or other host call,
   or the invocation would combine with managed notes.
-- The sources are empty or a selected search/fetch profile is not provided:
-  Research returns `invalid_provided_sources`.
+- The command supplies no sources, more than ten, an incomplete source or an
+  undocumented argument: Ipse refuses before the worker starts with `The
+  provided source set was refused before the extension started.` Nothing is
+  journaled, approved or sent. Correct the command and repeat it.
+- A selected search or fetch profile is not the provided one: Research returns
+  `invalid_provided_sources`.
+- The session journal cannot hold both the invocation intent and the source-set
+  intent: Ipse refuses with `This Session's journal cannot hold the
+  provided-source invocation and its source-set record.` Neither is written and
+  nothing starts. Repeat the command in a
+  [new session](recovery.md#continue-in-a-fresh-session).
 - A source reached its observation or expiry time, or the clock moved backward,
-  after the command started: a request not yet sent is refused. When this check
-  fails before the result is shown, the turn fails with `A provided source
-  reached its observation or expiry time, or the clock moved backward, before
-  delivery; the result was withheld and nothing was replayed.`
+  after the command started: a request not yet sent is refused, and the output
+  of a request already sent is withheld from the worker. When this check fails
+  before the result is shown, the turn fails with `A provided source reached
+  its observation or expiry time, or the clock moved backward, before delivery;
+  the result was withheld and nothing was replayed.`
 - The result reports an as-of time outside the fenced interval: the turn fails
   with `The fenced result reported an as-of time outside its provided source
   set; the result was withheld and nothing was replayed.`

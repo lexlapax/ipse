@@ -352,7 +352,12 @@ defmodule Ipse.InferenceDispatch do
             do: result,
             else:
               {:error,
-               "Managed sources or permissions changed before publication; generated output was withheld."}
+               if(provided?(context),
+                 do:
+                   "A provided source reached its observation or expiry time, or the clock moved backward, before the model output was released; generated output was withheld.",
+                 else:
+                   "Managed sources or permissions changed before publication; generated output was withheld."
+               )}
         else
           if match?({:ok, _, _}, result), do: Enum.each(chunks, &emit.({:text, &1}))
           result

@@ -24,7 +24,8 @@ defmodule Ipse.Session.ProvidedSourceSetSessionTest do
     exports = Map.put(Catalog.empty(), "commands", [command])
 
     # The worker never states its sources to the host. A null rerank finishes
-    # at once; "judge" asks for one model call and "embed" for an embedding.
+    # at once; "judge" asks for one model call, "embed" for an embedding and
+    # "tool" for a workspace write.
     # "stale" reports an as-of time before selection and "saved" offers a paged
     # saved result. Every other result reports the worker's current time.
     probe =
@@ -47,6 +48,11 @@ defmodule Ipse.Session.ProvidedSourceSetSessionTest do
                 {:ok, %{"api_version" => 1, "kind" => "host_call", "request" => %{
                   "op" => "embedding.create", "version" => 1, "profile" => "search",
                   "inputs" => [args["query"]], "timeout_ms" => 3000}}, state}
+
+              "tool" ->
+                {:ok, %{"api_version" => 1, "kind" => "host_call", "request" => %{
+                  "op" => "tool.call", "name" => "write", "timeout_ms" => 1000,
+                  "arguments" => %{"path" => "forbidden", "content" => "denied"}}}, state}
 
               "stale" ->
                 result(%{"status" => "ok", "query" => args["query"], "coverage" => %{"as_of_ms" => 1}}, state)
@@ -355,11 +361,12 @@ defmodule Ipse.Session.ProvidedSourceSetSessionTest do
     pid = start(c, config(c, base, false))
     id = Session.info(pid).id
 
-    for rerank <- ["judge", "embed"] do
+    for rerank <- ["judge", "embed", "tool"] do
       assert :ok = Session.invoke_export(pid, :command, @name, args(rerank, [source()]))
       assert {:error, []} = settle(pid)
     end
 
+    refute File.exists?(Path.join(c.cwd, "forbidden"))
     no_connection!(socket)
     assert :ok = Session.close_confirmed(pid)
     {:ok, events} = Journal.load(c.sessions, id)
@@ -371,7 +378,7 @@ defmodule Ipse.Session.ProvidedSourceSetSessionTest do
 
     refute Enum.any?(events, &(&1["type"] == "request_admitted"))
     refute Enum.any?(events, &(&1["type"] == "extension_invocation_result"))
-    assert Enum.count(events, &(&1["type"] == "provided_source_set_intent")) == 2
+    assert Enum.count(events, &(&1["type"] == "provided_source_set_intent")) == 3
     assert :ok = ProvidedSourceSet.validate_events(events)
     assert {:ok, _} = Session.Saved.restore(events, id)
   end
@@ -502,6 +509,66 @@ defmodule Ipse.Session.ProvidedSourceSetSessionTest do
     end
   end
 
+  # The physical-send check runs before the connection opens, so a request can
+  # cross the transition on the wire. Its output and the result stay withheld.
+  test "a transition after the physical send withholds the model output and the result", c do
+    {socket, base} = listener()
+    config = config(c, base, true)
+
+    if match?({:ok, _}, InferenceSlots.status(config, cwd: c.cwd)) do
+      pid = start(c, config)
+      id = Session.info(pid).id
+      expires = System.system_time(:millisecond) + 2_000
+
+      content =
+        Jason.encode!(%{
+          "model" => "fixture",
+          "message" => %{
+            "role" => "assistant",
+            "content" => Jason.encode!(%{"order" => ["e1"]})
+          },
+          "done" => true,
+          "done_reason" => "stop",
+          "prompt_eval_count" => 1,
+          "eval_count" => 1
+        }) <> "\n"
+
+      server =
+        Task.async(fn ->
+          {:ok, conn} = :gen_tcp.accept(socket, 10_000)
+          {headers, _} = ProviderFixture.request(conn, "")
+          Process.sleep(max(expires - System.system_time(:millisecond) + 100, 0))
+
+          :gen_tcp.send(
+            conn,
+            "HTTP/1.1 200 Fixture\r\ncontent-type: text/event-stream\r\n" <>
+              "content-length: #{byte_size(content)}\r\nconnection: close\r\n\r\n" <> content
+          )
+
+          :gen_tcp.close(conn)
+          headers
+        end)
+
+      assert :ok = Session.invoke_export(pid, :command, @name, args("judge", [source(expires)]))
+      assert {:error, ["extension:model.complete"]} = settle(pid)
+      assert_received {:ipse, ^pid, {:error, message}}
+      assert message =~ "before delivery; the result was withheld"
+      assert Task.await(server, 10_000) =~ "POST /api/chat"
+      assert :ok = Session.close_confirmed(pid)
+      {:ok, events} = Journal.load(c.sessions, id)
+      dispatch = index(events, &(&1["type"] == "inference_dispatch_intent"))
+      release = index(events, &(&1["type"] == "provided_source_set_release"))
+      assert dispatch < release
+      assert Enum.at(events, release)["decision"] == "withheld"
+      assert Enum.at(events, release)["checked_at_ms"] >= expires
+      refute Enum.any?(events, &(&1["type"] == "extension_invocation_result"))
+      assert :ok = ProvidedSourceSet.validate_events(events)
+      assert {:ok, _} = Session.Saved.restore(events, id)
+    else
+      IO.puts("#{inspect(__MODULE__)}: unsupported service filesystem; send-to-release NOT RUN")
+    end
+  end
+
   test "a feed observing the admitted parent records its delivery after the set intent", c do
     {_, base} = listener()
     config = config(c, base, false, true)
@@ -596,15 +663,49 @@ defmodule Ipse.Session.ProvidedSourceSetSessionTest do
         15_000 -> flunk("limited invocation did not settle")
       end
 
+      message =
+        receive do
+          {:ipse, ^pid, {:error, message}} -> message
+        after
+          0 -> nil
+        end
+
       if Process.alive?(pid), do: Session.close_confirmed(pid)
       {:ok, saved} = Journal.load(c.sessions, id)
 
-      case index(saved, &(&1["type"] == "extension_invocation_intent")) do
-        nil -> refute Enum.any?(saved, &(&1["type"] == "provided_source_set_intent"))
-        parent -> assert Enum.at(saved, parent + 1)["type"] == "provided_source_set_intent"
+      parent = index(saved, &(&1["type"] == "extension_invocation_intent"))
+
+      if slack <= 0 do
+        assert parent == nil
+        refute Enum.any?(saved, &(&1["type"] == "provided_source_set_intent"))
+        assert message =~ "cannot hold the provided-source invocation and its source-set record"
+        assert message =~ "recovery.md#continue-in-a-fresh-session"
+        refute message =~ "Job continuation"
+      else
+        assert Enum.at(saved, parent + 1)["type"] == "provided_source_set_intent"
       end
 
       assert :ok = ProvidedSourceSet.validate_events(saved)
+    end
+  end
+
+  test "an empty or oversized source set is refused before anything is journaled", c do
+    {_, base} = listener()
+
+    for sources <- [[], List.duplicate(source(), 11)] do
+      pid = start(c, config(c, base, false))
+      id = Session.info(pid).id
+      assert :ok = Session.invoke_export(pid, :command, @name, args(nil, sources))
+      assert {:error, []} = settle(pid)
+      assert_received {:ipse, ^pid, {:error, message}}
+      assert message =~ "provided source set was refused before the extension started"
+      assert :ok = Session.close_confirmed(pid)
+      {:ok, events} = Journal.load(c.sessions, id)
+
+      refute Enum.any?(
+               events,
+               &(&1["type"] in ~w(extension_invocation_intent provided_source_set_intent))
+             )
     end
   end
 

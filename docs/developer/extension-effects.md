@@ -464,16 +464,21 @@ Trace one invocation through `Session.ProvidedSourceSet`:
    refuses before an approval prompt. Ordinary per-call approval is unchanged.
 4. `ProvidedSourceSet.check/2` re-derives the set from the journaled parent,
    compares the intent, and requires `now >= high-water` and `now < transition`.
-   Success raises the high-water. `begin_inference/3`, the dispatch-intent
-   `commit/6`, the physical send's `wire_use/6` and the model-output
-   `result_admit/6` each call it in the Session owner through `guard/2`, which
-   reads `ProvidedSourceSet.now/1`. That is the system clock unless a test puts
-   a fixed `:clock` function in the fence. `Ipse.InferenceDispatch` routes the
-   send through `EgressGate.capture/3` and the output through
-   `Session.InferenceDispatch.release/3`, and `consume_result/3` requires the
-   resulting seal. `Ipse.InferenceDispatch.run/8` also refuses a fenced context
-   whose selection is unregistered, before any budget reservation, although
-   step 3 already keeps such a call from reaching dispatch.
+   Success raises the high-water. `begin_inference/3` calls it directly for the
+   fenced `model.complete` action and refuses every other inference under a
+   fence. The dispatch-intent `commit/6`, the physical send's `wire_use/6` and
+   the model-output `result_admit/6` each call it in the Session owner through
+   `guard/2`. Both paths read `ProvidedSourceSet.now/1`. That is the system
+   clock unless a test puts a fixed `:clock` function in the fence.
+   `Ipse.InferenceDispatch` routes the send through `EgressGate.capture/3` and
+   the output through `Session.InferenceDispatch.release/3`, and
+   `consume_result/3` requires the resulting seal. The send check runs in
+   `EgressGate.before_dispatch/3`, before the transport checks out a connection,
+   so a request can cross the transition on the wire; `release/3` then refuses
+   and `Ipse.InferenceDispatch` returns its provided-source withheld message
+   instead of the output. `Ipse.InferenceDispatch.run/8` also refuses a fenced
+   context whose selection is unregistered, before any budget reservation,
+   although step 3 already keeps such a call from reaching dispatch.
 5. `publish_inline_result/2` checks once more and also requires
    `result_as_of?/4`: the result value's `coverage.as_of_ms` must equal an
    explicit `as_of_ms`, or else lie at or after the selected time, at or before

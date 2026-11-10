@@ -15,6 +15,12 @@ defmodule Ipse.CLI.Errors do
     journal_capacity_insufficient:
       {"This Session's journal cannot hold another worst-case document Collection invocation. No extension callback or host call was started. Close this Session and repeat the command with the same Job continuation in a new Session; do not edit the continuation.",
        "recover-a-corpus-query-or-document-operation"},
+    provided_set_journal_capacity_insufficient:
+      {"This Session's journal cannot hold the provided-source invocation and its source-set record. Neither was written and no extension callback, approval or request was started. Repeat the command in a new Session.",
+       "continue-in-a-fresh-session"},
+    provided_source_set_refused:
+      {"The provided source set was refused before the extension started. It needs one to ten complete sources and only the documented arguments. Nothing was journaled, approved or sent; correct the command and repeat it.",
+       "diagnose-native-policy-mcp-and-extensions"},
     invalid_handoff:
       {"Invalid handoff: expected one closed version-1 UTF-8 artifact of at most 16 KiB with consistent unknown-effect provenance. No session was started; review the artifact before importing it.",
        "continue-in-a-fresh-session"},
