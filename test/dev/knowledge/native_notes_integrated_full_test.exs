@@ -69,6 +69,16 @@ defmodule Ipse.Development.NativeNotesIntegratedFullTest do
            else: "full 2,000-note native fixture is an explicit opt-in"
          )
   test "a fresh full cohort runs one provisional day and retains its evidence" do
+    # Turnover requires every seed operation to precede the first quota period,
+    # which begins at the first UTC midnight after the seed starts (shifted by
+    # the seeded days). The seed takes over two hours, so refuse a late start
+    # instead of failing after seeding.
+    day = 86_400_000
+    now = System.system_time(:millisecond)
+
+    assert day - rem(now, day) >= 6 * 3_600_000,
+           "start the full cohort at least six hours before the next UTC midnight"
+
     root = Path.join("/tmp", "ipse-native-seed-integrated-full-#{Ipse.Usage.id()}")
     {:ok, listener} = :gen_tcp.listen(0, [:binary, active: false, ip: {127, 0, 0, 1}])
     {:ok, {_, port}} = :inet.sockname(listener)
