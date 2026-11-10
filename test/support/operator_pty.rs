@@ -106,7 +106,7 @@ fn main() {
     }
     let mut child = command.spawn().unwrap();
     drop(slave);
-    let deadline = Instant::now() + Duration::from_secs(if args.last().is_some_and(|a| a == "recall-many") { 300 } else { 60 });
+    let deadline = Instant::now() + Duration::from_secs(if args.last().is_some_and(|a| a == "recall-many") { 600 } else { 60 });
     let mut output = Vec::new();
     let mut number = 1;
     let mut answered = Vec::new();
@@ -393,7 +393,7 @@ fn main() {
                     }
                 }
             }
-            let steps = if args.last().is_some_and(|a| a == "recall-many") { 40 } else { 8 };
+            let steps = if args.last().is_some_and(|a| a == "recall-many") { 99 } else { 8 };
             for step in 1..=steps {
                 let marker = format!("IPSE_SUPERSESSION_READ_{step}> you> ");
                 if text.contains(&marker) && !answered.contains(&marker) {

@@ -2,6 +2,7 @@ ExUnit.start(autorun: false)
 import ExUnit.Assertions
 {:ok, _} = Application.ensure_all_started(:ipse)
 Code.require_file(Path.expand("provider_fixture.ex", __DIR__))
+Code.require_file(Path.expand("native_recall_reuse.exs", __DIR__))
 
 [root, "recall-many"] = System.argv()
 sparse = System.get_env("IPSE_TEST_RECALL_SPARSE") == "1"
@@ -9,6 +10,10 @@ reappear = System.get_env("IPSE_TEST_RECALL_REAPPEAR") == "1"
 strict_sources = System.get_env("IPSE_TEST_RECALL_STRICT_SOURCES") == "1"
 assert not reappear or sparse
 assert not strict_sources or (sparse and reappear)
+# More notes than one unshared domain-auth lease could read natively exercise
+# every path that observes the complete dependency set of one turn.
+notes = System.get_env("IPSE_TEST_RECALL_NOTES", "33") |> String.to_integer()
+assert notes in 33..99 and (notes == 33 or not sparse)
 
 provider_timeout =
   System.get_env("IPSE_TEST_RECALL_PROVIDER_TIMEOUT_MS", "5000") |> String.to_integer()
@@ -35,7 +40,7 @@ base = "http://127.0.0.1:#{port}"
 server =
   Task.async(fn ->
     try do
-      {:ok, socket} = :gen_tcp.accept(listener, 180_000)
+      {:ok, socket} = :gen_tcp.accept(listener, max(180_000, notes * 6_000))
 
       try do
         request =
@@ -135,8 +140,8 @@ pin = :sys.get_state(source).config.semantic_admission["pin"]
 assert {:ok, channel} = Ipse.Session.open_input_channel(source, self())
 
 {texts, source, source_ids} =
-  Enum.reduce(1..33, {[], source, channel, [source_id]}, fn step,
-                                                            {texts, current, channel, ids} ->
+  Enum.reduce(1..notes, {[], source, channel, [source_id]}, fn step,
+                                                               {texts, current, channel, ids} ->
     {current, channel, ids} =
       if (sparse and step == 2) or (strict_sources and step > 1) do
         assert :ok = Ipse.Session.close_confirmed(current)
@@ -251,7 +256,7 @@ if System.get_env("IPSE_TEST_RECALL_TIMING") == "1" do
 end
 
 assert Enum.count(source_events, &(&1["type"] == "operator_assertion")) ==
-         if(sparse or strict_sources, do: 1, else: 33)
+         if(sparse or strict_sources, do: 1, else: notes)
 
 refute Enum.any?(source_events, &(&1["type"] == "inference_dispatch_intent"))
 
@@ -390,7 +395,8 @@ request =
         "Recall ended #{inspect(status)} before dispatch, provider_closed=#{closed}, counts=#{inspect(counts)}, worker_inputs=#{inspect(inputs)}, tail=#{inspect(tail, limit: :infinity)}"
       )
   after
-    120_000 -> flunk("Recall did not dispatch or finish within the fixture bound")
+    max(120_000, notes * 3_000) ->
+      flunk("Recall did not dispatch or finish within the fixture bound")
   end
 
 wire = Jason.encode!(request["messages"])
@@ -533,11 +539,123 @@ IO.puts(
 )
 
 expected_count = length(expected_texts)
-assert included == expected_count
 assert length(reads) == expected_count
-assert Enum.all?(expected_texts, &String.contains?(wire, &1))
-assert coverage["coverage"] == if(sparse, do: "partial", else: "complete")
+
+# Every note is read. The fixed context allocation may hold fewer than a larger
+# set, which the published coverage then reports as partial.
+if notes == 33 do
+  assert included == expected_count
+  assert Enum.all?(expected_texts, &String.contains?(wire, &1))
+else
+  assert included in 33..expected_count
+end
+
+assert coverage["coverage"] ==
+         if(sparse or included < expected_count, do: "partial", else: "complete")
+
 assert coverage["included"] == included
+
+# One turn read more literals than one domain-auth lease can verify without
+# shared pages. The turn above reached dispatch through its growing worker
+# inputs and released results; each path below observes the complete set.
+if notes > 42 do
+  alias Ipse.Extension.{Collection, SemanticAdmission}
+  alias Ipse.Session.ManagedUse
+  state = :sys.get_state(session)
+  context = %{config: state.config, cwd: cwd, session_id: state.id, history_dir: dir}
+  dependencies = NativeRecallReuse.literals(events)
+  assert length(dependencies) == notes
+  counter = NativeRecallReuse.start()
+
+  pass = fn path, fun ->
+    {result, batches, leases} = NativeRecallReuse.traced(counter, fun)
+    counts = Enum.map(batches, &length/1)
+
+    IO.puts(
+      "NATIVE_NOTE_RECALL_FULL_SET " <>
+        Jason.encode!(%{
+          "path" => path,
+          "records" => notes,
+          "ok" => match?({:ok, _}, result),
+          "native_batches" => counts,
+          "leases" => leases
+        })
+    )
+
+    {result, counts}
+  end
+
+  keep = fn current, held -> {:ok, {current, held.source_proofs}} end
+  retained = fn path, use -> pass.(path, fn -> use.(context, dependencies, keep) end) end
+
+  # At an unchanged root worker input natively reads one record in each pass.
+  assert {{:ok, {current, proofs}}, _} =
+           retained.("worker_input", &ManagedUse.with_worker_dependencies/3)
+
+  assert length(current) == notes
+
+  assert {{:ok, {^current, ^proofs}}, [1, 1]} =
+           retained.("worker_input_warm", &ManagedUse.with_worker_dependencies/3)
+
+  # An unrelated commit changes the root, so the next worker input reads every
+  # record natively again.
+  collection = SemanticAdmission.collection_root(home)
+
+  assert {:ok, snapshot} =
+           Collection.execute(
+             collection,
+             pin["namespace"],
+             %{"op" => "snapshot"},
+             Ipse.Usage.id()
+           )
+
+  assert {:ok, _} =
+           Collection.execute(
+             collection,
+             pin["namespace"],
+             %{
+               "op" => "commit",
+               "expected_generation" => snapshot["generation"],
+               "advance_floor" => false,
+               "changes" => [
+                 %{
+                   "key" => "fixture.post_recall_change",
+                   "expected_revision" => 0,
+                   "value" => %{"synthetic" => true}
+                 }
+               ]
+             },
+             Ipse.Usage.id()
+           )
+
+  assert {{:ok, {changed, ^proofs}}, cold} =
+           retained.("worker_input_cold", &ManagedUse.with_worker_dependencies/3)
+
+  assert cold == [1 | Enum.map(Enum.chunk_every(tl(dependencies), 32), &length/1)] ++ [1]
+  assert Enum.all?(changed, &(&1["collection"]["generation"] == snapshot["generation"] + 1))
+  rootless = fn items -> Enum.map(items, &Map.delete(&1, "collection")) end
+  assert rootless.(changed) == rootless.(current)
+
+  # Dispatch, display, approval and publication never reuse an earlier result.
+  assert {{:ok, ^changed}, _} =
+           pass.("dispatch", fn ->
+             ManagedUse.with_dependencies(context, dependencies, &{:ok, &1})
+           end)
+
+  assert {{:ok, {^changed, ^proofs}}, _} =
+           retained.("display", &ManagedUse.with_display_dependencies/3)
+
+  assert {{:ok, {^changed, ^proofs}}, _} =
+           retained.("approval", &ManagedUse.with_approval_dependencies/3)
+
+  assert {{:ok, published}, _} =
+           pass.("publication", fn ->
+             ManagedUse.with_publication_dependencies(context, dependencies, [], &{:ok, &1})
+           end)
+
+  assert published.current == changed and published.source_proofs == proofs
+end
+
 assert :ok = Ipse.Session.close_confirmed(session)
 
 if strict_sources do
