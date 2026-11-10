@@ -261,9 +261,10 @@ defmodule Ipse.Extension.Collection.ReadView do
   # pure function of the exact installed cache term. Reuse them only for a
   # byte-identical deterministic encoding of a cache that passed them before.
   defp indexed(cache) do
-    key = {__MODULE__, :crypto.hash(:sha256, :erlang.term_to_binary(cache, [:deterministic]))}
+    slot = {__MODULE__, cache["collection_root"], cache["project"], cache["storage_profile"]}
+    tag = :crypto.hash(:sha256, :erlang.term_to_binary(cache, [:deterministic]))
 
-    case ValidatedMemo.fetch(key) do
+    case ValidatedMemo.fetch(slot, tag) do
       {:ok, {keys, index, seals}} ->
         {:ok, keys, index, seals}
 
@@ -279,7 +280,7 @@ defmodule Ipse.Extension.Collection.ReadView do
                  do: :ok,
                  else: {:error, :collection_view_index_capacity}
                ) do
-          ValidatedMemo.put(key, {keys, index, seals})
+          ValidatedMemo.put(slot, tag, {keys, index, seals})
           {:ok, keys, index, seals}
         end
     end

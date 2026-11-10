@@ -34,9 +34,10 @@ defmodule Ipse.Extension.Consent do
   # The result is a deterministic function of these exact bytes; a validated
   # decoding may be reused for byte-identical input (see ValidatedMemo).
   def decode_control(bytes, project) when is_binary(bytes) and byte_size(bytes) <= @bytes do
-    key = {__MODULE__, project, :crypto.hash(:sha256, bytes)}
+    slot = {__MODULE__, project}
+    tag = :crypto.hash(:sha256, bytes)
 
-    case Ipse.Extension.ValidatedMemo.fetch(key) do
+    case Ipse.Extension.ValidatedMemo.fetch(slot, tag) do
       {:ok, state} ->
         {:ok, state}
 
@@ -45,7 +46,7 @@ defmodule Ipse.Extension.Consent do
              {:ok, state} <- decode_storage(stored),
              true <- valid_state?(state, project) do
           state = upgrade(state)
-          Ipse.Extension.ValidatedMemo.put(key, state)
+          Ipse.Extension.ValidatedMemo.put(slot, tag, state)
           {:ok, state}
         else
           _ -> @error

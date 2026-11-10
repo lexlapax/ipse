@@ -3260,20 +3260,20 @@ defmodule Ipse.Extension.Collection do
   # are reused from an earlier successful load of the same manifest hash.
   defp validated_manifest(%{"version" => version} = stored, path, uid, project, hash)
        when version in [4, 5] do
-    key = {path, project, Profile.selected(), hash}
+    slot = {__MODULE__, path, project, Profile.selected()}
 
     with {:ok, blocks, hashes} <-
            Blocks.read(stored, fn block, bytes ->
              bounded_file(Path.join([path, "manifests", block <> ".json"]), uid, bytes)
            end) do
-      case ValidatedMemo.fetch(key) do
+      case ValidatedMemo.fetch(slot, hash) do
         {:ok, {state, ^hashes}} ->
           {:ok, state, hashes}
 
         _ ->
           with {:ok, state, ^hashes} <- Blocks.reconstruct(stored, blocks, hashes),
                true <- valid_state?(state, project) do
-            ValidatedMemo.put(key, {state, hashes})
+            ValidatedMemo.put(slot, hash, {state, hashes})
             {:ok, state, hashes}
           else
             _ -> @error
@@ -3285,16 +3285,16 @@ defmodule Ipse.Extension.Collection do
   end
 
   defp validated_manifest(stored, path, _, project, hash) do
-    key = {path, project, Profile.selected(), hash}
+    slot = {__MODULE__, path, project, Profile.selected()}
 
-    case ValidatedMemo.fetch(key) do
+    case ValidatedMemo.fetch(slot, hash) do
       {:ok, {state, hashes}} ->
         {:ok, state, hashes}
 
       _ ->
         with {:ok, state} <- Encoding.decode(stored),
              true <- valid_state?(state, project) do
-          ValidatedMemo.put(key, {state, MapSet.new()})
+          ValidatedMemo.put(slot, hash, {state, MapSet.new()})
           {:ok, state, MapSet.new()}
         else
           _ -> @error

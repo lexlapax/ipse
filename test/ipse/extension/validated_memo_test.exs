@@ -80,13 +80,39 @@ defmodule Ipse.Extension.ValidatedMemoTest do
     File.write!(block, original)
     assert {:ok, _} = run(c, get)
 
-    # A new manifest hash is a different key and is validated in full.
+    # A new manifest hash is a different tag and is validated in full.
     assert {:ok, %{"generation" => 2}} = run(c, commit(1, [change("note.41", 0, %{})]))
 
     assert counted({Blocks, :reconstruct, 3}, fn ->
              assert {:ok, %{"record" => %{"revision" => 2}}} =
                       run(c, %{"op" => "get", "key" => "note.41"})
            end) == 1
+  end
+
+  test "a slot keeps one value and only for its exact tag" do
+    slot = {__MODULE__, make_ref()}
+    assert :error = ValidatedMemo.fetch(slot, "first")
+    assert :ok = ValidatedMemo.put(slot, "first", %{"record" => "removed later"})
+    assert {:ok, %{"record" => "removed later"}} = ValidatedMemo.fetch(slot, "first")
+    assert :error = ValidatedMemo.fetch(slot, "second")
+
+    # Admitting the successor drops the superseded value instead of keeping both.
+    assert :ok = ValidatedMemo.put(slot, "second", %{})
+    assert {:ok, %{}} = ValidatedMemo.fetch(slot, "second")
+    assert :error = ValidatedMemo.fetch(slot, "first")
+    assert [{^slot, "second", %{}}] = :ets.lookup(ValidatedMemo, slot)
+  end
+
+  test "the oldest slot is evicted beyond eight and oversized values are not admitted" do
+    slots = for i <- 1..9, do: {__MODULE__, make_ref(), i}
+    for slot <- slots, do: assert(:ok = ValidatedMemo.put(slot, "tag", slot))
+    assert :error = ValidatedMemo.fetch(hd(slots), "tag")
+    for slot <- tl(slots), do: assert({:ok, ^slot} = ValidatedMemo.fetch(slot, "tag"))
+    assert :ets.info(ValidatedMemo, :size) == 8
+
+    large = {__MODULE__, make_ref()}
+    assert :ok = ValidatedMemo.put(large, "tag", :binary.copy(<<0>>, 32 * 1024 * 1024 + 1))
+    assert :error = ValidatedMemo.fetch(large, "tag")
   end
 
   test "consent control decoding is reused only for byte-identical input" do
@@ -104,13 +130,13 @@ defmodule Ipse.Extension.ValidatedMemoTest do
 
     assert {:ok, bytes} = Consent.encode_control(state, project)
     assert {:ok, decoded} = Consent.decode_control(bytes, project)
-    assert {:ok, ^decoded} = ValidatedMemo.fetch({Consent, project, :crypto.hash(:sha256, bytes)})
+    assert {:ok, ^decoded} = ValidatedMemo.fetch({Consent, project}, :crypto.hash(:sha256, bytes))
     assert {:ok, ^decoded} = Consent.decode_control(bytes, project)
     assert {:error, :consent_unavailable} = Consent.decode_control(bytes, JSON.sha256("other"))
     invalid = String.replace(bytes, "\"epoch\":1", "\"epoch\":\"1\"")
     assert invalid != bytes
     assert {:error, :consent_unavailable} = Consent.decode_control(invalid, project)
-    assert :error = ValidatedMemo.fetch({Consent, project, :crypto.hash(:sha256, invalid)})
+    assert :error = ValidatedMemo.fetch({Consent, project}, :crypto.hash(:sha256, invalid))
   end
 
   test "semantic policy validation remembers only exact accepted terms" do
