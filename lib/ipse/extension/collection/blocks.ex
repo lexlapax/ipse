@@ -37,7 +37,17 @@ defmodule Ipse.Extension.Collection.Blocks do
     _ -> {:error, :invalid_collection_blocks}
   end
 
-  def decode(%{"version" => version} = wire, reader)
+  def decode(wire, reader) do
+    with {:ok, blocks, hashes} <- read(wire, reader), do: reconstruct(wire, blocks, hashes)
+  end
+
+  @doc """
+  Read and hash-check every block referenced by a version 4/5 manifest.
+
+  This performs all of `decode/2`'s file reads and reference checks, but not its
+  reconstruction or canonical re-encoding. The returned hash set is the same.
+  """
+  def read(%{"version" => version} = wire, reader)
       when version in [4, 5] and is_function(reader, 2) do
     refs = references(wire)
     true = length(refs) <= @block_count
@@ -69,6 +79,15 @@ defmodule Ipse.Extension.Collection.Blocks do
         end
       end)
 
+    {:ok, blocks, MapSet.new(hashes)}
+  rescue
+    _ -> {:error, :invalid_collection_blocks}
+  end
+
+  def read(_, _), do: {:error, :invalid_collection_blocks}
+
+  @doc "Reconstruct and canonically re-check the state from blocks returned by `read/2`."
+  def reconstruct(wire, blocks, hashes) do
     state = unpack(wire, blocks)
 
     true =
@@ -77,12 +96,10 @@ defmodule Ipse.Extension.Collection.Blocks do
 
     {:ok, canonical, expected} = encode(state)
     true = canonical == Migration.encode(wire) and expected == blocks
-    {:ok, state, MapSet.new(hashes)}
+    {:ok, state, hashes}
   rescue
     _ -> {:error, :invalid_collection_blocks}
   end
-
-  def decode(_, _), do: {:error, :invalid_collection_blocks}
 
   def version(state) do
     if Enum.any?(Migration.known_operations(state), fn {_, receipt} ->

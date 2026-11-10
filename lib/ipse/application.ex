@@ -8,6 +8,7 @@ defmodule Ipse.Application do
         {Task.Supervisor, name: Ipse.Tasks},
         Ipse.Runner.TerminalInput,
         Ipse.Session.Input,
+        Ipse.Extension.ValidatedMemo,
         {DynamicSupervisor, strategy: :one_for_one, name: Ipse.Sessions}
       ],
       strategy: :one_for_one,

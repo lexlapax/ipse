@@ -159,7 +159,41 @@ defmodule Ipse.Extension.SemanticConsent do
     _ -> @error
   end
 
-  def policy?(policy) do
+  @policy_memo {__MODULE__, :valid_policies}
+  @policy_memo_entries 8
+  @policy_memo_bytes 262_144
+
+  @doc """
+  Validate a complete semantic policy.
+
+  The check is a pure function of the exact policy term. Replay and protected
+  reads repeat it for the same embedded policy many times, so a process keeps
+  the SHA-256 of a few deterministic encodings that already passed; any other
+  term is validated in full. Refusals are never remembered.
+  """
+  def policy?(policy) when is_map(policy) do
+    if :erlang.external_size(policy) <= @policy_memo_bytes do
+      digest = :crypto.hash(:sha256, :erlang.term_to_binary(policy, [:deterministic]))
+      memo = Process.get(@policy_memo, [])
+
+      if digest in memo do
+        true
+      else
+        valid = checked_policy?(policy)
+
+        if valid,
+          do: Process.put(@policy_memo, Enum.take([digest | memo], @policy_memo_entries))
+
+        valid
+      end
+    else
+      checked_policy?(policy)
+    end
+  end
+
+  def policy?(policy), do: checked_policy?(policy)
+
+  defp checked_policy?(policy) do
     Consent.valid_policy?(policy) and settings?(policy["settings"]) and
       experiment_policy?(policy) and
       namespace(policy["project"], policy["settings"]["storage"]["collection"]) ===

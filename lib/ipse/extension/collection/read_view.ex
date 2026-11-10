@@ -19,6 +19,7 @@ defmodule Ipse.Extension.Collection.ReadView do
   use GenServer
   alias Ipse.{JSON, Session.Resources}
   alias Ipse.Extension.Collection.{Directory, Profile}
+  alias Ipse.Extension.ValidatedMemo
   @bytes 4_194_304
   @reads 512
   @observations 512
@@ -150,10 +151,10 @@ defmodule Ipse.Extension.Collection.ReadView do
          ref: ref,
          deadline: now() + @lifetime,
          cache: nil,
-         header_seal: nil,
+         header: nil,
          entry_seals: nil,
          index: nil,
-         keys_seal: nil,
+         keys: nil,
          reads: 0,
          observations: 0,
          busy: nil,
@@ -200,27 +201,17 @@ defmodule Ipse.Extension.Collection.ReadView do
              do: :ok,
              else: {:error, :collection_view_records_capacity}
            ),
-         true <- cache_records?(cache),
-         keys = cache["records"] |> Map.keys() |> Enum.sort(),
-         {:ok, index} <- Directory.index(keys),
-         seals = Map.new(cache["records"], fn {key, ref} -> {key, JSON.digest([ref])} end),
-         :ok <-
-           if(
-             byte_size(Jason.encode!(%{"cache" => cache, "keys" => keys, "seals" => seals})) <=
-               @bytes,
-             do: :ok,
-             else: {:error, :collection_view_index_capacity}
-           ) do
+         {:ok, keys, index, seals} <- indexed(cache) do
       header = Map.delete(cache, "records")
 
       {:reply, :ok,
        %{
          state
          | cache: cache,
-           header_seal: JSON.digest([header]),
+           header: header,
            entry_seals: seals,
            index: index,
-           keys_seal: JSON.digest([keys])
+           keys: keys
        }}
     else
       {:error, reason} = error
@@ -266,10 +257,40 @@ defmodule Ipse.Extension.Collection.ReadView do
   defp operate(:close, _, state), do: {:stop, :normal, :ok, state}
   defp operate(_, _, state), do: {:reply, @error, state}
 
+  # Record checks, the key index, per-entry seals and the encoded bound are a
+  # pure function of the exact installed cache term. Reuse them only for a
+  # byte-identical deterministic encoding of a cache that passed them before.
+  defp indexed(cache) do
+    key = {__MODULE__, :crypto.hash(:sha256, :erlang.term_to_binary(cache, [:deterministic]))}
+
+    case ValidatedMemo.fetch(key) do
+      {:ok, {keys, index, seals}} ->
+        {:ok, keys, index, seals}
+
+      _ ->
+        with true <- cache_records?(cache),
+             keys = cache["records"] |> Map.keys() |> Enum.sort(),
+             {:ok, index} <- Directory.index(keys),
+             seals = Map.new(cache["records"], fn {key, ref} -> {key, JSON.digest([ref])} end),
+             :ok <-
+               if(
+                 byte_size(Jason.encode!(%{"cache" => cache, "keys" => keys, "seals" => seals})) <=
+                   @bytes,
+                 do: :ok,
+                 else: {:error, :collection_view_index_capacity}
+               ) do
+          ValidatedMemo.put(key, {keys, index, seals})
+          {:ok, keys, index, seals}
+        end
+    end
+  end
+
   defp borrow_selected(request, caller, %{cache: cache} = state) do
-    with true <- JSON.digest([Map.delete(cache, "records")]) === state.header_seal,
+    # Exact comparison with the installed header and key list; no digest of
+    # the whole index is recomputed for each bounded read.
+    with true <- Map.delete(cache, "records") === state.header,
          keys = Directory.keys(state.index),
-         true <- JSON.digest([keys]) === state.keys_seal,
+         true <- keys === state.keys,
          true <- keys === Enum.sort(Map.keys(cache["records"])),
          true <- matching_seals?(state, request),
          {:ok, selected, next, neighbors} <-

@@ -24,6 +24,8 @@ defmodule Ipse.Extension.Collection do
   alias Ipse.JSON
   alias Ipse.Runner.Transaction
 
+  alias Ipse.Extension.ValidatedMemo
+
   alias Ipse.Extension.Collection.{
     Blocks,
     Directory,
@@ -3246,27 +3248,57 @@ defmodule Ipse.Extension.Collection do
          true <- JSON.sha256(bytes) == root["manifest"],
          {:ok, stored} <- JSON.decode_unique(bytes),
          true <- summary(stored) == Map.delete(root, "manifest"),
-         {:ok, s, blocks} <- decode_manifest(stored, path, uid),
-         true <- valid_state?(s, project) do
+         {:ok, s, blocks} <- validated_manifest(stored, path, uid, project, root["manifest"]) do
       {:ok, s, %{hash: root["manifest"], blocks: blocks}}
     else
       _ -> @error
     end
   end
 
-  defp decode_manifest(%{"version" => version} = stored, path, uid) when version in [4, 5] do
-    case Blocks.decode(stored, fn hash, bytes ->
-           bounded_file(Path.join([path, "manifests", hash <> ".json"]), uid, bytes)
-         end) do
-      {:ok, state, hashes} -> {:ok, state, hashes}
+  # Every referenced block is still read and hash-checked under the native
+  # owner. Only reconstruction and validation of those exact verified bytes
+  # are reused from an earlier successful load of the same manifest hash.
+  defp validated_manifest(%{"version" => version} = stored, path, uid, project, hash)
+       when version in [4, 5] do
+    key = {path, project, Profile.selected(), hash}
+
+    with {:ok, blocks, hashes} <-
+           Blocks.read(stored, fn block, bytes ->
+             bounded_file(Path.join([path, "manifests", block <> ".json"]), uid, bytes)
+           end) do
+      case ValidatedMemo.fetch(key) do
+        {:ok, {state, ^hashes}} ->
+          {:ok, state, hashes}
+
+        _ ->
+          with {:ok, state, ^hashes} <- Blocks.reconstruct(stored, blocks, hashes),
+               true <- valid_state?(state, project) do
+            ValidatedMemo.put(key, {state, hashes})
+            {:ok, state, hashes}
+          else
+            _ -> @error
+          end
+      end
+    else
       _ -> @error
     end
   end
 
-  defp decode_manifest(stored, _, _) do
-    case Encoding.decode(stored) do
-      {:ok, state} -> {:ok, state, MapSet.new()}
-      _ -> @error
+  defp validated_manifest(stored, path, _, project, hash) do
+    key = {path, project, Profile.selected(), hash}
+
+    case ValidatedMemo.fetch(key) do
+      {:ok, {state, hashes}} ->
+        {:ok, state, hashes}
+
+      _ ->
+        with {:ok, state} <- Encoding.decode(stored),
+             true <- valid_state?(state, project) do
+          ValidatedMemo.put(key, {state, MapSet.new()})
+          {:ok, state, MapSet.new()}
+        else
+          _ -> @error
+        end
     end
   end
 

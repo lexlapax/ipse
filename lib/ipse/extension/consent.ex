@@ -31,12 +31,26 @@ defmodule Ipse.Extension.Consent do
   @doc false
   # Pure storage decoding establishes no current policy or publication authority.
   # The public/in-memory representation keeps the existing hexadecimal rows.
+  # The result is a deterministic function of these exact bytes; a validated
+  # decoding may be reused for byte-identical input (see ValidatedMemo).
   def decode_control(bytes, project) when is_binary(bytes) and byte_size(bytes) <= @bytes do
-    with {:ok, stored} <- JSON.decode_unique(bytes),
-         {:ok, state} <- decode_storage(stored),
-         true <- valid_state?(state, project),
-         do: {:ok, upgrade(state)},
-         else: (_ -> @error)
+    key = {__MODULE__, project, :crypto.hash(:sha256, bytes)}
+
+    case Ipse.Extension.ValidatedMemo.fetch(key) do
+      {:ok, state} ->
+        {:ok, state}
+
+      _ ->
+        with {:ok, stored} <- JSON.decode_unique(bytes),
+             {:ok, state} <- decode_storage(stored),
+             true <- valid_state?(state, project) do
+          state = upgrade(state)
+          Ipse.Extension.ValidatedMemo.put(key, state)
+          {:ok, state}
+        else
+          _ -> @error
+        end
+    end
   rescue
     _ -> @error
   end
