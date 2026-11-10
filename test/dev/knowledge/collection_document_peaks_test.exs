@@ -144,7 +144,14 @@ defmodule Ipse.Development.CollectionDocumentPeaksTest do
   @refusal {:journal_refusal, "cannot hold another worst-case document Collection invocation"}
 
   defp options(sources, handoff \\ :refusal),
-    do: %{sources: sources, out: "unused", handoff: handoff, artifact: nil, keep_home: false}
+    do: %{
+      sources: sources,
+      out: "unused",
+      handoff: handoff,
+      artifact: nil,
+      keep_home: false,
+      max_steps: 100_000
+    }
 
   defp drive(options, faults, plan \\ Peaks.journal_plan(), grow \\ {1_000, 3}) do
     {:ok, rows} = Agent.start_link(fn -> [] end)
@@ -169,7 +176,8 @@ defmodule Ipse.Development.CollectionDocumentPeaksTest do
                out: Path.expand("_build/document-peaks-64"),
                handoff: :planned,
                artifact: nil,
-               keep_home: false
+               keep_home: false,
+               max_steps: 100_000
              }
 
       assert {:ok, %{sources: 1}} = Peaks.parse(~w(--sources 1 --out _build/a))
@@ -189,6 +197,8 @@ defmodule Ipse.Development.CollectionDocumentPeaksTest do
             ~w(--sources 8 --out _build),
             ~w(--sources 8 --out _build/../a),
             ~w(--sources 8 --out _build/a --handoff never),
+            ~w(--sources 8 --out _build/a --max-steps 0),
+            ~w(--sources 8 --out _build/a --max-steps 100001),
             ~w(--sources 8 --sources 9 --out _build/a),
             ~w(--sources 8 --out _build/a extra),
             ~w(--sources 8 --out _build/a --limit 9)

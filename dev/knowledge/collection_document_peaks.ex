@@ -39,7 +39,14 @@ defmodule Ipse.Development.CollectionDocumentPeaks do
       "a complete eight-source group with twenty facts per source does not fit one public request frame, so per-source publications assembled into a group result are the only route that scales to the target geometry"
   }
 
-  @usage "use --sources 1..1000 --out _build/NEW_DIRECTORY [--handoff planned|refusal|group] [--artifact BUILT_ARTIFACT] [--keep-home]"
+  # `max_steps` is an operator setting, 30 by default and at most 100,000. A
+  # Session spends one step on every embedding request, and its extension
+  # commands never start a new turn, so the default admits thirty requests per
+  # Session: fewer than the vector pages of one eight-source group need. The
+  # harness therefore sets the setting explicitly and reports the value.
+  @max_steps 100_000
+
+  @usage "use --sources 1..1000 --out _build/NEW_DIRECTORY [--handoff planned|refusal|group] [--max-steps 1..100000] [--artifact BUILT_ARTIFACT] [--keep-home]"
 
   def steps, do: @steps
   def collection_fields, do: @collection_fields
@@ -55,7 +62,8 @@ defmodule Ipse.Development.CollectionDocumentPeaks do
           out: :string,
           handoff: :string,
           artifact: :string,
-          keep_home: :boolean
+          keep_home: :boolean,
+          max_steps: :integer
         ]
       )
 
@@ -63,6 +71,7 @@ defmodule Ipse.Development.CollectionDocumentPeaks do
     out = opts[:out]
     handoff = Map.get(@handoffs, Keyword.get(opts, :handoff, "planned"))
     build = Path.expand("_build")
+    steps = Keyword.get(opts, :max_steps, @max_steps)
 
     # OptionParser keeps only the last value of a repeated option.
     flags =
@@ -81,6 +90,9 @@ defmodule Ipse.Development.CollectionDocumentPeaks do
       not (is_binary(out) and String.starts_with?(Path.expand(out), build <> "/")) ->
         {:error, "--out must name a new directory under _build/; " <> @usage}
 
+      steps not in 1..100_000 ->
+        {:error, "--max-steps must be an integer from 1 to 100000; " <> @usage}
+
       handoff == nil ->
         {:error, "--handoff must be planned, refusal or group; " <> @usage}
 
@@ -91,7 +103,8 @@ defmodule Ipse.Development.CollectionDocumentPeaks do
            out: Path.expand(out),
            handoff: handoff,
            artifact: if(opts[:artifact], do: Path.expand(opts[:artifact])),
-           keep_home: Keyword.get(opts, :keep_home, false)
+           keep_home: Keyword.get(opts, :keep_home, false),
+           max_steps: steps
          }}
     end
   end
@@ -366,6 +379,12 @@ defmodule Ipse.Development.CollectionDocumentPeaks do
       "fact_route" => @route,
       "geometry" => geometry(options.sources),
       "handoff_policy" => Atom.to_string(options.handoff),
+      "operator_settings" => %{
+        "max_steps" => options.max_steps,
+        "max_steps_default" => 30,
+        "note" =>
+          "a Session spends one step per embedding request across all its extension commands; the default of 30 refuses the eighth vector page of one eight-source group with embedding_limit"
+      },
       "phases" => phases,
       "counts" => %{
         "sessions" => totals["sessions"],
@@ -1218,6 +1237,7 @@ defmodule Ipse.Development.CollectionDocumentPeaks.Native do
       dir: Path.join(home, "sessions"),
       built: built,
       keep: options.keep_home,
+      max_steps: options.max_steps,
       listener: listener,
       server: server,
       port: port,
@@ -1310,6 +1330,7 @@ defmodule Ipse.Development.CollectionDocumentPeaks.Native do
       home: ctx.home,
       extensions: ctx.entries,
       approval: :ask,
+      max_steps: ctx.max_steps,
       approval_origin: :interactive,
       headless: false,
       compact: false,
