@@ -7,7 +7,7 @@ defmodule KnowledgeBuildsTest do
   test "checks each package's explicit export and catalog identities" do
     for {package, commands, tools} <- [
           {"corpus", ~w(source query index), ~w(query)},
-          {"research", ~w(investigate ledger), ~w(investigate)},
+          {"research", ~w(investigate investigate_provided ledger), ~w(investigate)},
           {"graph", ~w(source extract identity query), ~w(query capture)}
         ] do
       exports = %{

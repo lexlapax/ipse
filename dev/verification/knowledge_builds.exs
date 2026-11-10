@@ -3,7 +3,7 @@ defmodule Ipse.Development.Verification.KnowledgeBuilds do
 
   @exports %{
     "corpus" => %{commands: ~w(source query index), tools: ~w(query)},
-    "research" => %{commands: ~w(investigate ledger), tools: ~w(investigate)},
+    "research" => %{commands: ~w(investigate investigate_provided ledger), tools: ~w(investigate)},
     "graph" => %{commands: ~w(source extract identity query), tools: ~w(query capture)}
   }
 
