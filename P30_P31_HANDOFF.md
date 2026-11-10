@@ -234,8 +234,20 @@ Hosted run 42663715255 at `72ee4e63` then passed every Ubuntu and macOS job.
 - The opt-in 2,000-note integrated cohort run left one native commit outcome
   unknown in segment 55. Its root on the Linux host,
   `/tmp/ipse-native-seed-integrated-full-05d9181e6ee39f52ffcd5c4e84e2b3dc`, is
-  preserved and must never be resumed. The cause is undiagnosed; a fresh-root
-  rerun alone on the machine is still pending.
+  preserved and must never be resumed. The cause is undiagnosed.
+- Fresh-root reruns on 2026-11-09, alone on serenity: the first (root
+  `...-02a7af4db6f3072e6ce6ab71dd8e14af`) started 23:07 UTC and failed the
+  turnover precondition (the seed crossed UTC midnight); the test now refuses a
+  start within six hours of midnight. The second (root
+  `/tmp/ipse-native-seed-integrated-full-b8378dc21c812a5610f502b7198cce94`,
+  retained, never resume) seeded 2,000 notes and committed effects 1–14
+  (about 9 s each), then turn 1 failed: "synthetic provider request not
+  confirmed" after 120 s. Populated seed recall had made 42 serial Collection
+  `get` reads by then, each about 2.0 s at the start of the turn and growing
+  about 50 ms per prior read (4.2 s by read 42), with constant frame sizes.
+  At the ~126-read bound that is roughly 10 minutes of recall per turn. This
+  is a recall performance defect under investigation, not only a fixture
+  timeout; no unknown native outcome was left.
 - P30 needs a reviewed qualified-completion record; remaining P30/P31 gates are
   in `docs/plan.md`.
 - The local baseline has not been rerun since these test changes. Rerun it, and
@@ -244,9 +256,10 @@ Hosted run 42663715255 at `72ee4e63` then passed every Ubuntu and macOS job.
   `AGENTS.md`. On 2026-11-09 the operator had only `eb5f9cf2` reworded
   (`ca0a2d03`) with an explicitly authorized force-push; leave the others.
 - The Linux host `serenity` (reachable by `ssh serenity`, checkout
-  `~/projects/lexlapax/ipse`) now runs kernel 7.2.14, which is not a reviewed
-  native storage profile, so `:native_storage` tests are excluded there too.
-  No reviewed host currently exercises native storage.
+  `~/projects/lexlapax/ipse`) runs kernel 7.2.14, admitted as a reviewed tmpfs
+  profile on 2026-11-09. At `adfe6773` the provided-set fence session test, both
+  inference dispatch tests and the document draft native capacity test pass
+  there with `IPSE_TEST_NATIVE_STORAGE=1` (33 tests).
 
 ## Reproducing the hosted Linux exclusion locally
 
