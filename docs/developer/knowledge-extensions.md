@@ -1787,6 +1787,15 @@ cases in `test/extensions/knowledge/domain_regressions_test.exs` exercise these
 worker boundaries. They do not fence actual Host dispatch after approval or
 later Session delivery, and do not establish MCP or installed qualification.
 
+The separate `investigate_provided` command closes that gap for a provided-only
+set. Its descriptor declares the host source contract, so the Session captures
+the complete set from the admitted arguments, refuses any host call other than
+`model.complete` over a registered route, and re-checks the set and clock through
+send, model output and inline delivery. The worker requires a non-empty set and
+provided search/fetch profiles, then runs the same `investigate/2` path. Trace
+the host side in [the provided-source fence](extension-effects.md#fence-a-provided-only-source-set);
+`investigate` keeps its unfenced behavior.
+
 Trace Research's `retain/2` implementation into `Store.start/4` with operation
 `:put`. Research derives a canonical ID from the complete original body hash, fixes
 generation 1/revision 0, and records the supplied ID/URI, unique exact quote and

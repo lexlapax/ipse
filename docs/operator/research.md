@@ -9,6 +9,7 @@ authenticity, or semantic support.
 | --- | --- |
 | Ask the main agent to investigate and synthesize | Native `$research` workflow, recorded source/claim ledger |
 | Rank supplied text without a model or service | Offline Research extension, structured result |
+| Rerank supplied text with a model and fence it through delivery | [Fenced provided investigation](#fence-a-supplied-source-rerank-through-delivery) |
 | Investigate through selected search/fetch tools | MCP Research extension, structured result and call receipts |
 | Fetch and retain one selected URI for Corpus questions | [Fetched State retention](#fetch-and-retain-a-selected-source) |
 | Explicitly retain supplied text for later Corpus questions | [Provided-only Research transfer](#retain-supplied-evidence-in-a-shared-corpus) |
@@ -176,8 +177,10 @@ time after capture. Backdating proves no historical existence or trustworthiness
 For current-time investigations, Research samples time before proposing a
 rerank and before returning its worker result. If a captured source reaches an
 eligibility boundary, or a later sample moves earlier than a preceding check,
-Research returns `query_time_changed` without evidence or claims. These checks
-do not fence an approval-delayed model dispatch or later Session delivery.
+Research returns `query_time_changed` without evidence or claims. These worker
+checks do not fence an approval-delayed model dispatch or later Session delivery;
+the separate [fenced provided investigation](#fence-a-supplied-source-rerank-through-delivery)
+has the host check both.
 
 A lexical match is not semantic support. Without attributed graph facts the claim
 stays open with `semantic_support_unassessed`. `evidence_indexes` are zero-based
@@ -667,6 +670,80 @@ canonical source references, and excerpts of at most 128 bytes. Input must fit
 must return every candidate ID exactly once; missing/duplicate/invented IDs fail
 without repair. Usage and [budget reservations](resources.md) still apply.
 Conforming output proves no ranking improvement or factual support.
+
+## Fence a supplied-source rerank through delivery
+
+Use the `investigate_provided` command when you supply every source yourself,
+want a model reranker, and want Ipse rather than the worker to keep that source
+set current from approval through the result you see. It is an explicit command;
+the main agent cannot call it as a tool.
+
+Start from the mcp-model artifact, options and inference file of the
+[reranker setup](#add-an-explicitly-named-reranker). Add this provided profile
+entry to both the `search` and `fetch` registries of `mcp-model-options.json`,
+keeping any MCP profiles you also use:
+
+```json
+{"given": {"kind": "provided", "version": 1}}
+```
+
+Register the reranker's actual endpoint as a shared inference service by adding
+this top-level key to `rerank-inference.json`, beside its `profiles`:
+
+```json
+{"inference_services": {"local": {"version": 1, "origins": ["http://127.0.0.1:11434"]}}}
+```
+
+Follow [shared-service setup](configuration.md#serialize-a-shared-inference-service)
+for its protected-storage prerequisites, then regenerate
+`operator-mcp-model.json` with the same `config.exs` command and start a fresh
+chat with it. Run:
+
+```text
+/ext ext__research__investigate_provided {"search":"given","fetch":"given","retrieval":"words","rerank":"ordered","query":"release quiescence","limits":{"max_sources":1,"max_body_bytes":1024,"timeout_ms":30000},"sources":[{"source_id":"manual:release","generation":1,"title":"Release policy","text":"Release requires quiescence.","uri":"local:release-policy","observed_at_ms":1700000000000,"event_at_ms":null,"expires_at_ms":null}]}
+```
+
+Expect the ordinary `extension:model.complete` approval with its full arguments,
+one request to the registered service after you approve, and a result shaped like
+`investigate`. With `"rerank":null` the command makes no model request, but its
+delivery is still fenced.
+
+Before the worker starts, Ipse journals a content-free source-set intent. Its
+digest covers every source's ID, generation, body hash, observation and expiry
+time, origin and partition in order, plus the query, as-of time, artifact,
+options and parent invocation. The intent also records the earliest time at
+which any source becomes eligible or expires. Ipse derives these facts from the
+command arguments it admitted, never from the worker. It re-derives the digest
+and requires the clock to be at or after its previous check and before that
+earliest transition before admitting the model request, before recording the
+dispatch intent, immediately before sending the request body, when model output
+returns to the worker and before showing the result. An explicit `as_of_ms`
+fixes eligibility, so only the digest and clock checks apply.
+
+These cases refuse:
+
+- No registered service matches the reranker's endpoint, or the route changed:
+  the action refuses before any approval prompt and sends nothing.
+- The worker asks for any search, fetch, State, MCP, embedding or other host call,
+  or the invocation would combine with managed notes.
+- The sources are empty or a selected search/fetch profile is not provided:
+  Research returns `invalid_provided_sources`.
+- A source reached its transition, or the clock moved backward, after you
+  approved: no request is sent and the result is withheld with an error naming
+  that boundary.
+- The result is too large to show inline: saved result pages are not used.
+
+The ordinary `investigate` command keeps its existing behavior, including
+unregistered rerank routes.
+
+A resumed session shows a fenced result only as
+`{"status":"withheld","reason":"provided_sources_historical","historical_receipt":true}`
+and never shows its evidence again. An invocation interrupted after its set
+intent has no result and is not replayed. An interrupted request to the
+registered service leaves an unknown reservation that blocks later requests
+until you reconcile it. The fence binds time and the supplied set; it does not
+judge ranking quality, truth or freshness, and the model still receives the
+query and excerpts.
 
 ## Recover before issuing another request
 
