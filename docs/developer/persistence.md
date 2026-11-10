@@ -829,6 +829,22 @@ It retains no descriptor or lock between calls and creates no durable operation
 identity for a read. Opening can create protected directories and retained locks;
 it does not publish a root or receipt.
 
+Separate tasks and views often load the same unchanged root. Every protected
+load still takes the native owner and reads and hash-checks `root.json`, the
+manifest and each referenced block. The application-owned
+[`ValidatedMemo`](../../lib/ipse/extension/validated_memo.ex) then reuses only the
+deterministic work on those verified bytes: block reconstruction and
+`valid_state?/2` (keyed by Collection directory, project, storage profile and
+manifest hash), a view's record checks, index and seals (keyed by the digest of
+the exact installed cache), and Consent ledger decoding (keyed by project and
+`control.json` digest). Entries are admitted only after full validation succeeds,
+refusals are never stored, and at most eight entries are kept. The memo holds no
+lock, consent decision or source authority, so a new manifest hash, a changed
+block or an absent memo process always takes the complete path. Run
+`mix test test/ipse/extension/validated_memo_test.exs` with native storage when
+changing these loads; it counts reconstructions across repeated reads and damages
+a block in place to confirm the fresh byte check still refuses.
+
 Choose the operation according to the information needed:
 
 | Internal call | Returned information | Observation units |

@@ -52,6 +52,12 @@ checks its origin and project, validates source pages, resolves the requested
 proofs and rechecks the owners. The cache dies with its cleanup scope; a cache hit
 does not retain a lease or authorize a later display, write or provider request.
 
+Reconstruction and each protected source check validate the same embedded
+semantic policy many times. `SemanticConsent.policy?/1` therefore keeps, per
+process, the SHA-256 of up to eight deterministic encodings that already passed
+the complete check. Any other term, including a refused one, is validated in full;
+the memo carries no permission or currency.
+
 Run `mix test test/ipse/session/source_replay_cache_test.exs` when changing this
 ownership path. Its controls cover cache identity, fresh handles and borrowing
 across both resource scopes, including owner closure and refused registrations.
