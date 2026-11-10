@@ -1912,6 +1912,51 @@ server's reviewed administrative export/migration procedure, preserving source
 identity and suppression. Ordinary Ipse addressed commands cannot bypass that
 full-snapshot bound.
 
+### Rebuild a document Collection near its limits
+
+A document Collection holds at most 8,192 live records and 32,768 permanent
+operation receipts. Plan for **one initial build and one rebuild** per
+Collection. The recorded full-size synthetic recipe used 5,277 live records after
+its initial build and 6,910 after a rebuild, because selecting a new shared
+generation keeps the earlier generation's immutable values. That build and
+rebuild used 28,258 operations; another full rebuild needs about 9,600 more, so it
+cannot fit in the same Collection. Deleting values would not help: operation
+receipts are never released.
+
+Unfinished drafts also hold live records. Each staged value keeps its header,
+up to ten parts and a ready record until it is published or retired. Before a
+rebuild, retire abandoned drafts so that their records and reserved slots are free:
+
+1. Close every other Session using the Collection and let admitted work finish.
+2. Inspect the lexical index and the shared Job using its exact recorded selections:
+
+   ```text
+   /ext ext__corpus__lexical_index {"store":"notes","action":"inspect","continuation":null}
+   ```
+
+   Run `generation_job` with `"action":"inspect"`, a `null` continuation and the
+   exact `vector_selection` and `fact_selection` described in
+   [supplied shared projections](#inspect-supplied-shared-projections).
+3. Retire each unfinished Source or projection draft in its original Session,
+   using the `progress.head_id` and `progress.kind` from its last result:
+
+   ```text
+   /ext ext__corpus__source {"store":"notes","action":"abort_collection_draft","args":{"head_id":"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa","kind":"projection"}}
+   ```
+
+   Approve each storage write. Continue until the result reports
+   `coverage.status: "aborted"`. Abort an unfinished shared Job or lexical build
+   with its exact inspected continuation, as described above.
+4. Start the rebuild with a fresh `begin` and a `null` continuation, then follow
+   each returned command unchanged until final `selected`.
+
+Retirement removes only the retired draft's staged records and reservations.
+Published sources, the selected roots and every earlier generation's values
+remain, and each retirement step spends one operation receipt. If the rebuild
+still refuses with `collection_capacity`, the Collection is at its documented
+limit. No current command removes published values or operation history.
+Preserve the Collection and its journals; do not edit metadata or remove files.
+
 For a denied, unavailable or unknown action, read its result and coverage.
 Unknown work may already have happened. Inspect the source/draft and relevant
 service receipts before issuing new work; resume does not replay it. A definite

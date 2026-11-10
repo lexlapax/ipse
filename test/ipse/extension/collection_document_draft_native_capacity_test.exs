@@ -470,6 +470,177 @@ defmodule Ipse.Extension.Collection.DocumentDraftNativeCapacityTest do
     IO.puts("DRAFT_CAPACITY " <> Jason.encode!(marker))
   end
 
+  # One unfinished single-stage head fills the 8,192-record live map with its
+  # header and ten parts. Published values share one real object file.
+  defp seed_full_live_map(c) do
+    state = read_state(c)
+    generation = state["generation"] + 1
+    head_id = id(910_001)
+
+    operations =
+      Map.put(state["operations"], head_id, %{
+        "generation" => generation,
+        "floor" => 0,
+        "request_sha256" => JSON.sha256("synthetic head admission")
+      })
+
+    body = Jason.encode!(%{"text" => String.duplicate("x", 30)})
+    {_, public_record} = object(c, "fixture.public.1", packed(body), head_id)
+    epoch = id(110_000)
+    expiry = System.system_time(:millisecond) + 3_600_000
+
+    header = %{
+      "version" => 1,
+      "owner" => c.owner,
+      "expected_revision" => 0,
+      "byte_count" => byte_size(body),
+      "sha256" => JSON.sha256(body),
+      "expires_at_ms" => expiry,
+      "maintenance_epoch" => 1,
+      "epoch" => epoch,
+      "key" => "fixture.active.0",
+      "offset" => 10,
+      "parts" => 10,
+      "state" => "open",
+      "write_publish" => true
+    }
+
+    stage_records =
+      Map.new(
+        [object(c, "host.stage.0.header", header, head_id)] ++
+          Enum.map(0..9, fn part ->
+            object(
+              c,
+              "host.stage.0.part.#{part}",
+              %{"epoch" => epoch, "offset" => part, "data" => binary_part(body, part, 1)},
+              head_id
+            )
+          end)
+      )
+
+    head = %{
+      "id" => head_id,
+      "kind" => "projection",
+      "owner" => Map.delete(c.owner, "invocation_id"),
+      "plan_sha256" => JSON.sha256("full live map plan"),
+      "body_sha256" => JSON.sha256("full live map body"),
+      "maintenance_epoch" => 1,
+      "retirement_epoch" => nil,
+      "retirement_operation" => nil,
+      "unit_limit" => 3,
+      "unit" => 1,
+      "revision" => generation,
+      "slots" => [0, 1],
+      "active" => %{
+        "slot" => 0,
+        "epoch" => epoch,
+        "key" => "fixture.active.0",
+        "expected_revision" => 0,
+        "byte_count" => byte_size(body),
+        "sha256" => JSON.sha256(body),
+        "offset" => 10,
+        "publish" => true
+      },
+      "prepared" => []
+    }
+
+    limit = Profile.run(Profile.documents(), fn -> Profile.limit(:records) end)
+    count = limit - map_size(stage_records) - map_size(state["records"])
+
+    public =
+      Map.new(1..count, fn n ->
+        key = public_key(n)
+        {key, %{public_record | "key" => key}}
+      end)
+
+    seeded =
+      state
+      |> Map.put("generation", generation)
+      |> Map.put("operations", operations)
+      |> Map.put("document_drafts", %{head_id => head})
+      |> Map.update!("records", &(&1 |> Map.merge(public) |> Map.merge(stage_records)))
+
+    assert map_size(seeded["records"]) === 8_192
+    assert DocumentDraft.valid?(seeded)
+    assert fits?(seeded)
+    install(c, seeded)
+    {seeded, head, body, public_key(count + 1)}
+  end
+
+  test "retiring an unfinished head frees its stage records but no published value", c do
+    prepare_epoch(c)
+    {seeded, head, body, new_key} = seed_full_live_map(c)
+    before = snapshot(c)
+    root = Path.join([c.root, c.ns, "root.json"])
+    root_before = File.read!(root)
+
+    write = fn generation ->
+      %{
+        "op" => "value.put_inline",
+        "key" => new_key,
+        "expected_revision" => 0,
+        "byte_count" => byte_size(body),
+        "sha256" => JSON.sha256(body),
+        "data" => body,
+        "generation" => generation,
+        "maintenance_epoch" => 1
+      }
+    end
+
+    # A full live map refuses one more published value without changing the root.
+    assert {:failed, %{"code" => "collection_capacity"}} =
+             DocumentStage.execute(
+               c.root,
+               c.ns,
+               write.(before["generation"]),
+               Usage.id(),
+               c.owner
+             )
+
+    assert File.read!(root) == root_before
+
+    retire = %{
+      "op" => "value.abort",
+      "slot" => 0,
+      "epoch" => head["active"]["epoch"],
+      "generation" => before["generation"],
+      "maintenance_epoch" => 1,
+      "progress" => %{
+        "version" => 1,
+        "action" => "retire",
+        "head_id" => head["id"],
+        "revision" => head["revision"]
+      }
+    }
+
+    assert {:ok, %{"document_progress" => %{"status" => "retired"}}} =
+             DocumentStage.execute(c.root, c.ns, retire, Usage.id(), c.owner)
+
+    retired = read_state(c)
+    refute Map.has_key?(retired["document_drafts"] || %{}, head["id"])
+    assert map_size(retired["records"]) === 8_192 - 11
+    refute Enum.any?(Map.keys(retired["records"]), &String.starts_with?(&1, "host.stage."))
+
+    # Published values are retained exactly; the retirement spends, rather than
+    # refunds, permanent operation history.
+    published =
+      Map.reject(seeded["records"], fn {key, _} -> String.starts_with?(key, "host.") end)
+
+    assert Map.take(retired["records"], Map.keys(published)) === published
+    assert map_size(retired["operations"]) === map_size(seeded["operations"]) + 1
+
+    assert {:ok, _} =
+             DocumentStage.execute(
+               c.root,
+               c.ns,
+               write.(snapshot(c)["generation"]),
+               Usage.id(),
+               c.owner
+             )
+
+    assert map_size(read_state(c)["records"]) === 8_192 - 10
+  end
+
   for kept <- [:active, :prepared] do
     test "a single #{kept} stage on an unretired legacy head finishes atomically", c do
       prepare_epoch(c)

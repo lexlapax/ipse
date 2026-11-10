@@ -294,6 +294,12 @@ the same command with its unchanged Job continuation in a new Session. The
 continuation is bound to the Job and Collection revisions, not to the Session,
 so the new Session resumes where the refused command would have started.
 
+A rebuild that refuses with `collection_capacity` cannot be fixed by retrying.
+Retire abandoned drafts first; retirement frees only their staged records and
+slots, never published values or operation receipts. One initial build and one
+rebuild is the supported limit per Collection. Follow
+[rebuilding near the limits](corpus.md#rebuild-a-document-collection-near-its-limits).
+
 For an interrupted document build or restore, preserve its Session, draft,
 operation IDs and saved result references. Inspect the current Collection
 status and the exact draft before choosing an available continuation or abort.
