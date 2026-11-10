@@ -538,11 +538,16 @@ IO.puts(
     })
 )
 
-expected_count = length(expected_texts)
+# One pass reads at most the literal notes whose dependencies fit one reference
+# message: 74 over three index pages. A larger seed stops there with partial
+# coverage instead of being refused by the host.
+expected_count = min(length(expected_texts), 74)
 assert length(reads) == expected_count
+read_keys = Enum.map(reads, &get_in(&1, ["request", "request", "key"]))
+assert length(Enum.uniq(read_keys)) == expected_count
 
-# Every note is read. The fixed context allocation may hold fewer than a larger
-# set, which the published coverage then reports as partial.
+# Every note within that bound is read. The fixed context allocation may hold
+# fewer than a larger set, which the published coverage then reports as partial.
 if notes == 33 do
   assert included == expected_count
   assert Enum.all?(expected_texts, &String.contains?(wire, &1))
@@ -551,7 +556,7 @@ else
 end
 
 assert coverage["coverage"] ==
-         if(sparse or included < expected_count, do: "partial", else: "complete")
+         if(sparse or included < length(expected_texts), do: "partial", else: "complete")
 
 assert coverage["included"] == included
 
@@ -564,7 +569,9 @@ if notes > 42 do
   state = :sys.get_state(session)
   context = %{config: state.config, cwd: cwd, session_id: state.id, history_dir: dir}
   dependencies = NativeRecallReuse.literals(events)
-  assert length(dependencies) == notes
+  assert length(dependencies) == expected_count
+  # Exactly the notes this pass read reach dispatch, and nothing else.
+  assert Enum.sort(Enum.map(dependencies, & &1["subject"]["key"])) == Enum.sort(read_keys)
   counter = NativeRecallReuse.start()
 
   pass = fn path, fun ->
@@ -575,7 +582,7 @@ if notes > 42 do
       "NATIVE_NOTE_RECALL_FULL_SET " <>
         Jason.encode!(%{
           "path" => path,
-          "records" => notes,
+          "records" => expected_count,
           "ok" => match?({:ok, _}, result),
           "native_batches" => counts,
           "leases" => leases
@@ -592,7 +599,7 @@ if notes > 42 do
   assert {{:ok, {current, proofs}}, _} =
            retained.("worker_input", &ManagedUse.with_worker_dependencies/3)
 
-  assert length(current) == notes
+  assert length(current) == expected_count
 
   assert {{:ok, {^current, ^proofs}}, [1, 1]} =
            retained.("worker_input_warm", &ManagedUse.with_worker_dependencies/3)

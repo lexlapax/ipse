@@ -107,6 +107,17 @@ defmodule Ipse.Session.NativeNoteRecallTest do
     run("recall-many", notes: 64)
   end
 
+  @tag timeout: 900_000
+  @tag :recall_many
+  @tag skip:
+         if(System.get_env("IPSE_TEST_RECALL_MANY") == "1",
+           do: false,
+           else: "multi-page native recall remains unqualified; opt in for the diagnostic"
+         )
+  test "a seed above the dependency allowance of one pass completes with partial coverage" do
+    run("recall-many", notes: 90)
+  end
+
   defp run(mode, opts \\ []) do
     root = Path.join(System.tmp_dir!(), "ipse-native-recall-" <> Ipse.Usage.id())
     File.mkdir!(root)

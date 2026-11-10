@@ -469,20 +469,42 @@ A failed index call or a changed generation during a read or final check discard
 the pass and reports unavailable coverage with an unknown candidate count.
 
 The worker can continue beyond the first 32 candidates even when the accumulated
-set does not fit: a later smaller note may still fit the greedy projection. It
-stops at the existing 126-note projection limit or earlier host bounds. Before
-reading values it compares the allocation to the host-framed size of an empty
-first note item; below that lower bound no note can fit, so it skips those reads
-but retains the final root check. Meeting the lower bound does not mean a whole
-note and the required framing will fit. It reserves that check and counts page
-dependencies, every successful read and worst-case proof and management-journal
-owners before issuing further work. Additional successful reads also enlarge the
-causal source union. Reaching a bound or omitting a note reports partial coverage,
-even if the bound stops value reads within the final indexed page and there is no
-next-page cursor. Those worker counts cover this invocation only; inherited
-history can make the host's final union too large, in which case admission still
-refuses. Search keeps its separate 32-candidate bound, and a later cursor
-remains partial.
+set does not fit: a later smaller note may still fit the greedy projection.
+Before reading values it compares the allocation to the host-framed size of an
+empty first note item; below that lower bound no note can fit, so it skips those
+reads but retains the final root check. Meeting the lower bound does not mean a
+whole note and the required framing will fit.
+
+What ends a pass is the host's bound on one message. Every index page and every
+successful read becomes a dependency, and the host binds all dependencies of the
+pass to the turn's single reference message, which may carry 128 dependencies in
+131,072 encoded bytes. The SDK does not expose those limits, so the worker
+carries its own copies beside the largest encodings it can cause: 881 bytes for
+a root observation, 1,671 for a literal note and 2,483 for an accepted decision,
+each including its list separator. Before a read it requires room for what it
+has read, one root observation per index page, four more for the final check and
+the host's own observations, and one further record at the accepted-decision
+size, because a record's kind is unknown until it is read. A pass therefore
+reads at most 74 literal notes or 50 accepted decisions; `@recall_projection_limit`
+is 80 and no longer the first bound reached. The same check also counts
+worst-case proof and management-journal owners. Reaching any bound or omitting a
+note reports partial coverage, even if value reads stop within the final indexed
+page and there is no next-page cursor. Search keeps its separate 32-candidate
+bound, and a later cursor remains partial.
+
+`recall_dependency_budget_test.exs` reads these constants from the package
+source and holds them against `ManagedReference.limits/0`, the host validator
+and the host encoder. Change the constants and that test together. To see the
+rule work, build the largest admitted set in that test, add two records and
+watch the host bound refuse it.
+
+The budget covers this pass only. Dependencies that other publishers add to the
+same reference message are not visible to the worker and can still make the
+host refuse the reference. The turn then ends before dispatch with "Reference
+context could not be admitted within its bounds, or history or the tool catalog
+changed"; nothing of the refused reference is journaled, and the Session
+continues and restores as described under
+[session sources](session-sources.md#deliver-a-managed-export-input-under-its-original-owners).
 
 A missing original is distinguishable from a generic source refusal only for a
 single literal record and its one inactive original journal. On Linux, the host

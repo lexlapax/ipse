@@ -582,8 +582,8 @@ defmodule IpseKnowledge.KnowledgeRecallTest do
       assert result["coverage"] == "partial"
       assert result["candidates"] == 80
       assert result["included"] in 1..31
-      assert length(calls) == 87
-      assert Enum.count(calls, &(get_in(&1, ["request", "op"]) == "get")) == 80
+      assert length(calls) == 81
+      assert Enum.count(calls, &(get_in(&1, ["request", "op"]) == "get")) == 74
       assert Enum.count(calls, &(get_in(&1, ["request", "op"]) == "index")) == 4
       assert Ipse.Extension.context_rendered_bytes(items, "knowledge") <= 8192
       assert Enum.any?(items, &(&1["id"] == "note_index" and &1["text"] =~ "remaining_pages"))
@@ -676,21 +676,47 @@ defmodule IpseKnowledge.KnowledgeRecallTest do
       refute Enum.any?(calls, &(&1["op"] == "context.publish" and &1["items"] != []))
     end
 
-    test "proof reservation stops within the last index page without claiming complete coverage" do
-      records = for n <- 1..121, do: record(n, "~N#{n}~")
+    test "the host dependency byte allowance stops value reads without claiming complete coverage" do
+      records = for n <- 1..74, do: record(n, "~N#{n}~")
       {result, _, calls, _items} =
+        drive(start(), records, page_size: 32, capture_projection_context: true)
+      fitting = Process.delete(:recall_projection_context)
+      # Every indexed note is read; only this fixture's model context budget,
+      # not the dependency allowance, limits what is rendered.
+      assert length(fitting.index) == 74 and length(fitting.notes) == 74 and fitting.read == 74
+      assert fitting.index_pages == 3 and fitting.next == nil and result["candidates"] == 74
+
+      records = for n <- 1..75, do: record(n, "~N#{n}~")
+      {result, _, calls_over, items} =
         drive(start(), records, page_size: 32, capture_projection_context: true)
       ctx = Process.delete(:recall_projection_context)
 
-      # One proof per successful record, with nine reserved for a possible next
-      # record: after 120 successful reads, the next must remain unstarted.
-      assert Enum.count(calls, &(get_in(&1, ["request", "op"]) == "get")) == 120
-      assert Enum.count(calls, &(get_in(&1, ["request", "op"]) == "index")) == 5
-      assert ctx.read == 120 and ctx.successful_reads == 120 and ctx.source_proofs == 120
-      assert length(ctx.index) == 121 and length(ctx.notes) == 120
+      # Three pages and four reserved root observations at 881 bytes leave room
+      # for 74 literal dependencies at 1,671 bytes while one more read of
+      # unknown kind stays reserved at 2,483: the 75th remains unstarted even
+      # though it is on the last indexed page.
+      assert Enum.count(calls, &(get_in(&1, ["request", "op"]) == "get")) == 74
+      assert Enum.count(calls_over, &(get_in(&1, ["request", "op"]) == "get")) == 74
+      assert Enum.count(calls_over, &(get_in(&1, ["request", "op"]) == "index")) == 4
+      assert ctx.read == 74 and ctx.successful_reads == 74 and ctx.dependency_bytes == 74 * 1_671
+      assert length(ctx.index) == 75 and length(ctx.notes) == 74
       assert ctx.next == nil and ctx.verified
-      assert result["candidates"] == 121 and result["unavailable"] == 0
-      assert result["coverage"] == "partial"
+      assert result["candidates"] == 75 and result["unavailable"] == 0
+      assert result["coverage"] == "partial" and result["included"] <= 74
+      refute Map.has_key?(decoded_notes(items), List.last(records)["key"])
+    end
+
+    test "accepted decisions reach the dependency byte allowance sooner than literal notes" do
+      records = for n <- 1..60, do: accepted_record("~D#{n}~")
+      assert length(Enum.uniq_by(records, & &1["key"])) == 60
+      {result, _, calls, _} =
+        drive(start(), records, page_size: 32, capture_projection_context: true)
+      ctx = Process.delete(:recall_projection_context)
+
+      assert Enum.count(calls, &(get_in(&1, ["request", "op"]) == "get")) == 50
+      assert ctx.successful_reads == 50 and ctx.dependency_bytes == 50 * 2_483
+      assert length(ctx.notes) == 50
+      assert result["candidates"] == 60 and result["coverage"] == "partial"
     end
 
     test "sparse discovery stops at the real host read bound with partial coverage" do

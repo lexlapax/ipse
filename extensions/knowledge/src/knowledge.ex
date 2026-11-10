@@ -6,12 +6,24 @@ defmodule IpseKnowledge.Knowledge do
   alias IpseKnowledge.Knowledge.DecisionPolicy
   @preset "native"
   @recall_candidates 32
-  # Each live metadata page and successful read contributes a host dependency;
-  # leave two positions for the initial and final root observations.
-  @recall_projection_limit 126
+  # Each live metadata page and successful read contributes a host dependency.
+  # No pass projects more notes than this; the byte allowance below stops value
+  # reads first, at 74 literal notes or 50 accepted decisions.
+  @recall_projection_limit 80
   @recall_host_read_limit 512
   @recall_host_dependency_limit 128
   @recall_host_source_limit 128
+  # The host binds every dependency of one pass to a single reference message,
+  # within 131,072 encoded bytes. These are the largest encodings, with their
+  # list separator, of a root observation, a literal note and an accepted
+  # decision; a record's kind is unknown until it is read, so the next read is
+  # reserved at the larger size. Four root observations stay reserved for the
+  # final check and the host's own observations.
+  @recall_host_dependency_bytes 131_072
+  @recall_root_dependency_bytes 881
+  @recall_literal_dependency_bytes 1_671
+  @recall_accepted_dependency_bytes 2_483
+  @recall_reserved_roots 4
   @max_record_proofs 8
   # An accepted decision can additionally require its management-journal owner.
   @max_record_owners 9
@@ -600,7 +612,8 @@ defmodule IpseKnowledge.Knowledge do
     ctx = %{
       ctx
       | successful_reads: ctx.successful_reads + 1,
-        source_proofs: ctx.source_proofs + recall_record_proofs(record)
+        source_proofs: ctx.source_proofs + recall_record_proofs(record),
+        dependency_bytes: ctx.dependency_bytes + recall_record_dependency_bytes(record)
     }
 
     ctx =
@@ -1023,7 +1036,8 @@ defmodule IpseKnowledge.Knowledge do
       index_pages: 0,
       index_cursors: [],
       successful_reads: 0,
-      source_proofs: 0
+      source_proofs: 0,
+      dependency_bytes: 0
     }
 
   defp recall_seed_index(value, state) do
@@ -1078,14 +1092,35 @@ defmodule IpseKnowledge.Knowledge do
   # the host's full per-record proof allowance rather than discard its lineage.
   defp recall_record_proofs(_), do: @max_record_owners
 
+  # Only a current literal note is known to bind the smaller dependency.
+  defp recall_record_dependency_bytes(%{"value" => %{"kind" => "accepted_decision"}}),
+    do: @recall_accepted_dependency_bytes
+
+  defp recall_record_dependency_bytes(%{"value" => value}) do
+    if IpseKnowledge.Notes.valid?(value),
+      do: @recall_literal_dependency_bytes,
+      else: @recall_accepted_dependency_bytes
+  end
+
+  defp recall_record_dependency_bytes(_), do: @recall_accepted_dependency_bytes
+
   defp recall_seed_room?(ctx, kind) do
     # Reserve the final root verification and, for a record, its worst-case
     # source count. Every successful read stays in the host's causal union.
     extra_sources = if kind == :record, do: @max_record_owners, else: 0
 
+    extra_bytes =
+      if kind == :record,
+        do: @recall_accepted_dependency_bytes,
+        else: @recall_root_dependency_bytes
+
+    roots = ctx.index_pages + @recall_reserved_roots
+
     ctx.read + ctx.index_pages + 2 <= @recall_host_read_limit and
       ctx.successful_reads + ctx.index_pages + 2 <= @recall_host_dependency_limit and
-      ctx.source_proofs + extra_sources <= @recall_host_source_limit
+      ctx.source_proofs + extra_sources <= @recall_host_source_limit and
+      ctx.dependency_bytes + roots * @recall_root_dependency_bytes + extra_bytes <=
+        @recall_host_dependency_bytes
   end
 
   # An oversized accumulated set does not prove that a later, smaller note
