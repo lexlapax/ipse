@@ -1957,6 +1957,28 @@ still refuses with `collection_capacity`, the Collection is at its documented
 limit. No current command removes published values or operation history.
 Preserve the Collection and its journals; do not edit metadata or remove files.
 
+After a Collection has used its one rebuild, build the next version in a **new
+Collection**. A Collection belongs to one project identity, and every partition
+of that project shares its record and operation limits, so a new store partition
+does not help. Choose a separate folder (or repository) for the new project,
+place the sources there, and set up the Collection profile for it:
+
+```sh
+ipse documents setup --profile collection --scope folder --cwd /path/to/new-workspace --replace
+ipse documents setup --profile collection --scope folder --cwd /path/to/new-workspace --replace --write
+```
+
+Then ingest the sources and build from a fresh `begin` in a Session started in
+that folder. The old Collection stays as it is and remains readable from its
+own folder; keep it until you no longer need its results.
+
+Very large Collections must use the shared group projections. The per-source
+vector and fact layout refuses a new source projection with
+`per_source_projection_capacity` once the Collection holds more than 984
+sources, because one root and its pages per source would exceed the live-record
+limit. Use [supplied shared projections](#inspect-supplied-shared-projections)
+instead.
+
 For a denied, unavailable or unknown action, read its result and coverage.
 Unknown work may already have happened. Inspect the source/draft and relevant
 service receipts before issuing new work; resume does not replay it. A definite

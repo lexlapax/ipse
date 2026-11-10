@@ -1,7 +1,9 @@
 # Explicit generation cleanup after selection — 2026-11-09
 
 Status: design stopped before implementation. It supplies no deletion API,
-authority or acceptance. Branch `p31-root2-lifecycle` from `52d8acfd`.
+authority or acceptance. On 2026-11-09 the operator deferred building it: under
+the one-rebuild limit only about 580 reduction intermediates are removable,
+which changes nothing that fits. It remains recorded future work. Branch `p31-root2-lifecycle` from `52d8acfd`.
 Current scope remains in the [plan](../../plan.md); the operator procedure for
 the supported one-rebuild limit is in the
 [corpus manual](../../operator/corpus.md#rebuild-a-document-collection-near-its-limits).

@@ -813,6 +813,16 @@ prepares pages from an exact source record and fact rows; it grants no authority
 Individual synthetic Session controls cover a full-width 32-fact projection,
 but do not qualify the populated multi-source resource peak or cleanup.
 
+Per-source vector and fact projections keep a root and its pages for every
+source beside the source's own keys. `Projection.prepare_plan/1` therefore
+refuses a new per-source root with `per_source_projection_capacity` once the
+catalog holds more than 984 sources: at the reference geometry in
+[collection_profile_operations.exs](../../dev/knowledge/collection_profile_operations.exs)
+the Collection would need 8N + 1 + ⌈N/16⌉ + 2⌈N/8⌉ + 2 live keys, which first
+exceeds 8,192 at 985. Existing roots still update. Full-size Collections use the
+shared group projections; `test/extensions/knowledge/projection_capacity_test.exs`
+checks the boundary.
+
 This requires an explicit operator binding v2 with
 `source_use: shared_producer_v1` and a registered inference route. All embeddings
 from that identity require guards, so unguarded query embeddings belong to a

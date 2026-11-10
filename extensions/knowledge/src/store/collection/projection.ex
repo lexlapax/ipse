@@ -1584,7 +1584,25 @@ defmodule IpseKnowledge.Store.Collection.Projection do
       }}}
   end
 
-  defp prepare_plan(s) do
+  # Per-source projections keep one vector root and two pages, or one fact root
+  # and page, per source beside its three source keys. At the reference geometry
+  # a Collection then holds 8N + 1 + ceil(N/16) + 2 * ceil(N/8) + 2 live keys,
+  # which exceeds 8,192 above 984 sources; larger Collections use the shared
+  # group projections instead.
+  @per_source_limit 984
+
+  @doc false
+  def per_source_capacity?(sources), do: is_integer(sources) and sources in 0..@per_source_limit
+
+  defp prepare_plan(%{root: nil} = s) when is_map(s.catalog) do
+    if per_source_capacity?(s.catalog["value"]["sources"]),
+      do: plan(s),
+      else: error(:per_source_projection_capacity)
+  end
+
+  defp prepare_plan(s), do: plan(s)
+
+  defp plan(s) do
     with true <- logical_revision(s.root) == s.args["expected_revision"],
          true <-
            s.root == nil or
