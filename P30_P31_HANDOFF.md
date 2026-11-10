@@ -246,12 +246,46 @@ Hosted run 42663715255 at `72ee4e63` then passed every Ubuntu and macOS job.
   `get` reads by then, each about 2.0 s at the start of the turn and growing
   about 50 ms per prior read (4.2 s by read 42), with constant frame sizes.
   At the ~126-read bound that is roughly 10 minutes of recall per turn. This
-  is a recall performance defect under investigation, not only a fixture
-  timeout; no unknown native outcome was left.
+  is a recall performance defect, not only a fixture timeout; no unknown
+  native outcome was left. The retained copies of the two earlier roots under
+  `~/ipse-tmp` on serenity show the same shape (14 effect results, no turn
+  result, 8 reads in about 24 s on 2026-11-03): no cohort run has completed
+  turn 1.
+- Recall read cost, measured on serenity with a 33-source fixture. Each read
+  loaded and validated the whole Collection about six times, installed the
+  read view about five times, restored each new source journal and ran five
+  consent transactions; each worker input also re-verifies every dependency
+  accumulated so far, which is the per-read growth. `Ipse.Extension.ValidatedMemo`
+  (one validated value per protected owner slot, always after a fresh read and
+  hash check of the protected bytes) cut a `get` from about 160 ms to 45 ms, a
+  consent transaction from 37 ms to 10 ms, a source restore from 650 ms to
+  340 ms and the fixture turn from 31.0 s to 21.8 s; growth fell from about
+  25 ms to 16 ms per prior read. Extrapolated to 2,000 notes that is still
+  about six minutes for a 126-read turn. On 2026-11-10 the operator chose to
+  remove the growth while keeping full recall: when the Collection root
+  witness is unchanged since a record was observed, later inputs in the same
+  invocation need not re-observe it; expiry and source checks stay. That
+  change is not implemented yet, and the cohort has not been rerun.
 - P30 needs a reviewed qualified-completion record; remaining P30/P31 gates are
   in `docs/plan.md`.
-- The local baseline has not been rerun since these test changes. Rerun it, and
-  hosted CI on both platforms, before claiming the branch green.
+- Hosted CI run 42761397253 is green on both platforms at `b76d8497` after one
+  rerun of two macOS source shards. The preset admission check had failed on
+  both platforms because it did not expect `investigate_provided`; `b76d8497`
+  fixes that.
+- Full local runs: macOS at `b76d8497` passed 3,357 of 3,358 tests and Linux
+  with native storage at the recall memo tip passed 4,438 of 4,439. The one
+  failure on both was `CollectionCompletedBackupIsolationTest`, caused by
+  `projection_capacity_test.exs` loading `Projection` into the test VM at file
+  load; hosted partitions happened to separate the two files. The capacity
+  test now compiles the module for its own case and removes it afterwards.
+  Rerun the full baseline on both hosts before fast-forwarding `main`.
+- macOS source shards on hosted CI fail intermittently on timing-sensitive
+  tests, a different one each run: `runner_storage_backpressure_test.exs:41`
+  (cleanup unconfirmed), `test/dev/verification/lab_test.exs:5` (admission
+  refused under stress), `draft_acceptance_test.exs:111` (timeout) and
+  `runner/transaction_deadline_test.exs:7` (write deadline elapsed). Each
+  passes locally and on rerun. Treat this as a CI reliability defect to fix
+  separately; do not widen deadlines without diagnosing the runner load.
 - Commits `7841ceb5..308ef051` carry an AI co-author trailer contrary to
   `AGENTS.md`. On 2026-11-09 the operator had only `eb5f9cf2` reworded
   (`ca0a2d03`) with an explicitly authorized force-push; leave the others.
