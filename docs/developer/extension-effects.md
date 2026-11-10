@@ -443,10 +443,14 @@ Trace one invocation through `Session.ProvidedSourceSet`:
 1. `Session.Invocation.begin/6` builds the ordinary invocation intent, then
    `ProvidedSourceSet.begin/2` captures the set from that intent's admitted
    arguments at host time. Anything outside the closed provided-source shape,
-   or an empty set, refuses admission before any record. The Session journals
-   the invocation intent and immediately after it a content-free
-   `provided_source_set_intent`. The worker receives its payload only after both
-   records are durable, so the intent precedes every approval and send.
+   or an empty set, refuses admission before any record. `Session.record_adjacent/2`
+   then reserves journal capacity for the invocation intent and a content-free
+   `provided_source_set_intent` together and appends both back to back. A full
+   journal refuses the invocation with neither record written. Observation and
+   event feeds see the parent only after both appends, so a feed delivery intent
+   for `extension.invocation_admitted` lands after the set intent. The worker
+   receives its payload only after both records are durable, so the set intent
+   precedes every approval and send.
 2. The set binds every source's position, ID, generation, body SHA-256,
    observation and expiry time, `provided` origin and `research-provided`
    partition, plus query, as-of time and kind, artifact and options digests,
@@ -462,22 +466,34 @@ Trace one invocation through `Session.ProvidedSourceSet`:
    compares the intent, and requires `now >= high-water` and `now < transition`.
    Success raises the high-water. `begin_inference/3`, the dispatch-intent
    `commit/6`, the physical send's `wire_use/6` and the model-output
-   `result_admit/6` each call it in the Session owner. `Ipse.InferenceDispatch`
-   routes the send through `EgressGate.capture/3` and the output through
+   `result_admit/6` each call it in the Session owner through `guard/2`, which
+   reads `ProvidedSourceSet.now/1`. That is the system clock unless a test puts
+   a fixed `:clock` function in the fence. `Ipse.InferenceDispatch` routes the
+   send through `EgressGate.capture/3` and the output through
    `Session.InferenceDispatch.release/3`, and `consume_result/3` requires the
-   resulting seal. No route means no dispatch: an unregistered selection never
-   reaches these paths.
-5. `publish_inline_result/2` checks once more. It journals a
-   `provided_source_set_release` with decision `current` and the result digest
-   before the result, or decision `withheld` and fails the turn. Saved result
-   pages and the managed release path refuse an active fence.
+   resulting seal. `Ipse.InferenceDispatch.run/8` also refuses a fenced context
+   whose selection is unregistered, before any budget reservation, although
+   step 3 already keeps such a call from reaching dispatch.
+5. `publish_inline_result/2` checks once more and also requires
+   `result_as_of?/4`: the result value's `coverage.as_of_ms` must equal an
+   explicit `as_of_ms`, or else lie at or after the selected time, at or before
+   this check and before the transition. Only a refusal with no evidence and no
+   claims may omit it. It journals a `provided_source_set_release` with decision
+   `current` and the result digest before the result, or decision `withheld`
+   and fails the turn with a message naming the failed check. `open_output/2`,
+   `push_output/4` and `seal_output/3` refuse an active fence, so a fenced
+   result never starts saved pages; `publish_saved_result/2` and the managed
+   release path also refuse it.
 
 Restore runs `ProvidedSourceSet.validate_events/1` from `Actions.restore/1`. It
-requires the set intent directly after its contract invocation and re-derives
-it, allows only `model.complete` actions, and accepts a result only as inline
-version 1 or 3 bound by a current release. An intent without a result remains
-interrupted: nothing completes or replays it, and an interrupted registered
-request keeps its unknown reservation. The restored display is
+requires each contract invocation's set intent before any action, release or
+result of that invocation and re-derives it; unrelated records may fall
+between the two. A contract intent never followed by its set intent was
+interrupted before the worker started: restore accepts it, but rejects any
+later action, release or result for it. Restore allows only `model.complete`
+actions and accepts a result only as inline version 1 or 3, bound by a current
+release, with a fenced as-of time. An intent without a result remains
+interrupted: nothing completes or replays it. The restored display is
 `ProvidedSourceSet.display/1`, a historical receipt without the evidence.
 
 The fence authenticates identity and time of the supplied bytes, not their
@@ -686,7 +702,7 @@ Choose a regression that proves the boundary, including its refusal path:
 | Text wire/result | Keep a small answer with more than 64 KiB valid framing; refuse above 1 MiB wire. Reject oversized text while retaining completed usage | `test/ipse/extension/invocation_test.exs`, `test/ipse/extension/model_call_test.exs`, `test/ipse/extension/model_jobs_test.exs` |
 | Complete helper context | Compare the exact 16 KiB host-call envelope with one encoded byte more; retain UTF-8 context unchanged and reject an omitted or altered current-source delivery | `test/ipse/extension/model_call_test.exs`, `test/ipse/extension/managed_collection_call_session_test.exs` |
 | Embedding identity | Change only a successful selection hash and recompute the superficial outcome hash; standalone Actions and Session must still refuse | `test/ipse/extension/embedding_call_session_test.exs`, `test/ipse/config/profiles_test.exs` |
-| Provided-source fence | Change each bound source field, add/omit/reorder a source; hold approval past an expiry and require no request body and a withheld release; refuse an unregistered route before approval; resume an interrupted invocation without replay | `test/ipse/session/provided_source_set_test.exs`, `test/ipse/session/provided_source_set_session_test.exs`, `test/ipse/extension/catalog_test.exs` |
+| Provided-source fence | Change each bound source field, add/omit/reorder a source; drive `begin_inference`, `commit`, `wire_use` and `result_admit` with a fence clock below the high-water, exactly at the transition and one millisecond before it; withhold a result whose as-of time precedes selection; refuse saved output and an unregistered route; keep a feed delivery after the set intent, write neither begin record into a full journal and resume a bare contract intent or an interrupted invocation without replay | `test/ipse/session/provided_source_set_test.exs`, `test/ipse/session/provided_source_set_session_test.exs`, `test/ipse/extension/catalog_test.exs` |
 | Document source admission | Preserve an actual live claim through four batches; hold approval beyond source expiry and require no request body; reject foreign Session binding and restored claim authority | `test/ipse/session/document_embedding_test.exs`, `test/ipse/extension/collection_document_source_use_test.exs`, `test/extensions/knowledge/shared_producer_guard_session_test.exs` |
 | Embedding capacity | Four 4096-coordinate vectors under a 65536-byte ceiling must dispatch zero requests; normal-ceiling and one-vector controls complete | `test/ipse/extension/embedding_result_test.exs`, `test/ipse/provider/embedding_test.exs` |
 | Typed advice | Deny before HTTP, tamper service/model/usage bindings, kill the actual owner, then resume without replay; require separate child approval and retained shared liability | `test/ipse/extension/decision_session_test.exs`, `test/ipse/usage/decision_test.exs` |

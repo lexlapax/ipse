@@ -1792,7 +1792,10 @@ set. Its descriptor declares the host source contract, so the Session captures
 the complete set from the admitted arguments, refuses any host call other than
 `model.complete` over a registered route, and re-checks the set and clock through
 send, model output and inline delivery. The worker requires a non-empty set and
-provided search/fetch profiles, then runs the same `investigate/2` path. Trace
+provided search/fetch profiles, then runs the same `investigate/2` path. Its
+`coverage.as_of_ms` is the host-checked as-of time: Research samples it in
+`rank/1` after the Session selected the set, so it falls inside the fenced
+interval unless a source transition or clock rollback intervened. Trace
 the host side in [the provided-source fence](extension-effects.md#fence-a-provided-only-source-set);
 `investigate` keeps its unfenced behavior.
 

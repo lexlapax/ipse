@@ -676,7 +676,10 @@ Conforming output proves no ranking improvement or factual support.
 Use the `investigate_provided` command when you supply every source yourself,
 want a model reranker, and want Ipse rather than the worker to keep that source
 set current from approval through the result you see. It is an explicit command;
-the main agent cannot call it as a tool.
+the main agent cannot call it as a tool. Omit `as_of_ms` for that guarantee: an
+explicit `as_of_ms` fixes eligibility at that time and turns off the expiry
+fence, so a source whose expiry has passed on the wall clock is still sent to
+the model and shown in the result.
 
 Start from the mcp-model artifact, options and inference file of the
 [reranker setup](#add-an-explicitly-named-reranker). Add this provided profile
@@ -708,17 +711,22 @@ one request to the registered service after you approve, and a result shaped lik
 `investigate`. With `"rerank":null` the command makes no model request, but its
 delivery is still fenced.
 
-Before the worker starts, Ipse journals a content-free source-set intent. Its
-digest covers every source's ID, generation, body hash, observation and expiry
-time, origin and partition in order, plus the query, as-of time, artifact,
-options and parent invocation. The intent also records the earliest time at
-which any source becomes eligible or expires. Ipse derives these facts from the
-command arguments it admitted, never from the worker. It re-derives the digest
-and requires the clock to be at or after its previous check and before that
-earliest transition before admitting the model request, before recording the
-dispatch intent, immediately before sending the request body, when model output
-returns to the worker and before showing the result. An explicit `as_of_ms`
-fixes eligibility, so only the digest and clock checks apply.
+Before the worker starts, Ipse journals a content-free source-set intent beside
+the invocation intent. If the session journal cannot hold both, the command is
+refused before the worker starts and neither is written. The digest covers
+every source's ID, generation, body hash, observation and expiry time, origin
+and partition in order, plus the query, as-of time, artifact, options and parent
+invocation. The intent also records the earliest time at which any source
+becomes eligible or expires. Ipse derives these facts from the command arguments
+it admitted, never from the worker. It re-derives the digest and requires the
+clock to be at or after its previous check and before that earliest transition
+before admitting the model request, before recording the dispatch intent,
+immediately before sending the request body, when model output returns to the
+worker and before showing the result. Before showing the result, Ipse also
+requires its `coverage.as_of_ms` to fall between the selection time and that
+check, or to equal your explicit `as_of_ms`. With an explicit `as_of_ms` there
+is no transition, so only the digest, the backward-clock check and the as-of
+match apply.
 
 These cases refuse:
 
@@ -728,22 +736,30 @@ These cases refuse:
   or the invocation would combine with managed notes.
 - The sources are empty or a selected search/fetch profile is not provided:
   Research returns `invalid_provided_sources`.
-- A source reached its transition, or the clock moved backward, after you
-  approved: no request is sent and the result is withheld with an error naming
-  that boundary.
-- The result is too large to show inline: saved result pages are not used.
+- A source reached its observation or expiry time, or the clock moved backward,
+  after the command started: a request not yet sent is refused. When this check
+  fails before the result is shown, the turn fails with `A provided source
+  reached its observation or expiry time, or the clock moved backward, before
+  delivery; the result was withheld and nothing was replayed.`
+- The result reports an as-of time outside the fenced interval: the turn fails
+  with `The fenced result reported an as-of time outside its provided source
+  set; the result was withheld and nothing was replayed.`
+- The result is too large to show inline: Ipse opens no saved result pages and
+  the invocation fails without a result.
 
 The ordinary `investigate` command keeps its existing behavior, including
 unregistered rerank routes.
 
 A resumed session shows a fenced result only as
 `{"status":"withheld","reason":"provided_sources_historical","historical_receipt":true}`
-and never shows its evidence again. An invocation interrupted after its set
-intent has no result and is not replayed. An interrupted request to the
-registered service leaves an unknown reservation that blocks later requests
-until you reconcile it. The fence binds time and the supplied set; it does not
-judge ranking quality, truth or freshness, and the model still receives the
-query and excerpts.
+and never shows its evidence again. An interrupted invocation has no result and
+is not replayed, including one whose journal ends before its source-set intent.
+The rerank request uses the registered service like any other request, so after
+an interruption follow the shared-service
+[reconciliation procedure](recovery.md#reconcile-an-unresolved-inference-reservation)
+before relying on that service. The fence binds time and the supplied set; it
+does not judge ranking quality, truth or freshness, and the model still receives
+the query and excerpts.
 
 ## Recover before issuing another request
 
