@@ -850,6 +850,19 @@ always takes the complete path. Run
 changing these loads; it counts reconstructions across repeated reads and damages
 a block in place to confirm the fresh byte check still refuses.
 
+One owner reuses the result of an authenticated native read instead of a
+validation of bytes it has just read. Worker input keeps the exact managed
+record results of its last complete pass in a slot for the Collection root
+path, project and Session pin, tagged with the Collection root identity and the
+authenticated catalog. That identity commits to every stored page and value, so
+a record read at it is what a new read would return. The tag is not known before
+a native read, so `ValidatedMemo.fetch/1` returns the slot's tag and value only
+for planning which records to read. The owner establishes the root from a fresh
+native read with its own capability in every pass, and applies time, policy and
+source checks to every record whether it was read or reused.
+[Session sources](session-sources.md#deliver-a-managed-export-input-under-its-original-owners)
+teaches the rule and its controls.
+
 Choose the operation according to the information needed:
 
 | Internal call | Returned information | Observation units |

@@ -723,8 +723,7 @@ fresh format/root read and confirmed view close precede the returned observation
 The view is local to one pass. It retains at most 160 raw records and bounds the
 sum of encoded batch-reply sizes to twenty 64-KiB replies. At most 32 literals
 consume at most 417 of the existing 512 view units, within its unchanged
-60-second lifetime. No authentication fact is cached across passes or requests.
-The second observation reacquires current
+60-second lifetime. The second observation reacquires current
 authority and must reproduce the first. Original source ownership is retained
 between those observations, outside Collection ownership. Ordinary use checks
 current dependency equality and the earliest expiry before its send or release
@@ -733,6 +732,46 @@ owner to match every observed root before stdin delivery.
 The complete result and proof union remain in their original dependency order.
 The view closes before other versions are observed. Other dependency versions,
 historical verdicts, approval/display and publication retain their existing paths.
+
+Ordinary use shares no result between passes or requests: each pass natively
+reads every literal. Worker input follows a narrower rule, because a turn that
+reads many notes delivers the same growing dependency set again with each later
+input. A native record result is a deterministic function of the Collection root
+identity, the recipe and the authenticated catalog. The root identity commits
+through `root.json` and the manifest to every stored page and value, including
+the format and override records the read also checks. `ManagedUse` therefore
+keeps the exact native results of its last complete worker-input pass, by key
+and recipe, in one [`ValidatedMemo`](../../lib/ipse/extension/validated_memo.ex)
+slot for the Collection root path, project and Session pin, tagged with that
+root identity and catalog.
+
+The root of a pass never comes from that slot. With its own domain-auth
+capability, every pass natively reads each literal it does not hold, or one that
+it holds when none is new. It uses the remembered results only when that read
+names the tagged root and catalog and a reread record equals its remembered
+copy. Any difference reads every literal again and replaces the slot; conflicting
+roots within one pass refuse as before. Reuse replaces only the native read.
+Each pass still applies the current source policy, source categories and time to
+every record, the second pass must reproduce the first, original source and
+journal ownership is retained and verified, and the final retained Collection
+owner must match the observed root before stdin delivery. A forgotten or
+superseded note changes the root, so its literal is read again and refuses. An
+expired note, a withdrawn source or a changed policy refuses at an unchanged
+root. Only worker input reuses results. Display and approval share its retained
+path and final root check but still read every literal natively, as do
+`with_dependencies/3`, historical verdicts and publication, which have no
+retained Collection owner of their own to compare with the observed root.
+
+One domain-auth capability admits 128 verifications and each literal uses three.
+A pass that must natively read more than 42 literals, such as the first input
+after a root change or in a new runtime, therefore refuses; reuse does not
+raise that allowance.
+Run `mix test test/ipse/session/native_note_recall_test.exs` with native storage
+when changing this path. Its reuse control counts the records of each native
+batch across a root change, a withdrawn source, a forgotten note and revoked
+consent. Its expiry control starts a second runtime under the
+[process clock fixture](testing.md#follow-literal-relations-and-process-clock-retention) just before
+a note deadline and requires the remembered record to withhold the input.
 
 The document profile uses the existing paired native reader. Notes use that same
 reader only when the initial view open reports a validated index above its 4-MiB
