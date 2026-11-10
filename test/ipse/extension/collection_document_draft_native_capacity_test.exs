@@ -299,6 +299,7 @@ defmodule Ipse.Extension.Collection.DocumentDraftNativeCapacityTest do
     refute fits.(8_000)
     count = last_fitting(1_000, 8_000, fits)
     seeded = geometry.(count)
+    assert_record_ledger(seeded)
     assert fits?(seeded)
     refute fits.(count + 1)
 
@@ -470,12 +471,28 @@ defmodule Ipse.Extension.Collection.DocumentDraftNativeCapacityTest do
     IO.puts("DRAFT_CAPACITY " <> Jason.encode!(marker))
   end
 
+  # Every record names the ledger operation that wrote it at its revision; the
+  # loader rejects a root whose record revision differs from that operation's
+  # generation.
+  defp assert_record_ledger(state) do
+    generations = Map.new(state["operations"], fn {id, r} -> {id, r["generation"]} end)
+    assert state["generation"] === map_size(state["operations"])
+
+    assert Enum.all?(state["records"], fn {_, r} ->
+             generations[r["operation_id"]] === r["revision"]
+           end)
+  end
+
   # One unfinished single-stage head fills the 8,192-record live map with its
-  # header and ten parts. Published values share one real object file.
+  # header and ten parts. Published values share one real object file. All
+  # records are attributed to the generation-one operation, matching their
+  # revision 1.
   defp seed_full_live_map(c) do
     state = read_state(c)
     generation = state["generation"] + 1
     head_id = id(910_001)
+
+    {first_id, _} = Enum.find(state["operations"], fn {_, r} -> r["generation"] === 1 end)
 
     operations =
       Map.put(state["operations"], head_id, %{
@@ -485,7 +502,7 @@ defmodule Ipse.Extension.Collection.DocumentDraftNativeCapacityTest do
       })
 
     body = Jason.encode!(%{"text" => String.duplicate("x", 30)})
-    {_, public_record} = object(c, "fixture.public.1", packed(body), head_id)
+    {_, public_record} = object(c, "fixture.public.1", packed(body), first_id)
     epoch = id(110_000)
     expiry = System.system_time(:millisecond) + 3_600_000
 
@@ -507,13 +524,13 @@ defmodule Ipse.Extension.Collection.DocumentDraftNativeCapacityTest do
 
     stage_records =
       Map.new(
-        [object(c, "host.stage.0.header", header, head_id)] ++
+        [object(c, "host.stage.0.header", header, first_id)] ++
           Enum.map(0..9, fn part ->
             object(
               c,
               "host.stage.0.part.#{part}",
               %{"epoch" => epoch, "offset" => part, "data" => binary_part(body, part, 1)},
-              head_id
+              first_id
             )
           end)
       )
@@ -561,6 +578,7 @@ defmodule Ipse.Extension.Collection.DocumentDraftNativeCapacityTest do
       |> Map.update!("records", &(&1 |> Map.merge(public) |> Map.merge(stage_records)))
 
     assert map_size(seeded["records"]) === 8_192
+    assert_record_ledger(seeded)
     assert DocumentDraft.valid?(seeded)
     assert fits?(seeded)
     install(c, seeded)
