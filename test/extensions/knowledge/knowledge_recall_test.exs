@@ -936,7 +936,7 @@ defmodule IpseKnowledge.KnowledgeRecallTest do
   end
   result = ExUnit.run()
   if Map.take(result, [:total, :failures, :skipped, :excluded]) !=
-       %{total: 32, failures: 0, skipped: 0, excluded: 0}, do: System.halt(1)
+       %{total: 33, failures: 0, skipped: 0, excluded: 0}, do: System.halt(1)
   IO.puts("KNOWLEDGE_RECALL_CONTROL_PASS")
   """
 
