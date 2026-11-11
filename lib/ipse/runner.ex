@@ -585,7 +585,31 @@ defmodule Ipse.Runner do
     end
   end
 
-  defp staging_control(_, _, _, _, _), do: {:error, :protected_staging_write_unavailable}
+  # Output other than the expected acknowledgement is the writer reporting its
+  # own failure, and its supervisor exits next. A cancel written into that exit
+  # closes the Port with :epipe and discards the exit status, so the refused
+  # exchange awaits the terminal status within its original deadline instead.
+  defp staging_control(port, deadline, ticket, _, _), do: staging_refused(port, deadline, ticket)
+
+  defp staging_refused(port, deadline, ticket) do
+    receive do
+      {^port, {:data, _}} ->
+        staging_refused(port, deadline, ticket)
+
+      {^port, {:exit_status, _}} = terminal ->
+        send(self(), terminal)
+        {:error, :protected_staging_write_unavailable}
+
+      {:ipse_cancel_resource, id} when ticket != nil and ticket.id == id ->
+        {:error, :protected_staging_write_unavailable}
+
+      {^port, _} ->
+        {:error, :protected_staging_write_unavailable}
+    after
+      max(deadline - System.monotonic_time(:millisecond), 0) ->
+        {:error, :protected_staging_write_unavailable}
+    end
+  end
 
   defp staging_send(_, <<>>, _, _, buffer), do: {:ok, buffer}
 

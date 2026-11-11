@@ -573,6 +573,11 @@ Runner carries unconsumed acknowledgement bytes directly into the next parser
 phase. It never requeues a coalesced final `A`/`X` buffer behind an already queued
 real process-exit receipt. A terminal frame still requires the actual OS exit and
 the existing closed success schema; buffered bytes alone do not prove cleanup.
+When stdout carries anything other than the expected acknowledgement, such as an
+`A` coalesced with the writer's error frame, Runner refuses the exchange but
+awaits the supervisor's exit status within the original deadline before cleanup.
+A cancel written while that supervisor exits would close the Port with `:epipe`
+and discard the exit status that confirms cleanup.
 
 Storage owners must hold their logical lock, acquire the retained writer lease
 before reclaiming pending files or measuring allocation, and retain its inode.
