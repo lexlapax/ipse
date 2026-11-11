@@ -538,10 +538,33 @@ IO.puts(
     })
 )
 
-# One pass reads at most the literal notes whose dependencies fit one reference
-# message: 74 over three index pages. A larger seed stops there with partial
-# coverage instead of being refused by the host.
-expected_count = min(length(expected_texts), 74)
+# One pass reads only the literal notes whose dependencies fit one reference
+# message, and a larger seed stops there with partial coverage instead of being
+# refused by the host. Every index page is one more root dependency, so the
+# count follows from the pages the store returned: the worker reserves 881
+# bytes for each page and for four further roots, 1,671 for each literal read
+# and 2,483 for the next record. Three pages would leave room for 74 notes; the
+# native index lists these notes 17 to a page, which leaves room for 73.
+index_pages =
+  Enum.count(events, fn event ->
+    event["type"] == "extension_action_result" and
+      get_in(event, ["request", "op"]) == "collection.call" and
+      get_in(event, ["request", "request", "op"]) == "index" and
+      get_in(event, ["request", "request", "limit"]) == 32 and
+      get_in(event, ["outcome", "status"]) == "ok"
+  end)
+
+room? = fn read -> read * 1_671 + (index_pages + 4) * 881 + 2_483 <= 131_072 end
+
+expected_count =
+  if room?.(length(expected_texts) - 1) do
+    length(expected_texts)
+  else
+    assert length(reads) in 1..74
+    assert room?.(length(reads) - 1) and not room?.(length(reads))
+    length(reads)
+  end
+
 assert length(reads) == expected_count
 read_keys = Enum.map(reads, &get_in(&1, ["request", "request", "key"]))
 assert length(Enum.uniq(read_keys)) == expected_count

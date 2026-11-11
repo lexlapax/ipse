@@ -486,7 +486,10 @@ has read, one root observation per index page, four more for the final check and
 the host's own observations, and one further record at the accepted-decision
 size, because a record's kind is unknown until it is read. A pass therefore
 reads at most 74 literal notes or 50 accepted decisions; `@recall_projection_limit`
-is 80 and no longer the first bound reached. The same check also counts
+is 80 and no longer the first bound reached. Those counts assume full 32-row
+index pages. A store that returns shorter pages spends more root observations
+on the same notes: the native recall fixture lists its notes 17 to a page,
+needs five pages and stops at 73. The same check also counts
 worst-case proof and management-journal owners. Reaching any bound or omitting a
 note reports partial coverage, even if value reads stop within the final indexed
 page and there is no next-page cursor. Search keeps its separate 32-candidate
