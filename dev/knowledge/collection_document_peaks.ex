@@ -950,7 +950,9 @@ defmodule Ipse.Development.CollectionDocumentPeaks do
       {:ok, options} ->
         code = run(options)
         __MODULE__.Native.cleanup()
-        System.halt(code)
+        # Results are already on disk. A flushing halt can wait indefinitely on a
+        # helper port that is still open, so stop without flushing ports.
+        :erlang.halt(code, flush: false)
     end
   end
 
