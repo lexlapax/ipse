@@ -7,6 +7,81 @@ milestones, their required tests, an adversarial audit and a reviewer handoff.
 `P30_P31_RESUME_HANDOFF.md` is the older chronological working log (to
 2026-11-08); its entries describe their own time, not current status.
 
+## Resume here (2026-11-12)
+
+Branch tip before this note: `e23a77ee`, equal on the local checkout, `origin`
+and serenity (`~/projects/lexlapax/ipse`). Serenity's checkout is in use by a
+run; do not change its working tree until that run ends.
+
+Working agreement (operator, 2026-11-11): no open-ended investigation agents;
+land what exists; record known limits instead of diagnosing them; the operator
+starts long serenity runs and reports when they end; results are read once.
+`main` moves by fast-forward when the full Linux suite passes on serenity with
+`IPSE_TEST_NATIVE_STORAGE=1`, the macOS baseline passes locally, hosted Linux
+jobs are green, and any hosted macOS failure is on the flake list below and
+passes one re-run.
+
+Landed since `675e34fe`:
+
+- `5f4ac89a` awaits the staging helper's exit after refused output. This was
+  the `RunnerStorageTest` `cleanup_unconfirmed` failure (a cancel written into
+  an exiting helper closed the Port with `:epipe`). Reproduced on macOS 21/360
+  under load, 0/1,800 after. No regression test; other cancel paths keep the
+  same race.
+- `932b4504`, `9c7d1dcf`, `bfd8fd28`, `e23a77ee`: an unbindable reference is
+  refused before journaling; Notes recall stops within one message's dependency
+  byte allowance (74 literal notes or 50 accepted decisions, partial coverage
+  reported). Linux pass on serenity: four files, native storage,
+  `IPSE_TEST_RECALL_MANY=1`.
+- `09552840` halts the document peaks harness without flushing ports (the
+  64-source process lingered after writing results). Unverified until the
+  250-source run ends.
+
+Running or finished on serenity:
+
+- Documents ladder, 250 sources: started by the operator, log
+  `~/ipse-tmp/docs-peaks-250.log`, evidence `_build/document-peaks-250` in the
+  serenity checkout. Earlier rungs: `~/ipse-tmp/docs-peaks/_build/document-peaks-8`
+  and `-64` (64 sources: 7,047.7 s, 97,609 host actions, 72.2 ms/action, journal
+  peak 42,969,402 bytes, allocated peak 11,657,216 bytes, 0 journal refusals).
+- Notes cohort at `e23a77ee`: FAILED after 5,165 s. Log
+  `~/ipse-tmp/notes-cohort-e23a77ee.log`; the integrated child failed, see
+  `/tmp/ipse-native-seed-integrated-full-3547f82b380e3a5ec5084284e0bf505c/integrated-full/turns-1.log`.
+  Not yet read. The retained root is evidence: never resume, replay or modify it.
+
+Next steps, in order:
+
+1. Read `turns-1.log` once and record why the cohort child failed.
+2. When the 250-source run ends, copy its evidence into a dated
+   `docs/archive/` record and update the Documents rows in `docs/plan.md` with
+   the 8/64/250 numbers. Full size (1,000) stays unqualified; the operator
+   decides on it with these numbers.
+3. Record known limits here and in `docs/plan.md`: recall cap (74/50 by
+   bytes); 42-record base ceiling per pass before deduplication, 63-record
+   guarantee at 2,000 notes derived only; 5 s lease on one-literal paths;
+   tool-result messages inherit the proposing message's dependency union and
+   can exceed the occurrence bound after the result is journaled, leaving a
+   Session that cannot be restored (not reproduced live; fix options: refuse
+   the tool call before the effect, release the result as withdrawn, or bound
+   tool-result occurrences like assistant messages).
+4. `docs/operator/configuration.md` describes `max_steps` as 30 calls per
+   turn; extension-command steps accumulate Session-wide. Correct it.
+5. P30D: rebuild the Linux package on the final tip, rerun both installed
+   checks, update `docs/archive/2026-11-09-p30-qualified-completion/index.md`
+   items 3 and 5, then ask the operator for sign-off.
+6. Research: installed end-to-end journey and P31H acceptance rows.
+7. Final baselines on both hosts, whole-manual review, hosted CI, fast-forward
+   `main`.
+
+Hosted macOS flake list (undiagnosed, assumed load-related): `ExtensionLabTest`,
+`HeaderDeadlineTest`, `KnowledgeEvaluationSessionTest`,
+`Runner.TransactionTest`, `Extension.TextTest`,
+`KnowledgeEvaluationRunnerIsolationTest` (and its nested
+`KnowledgeEvaluationRunnerTest` cases), `Extension.FeedsTest`,
+`Session.DraftResponseLimitsTest`, `Extension.ContributionsTest`. Run
+42972305666 on `5f4ac89a` had all Linux jobs green and macOS 1/4 red in the
+last two.
+
 ## Where things stand
 
 - Branch `codex/p30-p31`. `main` was fast-forwarded to `751e3724` (no
