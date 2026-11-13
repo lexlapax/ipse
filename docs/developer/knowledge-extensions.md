@@ -484,12 +484,17 @@ a root observation, 1,671 for a literal note and 2,483 for an accepted decision,
 each including its list separator. Before a read it requires room for what it
 has read, one root observation per index page, four more for the final check and
 the host's own observations, and one further record at the accepted-decision
-size, because a record's kind is unknown until it is read. A pass therefore
-reads at most 74 literal notes or 50 accepted decisions; `@recall_projection_limit`
-is 80 and no longer the first bound reached. Those counts assume full 32-row
-index pages. A store that returns shorter pages spends more root observations
-on the same notes: the native recall fixture lists its notes 17 to a page,
-needs five pages and stops at 73. The same check also counts
+size, because a record's kind is unknown until it is read. By bytes alone a pass
+could read 74 literal notes or 50 accepted decisions. A second check binds
+literal notes first: the host re-verifies every dependency of a pass under one
+capability lease of 128 distinct signature checks, and a record can cost two
+beyond the first, so the worker keeps its reads, its index pages and two
+reserved roots within 63 (`@recall_verified_dependency_limit`). A pass therefore
+reads at most 60 literal notes or 50 accepted decisions; `@recall_projection_limit`
+is 80 and not the first bound reached. Those counts assume full 32-row index
+pages. A store that returns shorter pages spends more root observations on the
+same notes, so the native recall fixture, which lists its notes 17 to a page,
+stops sooner. The same check also counts
 worst-case proof and management-journal owners. Reaching any bound or omitting a
 note reports partial coverage, even if value reads stop within the final indexed
 page and there is no next-page cursor. Search keeps its separate 32-candidate

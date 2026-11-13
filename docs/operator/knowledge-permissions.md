@@ -807,8 +807,8 @@ The automatic pass reads metadata pages and whole current notes within its
 context and host-resource limits. It can consider later, smaller notes even when
 earlier notes do not fit. More candidate reads can take longer and retain more
 source dependencies; host limits can stop the pass before it sees every note.
-One pass reads at most 74 notes, or 50 accepted decisions, because every note it
-reads must be bound to a single message; a larger collection is reported as
+One pass reads at most 60 notes, or 50 accepted decisions, because every note it
+reads must be bound to a single message and checked again before use; a larger collection is reported as
 partial.
 When the allocation is below the host-framed lower bound for a note, the pass
 skips note reads and still checks the collection root. Meeting that lower bound

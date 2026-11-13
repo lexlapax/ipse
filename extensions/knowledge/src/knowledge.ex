@@ -8,10 +8,15 @@ defmodule IpseKnowledge.Knowledge do
   @recall_candidates 32
   # Each live metadata page and successful read contributes a host dependency.
   # No pass projects more notes than this; the byte allowance below stops value
-  # reads first, at 74 literal notes or 50 accepted decisions.
+  # reads for accepted decisions at 50, and the verified dependency limit stops
+  # literal notes at 60.
   @recall_projection_limit 80
   @recall_host_read_limit 512
   @recall_host_dependency_limit 128
+  # The host re-verifies every dependency of a pass under one capability lease
+  # of 128 distinct signature checks; a record costs at most two beyond the
+  # first, so 63 dependencies always fit however the notes spread over pages.
+  @recall_verified_dependency_limit 63
   @recall_host_source_limit 128
   # The host binds every dependency of one pass to a single reference message,
   # within 131,072 encoded bytes. These are the largest encodings, with their
@@ -1118,6 +1123,7 @@ defmodule IpseKnowledge.Knowledge do
 
     ctx.read + ctx.index_pages + 2 <= @recall_host_read_limit and
       ctx.successful_reads + ctx.index_pages + 2 <= @recall_host_dependency_limit and
+      ctx.successful_reads + ctx.index_pages + 2 <= @recall_verified_dependency_limit and
       ctx.source_proofs + extra_sources <= @recall_host_source_limit and
       ctx.dependency_bytes + roots * @recall_root_dependency_bytes + extra_bytes <=
         @recall_host_dependency_bytes

@@ -543,8 +543,8 @@ IO.puts(
 # refused by the host. Every index page is one more root dependency, so the
 # count follows from the pages the store returned: the worker reserves 881
 # bytes for each page and for four further roots, 1,671 for each literal read
-# and 2,483 for the next record. Three pages would leave room for 74 notes; the
-# native index lists these notes 17 to a page, which leaves room for 73.
+# and 2,483 for the next record. It also keeps the reads so far, the pages and
+# two reserved roots within 63 verified dependencies, which binds first.
 index_pages =
   Enum.count(events, fn event ->
     event["type"] == "extension_action_result" and
@@ -554,7 +554,9 @@ index_pages =
       get_in(event, ["outcome", "status"]) == "ok"
   end)
 
-room? = fn read -> read * 1_671 + (index_pages + 4) * 881 + 2_483 <= 131_072 end
+room? = fn read ->
+  read * 1_671 + (index_pages + 4) * 881 + 2_483 <= 131_072 and read + index_pages + 2 <= 63
+end
 
 expected_count =
   if room?.(length(expected_texts) - 1) do

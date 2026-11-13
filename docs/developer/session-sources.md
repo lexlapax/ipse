@@ -795,7 +795,7 @@ behind. The saved Session restores and takes further turns; the next reference
 is admitted once the published set fits. `reference_bound_test.exs` forces the
 byte bound with fewer than 128 dependencies and covers that recovery. Notes
 recall stays under the bound on its own: its worker stops reading at no more than
-74 literal notes or 50 accepted decisions and reports partial coverage, as
+60 literal notes or 50 accepted decisions and reports partial coverage, as
 [recall revalidation](knowledge-extensions.md#revalidate-recall-before-use)
 explains, so the refusal remains the backstop for other publishers.
 
