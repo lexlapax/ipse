@@ -39,15 +39,25 @@ Landed since `675e34fe`:
 
 Running or finished on serenity:
 
-- Documents ladder, 250 sources: started by the operator, log
-  `~/ipse-tmp/docs-peaks-250.log`, evidence `_build/document-peaks-250` in the
-  serenity checkout. Earlier rungs: `~/ipse-tmp/docs-peaks/_build/document-peaks-8`
+- Documents ladder, 250 sources: the first run stopped after 31 minutes at the
+  65th fact publication (a Session admits 64 extension result sources; the
+  refusal surfaced as "outcome unknown"); partial evidence
+  `_build/document-peaks-250`. `3432be27` hands the publish and assemble roles
+  to a new Session every 64. Rerun started by the operator 2026-11-13: log
+  `~/ipse-tmp/docs-peaks-250b.log`, evidence `_build/document-peaks-250b`. Earlier rungs: `~/ipse-tmp/docs-peaks/_build/document-peaks-8`
   and `-64` (64 sources: 7,047.7 s, 97,609 host actions, 72.2 ms/action, journal
   peak 42,969,402 bytes, allocated peak 11,657,216 bytes, 0 journal refusals).
 - Notes cohort at `e23a77ee`: FAILED after 5,165 s. Log
   `~/ipse-tmp/notes-cohort-e23a77ee.log`; the integrated child failed, see
   `/tmp/ipse-native-seed-integrated-full-3547f82b380e3a5ec5084284e0bf505c/integrated-full/turns-1.log`.
-  Not yet read. The retained root is evidence: never resume, replay or modify it.
+  The retained root is evidence: never resume, replay or modify it.
+  Read once (2026-11-13): all 57 effects completed; turn 1 recall completed
+  (82 actions) and its reference was admitted, but the model-phase projection
+  (`managed_reference_projected` in Session
+  `bedb653412dcb1c794be79720fe107a4`) returned `unavailable` for all 79
+  dependencies, so the request was dispatched without any note and the
+  fixture stopped. Which bound made the whole check unavailable (128 distinct
+  verifications or the 5 s lease) is not determined.
 
 Next steps, in order:
 
