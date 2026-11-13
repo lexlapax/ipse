@@ -532,11 +532,15 @@ defmodule Ipse.Development.CollectionDocumentPeaks do
 
   defp publish(run, groups) do
     with {:ok, run} <- role(run, "publish") do
-      Enum.reduce_while(List.flatten(groups), {:ok, %{}, run}, fn ordinal, {:ok, refs, run} ->
+      List.flatten(groups)
+      |> Enum.with_index()
+      |> Enum.reduce_while({:ok, %{}, run}, fn {ordinal, index}, {:ok, refs, run} ->
         arguments = publish_arguments(ordinal, run.phase)
 
-        case unit(run, "fact_publish", ordinal, "source", arguments) do
-          {:ok, _, ref, run} -> {:cont, {:ok, Map.put(refs, ordinal, ref), run}}
+        with {:ok, run} <- result_room(run, index),
+             {:ok, _, ref, run} <- unit(run, "fact_publish", ordinal, "source", arguments) do
+          {:cont, {:ok, Map.put(refs, ordinal, ref), run}}
+        else
           {:stop, run} -> {:halt, {:stop, run}}
         end
       end)
@@ -554,13 +558,23 @@ defmodule Ipse.Development.CollectionDocumentPeaks do
           "args" => %{"input" => %{"version" => 1, "mode" => "assemble"}}
         }
 
-        case unit(run, "fact_assemble", group, "source", arguments) do
-          {:ok, _, ref, run} -> {:cont, {:ok, done ++ [ref], run}}
+        with {:ok, run} <- result_room(run, group),
+             {:ok, _, ref, run} <- unit(run, "fact_assemble", group, "source", arguments) do
+          {:cont, {:ok, done ++ [ref], run}}
+        else
           {:stop, run} -> {:halt, {:stop, run}}
         end
       end)
     end
   end
+
+  # A Session admits at most 64 extension result sources. Publications and
+  # assembled groups each begin one, so continue the role in a new Session
+  # before the 65th; their references stay usable from later Sessions.
+  defp result_room(run, index) when index > 0 and rem(index, 64) == 0,
+    do: handoff(run, "planned")
+
+  defp result_room(run, _), do: {:ok, run}
 
   defp job(run, group_refs) do
     with {:ok, run} <- role(run, "job") do
